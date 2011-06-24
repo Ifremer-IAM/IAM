@@ -1,0 +1,22 @@
+import("methods", "utils")
+
+useDynLib(IAM)
+
+exportClasses(
+	"iamInput",
+	"iamArgs",
+	"iamOutput",
+	"iamOutputRep"
+)
+
+exportMethods(
+	"IAM.input",
+	"IAM.args",
+	"IAM.export",
+	"IAM.model",
+	"IAM.format",
+	"IAM.unite"
+)
+	
+
+
