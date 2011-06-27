@@ -1,4 +1,4 @@
-import("methods", "utils")
+import("methods", "utils", "lattice")
 
 useDynLib(IAM)
 
@@ -18,5 +18,11 @@ exportMethods(
 	"IAM.unite"
 )
 	
-
+export(
+  "IAM.bwplot",
+  "IAM.zone",
+  "IAM.barIC",
+  "IAM.barplot",
+  "IAM.plot"
+)
 

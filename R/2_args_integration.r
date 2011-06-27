@@ -7,6 +7,11 @@ require(tcltk)
 require(tcltk2)
 e1 <- new.env()
 
+ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
+                 "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
+                 "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit",
+                 "Fr_fmi","C_efmit")
+
 if (classInp=="args") {
 
   input <- INPUT@arguments
@@ -16,6 +21,7 @@ if (classInp=="args") {
   fleets <- colnames(input$Gest$mf)
   ALLscenario <- input$Scen$ALLscenario
   SELECTscen <- input$Scen$SELECTscen
+  SELECTvar <- input$Rep$SELECTvar         #character avec intitulés des variables
   tacfbar <- rbind(TAC=input$Gest$tac,Fbar=input$Gest$fbar) 
   mult <- matrix(input$Gest$mf,nrow=1) ; colnames(mult) <- names(input$Gest$mf)
   
@@ -29,6 +35,9 @@ if (classInp=="args") {
   fleets <- input@specific$Fleet
   ALLscenario <- names(input@scenario) 
   SELECTscen <- 1
+  SELECTvar <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
+                 "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
+                 "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f")
   tacfbar <- matrix(0,nrow=2,ncol=length(years),dimnames=list(c("TAC","Fbar"),years))
   mult <- matrix(1,nrow=1,ncol=length(fleets),dimnames=list(NULL,fleets))
 
@@ -568,25 +577,39 @@ if (classInp=="args") {
 
 set.boot.state<-function(){
     on.off<-tclvalue(BootDisable)
-    if(on.off=="1") tkconfigure(spinboxBoot, state="normal") 
+    if(on.off=="1") {tkconfigure(spinboxBoot, state="normal") ; tkconfigure(menuVar,state="normal")}
 
-    if(on.off=="0") tkconfigure(spinboxBoot, state="disabled")
+    if(on.off=="0") {tkconfigure(spinboxBoot, state="disabled") ; tkconfigure(menuVar,state="disabled")}
 }
 
 butBoot <- ttkcheckbutton(base1,text="Bootstrap",variable=BootDisable,command=set.boot.state)
 frmBoot <- ttklabelframe(base1,labelwidget=butBoot,borderwidth=2)
 
-  #NbIterations
+  #NbIterations & liste variables
+  
 frmNbit <- tkframe(frmBoot)
 spinboxBoot <- tk2spinbox(frmNbit,from=1,to=5000,increment=1,width=5,
               state=ifelse(tclvalue(BootDisable)=="0","disabled","normal"))
 tkpack(spinboxBoot,side="left")
 tkconfigure(spinboxBoot, textvariable = NbIt)
 
+scr2 <- tkscrollbar(frmBoot,repeatinterval=5,command=function(...)tkyview(menuVar,...))  
+menuVar <- tk2listbox(frmBoot,height=6,width=35,selectmode="multiple",background="white",yscrollcommand=function(...)tkset(scr2,...))
+
+for (j in (1:length(ALLVarRep))) tkinsert(menuVar,"end",ALLVarRep[j])
+indicVar <- match(SELECTvar,ALLVarRep)
+if (any(is.na(indicVar))) stop("wrong variable name for replicates!!")
+for (k in (1:length(indicVar))) tkselection.set(menuVar,indicVar[k]-1)
+
+if (tclvalue(BootDisable)=="0") {tkconfigure(menuVar,state="disabled")} else {tkconfigure(menuVar,state="normal")}
+
 tkgrid(tk2label(frmBoot,text="    "))
 tkgrid(tk2label(frmBoot,text="       Nombre d'itérations                    "),frmNbit)
 tkgrid(tk2label(frmBoot,text="    "))
-#tkpack(frmBoot)
+tkgrid(tk2label(frmBoot,text="Variables de sortie              "),menuVar,scr2,tk2label(frmBoot,text="  "))
+tkgrid(tk2label(frmBoot,text="    "))
+
+
 
 #-------------------------------------------------------------------------------
 
@@ -630,6 +653,7 @@ if (tclvalue(ScenDisable)=="0") {tkconfigure(menuScen,state="disabled")} else {t
 tkgrid(tk2label(frmScen,text="    "))
 tkgrid(tk2label(frmScen,text="  "),menuScen,scr,tk2label(frmScen,text="  "))
 tkgrid(tk2label(frmScen,text="    "))
+
 #tkpack(frmScen)
 
 #accès aux sélections : tkcurselection(menuScen) 
@@ -695,7 +719,8 @@ for (i in 1:length(spp)) {
 
 
 listBoot <- list(active = as.integer(tclvalue(BootDisable)),
-                 nbIter = as.integer(tclvalue(NbIt)))
+                 nbIter = as.integer(tclvalue(NbIt)),
+                 SELECTvar = ALLVarRep[as.numeric(strsplit(tclvalue(tkcurselection(menuVar))," ")[[1]])+1])
 
 
 listScen <- list(active = as.integer(tclvalue(ScenDisable)),
@@ -726,6 +751,9 @@ But <- tkframe(base2)
 OK.but <- tkbutton(But,text="            OK            ",command=RETURN)
 Cancel.but <- tkbutton(But,text="         Cancel         ",command=function() {tkdestroy(BASE) ; assign("LL",INPUT,envir=e1)})
 
+tkgrid(tk2label(But,text="         "))
+tkgrid(tk2label(But,text="         "))
+tkgrid(tk2label(But,text="         "))
 tkgrid(tk2label(But,text="         "))
 tkgrid(tk2label(But,text="         "))
 tkgrid(tk2label(But,text="         "))

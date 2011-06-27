@@ -8193,15 +8193,33 @@ UNPROTECT(61);
 }}
 
 
+//détection d'un caractère donné dans un objet SEXP de type SXPSTR
 
+extern "C" {
 
+bool isCharIn(SEXP names, const char *str)
+{
+
+    int i;
+    bool test = false;
+
+    for (i = 0; i < length(names); i++)
+        if (strcmp(CHAR(STRING_ELT(names,i)), str) == 0) {
+            test = true;
+            break;
+        }
+
+    return test;
+}
+
+}
 
 
 extern "C" {
 SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBoot,
             SEXP GestInd, SEXP mF, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP GestParam, SEXP EcoDcf,
-            SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR)
+            SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP bootVar = R_NilValue)
 {
 
     if (INTEGER(Bootstrp)[0]==0) {
@@ -8258,7 +8276,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         //on n'oublie pas d'activer les parties stochastiques pour que ça ait un sens
 
         //on commence par créer l'objet qui va accueillir la donnée  (3 outputs pour l'instant : biomasse, SSB, captures --> à développer selon les besoins)
-        SEXP output, out_names, out_Foth;
+        SEXP output, out_names, out_Foth, emptyObj;
         PROTECT(output = allocVector(VECSXP, 36));
         SEXP eBoot;
 
@@ -8275,7 +8293,6 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mF, mOth, bounds, TAC, FBAR, GestParam, EcoDcf,
                                     EcoInd, dr, SRind, listSR, TypeSR);
-
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
 
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
@@ -8283,83 +8300,158 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                                     GestInd, mF, mOth, bounds, TAC, FBAR, GestParam, EcoDcf,
                                     EcoInd, dr, SRind, listSR, TypeSR);
 
+            //objet vide pour garder la structuration malgré la non-sélection de la variable en question
+            PROTECT(emptyObj = allocVector(VECSXP, object->nbE));
+            setAttrib(emptyObj, R_NamesSymbol, object->sppList);
 
-            SET_VECTOR_ELT(VECTOR_ELT(output, 0), it, object->out_B_et);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 1), it, object->out_SSB_et);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 2), it, object->out_C_eit);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 3), it, object->out_Y_eit);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 11), it, object->out_L_efmit);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 12), it, object->out_L_efmct);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, object->out_L_efmct2);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, object->out_P_t);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 4), it, object->out_Y_efmit);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 5), it, object->out_F_fmi);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 6), it, object->out_Z_eit);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 7), it, object->out_Fbar_et);
+            if (isCharIn(bootVar, "B")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 0), it, object->out_B_et);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 0), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "SSB")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 1), it, object->out_SSB_et);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 1), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Ctot")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 2), it, object->out_C_eit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 2), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Ytot")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 3), it, object->out_Y_eit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 3), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Yfmi")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 4), it, object->out_Y_efmit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 4), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Ffmi")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 5), it, object->out_F_fmi);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 5), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Zeit")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 6), it, object->out_Z_eit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 6), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Fbar")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 7), it, object->out_Fbar_et);
+                } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 7), it, emptyObj);
+            }
+
             PROTECT(out_Foth = allocVector(VECSXP, object->nbE));
             setAttrib(out_Foth, R_NamesSymbol, object->sppList);
             for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 44));
-            SET_VECTOR_ELT(VECTOR_ELT(output, 8), it, out_Foth);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 9), it, object->mu_nbds);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 10), it, object->mu_nbv);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 11), it, object->out_N_eit);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 12), it, object->out_effort);
+            if (isCharIn(bootVar, "Foth")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 8), it, out_Foth);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 8), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "mu_nbds")) SET_VECTOR_ELT(VECTOR_ELT(output, 9), it, object->mu_nbds);
+            if (isCharIn(bootVar, "mu_nbv")) SET_VECTOR_ELT(VECTOR_ELT(output, 10), it, object->mu_nbv);
+
+            if (isCharIn(bootVar, "N")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 11), it, object->out_N_eit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 11), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "Eff")) SET_VECTOR_ELT(VECTOR_ELT(output, 12), it, object->out_effort);
 
             if (INTEGER(EcoDcf)[0]==0) {
-                SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_Eco,1));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_Eco,2));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_Eco,5));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_Eco,11));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_Eco,27));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_Eco,29));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_Eco,25));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_Eco,20));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_Eco,18));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_Eco,30));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_Eco,54));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_Eco,55));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_Eco,56));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_Eco,57));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_Eco,58));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_Eco,59));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_Eco,22));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_Eco,4));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_Eco,24));
+                if (isCharIn(bootVar, "GVL_fme")) {
+                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_Eco,1));
+                } else {
+                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, emptyObj);
+                }
+
+                if (isCharIn(bootVar, "GVLtot_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_Eco,2));
+                if (isCharIn(bootVar, "GVLav_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_Eco,5));
+                if (isCharIn(bootVar, "rtbs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_Eco,11));
+                if (isCharIn(bootVar, "gp_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_Eco,27));
+                if (isCharIn(bootVar, "ps_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_Eco,29));
+                if (isCharIn(bootVar, "gcf_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_Eco,25));
+                if (isCharIn(bootVar, "gva_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_Eco,20));
+                if (isCharIn(bootVar, "cs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_Eco,18));
+                if (isCharIn(bootVar, "sts_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_Eco,30));
+                if (isCharIn(bootVar, "rtbsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_Eco,54));
+                if (isCharIn(bootVar, "csAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_Eco,55));
+                if (isCharIn(bootVar, "gvaAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_Eco,56));
+                if (isCharIn(bootVar, "gcfAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_Eco,57));
+                if (isCharIn(bootVar, "psAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_Eco,58));
+                if (isCharIn(bootVar, "stsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_Eco,59));
+                if (isCharIn(bootVar, "ccwCr_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_Eco,22));
+                if (isCharIn(bootVar, "GVLtot_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_Eco,4));
+                if (isCharIn(bootVar, "wagen_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_Eco,24));
 
             } else {
 
-                SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_EcoDCF,0));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_EcoDCF,1));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_EcoDCF,4));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_EcoDCF,7));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_EcoDCF,22));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_EcoDCF,23));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_EcoDCF,20));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_EcoDCF,15));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_EcoDCF,14));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_EcoDCF,24));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_EcoDCF,38));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_EcoDCF,39));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_EcoDCF,40));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_EcoDCF,41));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_EcoDCF,42));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_EcoDCF,43));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_EcoDCF,17));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_EcoDCF,3));
-                SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_EcoDCF,19));
+                if (isCharIn(bootVar, "GVL_fme")) {
+                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_EcoDCF,0));
+                } else {
+                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, emptyObj);
+                }
+
+                if (isCharIn(bootVar, "GVLtot_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_EcoDCF,1));
+                if (isCharIn(bootVar, "GVLav_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_EcoDCF,4));
+                if (isCharIn(bootVar, "rtbs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_EcoDCF,7));
+                if (isCharIn(bootVar, "gp_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_EcoDCF,22));
+                if (isCharIn(bootVar, "ps_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_EcoDCF,23));
+                if (isCharIn(bootVar, "gcf_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_EcoDCF,20));
+                if (isCharIn(bootVar, "gva_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_EcoDCF,15));
+                if (isCharIn(bootVar, "cs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_EcoDCF,14));
+                if (isCharIn(bootVar, "sts_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_EcoDCF,24));
+                if (isCharIn(bootVar, "rtbsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_EcoDCF,38));
+                if (isCharIn(bootVar, "csAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_EcoDCF,39));
+                if (isCharIn(bootVar, "gvaAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_EcoDCF,40));
+                if (isCharIn(bootVar, "gcfAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_EcoDCF,41));
+                if (isCharIn(bootVar, "psAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_EcoDCF,42));
+                if (isCharIn(bootVar, "stsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_EcoDCF,43));
+                if (isCharIn(bootVar, "ccwCr_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_EcoDCF,17));
+                if (isCharIn(bootVar, "GVLtot_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_EcoDCF,3));
+                if (isCharIn(bootVar, "wagen_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_EcoDCF,19));
             }
 
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 32), it, object->out_L_efmit);  //trop gourmand en place mémoire -> à réactiver une fois que le choix des variables de sortie sera possible
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 33), it, object->out_D_efmit);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 34), it, object->out_Fr_fmi);
-            //SET_VECTOR_ELT(VECTOR_ELT(output, 35), it, object->out_C_efmit);
+            if (isCharIn(bootVar, "L_efmit")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 32), it, object->out_L_efmit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 32), it, emptyObj);
+            }
 
-            SET_VECTOR_ELT(VECTOR_ELT(output, 32), it, object->out_Fbar_et);  // en attendant, pour conserver le format, on injecte une variable 'fake' moins imposante
-            SET_VECTOR_ELT(VECTOR_ELT(output, 33), it, object->out_Fbar_et);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 34), it, object->out_Fbar_et);
-            SET_VECTOR_ELT(VECTOR_ELT(output, 35), it, object->out_Fbar_et);
+            if (isCharIn(bootVar, "D_efmit")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 33), it, object->out_D_efmit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 33), it, emptyObj);
+            }
 
-            UNPROTECT(1);
+            if (isCharIn(bootVar, "Fr_fmi")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 34), it, object->out_Fr_fmi);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 34), it, emptyObj);
+            }
+
+            if (isCharIn(bootVar, "C_efmit")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 35), it, object->out_C_efmit);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 35), it, emptyObj);
+            }
+
+
+            UNPROTECT(2);
 
         }
 
@@ -8796,7 +8888,8 @@ PROTECT(outp = IAM(listInput_txt,
                   getListElt(listParam_txt,"dr"),
                   getListElt(listParam_txt,"SRind"),
                   getListElt(listParam_txt,"listSR"),
-                  getListElt(listParam_txt,"TypeSR")
+                  getListElt(listParam_txt,"TypeSR"),
+                  getListElt(listParam_txt,"bootVar")
                   )
         );
 
@@ -9063,81 +9156,118 @@ if (is_scen) {
 PROTECT(spP = allocVector(INTSXP,1)); sppInt = INTEGER(spP); //à remettre à jour pour chacun des cas (chaque variable)
 
 //SSB
-sppInt[0] = 1;
-out = IAM_export(getListElt(result,"SSB"),  VECTOR_ELT(nmsOUT,0), reP, spP);
+sppInt[0] = 1; //variable Sp -> double contrôle à opérer sur la disponibilité de la donnée
+if (repInt[0]>0) {
+    if (length(getListElt(result,"SSB"))>0 & length(VECTOR_ELT(getListElt(result,"SSB"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"SSB"),0),0))>0)
+        out = IAM_export(getListElt(result,"SSB"),  VECTOR_ELT(nmsOUT,0), reP, spP);
+} else {
+    if (length(getListElt(result,"SSB"))>0 & length(VECTOR_ELT(getListElt(result,"SSB"),0))>0)
+        out = IAM_export(getListElt(result,"SSB"),  VECTOR_ELT(nmsOUT,0), reP, spP);
+}
 
 //Fbar
 sppInt[0] = 1; // <- intutile mais à but illustratif
-out = IAM_export(getListElt(result,"Fbar"), VECTOR_ELT(nmsOUT,1), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"Fbar"))>0 & length(VECTOR_ELT(getListElt(result,"Fbar"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"Fbar"),0),0))>0)
+        out = IAM_export(getListElt(result,"Fbar"),  VECTOR_ELT(nmsOUT,1), reP, spP);
+} else {
+    if (length(getListElt(result,"Fbar"))>0 & length(VECTOR_ELT(getListElt(result,"Fbar"),0))>0)
+        out = IAM_export(getListElt(result,"Fbar"),  VECTOR_ELT(nmsOUT,1), reP, spP);
+}
 
 //Ctot
 sppInt[0] = 1;
-out = IAM_export(getListElt(result,"Ctot"), VECTOR_ELT(nmsOUT,2), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"Ctot"))>0 & length(VECTOR_ELT(getListElt(result,"Ctot"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"Ctot"),0),0))>0)
+        out = IAM_export(getListElt(result,"Ctot"),  VECTOR_ELT(nmsOUT,2), reP, spP);
+} else {
+    if (length(getListElt(result,"Ctot"))>0 & length(VECTOR_ELT(getListElt(result,"Ctot"),0))>0)
+        out = IAM_export(getListElt(result,"Ctot"),  VECTOR_ELT(nmsOUT,2), reP, spP);
+}
 
 //Ytot
 sppInt[0] = 1;
-out = IAM_export(getListElt(result,"Ytot"), VECTOR_ELT(nmsOUT,3), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"Ytot"))>0 & length(VECTOR_ELT(getListElt(result,"Ytot"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"Ytot"),0),0))>0)
+        out = IAM_export(getListElt(result,"Ytot"),  VECTOR_ELT(nmsOUT,3), reP, spP);
+} else {
+    if (length(getListElt(result,"Ytot"))>0 & length(VECTOR_ELT(getListElt(result,"Ytot"),0))>0)
+        out = IAM_export(getListElt(result,"Ytot"),  VECTOR_ELT(nmsOUT,3), reP, spP);
+}
 
 //Y
 sppInt[0] = 1;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"Yfmi"), VECTOR_ELT(nmsOUT,4), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"Yfmi"))>0 & length(VECTOR_ELT(getListElt(result,"Yfmi"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"Yfmi"),0),0))>0)
+        out = IAM_export(getListElt(result,"Yfmi"),  VECTOR_ELT(nmsOUT,4), reP, spP);
 } else {
-    out = IAM_export(getListElt(result,"Y"), VECTOR_ELT(nmsOUT,4), reP, spP);
+    if (length(getListElt(result,"Y"))>0 & length(VECTOR_ELT(getListElt(result,"Y"),0))>0)
+        out = IAM_export(getListElt(result,"Y"),  VECTOR_ELT(nmsOUT,4), reP, spP);
 }
 
 
 //L
 sppInt[0] = 1;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"L_efmit"), VECTOR_ELT(nmsOUT,5), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"L_efmit"))>0 & length(VECTOR_ELT(getListElt(result,"L_efmit"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"L_efmit"),0),0))>0)
+        out = IAM_export(getListElt(result,"L_efmit"),  VECTOR_ELT(nmsOUT,5), reP, spP);
 } else {
-    out = IAM_export(getListElt(result,"Li"), VECTOR_ELT(nmsOUT,5), reP, spP);
+    if (length(getListElt(result,"Li"))>0 & length(VECTOR_ELT(getListElt(result,"Li"),0))>0)
+        out = IAM_export(getListElt(result,"Li"),  VECTOR_ELT(nmsOUT,5), reP, spP);
 }
 
 
 //D
 sppInt[0] = 1;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"D_efmit"), VECTOR_ELT(nmsOUT,6), reP, spP);
+if (repInt[0]>0) {
+     if (length(getListElt(result,"D_efmit"))>0 & length(VECTOR_ELT(getListElt(result,"D_efmit"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"D_efmit"),0),0))>0)
+        out = IAM_export(getListElt(result,"D_efmit"),  VECTOR_ELT(nmsOUT,6), reP, spP);
 } else {
-    out = IAM_export(getListElt(result,"D"), VECTOR_ELT(nmsOUT,6), reP, spP);
+    if (length(getListElt(result,"D"))>0 & length(VECTOR_ELT(getListElt(result,"D"),0))>0)
+        out = IAM_export(getListElt(result,"D"),  VECTOR_ELT(nmsOUT,6), reP, spP);
 }
 
 
 //GVLav
 sppInt[0] = 0;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"GVLav_f"), VECTOR_ELT(nmsOUT,7), reP, spP);
+if (repInt[0]>0) {
+     if (length(getListElt(result,"GVLav_f"))>0 & length(VECTOR_ELT(getListElt(result,"GVLav_f"),0))>0)
+        out = IAM_export(getListElt(result,"GVLav_f"),  VECTOR_ELT(nmsOUT,7), reP, spP);
 } else {
-    out = IAM_export(getListElt(getListElt(result,"E"),"GVLav_f"), VECTOR_ELT(nmsOUT,7), reP, spP);
+    if (length(getListElt(getListElt(result,"E"),"GVLav_f"))>0)
+        out = IAM_export(getListElt(getListElt(result,"E"),"GVLav_f"),  VECTOR_ELT(nmsOUT,7), reP, spP);
 }
 
 
 //GVA
 sppInt[0] = 0;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"gva_f"), VECTOR_ELT(nmsOUT,8), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"gva_f"))>0 & length(VECTOR_ELT(getListElt(result,"gva_f"),0))>0)
+        out = IAM_export(getListElt(result,"gva_f"),  VECTOR_ELT(nmsOUT,8), reP, spP);
 } else {
-    out = IAM_export(getListElt(getListElt(result,"E"),"gva_f"), VECTOR_ELT(nmsOUT,8), reP, spP);
+    if (length(getListElt(getListElt(result,"E"),"gva_f"))>0)
+        out = IAM_export(getListElt(getListElt(result,"E"),"gva_f"),  VECTOR_ELT(nmsOUT,8), reP, spP);
 }
 
 
 //GCF
 sppInt[0] = 0;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"gcf_f"), VECTOR_ELT(nmsOUT,9), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"gcf_f"))>0 & length(VECTOR_ELT(getListElt(result,"gcf_f"),0))>0)
+        out = IAM_export(getListElt(result,"gcf_f"),  VECTOR_ELT(nmsOUT,9), reP, spP);
 } else {
-    out = IAM_export(getListElt(getListElt(result,"E"),"gcf_f"), VECTOR_ELT(nmsOUT,9), reP, spP);
+    if (length(getListElt(getListElt(result,"E"),"gcf_f"))>0)
+        out = IAM_export(getListElt(getListElt(result,"E"),"gcf_f"),  VECTOR_ELT(nmsOUT,9), reP, spP);
 }
-
 
 //PS
 sppInt[0] = 0;
-if (repInt[0]>0) { //iter
-    out = IAM_export(getListElt(result,"ps_f"), VECTOR_ELT(nmsOUT,10), reP, spP);
+if (repInt[0]>0) {
+    if (length(getListElt(result,"ps_f"))>0 & length(VECTOR_ELT(getListElt(result,"ps_f"),0))>0)
+        out = IAM_export(getListElt(result,"ps_f"),  VECTOR_ELT(nmsOUT,10), reP, spP);
 } else {
-    out = IAM_export(getListElt(getListElt(result,"E"),"ps_f"), VECTOR_ELT(nmsOUT,10), reP, spP);
+    if (length(getListElt(getListElt(result,"E"),"ps_f"))>0)
+        out = IAM_export(getListElt(getListElt(result,"E"),"ps_f"),  VECTOR_ELT(nmsOUT,10), reP, spP);
 }
 
 

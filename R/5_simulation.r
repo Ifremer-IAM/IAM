@@ -50,7 +50,8 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),
                     lapply(objArgs@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR))),
                     lapply(objArgs@arguments$Recruitment,function(x) 
-                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd"))))
+                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd")))),
+                    as.character(objArgs@arguments$Replicates$SELECTvar)
               )
               
 

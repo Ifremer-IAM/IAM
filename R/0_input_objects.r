@@ -228,6 +228,7 @@ if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeSIMUstoch)%in%(1:3)))) 
 #Replicates
 if (!arg$Replicates$active%in%(0:1)) stop("wrong 'Rep$active' argument in iamArgs object!!")
 if (!is.numeric(arg$Replicates$nbIter)) stop("wrong 'nbIter' argument in iamArgs object!!")                           
+if (arg$Replicates$active==1 & length(arg$Replicates$SELECTvar)==0) stop("no specified output variables for replicates in iamArgs object!!") 
 
 #Scenario
 ind <- is.null(arg$Scenario$ALLscenario)
