@@ -6186,7 +6186,31 @@ if (type<3) {
 
         double v_a = NA_REAL;
 
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "beta") == 0) v_a = rbeta(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+//        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "nbeta") == 0) v_a = rnbeta(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0],REAL(elmtDistParThreeSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "binom") == 0) v_a = rbinom(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "cauchy") == 0) v_a = rcauchy(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "chisq") == 0) v_a = rchisq(REAL(elmtDistParOneSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "nchisq") == 0) v_a = rnchisq(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "exp") == 0) v_a = rexp(REAL(elmtDistParOneSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "f") == 0) v_a = rf(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+//        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "nf") == 0) v_a = rnf(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0],REAL(elmtDistParThreeSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "gamma") == 0) v_a = rgamma(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "geom") == 0) v_a = rgeom(REAL(elmtDistParOneSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "hyper") == 0) v_a = rhyper(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0],REAL(elmtDistParThreeSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "logis") == 0) v_a = rlogis(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
         if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "lnorm") == 0) v_a = rlnorm(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "nbinom") == 0) v_a = rnbinom(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "norm") == 0) v_a = rnorm(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "pois") == 0) v_a = rpois(REAL(elmtDistParOneSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "t") == 0) v_a = rt(REAL(elmtDistParOneSp)[0]);
+ //       if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "nt") == 0) v_a = rnt(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+ //       if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "tukey") == 0) v_a = rtukey(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0],REAL(elmtDistParThreeSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "unif") == 0) v_a = runif(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "weibull") == 0) v_a = rweibull(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "wilcox") == 0) v_a = rwilcox(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
+        if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "signrank") == 0) v_a = rsignrank(REAL(elmtDistParOneSp)[0]);
+
         //if ... pour les autres lois --> à compléter
 
         PROTECT(Rec = getListElement(elmtIn, "N_i0t"));
@@ -6308,8 +6332,10 @@ for (int e = 0 ; e < nbE ; e++) {
     double v_alea = 0.0;
 
         if (!ISNA(paramet[3])) v_alea = rnorm(0.0,paramet[3]);
+
     //bruit de loi lognormale
-        rans[ind_t] = 1000*exp(log(rans[ind_t]) + v_alea); //1000 devrait être un autre paramètre : multiplicateur de variables en sortie du module
+        //rans[ind_t] = 1000*exp(log(rans[ind_t]) + v_alea); //1000 devrait être un autre paramètre : multiplicateur de variables en sortie du module
+        rans[ind_t] = rans[ind_t] + v_alea;
 
     }
 
@@ -8559,6 +8585,7 @@ SEXP Fun(SEXP File, SEXP Specific = R_NilValue) //file : character décrivant le 
 
    string ligne;
    ifstream fichier(CHAR(STRING_ELT(file,0)));
+   if (!fichier) error("Can't read file !!\n");
 
     vector< string > vec;
     SEXP out, names, var, dimcst, Dim, DimNam;
@@ -8938,6 +8965,7 @@ SEXP IAM_export(SEXP vrbl, SEXP fileExp, SEXP replic, SEXP species) { // vrbl : 
 
     string const fichier(CHAR(STRING_ELT(fileExp,0)));
     ofstream flux(fichier.c_str());
+    if (!flux) error("Can't open file!!\n");
 
     if (rep) {
         nbIter = length(vrbl);
@@ -9089,11 +9117,17 @@ int *sppInt, *repInt;
 bool is_scen, is_sto;
 
 
-const char *inputFiles[5] = {"C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Inputs\\argsCPP.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Inputs\\specific.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Inputs\\input.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Inputs\\scenario.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Inputs\\stochastic.txt"};
+const char *inputFiles[5] = {"C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Input\\argsCPP.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Input\\specific.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Input\\input.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Input\\scenario.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Input\\stochastic.txt"};
+
+//const char *inputFiles[5] = {"C:\\Documents and Settings\\cmacher\\Bureau\\Inputs\\argsCPP.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Inputs\\specific.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Inputs\\input.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Inputs\\scenario.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Inputs\\stochastic.txt"};
 
 PROTECT(nmsIN = allocVector(VECSXP, 5));
 
@@ -9105,17 +9139,30 @@ for(int k = 0; k < 5; k++) {
 }
 
 
-const char *outputFiles[11] = {"C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\SSB.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\Fbar.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\Ctot.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\Ytot.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\Y.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\L.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\D.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\GVL.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\GVA.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\GCF.txt",
-                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Outputs\\PS.txt"};
+const char *outputFiles[11] = {"C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\SSB.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\Fbar.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\Ctot.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\Ytot.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\Y.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\L.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\D.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\GVL.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\GVA.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\GCF.txt",
+                            "C:\\Documents and Settings\\mmerzere\\Bureau\\COST_R\\IAMwdSIAD\\Output\\PS.txt"};
+
+//const char *outputFiles[11] = {"C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\SSB.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\Fbar.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\Ctot.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\Ytot.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\Y.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\L.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\D.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\GVL.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\GVA.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\GCF.txt",
+//                            "C:\\Documents and Settings\\cmacher\\Bureau\\Outputs\\PS.txt"};
+
 
 PROTECT(nmsOUT = allocVector(VECSXP, 11));
 

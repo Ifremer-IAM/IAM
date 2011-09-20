@@ -74,15 +74,29 @@ IAM.zone(formula,data,\dots)
 \examples{
 
 data(iamData)
-IAM.bwplot(un+deux+trois+quatre+cinq+gp~t|scen,data=DFiam_iter,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"),fill="whitesmoke")
+                                    
+IAM.barplot(un+deux+trois+quatre+cinq+gp~t,data=DFiam,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"),origin=0)
 
-IAM.zone(un+deux+trois+quatre+cinq+gp~t|scen,data=DFiam_iter,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"),alpha=0.2)
+col1 <- c(rgb(t(col2rgb("#E68F6A")/255),alpha=0.7),rgb(t(col2rgb("#35A2F2")/255),alpha=0.2)) ; col2 <- c("red","#35A2F2")
 
-IAM.barIC(un+deux+trois+quatre+cinq+gp~t|scen,data=DFiam_iter,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"))
+IAM.bwplot(SQ + Scenario~t|f,data=DFiam_iter,col=col2,fill=col1,
+           rot.x=90,cex.axis.x=0.7,cex.axis.y=0.8,cex.pch=0.3,pch=15,
+           txt.leg=c("Statu Quo","Scenario"),xlab="Year",ylab="Value",add.h=0)
 
-IAM.barplot(un+deux+trois+quatre+cinq+gp~t,data=DFiam,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"))
+IAM.zone(SQ + Scenario~t|f,data=DFiam_iter,col=col2,
+         rot.x=90,cex.axis.x=0.7,cex.axis.y=0.8,cex.pch=0.3,pch=15,
+         txt.leg=c("Statu Quo","Scenario"),xlab="Year",ylab="Value",alpha=0.2)
 
-IAM.plot(un+deux+trois+quatre+cinq+gp~t,data=DFiam,txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"))
+
+IAM.barIC(SQ + Scenario~t|f,data=subset(DFiam_iter,t\%in\%(2010:2015)),col=col2,
+          rot.x=90,cex.axis.x=0.7,cex.axis.y=0.8,txt.leg=c("Statu Quo","Scenario"),xlab="Year",ylab="Value",origin=0)
+
+
+IAM.plot(SQ + Scenario~t|f,data=subset(DFiam_iter,iter==1),
+            col=col2,rot.x=90,cex.axis.x=0.7,cex.axis.y=0.8,cex.pch=0.3,pch=15,
+            txt.leg=c("Statu Quo","Scenario"),xlab="Year",ylab="Value",add.h=0,add.lty=2)
+
+update(trellis.last.object(), scales=list(alternating=1))
 
 }
 
