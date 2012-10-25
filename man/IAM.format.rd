@@ -28,8 +28,8 @@ IAM.format(object,\dots)
 }
 }
 
-\details{
-}
+%\details{
+%}
 
 \section{Methods}{
   \describe{

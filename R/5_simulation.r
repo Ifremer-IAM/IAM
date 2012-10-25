@@ -13,18 +13,18 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 )
 
 
-setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), ...){
+setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=1, ...){
 	
 	
 if (objArgs@arguments$Scenario$active==1) {
   scenar <- objArgs@arguments$Scenario$ALLscenario[objArgs@arguments$Scenario$SELECTscen]
  } else {
   scenar <- ""
- }	
+ }	                
  
 Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHactive * x$typeSIMUstoch))
 
-mOth <- rep(0,length(objArgs@specific$Species)) ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- 1
+mOth <- rep(0,length(objArgs@specific$Species)) ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- mOTH
 
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
@@ -37,7 +37,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                                  var = match(objArgs@arguments$Gestion$control,c("Nb jdm","Nb navires")),
                                  trgt = match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar")),
                                  delay = objArgs@arguments$Gestion$delay,
-                                 upd = objArgs@arguments$Gestion$upd)),
+                                 upd = objArgs@arguments$Gestion$upd, level = objArgs@arguments$Gestion$level)),
                     as.integer(objArgs@arguments$Eco$type-1),
                     as.integer(c(adj = objArgs@arguments$Eco$adj,
                                  lev = objArgs@arguments$Eco$lev,
@@ -48,10 +48,11 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                                  report = objArgs@arguments$Eco$report)),
                     as.double(objArgs@arguments$Eco$dr), 
                     as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),
-                    lapply(objArgs@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR))),
+                    lapply(objArgs@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR,x$noiseTypeSR))),
                     lapply(objArgs@arguments$Recruitment,function(x) 
-                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd")))),
-                    as.character(objArgs@arguments$Replicates$SELECTvar)
+                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))),
+                    as.double(objArgs@arguments$Gestion$mfm),
+                    as.character(objArgs@arguments$Replicates$SELECTvar) 
               )
               
 
@@ -82,7 +83,9 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   nbds_f_m = lapply(out$Eff,function(x) x$nbds_f_m),                
                   GVLtot_f_m = out$GVLtot_fm,             
                   GVLtot_f = out$GVLtot_f,               
-                  GVLav_f =out$GVLav_f,                 
+                  GVLav_f = out$GVLav_f,
+                  vcst_f = out$vcst_f,
+                  vcst_f_m = out$vcst_fm,                 
                   rtbs_f = out$rtbs_f,                 
                   rtbsAct_f = out$rtbsAct_f,               
                   cs_f = out$cs_f,                    

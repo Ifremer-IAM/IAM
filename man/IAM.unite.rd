@@ -27,8 +27,8 @@ IAM.unite(listObj,\dots)
 }
 }
 
-\details{
-}
+%\details{
+%}
 
 \section{Methods}{
   \describe{

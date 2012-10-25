@@ -79,8 +79,9 @@ setClass("stockInput",
       wL_i	= NA,     #Poids individuels moyens dans les débarquements (kg)	
       wD_i	= NA,     #Poids individuels moyens dans les rejets (kg)	
       N_it0	= NA,     #Effectifs population aux âges à l'instant initial 	
-      N_i0t	= NA,     #Effectifs population à l'âge 0	
-      F_fmi	= NA,	    #Mortalité par pêche aux âges	
+      N_i0t	= NA,     #Effectifs population à l'âge 0
+      F_i = NA,	      #Mortalité par pêche aux âges
+      F_fmi	= NA,	    #Mortalité par pêche aux âges ventilée	
       B_i	= NA,       #Biomasse aux âges (t)	
       Y_mi = NA,      #Capture totale par métier et par a/l en poids pour ventilation de la mortalité par pêche	(t)
       C_mi = NA,      #Capture totale par métier et par a/l en nombres pour ventilation de la mortalité par pêche	
@@ -214,9 +215,9 @@ spe <- object@specific
 
 #Recruitments
 if (length(arg$Recruitment)!=length(spe$Species)) stop("wrong 'Recruitment' argument in iamArgs object!!") 
-if (!all(unlist(lapply(arg$Recruitment,length)==8))) stop("missing argument in a 'Recruitment' element of iamArgs object!!")
+if (!all(unlist(lapply(arg$Recruitment,length)==9))) stop("missing argument in a 'Recruitment' element of iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) x$modSRactive)%in%(0:1)))) stop("wrong 'modSRactive' argument in iamArgs object!!")
-if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeMODsr)%in%c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd")))) stop("wrong 'typeMODsr' argument in iamArgs object!!")
+if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeMODsr)%in%c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))) stop("wrong 'typeMODsr' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parAmodSR))))) stop("wrong 'modSRactive' argument in iamArgs object!!")                           
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parAmodSR))))) stop("wrong 'parAmodSR' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parBmodSR))))) stop("wrong 'parBmodSR' argument in iamArgs object!!")
@@ -242,6 +243,7 @@ if (!arg$Gestion$active%in%(0:1)) stop("wrong 'Gest$active' argument in iamArgs 
 if (!arg$Gestion$control%in%c("Nb navires","Nb jdm")) stop("wrong 'control' argument in iamArgs object!!")
 if (!arg$Gestion$target%in%c("TAC","Fbar","TAC->Fbar")) stop("wrong 'target' argument in iamArgs object!!")
 if (!arg$Gestion$espece%in%spe$Species) stop("wrong 'espece' argument in iamArgs object!!")
+if (!arg$Gestion$level%in%(0:1)) stop("wrong 'level' argument in iamArgs object!!")
 if (!arg$Gestion$delay%in%(1:spe$NbSteps)) stop("wrong 'delay' argument in iamArgs object!!")
 if (!arg$Gestion$upd%in%(1:2)) stop("wrong 'upd' argument in iamArgs object!!")
 if (!is.numeric(arg$Gestion$sup)) stop("wrong 'sup' argument in iamArgs object!!")
@@ -249,6 +251,8 @@ if (!is.numeric(arg$Gestion$inf)) stop("wrong 'inf' argument in iamArgs object!!
 if (length(arg$Gestion$tac)!=length(spe$times)) stop("wrong 'tac' argument in iamArgs object!!")
 if (length(arg$Gestion$fbar)!=length(spe$times)) stop("wrong 'fbar' argument in iamArgs object!!")
 if (length(arg$Gestion$mf)!=length(spe$Fleet)) stop("wrong 'mf' argument in iamArgs object!!")
+if (nrow(arg$Gestion$mfm)!=length(spe$Fleet)) stop("wrong 'mfm' argument in iamArgs object!!")
+if (ncol(arg$Gestion$mfm)!=length(spe$MetierEco)) stop("wrong 'mfm' argument in iamArgs object!!")
 
 #Eco
 if (!arg$Eco$active%in%(0:1)) stop("wrong 'Eco$active' argument in iamArgs object!!")

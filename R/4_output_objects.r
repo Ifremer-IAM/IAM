@@ -188,6 +188,8 @@ setClass("iamOutputRep",
                   GVLtot_f_m = list(),              #CA total par flottille et métier
                   GVLtot_f = list(),                #CA total par flottille
                   GVLav_f = list(),                 #CA moyen par navire d'une flottille
+                  vcst_f = list(),                  #Coûts variables par navire d'une flottille
+                  vcst_f_m = list(),                #Coûts variables par navire d'une flottille-métier
                   rtbs_f = list(),                  #Reste à partager par navire d'une flottille
                   rtbsAct_f = list(),               #Reste à partager actualisé par navire d'une flottille
                   cs_f = list(),                    #Surplus de l'équipage par navire d'une flottille

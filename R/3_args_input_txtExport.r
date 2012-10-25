@@ -46,8 +46,8 @@ unl <- function(ll,file="input.txt",spec=list(),flag=NA) {
     cat(out,append=TRUE,sep="\t",file=file)
     } else {
     #il faut considérer le cas particulier des matrices (ex:'icat') qui n'ont pas d'attributs 'DimCst' mais qui
-    #doivent être quand même formatée 
-    #pas besoin de formatage poussée, juste la mise en forme suffit  
+    #doivent être quand même formatées 
+    #pas besoin de formatage poussé, juste la mise en forme suffit  
       if (is.matrix(ll)) {
         out <- c("var",as.character(typeof(ll)),c("NA","NA","NA","NA",as.character(nrow(ll)),as.character(ncol(ll))),as.character(ll))
       } else {
@@ -184,9 +184,9 @@ setMethod("IAM.export", signature("iamArgs"), function(object, folder, ...){
                                  report = object@arguments$Eco$report)),
                     dr=as.double(object@arguments$Eco$dr), 
                     SRind=as.integer(unlist(lapply(object@arguments$Recruitment,function(x) x$modSRactive))),
-                    listSR=lapply(object@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR))),
+                    listSR=lapply(object@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR,x$noiseTypeSR))),
                     TypeSR=lapply(object@arguments$Recruitment,function(x) 
-                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd")))),
+                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))),
                     bootVar=as.character(object@arguments$Replicates$SELECTvar)) 
        
     unl(cppArgs,file=file.path(fullPathFold,"argsCPP.txt"),spec=object@specific)

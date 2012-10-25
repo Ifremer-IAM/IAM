@@ -68,8 +68,8 @@ IAM.zone(formula,data,\dots)
 }
 }
 
-\details{
-}
+%\details{
+%}
 
 \examples{
 

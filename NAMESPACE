@@ -1,6 +1,6 @@
 import("methods", "utils", "lattice")
 
-useDynLib(IAM)
+useDynLib(IAMq)
 
 exportClasses(
 	"iamInput",
@@ -15,7 +15,8 @@ exportMethods(
 	"IAM.export",
 	"IAM.model",
 	"IAM.format",
-	"IAM.unite"
+	"IAM.unite",
+	"iamToFLR"
 )
 	
 export(

@@ -1,3 +1,160 @@
+#fonction de conversion des inputs au niveau métier Eco (inclus implémentation de l'allocation de mortalité par pêche
+
+convertInput <- function(inp) {
+
+        namF <- inp@specific$Fleet ; nF <- length(namF) 
+        namM <- inp@specific$Metier ; nM <- length(namM)
+        llF <- list()
+        
+        
+        #1ère étape : ventilation de la mortalité (ATTENTION : ici, la ventilation sur indices non communs n'est pas envisagée)
+        #-------------------------------------------------------------------------------
+            
+            for (i in inp@specific$Species) {
+            
+            namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
+            
+              Fini <- inp@input[[i]]$F_fmi
+              Fmi <- array(NA, dim=c(nM,nI), dimnames=list(namM,namI))
+              Ffmi <- array(NA, dim=c(nF,nM,nI), dimnames=list(namF,namM,namI))
+            
+              Cmi <- inp@input[[i]]$C_mi
+              Ci <- inp@input[[i]]$C_i
+              Ymi <- inp@input[[i]]$Y_mi
+              Yi <- inp@input[[i]]$Y_i
+              Lref <- inp@input[[i]]$Lref_f_e
+              FM <- inp@input[[i]]$fm
+            
+            #ventilation métier
+              if (attributes(Fini)$DimCst[2]==0) {                                          #ie F = Fi (cas 1, 2)
+                if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[2:3]>0) & attributes(Ci)$DimCst[3]>0) {   #ie C_mi renseigné avec composante métier et âge, et C_i renseigné avec composante âge -> cas 1 ou 2
+                  if (attributes(Cmi)$DimCst[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
+                    Ffmi[] <- Cmi[]
+                    aggCmi <- apply(Cmi,3,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]  #on remplace dans Ci les valeurs agrégées issues de C_mi supérieures
+                    Ffmi <- Ffmi*rep(Fini/Ci,each=nF*nM)
+                  } else {                                                                  #ie C_mi = Cmi (cas 1)
+                    Fmi[] <- Cmi[]
+                    aggCmi <- apply(Cmi,2,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]
+                    Fmi <- Fmi*rep(Fini/Ci,each=nM)
+                  }
+                } else { if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(attributes(Ymi)$DimCst[2:3]>0) & attributes(Yi)$DimCst[3]>0) {   #ie Y_mi renseigné avec composante métier et âge, et Y_i renseigné avec composante âge -> cas 1 ou 2
+                          if (attributes(Ymi)$DimCst[1]>0) {                                #ie Y_mi = Yfmi  (cas 2)
+                            Ffmi[] <- Ymi[]
+                            aggYmi <- apply(Ymi,3,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
+                            Ffmi <- Ffmi*rep(Fini/Yi,each=nF*nM)
+                          } else {                                                          #ie Y_mi = Ymi (cas 1)
+                            Fmi[] <- Ymi[]
+                            aggYmi <- apply(Ymi,2,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
+                            Fmi <- Fmi*rep(Fini/Yi,each=nM)
+                          }
+                         }
+                       }
+                } else {
+                  Fmi[] <- Fini[]
+                }
+                
+            #on poursuit avec la ventilation flottille si Ffmi non complété (on suppose à ce stade que Fmi a été complété)
+            
+              if (all(is.na(Ffmi))) {                                                       #ie cas 3 ou 4
+                if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[1:3]>0) & all(attributes(Ci)$DimCst[2:3]>0)) {   #ie cas 4
+                    Ffmi[] <- Cmi[]
+                    aggCmi <- apply(Cmi,2:3,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]
+                    Ffmi <- Ffmi*rep(Fmi/Ci,each=nF)
+                } else {                                                                  
+                    if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(attributes(Ymi)$DimCst[1:3]>0) & all(attributes(Yi)$DimCst[2:3]>0)) {   #ie cas 4
+                      Ffmi[] <- Ymi[]
+                      aggYmi <- apply(Ymi,2:3,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
+                      Ffmi <- Ffmi*rep(Fmi/Yi,each=nF)
+                    } else {                                                                # il faut alors utiliser les données de débarquements des feuillets Eco, redistribuées par métierBio via la matrice fm
+                      if (!all(is.na(Lref)) & !all(is.na(FM)) & attributes(Ymi)$DimCst[1]==0 & attributes(Ymi)$DimCst[2]>0) { #cas 3 avec Ctot_m calculé à partir de Y_mi
+                         CtotM <- apply(Ymi,1,sum,na.rm=TRUE)
+                         Cfm <- FM*as.vector(Lref)
+                         aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
+                         Ffmi[] <- Cfm/rep(CtotM,each=nF)
+                         Ffmi <- Ffmi*rep(Fmi,each=nF)
+                      } else {
+                        if (!all(is.na(Lref)) & !all(is.na(FM)) & attributes(Yi)$DimCst[1]==0 & attributes(Yi)$DimCst[2]>0) { #cas 3 avec Ctot_m calculé à partir de Y_i
+                         CtotM <- apply(Yi,1,sum,na.rm=TRUE)
+                         Cfm <- FM*as.vector(Lref)
+                         aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
+                         Ffmi[] <- Cfm/rep(CtotM,each=nF)
+                         Ffmi <- Ffmi*rep(Fmi,each=nF) 
+                        }
+                      }
+                    }
+                }
+              }
+              
+            #ici, Ffmi devrait être dispo
+            
+            if (all(is.na(Ffmi))) stop("wrong or missing data for F allocation! Check C_mi, C_i, Y_mi, Y_i inputs!!")  
+              
+            llF[[i]] <- Ffmi  
+              
+            }
+         
+         
+        #2ème étape : on redéfinit chaque variable BIO suivant le niveau métier 'ECO' à l'aide de la matrice MM
+        # -> ne concerne que la variable d_i  <-- peut évoluer avec l'évolution de 'sr' et l'intégration des variables de prix au niveau métier
+        #-------------------------------------------------------------------------------
+        
+        for (i in inp@specific$Species) {
+        
+        namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
+        namME <- inp@specific$MetierEco ; nME <- length(namME)
+         
+        MM <- inp@input[[i]]$mm 
+        tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM)) ; names(tabMM) <- c("fm","mEco","val2")
+        
+        #conversion des données de mortalités --> on utilise les valeurs brutes
+        tabF <- cbind.data.frame(expand.grid(dimnames(llF[[i]])),value1=as.vector(llF[[i]])) ; names(tabF) <- c("f","m","a","val1")
+        tabF$fm <- paste(tabF$f,tabF$m,sep="__") 
+        TABF <- merge(tabMM,tabF,all=TRUE) ; TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
+        TABF$f <- factor(as.character(TABF$f),levels=namF)
+        TABF$mEco <- factor(as.character(TABF$mEco),levels=namME)    
+        TABF$a <- factor(as.character(TABF$a),levels=namI)
+        FF <- with(TABF,tapply(val,list(f,mEco,a),function(x) x))
+        attributes(FF)$DimCst <- as.integer(c(nF,nME,nI,0))  
+        
+        if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+          inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
+          attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
+        } else {
+          inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
+        }
+               
+        inp@input[[i]]$F_fmi <- FF
+         
+        #conversion des variables ratios --> on applique les mêmes valeurs pour tous les métiers correspondants (on les suppose définie aux âges)  
+          
+        di <- inp@input[[i]]$d_i 
+        if (attributes(di)$DimCst[2]>0) {
+          if (attributes(di)$DimCst[1]==0) {
+            vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
+            vec_di[] <- rep(di,each=nF)
+          } else {
+            vec_di <- di
+          }
+          
+          tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
+          tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
+          TABD <- merge(tabMM,tabD,all=TRUE) ; TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+          TABD$f <- factor(as.character(TABD$f),levels=namF)
+          TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
+          TABD$a <- factor(as.character(TABD$a),levels=namI)
+          FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
+          attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))  
+          
+          inp@input[[i]]$d_i <- FD
+        }
+        }  
+  
+  return(inp)
+}  
+  
+
+
+
 #petite fonction de recodage interne à CLK
 recFun <- function(df,field,rec) {
 		Typ <- class(df[,field]) 
@@ -555,7 +712,7 @@ List <- c(tbl1,tbl2)
 #on va légèrement retoucher la table mm pour injecter dans la colonne value la place de l'indice métier_eco correspondant
 indMM <- (1:length(List))[unlist(lapply(List,function(x) ("v__mm"%in%x$v)))] 
 for (i in indMM) {
-  tempMM <- List[[i]]
+  tempMM <- MMmodif <- List[[i]]                                         #modif MM  23/02/2012
   tempMM$value[!is.na(tempMM$value)] <- match(gsub("m__","",tempMM[,5]),modMeco)[!is.na(tempMM$value)]
   tempMM <- tempMM[,c(1:4,6)]
   List[[i]] <- tempMM[apply(tempMM,1,function(x) !any(is.na(x))),]
@@ -847,7 +1004,7 @@ reformat <- function(x,slotN="stockInput") {
   ll <- x[n]
   names(ll) <- n 
   ll <- lapply(ll,function(y) {if (is.null(y)) return(as.numeric(NA)) else {if (all(is.na(y))) return(as.numeric(NA)) else return(y)}})
-  return(lapply(ll,function(y){if (length(y)==1) attributes(y)$DimCst <- as.integer(c(0,0,0,0))
+  return(lapply(ll,function(y){if (length(y)==1 & is.null(names(y)) & is.null(dimnames(y))) attributes(y)$DimCst <- as.integer(c(0,0,0,0))
                                 return(y)}))
 }    #si on veut plutôt des NAs, on remplace 'll)}' par 'lapply(ll,function(y) if (is.null(y)) NA else y))}'
 
@@ -905,6 +1062,17 @@ STO <- c(STO,ff)
 #on retourne alors l'objet bemInput renseigné (manquent encore les paramètres stochastiques et d'optimisation
 
 
+#modif MM 23/02/2012
+#à partir de MMmodif, on modifie mm pour chaque espèce
+names(MMmodif)[4] <- "mBio"
+MMmodif$f <- gsub("f__","",MMmodif$f)
+MMmodif$e <- gsub("e__","",MMmodif$e)
+MMmodif$mBio <- gsub("m__","",MMmodif$mBio)
+MMmodif$m <- gsub("m__","",MMmodif$m)
+tabMM <- with(MMmodif,tapply(value,list(paste(f,mBio,sep="__"),m,e),function(x) x[1]))
+for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[,,spp]
+
+
 return(new("iamInput",desc=desc,specific=list(Species=as.character(namList),Fleet=modF,Metier=modMbio,MetierEco=modMeco,
                                               Ages=lapply(LL$input,function(x) x$modI)[namList],
                                               Cat=lapply(LL$input,function(x) x$modC)[namList],t_init=t_init,
@@ -933,7 +1101,8 @@ setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
 
 if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") stop("'fileIN' must be an .xls file!!")
 	
-read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc)
+out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc)
+return(convertInput(out))
 
 })
 
@@ -948,7 +1117,8 @@ if (substring(fileSPEC,nchar(fileSPEC)-3,nchar(fileSPEC))!=".txt") stop("'fileSP
 specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
 input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 
-return(new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=list()))
+out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=list())
+return(convertInput(out))
 
 })
  
@@ -965,7 +1135,8 @@ specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
 input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
 
-return(new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=list()))
+out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=list())
+return(convertInput(out))
 
 })
   
@@ -982,7 +1153,8 @@ specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
 input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
-return(new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=stochastic))
+out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=stochastic)
+return(convertInput(out))
 
 })
 
@@ -1001,7 +1173,8 @@ input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
 stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
-return(new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=stochastic))
+out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=stochastic)
+return(convertInput(out))
 
 })
 

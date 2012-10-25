@@ -1,1 +1,5 @@
 data/
+inst/
+
+src/*.o
+src/*.dll

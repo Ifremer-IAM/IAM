@@ -8,7 +8,7 @@ require(tcltk2)
 e1 <- new.env()
 
 ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
-                 "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
+                 "GVL_fme","GVLtot_fm","GVLav_f","vcst_fm","vcst_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
                  "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit",
                  "Fr_fmi","C_efmit")
 
@@ -19,12 +19,15 @@ if (classInp=="args") {
   spp <- names(input$Rec)
   years <- as.numeric(colnames(input$Gest$tac_fbar))  
   fleets <- colnames(input$Gest$mf)
+  metiers <- colnames(input$Gest$mfm)
   ALLscenario <- input$Scen$ALLscenario
   SELECTscen <- input$Scen$SELECTscen
   SELECTvar <- input$Rep$SELECTvar         #character avec intitulés des variables
   tacfbar <- rbind(TAC=input$Gest$tac,Fbar=input$Gest$fbar) 
-  mult <- matrix(input$Gest$mf,nrow=1) ; colnames(mult) <- names(input$Gest$mf)
-  
+  level <- input$Gest$level
+  matF <- matrix(input$Gest$mf,nrow=1) ; colnames(matF) <- names(input$Gest$mf)
+  matFM <- input$Gest$mfm
+
 } else {
 
   input <- INPUT
@@ -33,13 +36,16 @@ if (classInp=="args") {
   RecIni <- unlist(lapply(input@input,function(x) as.numeric(x$N_it0[1]))[spp]) 
   years <- input@specific$times 
   fleets <- input@specific$Fleet
+  metier <- input@specific$MetierEco
   ALLscenario <- names(input@scenario) 
   SELECTscen <- 1
   SELECTvar <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
-                 "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
+                 "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","vcst_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
                  "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f")
   tacfbar <- matrix(0,nrow=2,ncol=length(years),dimnames=list(c("TAC","Fbar"),years))
-  mult <- matrix(1,nrow=1,ncol=length(fleets),dimnames=list(NULL,fleets))
+  level <- 0
+  matF <- matrix(1,nrow=1,ncol=length(fleets),dimnames=list(NULL,fleets))
+  matFM <- input@input$Fleet$nbv_f_m ; matFM[!is.na(matFM)] <- 1
 
 }
 
@@ -238,12 +244,14 @@ if (classInp=="args") {
   Controle <- tclVar(as.character(input$Gest$control))
   Target <- tclVar(as.character(input$Gest$target))
   Espece <- tclVar(as.character(input$Gest$espece))
+  Level <- tclVar(as.character(input$Gest$level))
   Delay <- tclVar(as.character(input$Gest$delay))
   Update <- tclVar(as.character(input$Gest$upd))
   Super <- tclVar(as.character(input$Gest$sup))
   Infer <- tclVar(as.character(input$Gest$inf))
   assign("TACFbar",tacfbar,envir=e1) 
-  assign("mF",mult,envir=e1) 
+  assign("mF",matF,envir=e1)
+  assign("mFM",matFM,envir=e1) 
 
 } else {
 
@@ -252,12 +260,14 @@ if (classInp=="args") {
   Controle <- tclVar("Nb navires")
   Target <- tclVar("TAC")
   Espece <- tclVar(spp[1])
+  Level <- tclVar("0")
   Delay <- tclVar("2")
   Update <- tclVar("1")
   Super <- tclVar("0")
   Infer <- tclVar("0")
   assign("TACFbar",tacfbar,envir=e1) 
-  assign("mF",mult,envir=e1) 
+  assign("mF",matF,envir=e1)
+  assign("mFM",matFM,envir=e1) 
 
 }
 
@@ -268,6 +278,8 @@ set.ges.state<-function(){
     if(on.off=="1") {tkconfigure(comboControl, state="normal") ;
                      tkconfigure(comboTarget, state="normal");
                      tkconfigure(comboSpecies, state="normal");
+                     tkconfigure(butLvl0, state="normal");
+                     tkconfigure(butLvl1, state="normal");
                      tkconfigure(spinboxDelay, state="normal");
                      tkconfigure(butUpd1, state="normal");
                      tkconfigure(butUpd2, state="normal");
@@ -279,6 +291,8 @@ set.ges.state<-function(){
     if(on.off=="0") {tkconfigure(comboControl, state="disabled") ;
                      tkconfigure(comboTarget, state="disabled");
                      tkconfigure(comboSpecies, state="disabled");
+                     tkconfigure(butLvl0, state="disabled");
+                     tkconfigure(butLvl1, state="disabled");
                      tkconfigure(spinboxDelay, state="disabled");
                      tkconfigure(butUpd1, state="disabled");
                      tkconfigure(butUpd2, state="disabled");
@@ -303,6 +317,14 @@ tkconfigure(comboTarget, textvariable = Target, values=c("TAC","Fbar","TAC->Fbar
   #espèce
 comboSpecies <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 tkconfigure(comboSpecies, textvariable = Espece, values=spp)
+
+  #level
+frmLvl <- tkframe(frmGes)
+butLvl0 <- ttkradiobutton(frmLvl,text="f",value="0",variable=Level,
+              state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
+butLvl1 <- ttkradiobutton(frmLvl,text="fm",value="1",variable=Level,
+              state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
+tkpack(butLvl0,ttklabel(frmLvl,text="      "),butLvl1,side="left")
 
   #delay
 spinboxDelay <- tk2spinbox(frmGes,from=1,to=15,increment=1,width=9,
@@ -339,10 +361,18 @@ TFbut <- tk2button(frmGes, text="TAC/Fbar", width=10, command=function() {temp <
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
   #mF
-MFbut <- tk2button(frmGes, text="mF", width=10, command=function() {temp <- get("mF",envir=e1)
-                                                                    res <- fix(temp)
-                                                                    assign("mF",res,envir=e1)
-                                                                    tkfocus(BASE)},
+MFbut <- tk2button(frmGes, text="mF/mFM", width=10, command=function() {
+                                                                    if (tclvalue(Level)=="0") {
+                                                                      temp <- get("mF",envir=e1)
+                                                                      res <- fix(temp)
+                                                                      assign("mF",res,envir=e1)
+                                                                      tkfocus(BASE)
+                                                                    } else {
+                                                                      temp <- get("mFM",envir=e1)
+                                                                      res <- fix(temp)
+                                                                      assign("mFM",res,envir=e1)
+                                                                      tkfocus(BASE)                                                      
+                                                                    }},
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
 
@@ -352,6 +382,8 @@ tkgrid(tk2label(frmGes,text="  "))
 tkgrid(tk2label(frmGes,text="Cible"),comboTarget)
 tkgrid(tk2label(frmGes,text="  "))
 tkgrid(tk2label(frmGes,text="Espèce"),comboSpecies)
+tkgrid(tk2label(frmGes,text="  "))
+tkgrid(tk2label(frmGes,text="Level"),frmLvl)
 tkgrid(tk2label(frmGes,text="  "))
 tkgrid(tk2label(frmGes,text="Delay"),spinboxDelay)
 tkgrid(tk2label(frmGes,text="  "))
@@ -383,9 +415,9 @@ RecDisable <- tclVar("0")
 
     #par espèce
 ll <- lapply(spp,function(x) NA)
-ModSRDisable <- SimuStochDisable <- TypeModSR <- ParAModSR <- ParBModSR <- ParCModSR <- WNoiseModSR <- TypeSimuStoch <- ll
+ModSRDisable <- SimuStochDisable <- TypeModSR <- ParAModSR <- ParBModSR <- ParCModSR <- WNoiseModSR <- ParNoiseSR <- TypeSimuStoch <- ll
 names(ModSRDisable) <- names(SimuStochDisable) <- names(TypeModSR) <- names(ParAModSR) <- names(ParBModSR) <-
-  names(ParCModSR) <- names(WNoiseModSR) <- names(TypeSimuStoch) <- spp
+  names(ParCModSR) <- names(WNoiseModSR) <- names(ParNoiseSR) <- names(TypeSimuStoch) <- spp
 
 if (classInp=="args") {
 
@@ -397,6 +429,7 @@ if (classInp=="args") {
     ParBModSR[[i]] <- tclVar(as.character(input$Rec[[i]]$parBmodSR))
     ParCModSR[[i]] <- tclVar(as.character(input$Rec[[i]]$parCmodSR))
     WNoiseModSR[[i]] <- tclVar(as.character(input$Rec[[i]]$wnNOISEmodSR))
+    ParNoiseSR[[i]] <- tclVar(as.character(input$Rec[[i]]$noiseTypeSR))
     TypeSimuStoch[[i]] <- tclVar(as.character(input$Rec[[i]]$typeSIMUstoch))
   }
 
@@ -411,6 +444,7 @@ if (classInp=="args") {
     ParBModSR[[i]] <- tclVar("0")
     ParCModSR[[i]] <- tclVar("0")
     WNoiseModSR[[i]] <- tclVar("0")
+    ParNoiseSR[[i]] <- tclVar("1")
     TypeSimuStoch[[i]] <- tclVar("1")
   }
 
@@ -432,6 +466,8 @@ set.modSR.state<-function(index){
                      "tkconfigure(spinboxParB",index,", state=\"normal\");",
                      "tkconfigure(spinboxParC",index,", state=\"normal\");",
                      "tkconfigure(spinboxWN",index,", state=\"normal\");",
+                     "tkconfigure(butWN",index,", state=\"normal\");",
+                     "tkconfigure(butWLN",index,", state=\"normal\");",
                      "tkconfigure(butType1_",index,", state=\"disabled\");",
                      "tkconfigure(butType2_",index,", state=\"disabled\");",
                      "tkconfigure(butType3_",index,", state=\"disabled\");",
@@ -443,6 +479,8 @@ set.modSR.state<-function(index){
                      "tkconfigure(spinboxParB",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParC",index,", state=\"disabled\");",
                      "tkconfigure(spinboxWN",index,", state=\"disabled\");",
+                     "tkconfigure(butWN",index,", state=\"disabled\");",
+                     "tkconfigure(butWLN",index,", state=\"disabled\");",
                      "tkconfigure(butType1_",index,", state=\"normal\");",
                      "tkconfigure(butType2_",index,", state=\"normal\");",
                      "tkconfigure(butType3_",index,", state=\"normal\");",
@@ -457,6 +495,8 @@ set.simu.state<-function(index){
                      "tkconfigure(spinboxParB",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParC",index,", state=\"disabled\");",
                      "tkconfigure(spinboxWN",index,", state=\"disabled\");",
+                     "tkconfigure(butWN",index,", state=\"disabled\");",
+                     "tkconfigure(butWLN",index,", state=\"disabled\");",
                      "tkconfigure(butType1_",index,", state=\"normal\");",
                      "tkconfigure(butType2_",index,", state=\"normal\");",
                      "tkconfigure(butType3_",index,", state=\"normal\");",
@@ -468,6 +508,8 @@ set.simu.state<-function(index){
                      "tkconfigure(spinboxParB",index,", state=\"normal\");",
                      "tkconfigure(spinboxParC",index,", state=\"normal\");",
                      "tkconfigure(spinboxWN",index,", state=\"normal\");",
+                     "tkconfigure(butWN",index,", state=\"normal\");",
+                     "tkconfigure(butWLN",index,", state=\"normal\");",
                      "tkconfigure(butType1_",index,", state=\"disabled\");",
                      "tkconfigure(butType2_",index,", state=\"disabled\");",
                      "tkconfigure(butType3_",index,", state=\"disabled\");",
@@ -494,7 +536,7 @@ for (i in 1:length(spp)){
   eval(parse('',text=paste("comboTypeRec",i," <- tk2combobox(tbook",i,
             ",width=12,state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(comboTypeRec",i,", textvariable = TypeModSR[[",i,
-            "]], values=c(\"Mean\",\"Hockey-Stick\",\"Beverton-Holt\",\"Ricker\",\"Shepherd\"))",sep="")))
+            "]], values=c(\"Mean\",\"Hockey-Stick\",\"Beverton-Holt\",\"Ricker\",\"Shepherd\",\"Quadratic-HS\"))",sep="")))
 
     #Paramètre a
   eval(parse('',text=paste("spinboxParA",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
@@ -516,6 +558,12 @@ for (i in 1:length(spp)){
   eval(parse('',text=paste("spinboxWN",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
                     "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(spinboxWN",i,", textvariable = WNoiseModSR[[",i,"]])",sep="")))
+
+
+  eval(parse('',text=paste("butWN",i," <- ttkradiobutton(tbook",i,",text=\"Normal\",value=\"1\",variable=ParNoiseSR[[",i,"]],",
+              "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
+  eval(parse('',text=paste("butWLN",i," <- ttkradiobutton(tbook",i,",text=\"LogNormal\",value=\"2\",variable=ParNoiseSR[[",i,"]],",
+              "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
 
   eval(parse('',text=paste("butSimuSt",i," <- ttkcheckbutton(tbook",i,",text=\"Simu Stoch\",variable=SimuStochDisable[[",i,
                     "]],command=function() set.simu.state(",i,"))",sep="")))
@@ -546,7 +594,9 @@ for (i in 1:length(spp)){
   eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\" \"))",sep="")))
   eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Paramètre c\"),spinboxParC",i,")",sep="")))
   eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\" \"))",sep="")))
-  eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Bruit(sigma)\"),spinboxWN",i,")",sep="")))
+  eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Bruit :  \"),butWN",i,",tk2label(frmModSR",i,",text=\"  \"),butWLN",i,")",sep="")))  
+  eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\" \"))",sep="")))
+  eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Ecart-type\"),spinboxWN",i,")",sep="")))
   
   eval(parse('',text=paste("tkgrid(frmModSR",i,",frmSimuSt",i,")",sep="")))
 
@@ -692,16 +742,19 @@ listGestion <- list(active = as.integer(tclvalue(GestDisable)),
                    target = tclvalue(Target),
                    espece = tclvalue(Espece),
                    delay = as.integer(tclvalue(Delay)),
+                   level = as.integer(tclvalue(Level)),
                    upd = as.integer(tclvalue(Update)),
                    sup = as.double(tclvalue(Super)),
                    inf = as.double(tclvalue(Infer)),
                    tac = get("TACFbar",envir=e1)["TAC",],
                    fbar = get("TACFbar",envir=e1)["Fbar",],
-                   mf = get("mF",envir=e1)[1,])
+                   mf = get("mF",envir=e1)[1,],
+                   mfm = get("mFM",envir=e1))
                    
 attributes(listGestion$tac)$DimCst <- as.integer(c(0,0,0,length(listGestion$tac)))
 attributes(listGestion$fbar)$DimCst <- as.integer(c(0,0,0,length(listGestion$fbar)))
 attributes(listGestion$mf)$DimCst <- as.integer(c(length(listGestion$mf),0,0,0))
+attributes(listGestion$mfm)$DimCst <- as.integer(c(dim(listGestion$mfm),0,0))
                    
 listRec <- lapply(spp,function(x) NA) ; names(listRec) <- spp
 
@@ -713,6 +766,7 @@ for (i in 1:length(spp)) {
                          parBmodSR = as.double(tclvalue(ParBModSR[[i]])),
                          parCmodSR = as.double(tclvalue(ParCModSR[[i]])),
                          wnNOISEmodSR = as.double(tclvalue(WNoiseModSR[[i]])),
+                         noiseTypeSR = as.double(tclvalue(ParNoiseSR[[i]])),
                          simuSTOCHactive = as.integer(tclvalue(SimuStochDisable[[i]])),
                          typeSIMUstoch = as.integer(tclvalue(TypeSimuStoch[[i]])))
 }
