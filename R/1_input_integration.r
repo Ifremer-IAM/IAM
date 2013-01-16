@@ -25,8 +25,11 @@ convertInput <- function(inp) {
               Lref <- inp@input[[i]]$Lref_f_e
               FM <- inp@input[[i]]$fm
             
+            if (attributes(Fini)$DimCst[1]>0 & attributes(Fini)$DimCst[2]>0) {
+               Ffmi[] <- Fini[]
+            } else {
             #ventilation métier
-              if (attributes(Fini)$DimCst[2]==0) {                                          #ie F = Fi (cas 1, 2)
+              if (attributes(Fini)$DimCst[2]==0) {                                         #ie F = Fi (cas 1, 2)
                 if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[2:3]>0) & attributes(Ci)$DimCst[3]>0) {   #ie C_mi renseigné avec composante métier et âge, et C_i renseigné avec composante âge -> cas 1 ou 2
                   if (attributes(Cmi)$DimCst[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
                     Ffmi[] <- Cmi[]
@@ -84,6 +87,7 @@ convertInput <- function(inp) {
                     }
                 }
               }
+              }
               
             #ici, Ffmi devrait être dispo
             
@@ -104,23 +108,31 @@ convertInput <- function(inp) {
         namME <- inp@specific$MetierEco ; nME <- length(namME)
          
         MM <- inp@input[[i]]$mm 
-        tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM)) ; names(tabMM) <- c("fm","mEco","val2")
+        if (length(MM)==1) tabMM <- NA else {
+          tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM))
+          names(tabMM) <- c("fm","mEco","val2") }
         
         #conversion des données de mortalités --> on utilise les valeurs brutes
         tabF <- cbind.data.frame(expand.grid(dimnames(llF[[i]])),value1=as.vector(llF[[i]])) ; names(tabF) <- c("f","m","a","val1")
         tabF$fm <- paste(tabF$f,tabF$m,sep="__") 
-        TABF <- merge(tabMM,tabF,all=TRUE) ; TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
+        if (all(is.na(tabMM))) TABF <- cbind(tabF,mEco=tabF$m,val2=MM) else TABF <- merge(tabMM,tabF,all=TRUE)
+        TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
         TABF$f <- factor(as.character(TABF$f),levels=namF)
         TABF$mEco <- factor(as.character(TABF$mEco),levels=namME)    
         TABF$a <- factor(as.character(TABF$a),levels=namI)
         FF <- with(TABF,tapply(val,list(f,mEco,a),function(x) x))
         attributes(FF)$DimCst <- as.integer(c(nF,nME,nI,0))  
         
-        if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
-          inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
+        if (attributes(inp@input[[i]]$F_fmi)$DimCst[1]>0 & attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+          inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,3,sum,na.rm=TRUE)
           attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
         } else {
-          inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
+          if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+            inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
+            attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
+          } else {
+            inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
+          }
         }
                
         inp@input[[i]]$F_fmi <- FF
@@ -138,7 +150,8 @@ convertInput <- function(inp) {
           
           tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
           tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
-          TABD <- merge(tabMM,tabD,all=TRUE) ; TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+          if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
+          TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
           TABD$f <- factor(as.character(TABD$f),levels=namF)
           TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
           TABD$a <- factor(as.character(TABD$a),levels=namI)
@@ -439,7 +452,7 @@ return(DF)
 read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input") {
 
 require(RODBC)             
-require(xlsReadWrite)
+require(XLConnect)
 
 conn <- odbcConnectExcel(file)
 tbls <- sqlTables(conn)
@@ -460,11 +473,14 @@ modF <- NULL
 modMbio <- NULL
 modMeco <- NULL
 
+wb <- loadWorkbook(file)
+
 for (k in 1:length(nam_stock)) {
 
 nam <- nam_stock[k]
 
-result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+result <- as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character")) #read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+result[is.na(result)] <- ""
 
 #on commence par analyser les modalités de chaque type de variable 
 vec <- as.vector(result)
@@ -479,13 +495,20 @@ FLEET <- NULL
 
 for (k in 1:length(namF)) {
 
-if (k==1) 
+if (k==1) { 
 
-  FLEET <- read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=TRUE)[,1:7]
+  FLEET <- as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character"))[,1:7] 
+  FLEET[is.na(FLEET)] <- ""
+  #read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=TRUE)[,1:7]
 
-  else 
+  } else {
   
-  FLEET <- rbind2(FLEET,read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=FALSE)[-1,1:7])
+  FLEETtmp <- as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character"))[-1,1:7] 
+  FLEETtmp[is.na(FLEETtmp)] <- ""
+
+  FLEET <- rbind2(FLEET,FLEETtmp)#read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=FALSE)[-1,1:7])
+  
+  }
 
 }
 
@@ -516,7 +539,11 @@ Fleet <- FLEET[FLEET[,4]=="",]
 
 ##Scénarii
 
-scenar <- read.xls(file,sheet="Scénarii",type="character",rowNames=FALSE,colNames=FALSE)
+scenar <- as.matrix(readWorksheet(wb, sheet = "Scénarii",startCol=1,header=FALSE,colTypes="character"))
+scenar[is.na(scenar)] <- ""
+
+#scenar <- read.xls(file,sheet="Scénarii",type="character",rowNames=FALSE,colNames=FALSE)
+
 #on ne prend pas en compte les 100 premières lignes (Attention : format fixe à respecter)
 
 scenar <- scenar[101:nrow(scenar),]
@@ -591,7 +618,11 @@ if (length(tbl1DS)>0) tbl1S <- lapply(tbl1DS,twoDto1D,"1D") else tbl1S <- NULL
 ListS <- c(tbl1S,tbl2S) 
 
 iCATtab <- NULL
-Market <- read.xls(file,sheet="Marché",type="character",rowNames=FALSE,colNames=FALSE)
+
+Market <- as.matrix(readWorksheet(wb, sheet = "Marché",startCol=1,header=FALSE,colTypes="character"))
+Market[is.na(Market)] <- ""
+
+#Market <- read.xls(file,sheet="Marché",type="character",rowNames=FALSE,colNames=FALSE)
 
 
 
@@ -604,7 +635,10 @@ for (k in 1:length(nam_stock)) {
 
 nam <- nam_stock[k]
 
-result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+result <- as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character"))
+result[is.na(result)] <- ""
+
+#result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
 
 #on va ajouter la table market
 MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8)]
@@ -623,9 +657,16 @@ MOD <- lapply(c("i__","l__"),function(x) {gsub(x,"",unique(vec[sapply(vec,functi
 
 if (k==1) {            #on insère les variables 'fm' et 'icat' et marché
 
-FM <- read.xls(file,sheet="fm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
-MM <- read.xls(file,sheet="mm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
-ICAT <- read.xls(file,sheet="icat_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+FM <- as.matrix(readWorksheet(wb, sheet = "fm_matrix",startCol=1,header=FALSE,colTypes="character"))
+FM[is.na(FM)] <- ""
+MM <- as.matrix(readWorksheet(wb, sheet = "mm_matrix",startCol=1,header=FALSE,colTypes="character"))
+MM[is.na(MM)] <- ""
+ICAT <- as.matrix(readWorksheet(wb, sheet = "icat_matrix",startCol=1,header=FALSE,colTypes="character"))
+ICAT[is.na(ICAT)] <- ""
+
+#FM <- read.xls(file,sheet="fm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+#MM <- read.xls(file,sheet="mm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+#ICAT <- read.xls(file,sheet="icat_matrix",type="character",rowNames=FALSE,colNames=FALSE)
 
 #on transforme un peu les deux matrices pour qu'elles aient le même nombre de colonnes
 ncolMax <- max(ncol(result),ncol(FM),ncol(ICAT),ncol(tabicat),ncol(MM))
@@ -1019,7 +1060,9 @@ LL$input <- c(lapply(LL$input[1:length(nam_stock)],reformat),
 
 #on remplit la partie "stochastique" avec les variables issues des valeurs historiques de recrutement (seulement ça pour le moment)
 STO <- list() 
-stoch <- read.xls(file,sheet="Stochasticité_Sensibilité",type="character",rowNames=FALSE,colNames=FALSE)
+stoch <- as.matrix(readWorksheet(wb, sheet = "Stochasticité_Sensibilité",startCol=1,header=FALSE,colTypes="character"))
+stoch[is.na(stoch)] <- ""
+#stoch <- read.xls(file,sheet="Stochasticité_Sensibilité",type="character",rowNames=FALSE,colNames=FALSE)
 indexSt <- seq(from=grep("Samples : recruitment" ,stoch[,1]),to=grep("END Samples" ,stoch[,1])-1) 
 indexSp <- grep("e__",stoch[,1]) 
 tabSto <- stoch[indexSp[indexSp%in%indexSt],]
@@ -1099,7 +1142,8 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
                    function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", ...){
 
-if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") stop("'fileIN' must be an .xls file!!")
+if ((substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") & (substring(fileIN,nchar(fileIN)-4,nchar(fileIN))!=".xlsx")) 
+      stop("'fileIN' must be an .xls or .xlsx file!!")
 	
 out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc)
 return(convertInput(out))

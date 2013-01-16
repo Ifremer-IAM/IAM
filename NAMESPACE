@@ -1,6 +1,6 @@
 import("methods", "utils", "lattice")
 
-useDynLib(IAMq)
+useDynLib(IAM)
 
 exportClasses(
 	"iamInput",

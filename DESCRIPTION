@@ -1,10 +1,10 @@
 Package: IAM
-Title: BioEconomic model for fisheries on quarter basis
-Version: 0.3
-Date: 2012      
+Title: BioEconomic model for fisheries
+Version: 0.4.0
+Date: 2013      
 Author: AMURE
 Description: ToDo.
-Depends: R(>= 2.13.0), methods, lattice, tcltk, tcltk2, xlsReadWrite, MASS, RODBC
+Depends: R(>= 2.13.0), methods, lattice, tcltk, tcltk2, XLConnect, MASS, RODBC
 Suggests: FLCore
 Maintainer: Nobody <no@body.com>
 License: GPL (>= 2)
