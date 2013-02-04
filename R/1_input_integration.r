@@ -25,8 +25,11 @@ convertInput <- function(inp) {
               Lref <- inp@input[[i]]$Lref_f_e
               FM <- inp@input[[i]]$fm
             
+            if (attributes(Fini)$DimCst[1]>0 & attributes(Fini)$DimCst[2]>0) {
+               Ffmi[] <- Fini[]
+            } else {
             #ventilation métier
-              if (attributes(Fini)$DimCst[2]==0) {                                          #ie F = Fi (cas 1, 2)
+              if (attributes(Fini)$DimCst[2]==0) {                                         #ie F = Fi (cas 1, 2)
                 if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[2:3]>0) & attributes(Ci)$DimCst[3]>0) {   #ie C_mi renseigné avec composante métier et âge, et C_i renseigné avec composante âge -> cas 1 ou 2
                   if (attributes(Cmi)$DimCst[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
                     Ffmi[] <- Cmi[]
@@ -84,6 +87,7 @@ convertInput <- function(inp) {
                     }
                 }
               }
+              }
               
             #ici, Ffmi devrait être dispo
             
@@ -99,28 +103,36 @@ convertInput <- function(inp) {
         #-------------------------------------------------------------------------------
         
         for (i in inp@specific$Species) {
-        
+
         namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
         namME <- inp@specific$MetierEco ; nME <- length(namME)
          
         MM <- inp@input[[i]]$mm 
-        tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM)) ; names(tabMM) <- c("fm","mEco","val2")
+        if (length(MM)==1) tabMM <- NA else {
+          tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM))
+          names(tabMM) <- c("fm","mEco","val2") }
         
         #conversion des données de mortalités --> on utilise les valeurs brutes
         tabF <- cbind.data.frame(expand.grid(dimnames(llF[[i]])),value1=as.vector(llF[[i]])) ; names(tabF) <- c("f","m","a","val1")
         tabF$fm <- paste(tabF$f,tabF$m,sep="__") 
-        TABF <- merge(tabMM,tabF,all=TRUE) ; TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
+        if (all(is.na(tabMM))) TABF <- cbind(tabF,mEco=tabF$m,val2=MM) else TABF <- merge(tabMM,tabF,all=TRUE)
+        TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
         TABF$f <- factor(as.character(TABF$f),levels=namF)
         TABF$mEco <- factor(as.character(TABF$mEco),levels=namME)    
         TABF$a <- factor(as.character(TABF$a),levels=namI)
         FF <- with(TABF,tapply(val,list(f,mEco,a),function(x) x))
         attributes(FF)$DimCst <- as.integer(c(nF,nME,nI,0))  
         
-        if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
-          inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
+        if (attributes(inp@input[[i]]$F_fmi)$DimCst[1]>0 & attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+          inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,3,sum,na.rm=TRUE)
           attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
         } else {
-          inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
+          if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+            inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
+            attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
+          } else {
+            inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
+          }
         }
                
         inp@input[[i]]$F_fmi <- FF
@@ -138,7 +150,8 @@ convertInput <- function(inp) {
           
           tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
           tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
-          TABD <- merge(tabMM,tabD,all=TRUE) ; TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+          if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
+          TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
           TABD$f <- factor(as.character(TABD$f),levels=namF)
           TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
           TABD$a <- factor(as.character(TABD$a),levels=namI)

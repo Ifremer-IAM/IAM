@@ -165,6 +165,7 @@ setMethod("IAM.export", signature("iamArgs"), function(object, folder, ...){
                     nbBoot=as.integer(object@arguments$Replicates$nbIter), 
                     GestInd=as.integer(object@arguments$Gestion$active),
                     mF=as.double(object@arguments$Gestion$mf),
+                    mFM=as.double(object@arguments$Gestion$mfm),             #MM : added 4/02/2013
                     mOth=as.double(mOth),
                     bounds=as.double(c(object@arguments$Gestion$inf,object@arguments$Gestion$sup)),
                     TAC=as.double(object@arguments$Gestion$tac),
@@ -173,7 +174,8 @@ setMethod("IAM.export", signature("iamArgs"), function(object, folder, ...){
                                  var = match(object@arguments$Gestion$control,c("Nb jdm","Nb navires")),
                                  trgt = match(object@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar")),
                                  delay = object@arguments$Gestion$delay,
-                                 upd = object@arguments$Gestion$upd)),
+                                 upd = object@arguments$Gestion$upd,
+                                 level = object@arguments$Gestion$level)),
                     EcoDcf=as.integer(object@arguments$Eco$type-1),
                     EcoInd=as.integer(c(adj = object@arguments$Eco$adj,
                                  lev = object@arguments$Eco$lev,
