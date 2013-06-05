@@ -55,7 +55,8 @@ setClass("iamOutput",
                     Lc = list(),              #débarquements totaux en poids par catégorie pour les flottilles et métiers bio modélisés        
                     Lcm = list(),             #débarquements totaux en poids par catégorie pour les flottilles et métiers éco modélisés  
                     P = list(),               #prix moyen par espèce et catégorie
-                    GVL_f_m_e = list()),      #CA total par espèce, flottille et métier éco
+                    GVL_f_m_e = list(),      #CA total par espèce, flottille et métier éco
+                    PQuot = list()),
     output = list(nbv_f = numeric(),                   #Nb de navires par flottille
                   nbds_f = numeric(),                  #Nb de jdm moyen par an et par flottille
                   nbv_f_m = numeric(),                 #Nb de navires par flottille-métier

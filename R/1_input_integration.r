@@ -449,10 +449,10 @@ return(DF)
 #source("Z:/Projet/Projet SIAD/Param bio_eco/Modele/Input_object.r")
 
 
-read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input") {
+read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input",folderFleet=NULL) {
 
 require(RODBC)             
-require(xlsReadWrite)
+require(XLConnect)
 
 conn <- odbcConnectExcel(file)
 tbls <- sqlTables(conn)
@@ -460,11 +460,20 @@ tbls <- tbls[tbls$TABLE_TYPE%in%"SYSTEM TABLE",] #on évite les soucis causés par
 
 tbls <- tbls$TABLE_NAME
 nam_stock <- tbls[grep("stock",tolower(tbls))]
-nam_fleet <- tbls[substring(tolower(tbls),1,3)=="f__"]
+if (is.null(folderFleet)) {
+  nam_fleet <- tbls[substring(tolower(tbls),1,3)=="f__"]
+} else {
+  nam_fleet <- sort(list.files(folderFleet))
+  nam_fleet <- gsub(".csv","",nam_fleet[substring(tolower(nam_fleet),1,3)=="f__"])
+}
 close(conn)
 
 namList <- sapply(nam_stock,function(x) gsub("Stock__","",substring(x,1,nchar(x)-1)))
-namF <- sapply(nam_fleet,function(x) substring(x,1,nchar(x)-1))
+if (is.null(folderFleet)) {
+  namF <- sapply(nam_fleet,function(x) substring(x,1,nchar(x)-1))
+} else {
+  namF <- nam_fleet
+}
 LL <- list(historique=list(),input=list(),scenario=list()) ; LL$historique <- LL$input <- vector("list", length(namList))
 names(LL$historique) <- names(LL$input) <- namList
  
@@ -473,11 +482,15 @@ modF <- NULL
 modMbio <- NULL
 modMeco <- NULL
 
+wb <- loadWorkbook(file)
+
 for (k in 1:length(nam_stock)) {
 
 nam <- nam_stock[k]
 
-result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+#result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+result <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character"))) 
+result[is.na(result)] <- ""
 
 #on commence par analyser les modalités de chaque type de variable 
 vec <- as.vector(result)
@@ -490,18 +503,46 @@ modF <- unique(c(modF,MOD[[1]])) ; modMbio <- unique(c(modMbio,MOD[[2]]))
 
 FLEET <- NULL
 
-for (k in 1:length(namF)) {
+if (!is.null(folderFleet)) {
 
-if (k==1) 
-
-  FLEET <- read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=TRUE)[,1:7]
-
-  else 
+  for (k in 1:length(namF)) {
   
-  FLEET <- rbind2(FLEET,read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=FALSE)[-1,1:7])
+  if (k==1) { 
+  
+    FLEET <- as.matrix(read.table(file.path(folderFleet,paste(namF[k],".csv",sep="")),sep=";",quote="\""))
+    FLEET <- FLEET[,-match("annee",FLEET[1,])][,1:7]
+  
+   } else {
+    
+    FLtemp <- as.matrix(read.table(file.path(folderFleet,paste(namF[k],".csv",sep="")),sep=";",quote="\""))
+    FLEET <- rbind2(FLEET,FLtemp[,-match("annee",FLtemp[1,])][-1,1:7])
+   
+   }
+  }
+
+} else {
+
+  for (k in 1:length(namF)) {
+  
+  if (k==1) { 
+  
+    FLEET <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[,1:7] 
+    FLEET[is.na(FLEET)] <- ""
+    #read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=TRUE)[,1:7]
+  
+  } else {
+    
+    FLEETtmp <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[-1,1:7] 
+    FLEETtmp[is.na(FLEETtmp)] <- ""
+  
+    FLEET <- rbind2(FLEET,FLEETtmp)#read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=FALSE)[-1,1:7])
+          
+  }
+  }
 
 }
 
+FLEET[is.na(FLEET)] <- ""
 #on en profite pour finaliser modF et créer modMeco
 vec <- as.vector(FLEET)
 vec <- vec[vec!=""]
@@ -512,6 +553,7 @@ modF <- unique(c(modF,MOD[[1]])) ; modMeco <- unique(c(modMeco,MOD[[2]]))
 
 
 FLEET <- as.data.frame(FLEET[,c(1,4:7)])
+if (!is.null(folderFleet)) FLEET <- FLEET[-1,]
 FLEET[,5] <- suppressWarnings(as.numeric(as.character(FLEET[,5])))
 FLEET[,1] <- gsub("v__","",FLEET[,1])  
 FLEET[,4] <- gsub("e__","",FLEET[,4])  
@@ -529,7 +571,10 @@ Fleet <- FLEET[FLEET[,4]=="",]
 
 ##Scénarii
 
-scenar <- read.xls(file,sheet="Scénarii",type="character",rowNames=FALSE,colNames=FALSE)
+#scenar <- read.xls(file,sheet="Scénarii",type="character",rowNames=FALSE,colNames=FALSE)
+scenar <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Scénarii",startCol=1,header=FALSE,colTypes="character")))
+scenar[is.na(scenar)] <- ""
+
 #on ne prend pas en compte les 100 premières lignes (Attention : format fixe à respecter)
 
 scenar <- scenar[101:nrow(scenar),]
@@ -604,9 +649,10 @@ if (length(tbl1DS)>0) tbl1S <- lapply(tbl1DS,twoDto1D,"1D") else tbl1S <- NULL
 ListS <- c(tbl1S,tbl2S) 
 
 iCATtab <- NULL
-Market <- read.xls(file,sheet="Marché",type="character",rowNames=FALSE,colNames=FALSE)
 
-
+#Market <- read.xls(file,sheet="Marché",type="character",rowNames=FALSE,colNames=FALSE)
+Market <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Marché",startCol=1,header=FALSE,colTypes="character")))
+Market[is.na(Market)] <- ""
 
 
 
@@ -617,10 +663,14 @@ for (k in 1:length(nam_stock)) {
 
 nam <- nam_stock[k]
 
-result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+#result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+result <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character")))
+result[is.na(result)] <- ""
+
 
 #on va ajouter la table market
 MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8)]
+if (nrow(MarketSp)==0) MarketSp <- Market[Market[,6]%in%paste("e__",gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",namList[k])))),sep=""),c(1,4:5,7:8)]
 #on sépare les tables par variables en intercalant une (ou 2) ligne vide
 tabicat <- do.call("rbind",lapply(c("v__P_fmce","v__Q_fmce","v__alpha_fmce","v__beta_fmce","v__gamma_fmce"),
                     function(x) MarketSp[c(NA,grep(x,MarketSp[,1]),NA),]))
@@ -636,9 +686,17 @@ MOD <- lapply(c("i__","l__"),function(x) {gsub(x,"",unique(vec[sapply(vec,functi
 
 if (k==1) {            #on insère les variables 'fm' et 'icat' et marché
 
-FM <- read.xls(file,sheet="fm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
-MM <- read.xls(file,sheet="mm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
-ICAT <- read.xls(file,sheet="icat_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+#FM <- read.xls(file,sheet="fm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+#MM <- read.xls(file,sheet="mm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+#ICAT <- read.xls(file,sheet="icat_matrix",type="character",rowNames=FALSE,colNames=FALSE)
+
+FM <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "fm_matrix",startCol=1,header=FALSE,colTypes="character")))
+FM[is.na(FM)] <- ""
+MM <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "mm_matrix",startCol=1,header=FALSE,colTypes="character")))
+MM[is.na(MM)] <- ""
+ICAT <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "icat_matrix",startCol=1,header=FALSE,colTypes="character")))
+ICAT[is.na(ICAT)] <- ""
+
 
 #on transforme un peu les deux matrices pour qu'elles aient le même nombre de colonnes
 ncolMax <- max(ncol(result),ncol(FM),ncol(ICAT),ncol(tabicat),ncol(MM))
@@ -724,22 +782,43 @@ List <- c(tbl1,tbl2)
 
 #on va légèrement retoucher la table mm pour injecter dans la colonne value la place de l'indice métier_eco correspondant
 indMM <- (1:length(List))[unlist(lapply(List,function(x) ("v__mm"%in%x$v)))] 
-for (i in indMM) {
-  tempMM <- MMmodif <- List[[i]]                                         #modif MM  23/02/2012
-  tempMM$value[!is.na(tempMM$value)] <- match(gsub("m__","",tempMM[,5]),modMeco)[!is.na(tempMM$value)]
-  tempMM <- tempMM[,c(1:4,6)]
-  List[[i]] <- tempMM[apply(tempMM,1,function(x) !any(is.na(x))),]
-  }
+if (length(indMM)>0) MMmodif <- List[[indMM]]
+#for (i in indMM) {
+#  tempMM <- MMmodif <- List[[i]]                                         #modif MM  23/02/2012
+#  tempMM$value[!is.na(tempMM$value)] <- match(gsub("m__","",tempMM[,5]),modMeco)[!is.na(tempMM$value)]
+#  tempMM <- tempMM[,c(1:4,6)]
+#  List[[i]] <- tempMM[apply(tempMM,1,function(x) !any(is.na(x))),]
+#  }            #modif 17/04/2013
+
                           
 #si k==1, on n'oublie pas d'extraire les données "fm" et "mm" pour les insérer avec les données flottille par espèce
 if (k==1) {
 TAB_FM <- do.call("rbind",lapply(List,function(x) if ("v__fm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"fm",names(Fstock)]) } else NULL))
-TAB_MM <- do.call("rbind",lapply(List,function(x) if ("v__mm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"mm",names(Fstock)]) } else NULL))
+  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
+TAB_FM_T1 <- TAB_FM_T2 <- TAB_FM_T3 <- TAB_FM_T4 <- TAB_FM
+TAB_FM_T1$e <- paste(TAB_FM_T1$e,"__T1",sep="") ; TAB_FM_T2$e <- paste(TAB_FM_T2$e,"__T2",sep="")
+TAB_FM_T3$e <- paste(TAB_FM_T3$e,"__T3",sep="") ; TAB_FM_T4$e <- paste(TAB_FM_T4$e,"__T4",sep="")
+TAB_FM <- rbind(TAB_FM,TAB_FM_T1,TAB_FM_T2,TAB_FM_T3,TAB_FM_T4)
+
+TAB_MM <- do.call("rbind",lapply(List,function(x) if ("v__mm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"mm",]) } else NULL))
+  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
+TAB_MM_T1 <- TAB_MM_T2 <- TAB_MM_T3 <- TAB_MM_T4 <- TAB_MM
+TAB_MM_T1$e <- paste(TAB_MM_T1$e,"__T1",sep="") ; TAB_MM_T2$e <- paste(TAB_MM_T2$e,"__T2",sep="")
+TAB_MM_T3$e <- paste(TAB_MM_T3$e,"__T3",sep="") ; TAB_MM_T4$e <- paste(TAB_MM_T4$e,"__T4",sep="")
+TAB_MM <- rbind(TAB_MM,TAB_MM_T1,TAB_MM_T2,TAB_MM_T3,TAB_MM_T4)
+
 #List <- lapply(List,function(x) if ("v__fm"%in%x$v) return(NULL) else x)   
 iCATtab <- do.call("rbind",lapply(List,function(x) if ("v__icat"%in%x$v) return(x[x$v%in%"v__icat",])  else NULL))
+  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
+iCATtab_T1 <- iCATtab_T2 <- iCATtab_T3 <- iCATtab_T4 <- iCATtab
+iCATtab_T1$e <- paste(iCATtab_T1$e,"__T1",sep="") ; iCATtab_T2$e <- paste(iCATtab_T2$e,"__T2",sep="")
+iCATtab_T3$e <- paste(iCATtab_T3$e,"__T3",sep="") ; iCATtab_T4$e <- paste(iCATtab_T4$e,"__T4",sep="")
+iCATtab <- rbind(iCATtab,iCATtab_T1,iCATtab_T2,iCATtab_T3,iCATtab_T4)
+
+ 
 LLL <- length(List)
 invisible(sapply(LLL:1,function(x) if ("v__icat"%in%List[[x]]$v) List[[x]] <<- NULL)) #on efface les éléments de v_icat
-Fstock <- rbind(Fstock,TAB_FM,TAB_MM)
+Fstock <- rbind(Fstock,TAB_FM)#,TAB_MM)
 }
 
 List <- c(List,list(iCATtab[iCATtab$e%in%paste("e__",namList[k],sep=""),-2])) 
@@ -905,15 +984,17 @@ listInput <- listInput[-match("alk",names(listInput))]
   }
 }
 
-
+#on ajoute mm à partir de TAB_MM
+tabMMtemp <- TAB_MM[TAB_MM$e%in%namList[k],c(2,4,5,6)]
+colnames(tabMMtemp) <- c("f","mBio","mEco","value") ; rownames(tabMMtemp) <- 1:nrow(tabMMtemp)
 
 #mod_i <- unique(unlist(lapply(listInput,function(x) if (length(x)<2) return(NULL) else if ("i"%in%names(x)) return(as.character(x$i)) else return(NULL) )))
 
-listInputBio <- lapply(listInput[!names(listInput)%in%c("GVLref_f_m_e","Lref_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme")],
+listInputBio <- lapply(listInput[!names(listInput)%in%c("GVLref_f_m_e","Lref_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme","mm")],
                     standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMbio,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK)
 listInputEco <- lapply(listInput[c("GVLref_f_m_e","Lref_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme")],
                     standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK)
-listInput <- c(listInputBio,listInputEco)
+listInput <- c(listInputBio,list(mm=tabMMtemp),listInputEco)
 
 invisible(sapply(1:nrow(rec),function(x) if (as.character(rec$Variable)[x]%in%names(listInput))
         try(listInput[[as.character(rec$Variable)[x]]] <<- 
@@ -963,7 +1044,7 @@ if (length(listInput$Y_i)==0) {
   }
 }
 
-
+listInput[is.na(names(listInput))] <- NULL
  
 LL$historique[[k]] <- listHisto ; LL$input[[k]] <- listInput ; LL$scenario <- c(LL$scenario,listScenar)
 
@@ -1031,14 +1112,19 @@ LL$input <- c(lapply(LL$input[1:length(nam_stock)],reformat),
 #on laisse l'élément "scénario" tel quel pour le moment
 
 #on remplit la partie "stochastique" avec les variables issues des valeurs historiques de recrutement (seulement ça pour le moment)
-STO <- list() 
-stoch <- read.xls(file,sheet="Stochasticité_Sensibilité",type="character",rowNames=FALSE,colNames=FALSE)
+STO <- list()
+stoch <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Stochasticité_Sensibilité",startCol=1,header=FALSE,colTypes="character")))
+stoch[is.na(stoch)] <- "" 
+#stoch <- read.xls(file,sheet="Stochasticité_Sensibilité",type="character",rowNames=FALSE,colNames=FALSE)
+
 indexSt <- seq(from=grep("Samples : recruitment" ,stoch[,1]),to=grep("END Samples" ,stoch[,1])-1) 
 indexSp <- grep("e__",stoch[,1]) 
 tabSto <- stoch[indexSp[indexSp%in%indexSt],]
 tabSto[,1] <- gsub("e__","",tabSto[,1])
 STO$RecHist <- lapply(as.character(namList),function(x) {tab <- tabSto[tabSto[,1]%in%x,] ; 
+                                       if (nrow(tab)==0) tab <- tabSto[tabSto[,1]%in%gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",x)))),]
                                           return(rep(as.numeric(tab[,3])*as.numeric(tab[,4]),as.numeric(tab[,5])))})
+
 names(STO$RecHist) <- as.character(namList)
 STO$GeoMeanRec <- lapply(STO$RecHist,function(x) if (length(x)>0) prod(x,na.rm=TRUE)^(1/sum(!is.na(x))) else numeric(0))
 STO$RecResiduals <- mapply(function(x,y) x-y,STO$RecHist,STO$GeoMeanRec,SIMPLIFY=FALSE)
@@ -1060,7 +1146,8 @@ tabSto2 <- tabSto2[grep("e__",tabSto2[,5]),,drop=FALSE]
 tabSto2[,5] <- gsub("e__","",tabSto2[,5])
 
 ff <- lapply(1:4,function(x) {
-        comp <- lapply(as.character(namList),function(y) {tab <- tabSto2[tabSto2[,5]%in%y,,drop=FALSE] ; 
+        comp <- lapply(as.character(namList),function(y) {tab <- tabSto2[tabSto2[,5]%in%y,,drop=FALSE] ;
+                                      if (nrow(tab)==0) tab <- tabSto2[tabSto2[,5]%in%gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",y)))),,drop=FALSE] 
                                           if (length(tab)>0) {
                                             if (tab[1,x]!="") {
                                               if (x%in%(2:4)) as.numeric(tab[1,x]) else as.character(tab[1,x])
@@ -1083,17 +1170,23 @@ MMmodif$e <- gsub("e__","",MMmodif$e)
 MMmodif$mBio <- gsub("m__","",MMmodif$mBio)
 MMmodif$m <- gsub("m__","",MMmodif$m)
 tabMM <- with(MMmodif,tapply(value,list(paste(f,mBio,sep="__"),m,e),function(x) x[1]))
-for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[,,spp]
+for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[,,gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",spp))))]
 
+#détermination du pas de temps en fonction de la liste Espece
+repTr <- c(grep("__T2",as.character(namList)),grep("__T3",as.character(namList)),grep("__T4",as.character(namList)))
+delTrim <- as.character(namList)
+if (length(repTr)>0) delTrim <- as.character(sapply(as.character(namList)[-repTr],function(x) gsub("__T1","",x)))
 
 return(new("iamInput",desc=desc,specific=list(Species=as.character(namList),Fleet=modF,Metier=modMbio,MetierEco=modMeco,
                                               Ages=lapply(LL$input,function(x) x$modI)[namList],
                                               Cat=lapply(LL$input,function(x) x$modC)[namList],t_init=t_init,
-                                              NbSteps=as.integer(nbStep),times=as.integer(as.character(seq(t_init,by=1,length=nbStep)))),
+                                              NbSteps=as.integer(nbStep),times=as.integer(as.character(seq(t_init,by=1,length=nbStep))),
+                                              trim=as.integer(paste(delTrim,"__T1",sep="")%in%as.character(namList)),
+                                              trimInt=c("T1","T2","T3","T4")),
             historical=LL$historique,input=LL$input,scenario=LL$scenario,stochastic=STO))
 
 }
-
+                     
 
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
@@ -1110,14 +1203,141 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
   # à partir d'un fichier .xls
 
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
-                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", ...){
+                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,...){
 
 if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") stop("'fileIN' must be an .xls file!!")
 	
-out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc)
-return(convertInput(out))
+out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet)
+OUT <- convertInput(out)
+if (all(OUT@specific$trim%in%0)) {
+  return(OUT)
+} else { #intervention trimestre
+
+  #@specific
+  repTrim234 <- c(grep("__T2",OUT@specific$Species),grep("__T3",OUT@specific$Species),grep("__T4",OUT@specific$Species))
+  if (length(repTrim234)>0) OUT@specific$Species <- as.character(sapply(as.character(OUT@specific$Species)[-repTrim234],function(x) gsub("__T1","",x)))
+  OUT@specific$Ages[repTrim234] <- NULL ; names(OUT@specific$Ages) <- OUT@specific$Species
+  OUT@specific$Cat[repTrim234] <- NULL ; names(OUT@specific$Cat) <- OUT@specific$Species
+  
+  #@input
+  copyInput <- OUT@input ; copyInput[repTrim234] <- NULL ; names(copyInput) <- c(OUT@specific$Species,"Fleet")
+  for (ind in 1:length(OUT@specific$Species)) {
+    SPP <- OUT@specific$Species[ind] 
+     if (OUT@specific$trim[ind]) {
+      for (vrbl in c("alk","M_i","mat_i","wStock_i","wL_i","wD_i","N_i0t","F_i","F_fmi",        #remplissage des trimestres
+                      "Y_mi","C_mi","Y_i","C_i","d_i","doth_i","sr")) {
+                      
+      copyInput[[SPP]][[vrbl]] <- list(T1=OUT@input[[paste(SPP,"__T1",sep="")]][[vrbl]],                
+                                       T2=OUT@input[[paste(SPP,"__T2",sep="")]][[vrbl]],
+                                       T3=OUT@input[[paste(SPP,"__T3",sep="")]][[vrbl]],
+                                       T4=OUT@input[[paste(SPP,"__T4",sep="")]][[vrbl]])
+                           
+      }
+     
+  
+  #on passe en annuel pour Lref et GVLref
+  copyInput[[SPP]][["Lref_f_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["Lref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T2",sep="")]][["Lref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T3",sep="")]][["Lref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T4",sep="")]][["Lref_f_e"]][] 
+  
+  copyInput[[SPP]][["Lref_f_m_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["Lref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T2",sep="")]][["Lref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T3",sep="")]][["Lref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T4",sep="")]][["Lref_f_m_e"]][] 
+
+  copyInput[[SPP]][["GVLref_f_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["GVLref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T2",sep="")]][["GVLref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T3",sep="")]][["GVLref_f_e"]][] +
+                                      OUT@input[[paste(SPP,"__T4",sep="")]][["GVLref_f_e"]][] 
+
+  copyInput[[SPP]][["GVLref_f_m_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["GVLref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T2",sep="")]][["GVLref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T3",sep="")]][["GVLref_f_m_e"]][] +
+                                      OUT@input[[paste(SPP,"__T4",sep="")]][["GVLref_f_m_e"]][] 
+  
+  }}
+  
+  OUT@input <- copyInput
+  
+  #@historical
+  OUT@historical <- list()
+  
+  #@scenario
+  ll <- list()
+  for (sc in names(OUT@scenario)) {
+  for (ind in 1:length(OUT@specific$Species)) {
+    SPP <- OUT@specific$Species[ind]
+     if (OUT@specific$trim[ind]) {
+     #on recueille l'ensemble des variables définies
+     allVar <- unique(c(names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]), 
+                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]),
+                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]),
+                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]])))
+     if (length(allVar)>0) {
+     
+      for (vrbl in allVar) {
+                        
+      if (vrbl%in%c("alk","M_i","mat_i","wStock_i","wL_i","wD_i","N_i0t","F_i","F_fmi",        #dimension trimestre
+                      "Y_mi","C_mi","Y_i","C_i","d_i","doth_i","sr")) {
+      
+        ll[[sc]][[SPP]][[vrbl]][["T1"]] <- OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]]
+        ll[[sc]][[SPP]][[vrbl]][["T2"]] <- OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]]
+        ll[[sc]][[SPP]][[vrbl]][["T3"]] <- OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]]
+        ll[[sc]][[SPP]][[vrbl]][["T4"]] <- OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]]
+      
+      } else {
+      
+        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]])) 
+          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]]
+        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]])) 
+          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]]
+        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]])) 
+          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]]
+        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]])) 
+          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]]
+      }}}
+      } else {
+          ll[[sc]][[SPP]] <- OUT@scenario[[sc]][[SPP]]
+      }
+     }
+      ll[[sc]][["Fleet"]] <- OUT@scenario[[sc]][["Fleet"]]
+     }
+       
+    OUT@scenario <- ll                  
+
+    #@stochastic
+    copyStoch <- OUT@stochastic ; nam <- names(OUT@stochastic)
+    for (ind in 1:length(OUT@specific$Species)) {
+     if (OUT@specific$trim[ind]) {
+      for (vrbl in nam) {
+      copyStoch[[vrbl]][repTrim234] <- NULL ; names(copyStoch[[vrbl]]) <- c(OUT@specific$Species) 
+      SPP <- OUT@specific$Species[ind]                
+      copyStoch[[vrbl]][[SPP]] <- list(T1=OUT@stochastic[[vrbl]][[paste(SPP,"__T1",sep="")]],                
+                                       T2=OUT@stochastic[[vrbl]][[paste(SPP,"__T2",sep="")]],
+                                       T3=OUT@stochastic[[vrbl]][[paste(SPP,"__T3",sep="")]],
+                                       T4=OUT@stochastic[[vrbl]][[paste(SPP,"__T4",sep="")]])
+                           
+      }
+     }}
+     
+     OUT@stochastic <- copyStoch
+  
+    return(OUT)
+}
 
 })
+
+
+
+
+
+
+
+
+
+
+
 
   # à partir de fichiers .txt
   

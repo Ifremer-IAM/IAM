@@ -4,7 +4,7 @@ Version: 1.0.0
 Date: 2013      
 Author: AMURE
 Description: ToDo.
-Depends: R(>= 2.13.0), methods, lattice, tcltk, tcltk2, xlsReadWrite, MASS, RODBC
+Depends: R(>= 2.13.0), methods, lattice, tcltk, tcltk2, XLConnect, MASS, RODBC
 Suggests: FLCore
 Maintainer: Nobody <no@body.com>
 License: GPL (>= 2)
