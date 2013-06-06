@@ -26,6 +26,7 @@
 \bold{\code{nbStep}} \tab Only for first signature. Number of timesteps (including initial year).  \cr
 \bold{\code{t_hist_max}} \tab Only for first signature. Last year considered for 'historical' slot.  \cr
 \bold{\code{desc}} \tab Object descriptor (default value : "My Input").  \cr
+\bold{\code{folderFleet}} \tab Folder containing fleets input sheets (Optionnal. Default value : NULL).  \cr
 }
 }
 

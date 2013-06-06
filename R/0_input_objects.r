@@ -189,6 +189,7 @@ setClass("fleetInput",
       ecc_f = NA,              #Cotisations patronales
       pl_f = NA,               #Congés payés
       ovcDCF_f = NA,	         #Autres coûts variables DCF par navire d'une flottille
+      ovcDCF_f_m = NA,	       #Autres coûts variables DCF par navire d'une flottille - métier
       fixc_f = NA,             #Coûts fixes (DCF)
 
       nbds_f_tot = NA,         #Nombre total de Jours de Mer par navire par an et par flottille

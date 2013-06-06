@@ -33,7 +33,9 @@ if (classInp=="args") {
   input <- INPUT
 
   spp <- input@specific$Species 
-  RecIni <- unlist(lapply(input@input,function(x) as.numeric(x$N_it0[1]))[spp]) 
+  RecIni <- unlist(lapply(input@input,function(x) as.numeric(x$N_it0[1]))[spp])
+  RecIniQ <- unlist(lapply(input@input,function(x) if (length(x$N_it0)>=4) as.numeric(sum(x$N_it0[1:4])) else NA)[spp])
+  RecIni[input@specific$trim%in%1] <- RecIniQ[input@specific$trim%in%1] 
   years <- input@specific$times 
   fleets <- input@specific$Fleet
   metier <- input@specific$MetierEco
