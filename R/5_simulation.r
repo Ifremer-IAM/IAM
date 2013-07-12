@@ -15,8 +15,21 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 
 setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=1, TACbyF=as.double(NA), 
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
-                  parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),...){
+                  parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
+                  tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA),
+                  stochPrice=list(), #liste d'éléments nommés par espèce considérée, chaque élément étant une liste selon le schéma :
+                                #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA)) 
+                  ...){
 	
+	
+	
+newStochPrice <- lapply(stochPrice,function(y) return(list(type=as.integer(y$type[1]),
+                                 distr=as.character(rep(c(y$distr,rep(NA,4)),length=4)),
+                                 parA=as.double(rep(c(y$parA,rep(NA,4)),length=4)),
+                                 parB=as.double(rep(c(y$parB,rep(NA,4)),length=4)),
+                                 parC=as.double(rep(c(y$parC,rep(NA,4)),length=4)))))
+
+
 	
 if (objArgs@arguments$Scenario$active==1) {
   scenar <- objArgs@arguments$Scenario$ALLscenario[objArgs@arguments$Scenario$SELECTscen]
@@ -26,7 +39,7 @@ if (objArgs@arguments$Scenario$active==1) {
  
 Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHactive * x$typeSIMUstoch))
 
-mOth <- rep(0,length(objArgs@specific$Species)) ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- mOTH
+mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- mOTH
 
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
@@ -58,6 +71,11 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=as.double(parOptQuot$pxQuIni), pxQuMin=as.double(parOptQuot$pxQuMin), 
                           pxQuMax=as.double(parOptQuot$pxQuMax), lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol)),                           #fonctionne en conjugaison avec TACbyF
+                    list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
+                          corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
+                          Blim=as.double(tacControl$Blim)),
+                    newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
+                                         #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.character(objArgs@arguments$Replicates$SELECTvar) 
               )
               

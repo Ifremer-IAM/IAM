@@ -17,29 +17,29 @@ using namespace std;
 
 
 
-//classe regroupant les paramï¿½tres ï¿½ intï¿½grer dans le modï¿½le, les variables intermï¿½diaires (discrï¿½tisation du processus),
-//ainsi que les sorties du modï¿½le
+//classe regroupant les paramètres à intégrer dans le modèle, les variables intermédiaires (discrétisation du processus),
+//ainsi que les sorties du modèle
 class BioEcoPar
 {
-public: //normalement, selon les conventions,  les attributs doivent ï¿½tre "private"
+public: //normalement, selon les conventions,  les attributs doivent être "private"
 
 typedef  double (BioEcoPar::*BEfn1)(double mult);
 typedef  double (BioEcoPar::*BEfn1_F)(double *x);
 
 //   INPUTS   ------------------
 
-SEXP    list;       //liste d'objets R constituant la donnï¿½e entrï¿½e du modï¿½le. Certaines variables seront remises ï¿½ jour dans le cadre
-                    //de mesures de gestion ou de modï¿½lisation de comportement.
+SEXP    list;       //liste d'objets R constituant la donnée entrée du modèle. Certaines variables seront remises à jour dans le cadre
+                    //de mesures de gestion ou de modélisation de comportement.
 
 
 
 //   OUTPUTS  ------------------
 
-//outputs des diffï¿½rents modules (ï¿½ initialiser pour t=0)
-SEXP    out_F_fmi,  //mortalitï¿½ "captures" par pï¿½che (par espï¿½ce)
-        out_Fr_fmi,  //mortalitï¿½ totale (corrigï¿½e de la survie) par pï¿½che (par espï¿½ce)
-        out_Z_eit,  //coefficient de mortalitï¿½ totale
-        out_Fbar_et,  //Fbar par espï¿½ce (t)
+//outputs des différents modules (à initialiser pour t=0)
+SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
+        out_Fr_fmi,  //mortalité totale (corrigée de la survie) par pêche (par espèce)
+        out_Z_eit,  //coefficient de mortalité totale
+        out_Fbar_et,  //Fbar par espèce (t)
         out_N_eit,  //effectifs en nombre
         out_B_et,   //biomasse (t)
         out_SSB_et, //biomasse de reproducteurs (t)
@@ -48,22 +48,22 @@ SEXP    out_F_fmi,  //mortalitï¿½ "captures" par pï¿½che (par espï¿½ce)
         out_Y_efmit,//captures en poids (t)
         out_Y_eit,  //captures totales en poids (t)
         out_D_efmit,//rejets en poids (t)
-        out_L_efmit,//dï¿½barquements en poids aux ï¿½ges(t)
-        out_L_efmct,//dï¿½barquements en poids par catï¿½gories(t)
-        out_L_efmct2,//dï¿½barquements en poids par catï¿½gories(t) pour le codage mï¿½tier eco
-        out_P_t,    //prix moyen (en euros) (niveau mï¿½tier ï¿½co si dispo)
-        out_CA_eft, //chiffre d'affaires par espï¿½ce (en euros)
+        out_L_efmit,//débarquements en poids aux âges(t)
+        out_L_efmct,//débarquements en poids par catégories(t)
+        out_L_efmct2,//débarquements en poids par catégories(t) pour le codage métier eco
+        out_P_t,    //prix moyen (en euros) (niveau métier éco si dispo)
+        out_CA_eft, //chiffre d'affaires par espèce (en euros)
         out_CAT_ft, //chiffre d'affaires total (en euros)
         out_CA_ft,  //chiffre d'affaires moyen par navire (en euros)
-        out_RAP_ft, //reste ï¿½ partager (en euros)
-        out_EBE_ft, //excï¿½dent brut d'exploitation (en euros)
-        out_ENE_ft, //excï¿½dent net d'exploitation (en euros)
+        out_RAP_ft, //reste à partager (en euros)
+        out_EBE_ft, //excédent brut d'exploitation (en euros)
+        out_ENE_ft, //excédent net d'exploitation (en euros)
         out_SA_ft,  //surplus du capital (en euros)
         out_PS_t,   //surplus producteur (en euros)
         out_ES_t,   //surplus de l'Etat (en euros)
         out_Eco,
         out_EcoDCF,
-        out_effort, //variables d'effort utilisï¿½es lors de la simulation
+        out_effort, //variables d'effort utilisées lors de la simulation
         out_SRmod,
         out_N_eitQ,
         out_F_itQ,
@@ -83,7 +83,7 @@ int     nbT, nbF, nbM, nbMe, nbE, curQ;
 //Module de gestion :
 int var, trgt, delay, upd, level, gestInd, gestyp;
 SEXP    mu_nbds, mu_nbv;  //mulitplicateurs d'effort
-int IND_T, IND_F, eTemp, fTemp;  //indicateurs de temps, d'espï¿½ces et de flottilles considï¿½rï¿½s
+int IND_T, IND_F, eTemp, fTemp;  //indicateurs de temps, d'espèces et de flottilles considérés
 double PxQ;
 int spQ;
 double expEff;
@@ -94,40 +94,50 @@ double *TAC_glob, *Fbar_trgt, *TAC_byFleet;
 int *SRInd, *trim, *EcoIndCopy;
 double drCopy;
 double *effortIni;
-//boolï¿½ens
+//booléens
 double *Zoptim, *FOTHoptim;
 bool Zoptim_use, FOTHoptim_use;
 
-int *recType1, *recType2, *recType3; //indicateur conditionnant l'utilisation d'un recrutement alï¿½atoire dï¿½fini par la mï¿½thode implï¿½mentï¿½e RecAlea
-bool boolQ;  //indicateur de prï¿½sence de donnï¿½es d'effort disponible (calcul capturabilitï¿½,...)
-bool constMM; //indicateur qui dï¿½termine si les niveaux mï¿½tiers de la partie bio et de la partie ï¿½co sont les mï¿½mes (utilisation de l'effort par flottille-mï¿½tier pour calculer la capturabilitï¿½ dans le module 'Mortalitï¿½')
-bool fUpdate, dUpdate, cUpdate, pUpdate, eUpdate; //indicateur de mise ï¿½ jour des variables de calcul
-int scen; //application du scï¿½nario??
+int *recType1, *recType2, *recType3; //indicateur conditionnant l'utilisation d'un recrutement aléatoire défini par la méthode implémentée RecAlea
+bool boolQ;  //indicateur de présence de données d'effort disponible (calcul capturabilité,...)
+bool constMM; //indicateur qui détermine si les niveaux métiers de la partie bio et de la partie éco sont les mêmes (utilisation de l'effort par flottille-métier pour calculer la capturabilité dans le module 'Mortalité')
+bool fUpdate, dUpdate, cUpdate, pUpdate, eUpdate; //indicateur de mise à jour des variables de calcul
+int scen; //application du scénario??
 int bhv_active; //application du module report d'effort
 int type, boot, nbBoot;
 int ecodcf;
-//variables intermï¿½diaires par espï¿½ces
+//variables intermédiaires par espèces
 SEXP eVar, eVarCopy, eVarQ;
 
-//variables intermï¿½diaires flottilles
+//variables intermédiaires flottilles
 SEXP fVar;
 
-//Z fixï¿½ pour rï¿½soudre l'ajustement par flottille (dimension ï¿½ge)
+SEXP list_copy, FList_copy, eVar_copy, fVar_copy;
+
+//Z fixé pour résoudre l'ajustement par flottille (dimension âge)
 double *Ztemp;
 
+//paramètres de contrôle du TAC pour l'analyse des mesures de gestion pour la requête CIEM 2013 sur la SOLE GG
+double tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP;
+int corVarTACnby_CPP;
 
-//mï¿½thodes
+////module de traitement stochastique de modèle de prix
+//SEXP pStoch_type, pStoch_distr, pStoch_parA, pStoch_parB, pStoch_parC; //dimension list(nbE) -> 1 ou 4 éléments
+
+
+//méthodes
 
 	//constructeur
     BioEcoPar(SEXP list, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                 SEXP GestInd, SEXP mF, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP GestParam, SEXP EcoDcf,
-                SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX);
+                SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
+                SEXP tacCTRL, SEXP stochPrice);
 
 	//destructeur
     ~BioEcoPar();
 
-    //accesseur d'un ï¿½lï¿½ment de l'input
+    //accesseur d'un élément de l'input
     SEXP getListElement(SEXP list, const char *str);
 
     //analyse des NAs dans un objet SEXP
@@ -138,13 +148,13 @@ double *Ztemp;
     //indices multipliateurs pour les concordances de dimensions
     SEXP iDim(int *dimInput);
 
-    //fontion d'agrï¿½gation d'un objet R accompagnï¿½ de son attribut 'DimCst'
+    //fontion d'agrégation d'un objet R accompagné de son attribut 'DimCst'
     SEXP aggregObj(SEXP object, SEXP newDim);
 
-    // fonction de ventilation de la mortalitï¿½ en fonction d'une matrice de donnï¿½es "capture"
+    // fonction de ventilation de la mortalité en fonction d'une matrice de données "capture"
     SEXP allocMortality(SEXP mortality, SEXP capture, SEXP captureTot);
 
-    // fonction de calcul de l'indice de capturabilitï¿½ en fonction de la mortalitï¿½ par pï¿½che et d'une variable d'effort quelconque
+    // fonction de calcul de l'indice de capturabilité en fonction de la mortalité par pêche et d'une variable d'effort quelconque
     SEXP calcCapturabilite(SEXP adjustedMortal, SEXP effortIni);
 
     void RecAlea(SEXP list, SEXP listSto, int ind_t, int type, int *recTyp);
@@ -156,16 +166,16 @@ double *Ztemp;
     // MODULES :
     //----------
 
-    // Module 'Mortalitï¿½ par pï¿½che et survie des rejets'
+    // Module 'Mortalité par pêche et survie des rejets'
     void Mortalite(SEXP list, int ind_t, SEXP EVAR, int Qt);
 
     // Module 'Dynamique de population'
     void DynamicPop(SEXP list, int ind_t, SEXP EVAR, int Qt);
 
-    // Module 'Captures, rejets et dï¿½barquements'
+    // Module 'Captures, rejets et débarquements'
 	void CatchDL(SEXP list, int ind_t, SEXP EVAR, int Qt);
 
-    // Module 'Marchï¿½' : 'modCatch'
+    // Module 'Marché' : 'modCatch'
     void Marche(SEXP list, int ind_t);
 
     // Module 'Economie'
@@ -227,6 +237,8 @@ double *Ztemp;
 
     double fxMaxProf_FT_customReportV2(double *x);
 
+    void PriceAlea(SEXP list, SEXP stPrice, int ind_t);
+
 };
 
 #endif // PARAM_H_INCLUDED
@@ -238,13 +250,25 @@ double *Ztemp;
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                      SEXP GestInd, SEXP mF, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP GestParam, SEXP EcoDcf,
-                     SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX)
+                     SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
+                     SEXP tacCTRL, SEXP stochPrice)
 {
 
 PROTECT(listSpec);
 effortIni = REAL(getListElement(getListElement(listInput, "Fleet"), "nbds_f"));
-PROTECT(list = duplicate(listInput));
-PROTECT(FList = getListElement(list, "Fleet"));
+PROTECT_INDEX ipx_list;
+PROTECT_INDEX ipx_FList;
+PROTECT_INDEX ipx_eVar;
+PROTECT_INDEX ipx_fVar;
+PROTECT_INDEX ipx_list_copy;
+PROTECT_INDEX ipx_FList_copy;
+PROTECT_INDEX ipx_eVar_copy;
+PROTECT_INDEX ipx_fVar_copy;
+
+PROTECT_WITH_INDEX(list = duplicate(listInput),&ipx_list);
+PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
+PROTECT_WITH_INDEX(FList = getListElement(list, "Fleet"),&ipx_FList);
+PROTECT_WITH_INDEX(FList_copy = getListElement(list_copy, "Fleet"),&ipx_FList_copy);
 PROTECT(sppList = getListElement(listSpec, "Species"));
 PROTECT(fleetList = getListElement(listSpec, "Fleet"));
 PROTECT(metierList = getListElement(listSpec, "MetierEco"));
@@ -272,15 +296,17 @@ ecodcf = INTEGER(EcoDcf)[0];
 EcoIndCopy = INTEGER(EcoInd);
 drCopy = REAL(dr)[0];
 
+int conform = 0;
+SEXP FList_copy, list_copy, eVar_copy, fVar_copy;
 
 recType1 = INTEGER(RecType1);//vecteur d'entiers de longueur nbE
 recType2 = INTEGER(RecType2);//vecteur d'entiers de longueur nbE
 recType3 = INTEGER(RecType3);//vecteur d'entiers de longueur nbE
 boot = INTEGER(Bootstrp)[0];
 nbBoot = INTEGER(nbBootstrp)[0];
-boolQ = true;// paramï¿½tre vouï¿½ ï¿½ rester fixe -> on calculera toujours la capturabilitï¿½ afin de moduler la mortalitï¿½ en fonction de l'effort de pï¿½che
-constMM = true; //on calcule la capturabilitï¿½ via l'effort par flottille (incompatibilitï¿½ des niveaux mï¿½tiers entre bio et ï¿½co)
-fUpdate = true;    // ï¿½ t=0, on remet ï¿½ jour
+boolQ = true;// paramètre voué à rester fixe -> on calculera toujours la capturabilité afin de moduler la mortalité en fonction de l'effort de pêche
+constMM = true; //on calcule la capturabilité via l'effort par flottille (incompatibilité des niveaux métiers entre bio et éco)
+fUpdate = true;    // à t=0, on remet à jour
 dUpdate = true;    //
 cUpdate = true;    //
 pUpdate = true;    //
@@ -289,15 +315,21 @@ eUpdate = true;    //
 scen = INTEGER(Scenarii)[0];//true;
 bhv_active = INTEGER(getListElement(parBHV, "active"))[0];
 
+tolVarTACinf_CPP = REAL(getListElement(tacCTRL, "tolVarTACinf"))[0];
+tolVarTACsup_CPP = REAL(getListElement(tacCTRL, "tolVarTACsup"))[0];
+corVarTACval_CPP = REAL(getListElement(tacCTRL, "corVarTACval"))[0];
+corVarTACnby_CPP = INTEGER(getListElement(tacCTRL, "corVarTACnby"))[0];
+Blim_CPP = REAL(getListElement(tacCTRL, "Blim"))[0];
+
 gestInd = INTEGER(GestInd)[0];
 PROTECT(m_f = duplicate(mF)); if (length(m_f)!=nbF) error("Check dimension of array 'mFleet'!!\n");
 PROTECT(m_fm = duplicate(mFM)); if (length(m_fm)!=nbF*nbM) error("Check dimension of array 'mFleetMetier'!!\n");
 PROTECT(m_oth = duplicate(mOth)); if (length(m_oth)!=nbE) error("Check dimension of array 'mOth'!!\n");
 X1 = REAL(bounds)[0];
 X2 = REAL(bounds)[1];
-TAC_glob = REAL(TAC);  //ï¿½ corriger
-Fbar_trgt = REAL(FBAR);  //ï¿½ corriger
-TAC_byFleet = REAL(TACbyF);  //ï¿½ corriger
+TAC_glob = REAL(TAC);  //à corriger
+Fbar_trgt = REAL(FBAR);  //à corriger
+TAC_byFleet = REAL(TACbyF);  //à corriger
 
 eTemp = INTEGER(GestParam)[0];//2;
 var = INTEGER(GestParam)[1];//1;
@@ -307,19 +339,20 @@ upd = INTEGER(GestParam)[4];//2;
 level = INTEGER(GestParam)[5];//2;
 
 Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
-expEff = 1.2; //1;  //facteur d'expansion de l'effort maximal par flottille autorisï¿½ dans le cadre de l'optimisation GestionF2 et QuotaExch
+expEff = 1.2; //1;  //facteur d'expansion de l'effort maximal par flottille autorisé dans le cadre de l'optimisation GestionF2 et QuotaExch
 
 int DCFok = INTEGER(EcoDcf)[0];
 
-if (level==0) gestyp = 2; // paramï¿½tre vouï¿½ ï¿½ rester fixe (type 1 non pertinent)    //
+if (level==0) gestyp = 2; // paramètre voué à rester fixe (type 1 non pertinent)    //
 if (level==1) gestyp = 1;                                                           //A INTEGRER EN TANT QUE PARAMETRE DE L'INTERFACE
 
 SRInd = INTEGER(SRind);
 
-//il faut initialiser 'eVar' dans lequel on intï¿½grera toutes les variables intermï¿½diaires ï¿½ dï¿½cliner par espï¿½ce
+//il faut initialiser 'eVar' dans lequel on intègrera toutes les variables intermédiaires à décliner par espèce
 
 SEXP eltE;
-PROTECT(eVar = allocVector(VECSXP, nbE));
+PROTECT_WITH_INDEX(eVar = allocVector(VECSXP, nbE),&ipx_eVar);
+PROTECT_WITH_INDEX(eVar_copy = duplicate(eVar),&ipx_eVar_copy);
 setAttrib(eVar, R_NamesSymbol, sppList);
 for (int e = 0 ; e < nbE ; e++) {
     PROTECT(eltE = allocVector(VECSXP,62));
@@ -328,7 +361,7 @@ for (int e = 0 ; e < nbE ; e++) {
      SET_VECTOR_ELT(eltE,2,allocVector(VECSXP, 4));
      SET_VECTOR_ELT(eltE,3,allocVector(VECSXP, 4));
      SET_VECTOR_ELT(eltE,44,allocVector(VECSXP, 4));
-     SET_VECTOR_ELT(eltE,60,allocVector(VECSXP, 4));      //ï¿½ complï¿½ter
+     SET_VECTOR_ELT(eltE,60,allocVector(VECSXP, 4));      //à compléter
      SET_VECTOR_ELT(eltE,10,allocVector(VECSXP, 4));
      SET_VECTOR_ELT(eltE,11,allocVector(VECSXP, 4));
      SET_VECTOR_ELT(eltE,23,allocVector(VECSXP, 4));
@@ -342,7 +375,8 @@ for (int e = 0 ; e < nbE ; e++) {
 
 
 
-PROTECT(fVar = allocVector(VECSXP, 33)); //32= rtbsIni_f & 33=rtbsIni_f_m
+PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 33),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m
+PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
 
 //Rprintf("A");
 
@@ -354,7 +388,7 @@ PROTECT(out_N_eitQ = allocVector(VECSXP, nbE));
 PROTECT(out_F_itQ = allocVector(VECSXP, nbE));
 PROTECT(out_SSB_etQ = allocVector(VECSXP, nbE));
 PROTECT(out_PQuot_et = allocVector(VECSXP, nbE));
-//on assigne 1 ï¿½lï¿½ment par trimestre pour les espï¿½ces concernï¿½es
+//on assigne 1 élément par trimestre pour les espèces concernées
 for (int e = 0 ; e < nbE ; e++) {
  if (trim[e]==1) {
     SET_VECTOR_ELT(out_F_fmi,e,allocVector(VECSXP, 4));
@@ -381,7 +415,7 @@ PROTECT(out_Eco = allocVector(VECSXP, 60));
 PROTECT(out_EcoDCF = allocVector(VECSXP, 45));
 PROTECT(out_effort = allocVector(VECSXP, 4)); //nbv_f, nbv_f_m, nbds_f, nbds_f_m
 
-PROTECT(mu_nbds = allocVector(REALSXP, nbT)); //il reste la mise en forme ï¿½ opï¿½rer
+PROTECT(mu_nbds = allocVector(REALSXP, nbT)); //il reste la mise en forme à opérer
 PROTECT(mu_nbv = allocVector(REALSXP, nbT));
 
 double *mu_nbds_t = REAL(mu_nbds); for (int i=0; i<nbT; i++) mu_nbds_t[i] = 0.0; //initialisation
@@ -390,7 +424,7 @@ double *mpond_f = REAL(m_f);
 double *mpond_fm = REAL(m_fm);
 double *mpond_oth = REAL(m_oth);
 
-//on n'oublie pas de composer l'objet de sortie dï¿½crivant les variables 'nbv' et 'nbds'
+//on n'oublie pas de composer l'objet de sortie décrivant les variables 'nbv' et 'nbds'
 //SEXP NBVF, NBVFM, NBDSF, NBDSFM, dnmsF, dnmsFM, nmsEF;
 PROTECT(NBVF = allocMatrix(REALSXP,nbF,nbT));
 PROTECT(NBVFM = alloc3DArray(REALSXP,nbF,nbMe,nbT));
@@ -428,24 +462,316 @@ for (int it = 0; it < nbT ; it++) {
 //    }
 
 //Rprintf("A");
+//Rprintf("time %i\n",it);
 
 if (it>=1) {
-    RecAlea(list, listStochastic, it, 1, recType1); //IMPORTANT : ï¿½ effectuer AVANT la procï¿½dure d'optimisation
+    RecAlea(list, listStochastic, it, 1, recType1); //IMPORTANT : à effectuer AVANT la procédure d'optimisation
     RecAlea(list, listStochastic, it, 2, recType2);
     RecAlea(list, listStochastic, it, 3, recType3);
 }
 //Rprintf("B");
-    SRmod(list, listSR, it, TypeSR, SRInd); //important : ï¿½ envoyer avant 'DynamicPop'
+    SRmod(list, listSR, it, TypeSR, SRInd); //important : à envoyer avant 'DynamicPop'
 //Rprintf("C");
 if (scen & it>=1) Scenario(list, listScen, it); //modif MM 16/01/2012
 //Rprintf("C");
 if (bhv_active & it>=1) FleetBehav(list, it, parBHV);
 
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//------------------------ Ajustement initial ---------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+ //copie de sauvegarde car il faudra revenir aux valeurs initiales s'il y a une correction des ajustements
+REPROTECT(list_copy = duplicate(list),ipx_list_copy);
+REPROTECT(FList_copy = getListElement(list_copy, "Fleet"),ipx_FList_copy);
+REPROTECT(eVar_copy = duplicate(eVar),ipx_eVar_copy);
+REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);
+
+//if (it==3) PrintValue(FList);
+
 if (delay<=it & gestInd==1 & it>=1 & ISNA(TAC_byFleet[0])) {
+//Rprintf("aa");
+//PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
+//PrintValue(getListElement(FList, "nbds_f"));
+//PrintValue(mu_nbds);
+//PrintValue(mu_nbv);
+
+//Rprintf("AAAAAAA\n");
+Gestion(list, it);
+//Rprintf("bb");
+//PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
+//PrintValue(getListElement(FList, "nbds_f"));
+//PrintValue(mu_nbds);
+//PrintValue(mu_nbv);
+
+//Rprintf("D");
+//on met à jour les variables sur lesquelles opère le multiplicateur
+//Rprintf("E");
+//PrintValue(mu_nbds);
+//PrintValue(mu_nbv);
+    double *mu_nbds_t2 = REAL(mu_nbds);
+    double *mu_nbv_t2 = REAL(mu_nbv);
+    double *nbdsFM2 = REAL(getListElement(FList, "nbds_f_m"));
+    double *nbdsF2 = REAL(getListElement(FList, "nbds_f"));
+    double *nbvFM2 = REAL(getListElement(FList, "nbv_f_m"));
+    double *nbvF2 = REAL(getListElement(FList, "nbv_f"));
+
+if (level==0) {//niveau flottille
+
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+        if (var==1) {
+            if (gestyp==1) nbdsF2[ind_f] = fmax2(nbdsF2[ind_f] + mu_nbds_t2[it]*mpond_f[ind_f],0.0);
+            if (gestyp==2) nbdsF2[ind_f] = fmax2(nbdsF2[ind_f]*(1 + mu_nbds_t2[it]*mpond_f[ind_f]),0.0);
+        }
+
+        if (var==2) {
+            if (gestyp==1) nbvF2[ind_f] = fmax2(nbvF2[ind_f] + mu_nbv_t2[it]*mpond_f[ind_f],0.0);
+            if (gestyp==2) nbvF2[ind_f] = fmax2(nbvF2[ind_f]*(1 + mu_nbv_t2[it]*mpond_f[ind_f]),0.0);
+        }
+
+        for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+            if (var==1) {
+                if (gestyp==1) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m] + mu_nbds_t2[it]*mpond_f[ind_f],0.0);
+                if (gestyp==2) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m]*(1 + mu_nbds_t2[it]*mpond_f[ind_f]),0.0);
+            }
+
+            if (var==2) {
+                if (gestyp==1) nbvFM2[ind_f+nbF*ind_m] = fmax2(nbvFM2[ind_f+nbF*ind_m] + mu_nbv_t2[it]*mpond_f[ind_f],0.0);
+                if (gestyp==2) nbvFM2[ind_f+nbF*ind_m] = fmax2(nbvFM2[ind_f+nbF*ind_m]*(1 + mu_nbv_t2[it]*mpond_f[ind_f]),0.0);
+            }
+
+            for (int e = 0 ; e < nbE ; e++){
+
+
+                double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e), 44));
+                int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,e))), "modI"));
+
+
+                if (ind_m==0 & ind_f==0) {
+
+                    if (var==1) {
+                        if (gestyp==1)
+                        for (int ag = 0; ag < nbi; ag++)
+                            Fothi2[ag + it*nbi] = fmax2(Fothi2[ag + it*nbi] + mu_nbds_t2[it]*mpond_oth[e],0.0);
+                        if (gestyp==2)
+                        for (int ag = 0; ag < nbi; ag++)
+                            Fothi2[ag + it*nbi] = fmax2(Fothi2[ag + it*nbi]*(1+mu_nbds_t2[it]*mpond_oth[e]),0.0);
+                    }
+
+                    if (var==2){
+                        if (gestyp==1)
+                        for (int ag = 0; ag < nbi; ag++)
+                            Fothi2[ag + it*nbi] = fmax2(Fothi2[ag + it*nbi] + mu_nbv_t2[it]*mpond_oth[e],0.0);
+                        if (gestyp==2)
+                        for (int ag = 0; ag < nbi; ag++)
+                            Fothi2[ag + it*nbi] = fmax2(Fothi2[ag + it*nbi]*(1+mu_nbv_t2[it]*mpond_oth[e]),0.0);
+                    }
+
+                }
+
+            }
+        }
+    }
+
+} else { //niveau flottille-métier
+
+
+     for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+        double countEff = 0.0;
+
+        for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+            if (var==1) {
+                if (gestyp==1) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m] + mu_nbds_t2[it]*mpond_fm[ind_f+nbF*ind_m],0.0);
+                if (gestyp==2) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m]*(1 + mu_nbds_t2[it]*mpond_fm[ind_f+nbF*ind_m]),0.0);
+                if (!ISNA(nbdsFM2[ind_f+nbF*ind_m])) countEff = countEff + nbdsFM2[ind_f+nbF*ind_m] - REAL(NBDSFM)[ind_f + nbF*ind_m + nbF*nbMe*(delay-1)]; // - NBDSfm à l'instant précédent la mise en action du module
+            }
+
+            if (var==2) {
+                if (gestyp==1) nbvFM2[ind_f+nbF*ind_m] = fmax2(nbvFM2[ind_f+nbF*ind_m] + mu_nbv_t2[it]*mpond_fm[ind_f+nbF*ind_m],0.0);
+                if (gestyp==2) nbvFM2[ind_f+nbF*ind_m] = fmax2(nbvFM2[ind_f+nbF*ind_m]*(1 + mu_nbv_t2[it]*mpond_fm[ind_f+nbF*ind_m]),0.0);
+                if (!ISNA(nbvFM2[ind_f+nbF*ind_m])) countEff = countEff + nbvFM2[ind_f+nbF*ind_m] - REAL(NBVFM)[ind_f + nbF*ind_m + nbF*nbMe*(delay-1)]; // - NBVfm
+            }
+
+
+        }
+
+
+        if (var==1) {
+            if (gestyp==1) nbdsF2[ind_f] = fmax2(countEff + REAL(NBDSF)[ind_f + nbF*(delay-1)],0.0); //NBDSf
+            if (gestyp==2) nbdsF2[ind_f] = fmax2(countEff + REAL(NBDSF)[ind_f + nbF*(delay-1)],0.0);
+        }
+
+        if (var==2) {
+            if (gestyp==1) nbvF2[ind_f] = fmax2(countEff + REAL(NBVF)[ind_f + nbF*(delay-1)],0.0); // NBVf
+            if (gestyp==2) nbvF2[ind_f] = fmax2(countEff + REAL(NBVF)[ind_f + nbF*(delay-1)],0.0);
+        }
+     }
+
+}}
+
+//Rprintf("cc");
+//PrintValue(getListElement(FList, "nbds_f"));
+
+
+if (INTEGER(VECTOR_ELT(parQEX,0))[0]==0 & delay<=it & !ISNA(TAC_byFleet[0]) & !ISNA(TAC_byFleet[it*(nbF+1)]) & it>=1 & gestInd==0) {  //optimisation TAC par flottille activée si pas de NA en premier élément de colonne par step
+
+    //if (it==1) {
+
+    GestionF2(eTemp, it);//}
+
+  //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
+
+}
+
+
+
+if (INTEGER(Bootstrp)[0]==0 & INTEGER(VECTOR_ELT(parQEX,0))[0]==1 & gestInd==0) {
+//QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double lambda, int spp, double ftol, int ind_t)
+
+    //QuotaExch(REAL(VECTOR_ELT(parQEX,1))[0],REAL(VECTOR_ELT(parQEX,2))[0],REAL(VECTOR_ELT(parQEX,3))[0],
+    //                    REAL(VECTOR_ELT(parQEX,4))[0], eTemp, REAL(VECTOR_ELT(parQEX,5))[0], it);
+
+  //if (it==1) {
+    QuotaExchV2(REAL(VECTOR_ELT(parQEX,1))[0],REAL(VECTOR_ELT(parQEX,2))[0],REAL(VECTOR_ELT(parQEX,3))[0],
+                        REAL(VECTOR_ELT(parQEX,4))[0], eTemp, REAL(VECTOR_ELT(parQEX,5))[0], it);
+  //}
+
+}
+
+
+
+//if (scen & it>=1) Scenario(list, listScen, it);
+//Rprintf("E");
+//on remplit l'objet de sortie décrivant les variables 'nbv' et 'nbds'
+double *nbdsFM4 = REAL(getListElement(FList, "nbds_f_m"));
+double *nbdsF4 = REAL(getListElement(FList, "nbds_f"));
+double *nbvFM4 = REAL(getListElement(FList, "nbv_f_m"));
+double *nbvF4 = REAL(getListElement(FList, "nbv_f"));
+
+for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+    NBVf[ind_f + nbF*it] = nbvF4[ind_f];
+    NBDSf[ind_f + nbF*it] = nbdsF4[ind_f];
+
+    for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+        NBVfm[ind_f + nbF*ind_m + nbF*nbMe*it] = nbvFM4[ind_f + nbF*ind_m];
+        NBDSfm[ind_f + nbF*ind_m + nbF*nbMe*it] = nbdsFM4[ind_f + nbF*ind_m];
+    }
+}
+
+//Rprintf("BBBBBBBB\n");
+//Rprintf("F\n");
+//3 modules avec pas de temps différencié au niveau trimestre
+Mortalite(list, it, eVar,0);//Rprintf("\nG");//PrintValue(out_Fr_fmi);PrintValue(VECTOR_ELT(eVar,60));
+DynamicPop(list, it, eVar,0);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(out_N_eitQ);PrintValue(out_N_eit);
+CatchDL(list, it, eVar,0);//Rprintf("\nI");//PrintValue(out_Y_eit);
+Mortalite(list, it, eVar,1);//Rprintf("\nG");//PrintValue(out_Fr_fmi);PrintValue(VECTOR_ELT(eVar,60));
+DynamicPop(list, it, eVar,1);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(out_N_eitQ);PrintValue(out_N_eit);
+CatchDL(list, it, eVar,1);//Rprintf("\nI");//PrintValue(out_Y_eit);
+Mortalite(list, it, eVar,2);//Rprintf("\nG");//PrintValue(out_Fr_fmi);PrintValue(VECTOR_ELT(eVar,60));
+DynamicPop(list, it, eVar,2);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(out_N_eitQ);PrintValue(out_N_eit);
+CatchDL(list, it, eVar,2);//Rprintf("\nI");//PrintValue(out_Y_eit);
+Mortalite(list, it, eVar,3);//Rprintf("\nG");//PrintValue(out_Fr_fmi);PrintValue(VECTOR_ELT(eVar,60));
+DynamicPop(list, it, eVar,3);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(out_N_eitQ);PrintValue(out_N_eit);
+CatchDL(list, it, eVar,3);//Rprintf("\nI");//PrintValue(out_Y_eit);PrintValue(out_C_eit);
+
+//if (it<5) {
+//Rprintf("Z1\n");
+//PrintValue(VECTOR_ELT(out_Z_eit,2));
+//Rprintf("N1\n");
+//PrintValue(VECTOR_ELT(out_N_eit,2));
+//Rprintf("Fbar1\n");
+//PrintValue(VECTOR_ELT(out_Fbar_et,2));
+//}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//------------------------ Correction de l'ajustement initial si besoin -------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+conform = 0; //0=OK
+
+SEXP NDIM = allocVector(INTSXP,4);
+int *ndi = INTEGER(NDIM); for (int q=0;q<3;q++) ndi[q]=0; ndi[3]=nbT;
+double YtotN = REAL(aggregObj(VECTOR_ELT(out_Y_eit,eTemp),NDIM))[it];
+double YtotNm1 = REAL(aggregObj(VECTOR_ELT(out_Y_eit,eTemp),NDIM))[it-1];
+double FbarN=NA_REAL, FbarNm1=NA_REAL, FbarNm2=NA_REAL;
+if (it>=2){
+    FbarN = REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it];
+    FbarNm1 = REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it-1];
+    FbarNm2 = REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it-2];
+}
+double SsbN = REAL(VECTOR_ELT(out_SSB_et, eTemp))[it];
+
+//Rprintf("time %i\n",it);
+//point n°4
+if ((delay<=it) & (gestInd==1) & (trgt==2) & !ISNA(tolVarTACinf_CPP) & !ISNA(tolVarTACsup_CPP) & (it>=1)) {
+    if (YtotN<YtotNm1*tolVarTACinf_CPP | YtotN>YtotNm1*tolVarTACsup_CPP) {
+      trgt=1;//Rprintf("conform 4\n");
+      if (YtotN<YtotNm1*tolVarTACinf_CPP) TAC_glob[it] = YtotNm1*tolVarTACinf_CPP; //Rprintf("Ytot %f\n",TAC_glob[it]);
+      if (YtotN>YtotNm1*tolVarTACsup_CPP) TAC_glob[it] = YtotNm1*tolVarTACsup_CPP;
+      conform = 4; //point de blocage
+    }
+}
+
+//point n°5 (corVarTACbby n'est pas utilisé)
+if ((delay<=it) & (gestInd==1) & (trgt==1 | trgt==3) & !ISNA(corVarTACval_CPP) & (it>=2)) { //HYP: TAC suivi fixe au cours du temps
+    if (FbarNm2<FbarNm1) {
+      for (int yr=it;yr<nbT;yr++) TAC_glob[yr] = TAC_glob[it-1]*corVarTACval_CPP; //Rprintf("Ytot %f",TAC_glob[yr]);}
+      //Rprintf("conform 5\n");
+      conform = 5; //point de blocage
+    }
+}
+
+//point n°6 (point dominant sur les deux autres, d'où sa place finale dans l'implémentation
+if ((delay<=it) & (gestInd==1) & !ISNA(Blim_CPP) & (it>=1)) {
+    if (SsbN<Blim_CPP) {
+        trgt=2;//Rprintf("conform 6\n");
+        conform = 6;
+    }
+}
+
+//Rprintf("trgt %i\n",trgt);
+//selon les valeurs de 'conform', on engage ou pas le processus de correction
+
+if (conform>0) {
+
+//if (it==3) {Rprintf("AAAAAAAAAAAA\n"); PrintValue(FList_copy);}
+//on réinitialise Flist, list, eVar (incluant Fothi) et fVar (pas sûr que ce dernier soit utile, mais par précaution...)
+REPROTECT(list = duplicate(list_copy), ipx_list);
+REPROTECT(FList = getListElement(list, "Fleet"), ipx_FList);
+REPROTECT(eVar = duplicate(eVar_copy), ipx_eVar);
+REPROTECT(fVar = duplicate(fVar_copy), ipx_fVar);
+
+if (delay<=it & gestInd==1 & it>=1 & ISNA(TAC_byFleet[0])) {
+//Rprintf("AA");
+//PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
+//PrintValue(getListElement(FList, "nbds_f"));
+//PrintValue(mu_nbds);
+//PrintValue(mu_nbv);
+
+//Rprintf("CCCCCCCC\n");
 //Rprintf("D");
 Gestion(list, it);
+//Rprintf("BB");
+//PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
+//PrintValue(getListElement(FList, "nbds_f"));
+//PrintValue(mu_nbds);
+//PrintValue(mu_nbv);
+
 //Rprintf("D");
-//on met ï¿½ jour les variables sur lesquelles opï¿½re le multiplicateur
+//on met à jour les variables sur lesquelles opère le multiplicateur
 //Rprintf("E");
     double *mu_nbds_t2 = REAL(mu_nbds);
     double *mu_nbv_t2 = REAL(mu_nbv);
@@ -513,7 +839,7 @@ if (level==0) {//niveau flottille
         }
     }
 
-} else { //niveau flottille-mï¿½tier
+} else { //niveau flottille-métier
 
 
      for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -525,7 +851,7 @@ if (level==0) {//niveau flottille
             if (var==1) {
                 if (gestyp==1) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m] + mu_nbds_t2[it]*mpond_fm[ind_f+nbF*ind_m],0.0);
                 if (gestyp==2) nbdsFM2[ind_f+nbF*ind_m] = fmax2(nbdsFM2[ind_f+nbF*ind_m]*(1 + mu_nbds_t2[it]*mpond_fm[ind_f+nbF*ind_m]),0.0);
-                if (!ISNA(nbdsFM2[ind_f+nbF*ind_m])) countEff = countEff + nbdsFM2[ind_f+nbF*ind_m] - REAL(NBDSFM)[ind_f + nbF*ind_m + nbF*nbMe*(delay-1)]; // - NBDSfm ï¿½ l'instant prï¿½cï¿½dent la mise en action du module
+                if (!ISNA(nbdsFM2[ind_f+nbF*ind_m])) countEff = countEff + nbdsFM2[ind_f+nbF*ind_m] - REAL(NBDSFM)[ind_f + nbF*ind_m + nbF*nbMe*(delay-1)]; // - NBDSfm à l'instant précédent la mise en action du module
             }
 
             if (var==2) {
@@ -551,36 +877,11 @@ if (level==0) {//niveau flottille
 
 }}
 
-if (INTEGER(VECTOR_ELT(parQEX,0))[0]==0 & delay<=it & !ISNA(TAC_byFleet[0]) & !ISNA(TAC_byFleet[it*(nbF+1)]) & it>=1) {  //optimisation TAC par flottille activï¿½e si pas de NA en premier ï¿½lï¿½ment de colonne par step
+//Rprintf("CC2222222");
+//PrintValue(getListElement(FList, "nbds_f"));
 
-    //if (it==1) {
+//PrintValue(NBDSF);
 
-    GestionF2(eTemp, it);//}
-
-  //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
-
-}
-
-
-
-if (INTEGER(Bootstrp)[0]==0 & INTEGER(VECTOR_ELT(parQEX,0))[0]==1) {
-//QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double lambda, int spp, double ftol, int ind_t)
-
-    //QuotaExch(REAL(VECTOR_ELT(parQEX,1))[0],REAL(VECTOR_ELT(parQEX,2))[0],REAL(VECTOR_ELT(parQEX,3))[0],
-    //                    REAL(VECTOR_ELT(parQEX,4))[0], eTemp, REAL(VECTOR_ELT(parQEX,5))[0], it);
-
-  //if (it==1) {
-    QuotaExchV2(REAL(VECTOR_ELT(parQEX,1))[0],REAL(VECTOR_ELT(parQEX,2))[0],REAL(VECTOR_ELT(parQEX,3))[0],
-                        REAL(VECTOR_ELT(parQEX,4))[0], eTemp, REAL(VECTOR_ELT(parQEX,5))[0], it);
-  //}
-
-}
-
-
-
-//if (scen & it>=1) Scenario(list, listScen, it);
-//Rprintf("E");
-//on remplit l'objet de sortie dï¿½crivant les variables 'nbv' et 'nbds'
 double *nbdsFM4 = REAL(getListElement(FList, "nbds_f_m"));
 double *nbdsF4 = REAL(getListElement(FList, "nbds_f"));
 double *nbvFM4 = REAL(getListElement(FList, "nbv_f_m"));
@@ -598,8 +899,15 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
     }
 }
 
+//Rprintf("CC33333333");
+//PrintValue(getListElement(FList, "nbds_f"));
+//PrintValue(NBDSF);
+
+
+//Rprintf("DDDDDDDD\n");
+
 //Rprintf("F\n");
-//3 modules avec pas de temps diffï¿½renciï¿½ au niveau trimestre
+//3 modules avec pas de temps différencié au niveau trimestre
 Mortalite(list, it, eVar,0);//Rprintf("\nG");//PrintValue(out_Fr_fmi);PrintValue(VECTOR_ELT(eVar,60));
 DynamicPop(list, it, eVar,0);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(out_N_eitQ);PrintValue(out_N_eit);
 CatchDL(list, it, eVar,0);//Rprintf("\nI");//PrintValue(out_Y_eit);
@@ -614,6 +922,26 @@ DynamicPop(list, it, eVar,3);//Rprintf("\nH");PrintValue(out_Z_eit);PrintValue(o
 CatchDL(list, it, eVar,3);//Rprintf("\nI");//PrintValue(out_Y_eit);PrintValue(out_C_eit);
 
 
+//Rprintf("Z2\n");
+//PrintValue(VECTOR_ELT(out_Z_eit,2));
+//Rprintf("N2\n");
+//PrintValue(VECTOR_ELT(out_N_eit,2));
+//Rprintf("Fbar2\n");
+//PrintValue(VECTOR_ELT(out_Fbar_et,2));
+
+//une fois que c'est terminé, il faut remettre certaines choses en place dans le cas n°4
+if (conform==4) trgt=2;
+
+}
+
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
 Marche(list, it);
 //Rprintf("J\n");
 if (DCFok==0) {
@@ -625,11 +953,11 @@ if (DCFok==0) {
                      INTEGER(EcoInd)[5], INTEGER(EcoInd)[6], REAL(dr)[0]);
 }
 
-//module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt ï¿½ 2
+//module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt à 2
 if ( (delay<=it) & (gestInd==1) & (trgt==3) & (REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it] <= Fbar_trgt[it]) )  trgt=2;
 
 
-//remise ï¿½ l'ï¿½tat initial des paramï¿½tres du module Gestion si nï¿½cessaire (ATTENTION : implique qu'on n'atteint jamais l'effort nul quelle que soit la flottille
+//remise à l'état initial des paramètres du module Gestion si nécessaire (ATTENTION : implique qu'on n'atteint jamais l'effort nul quelle que soit la flottille
 //                                                                                 dans le cas contraire, fixer upd=2)
 
 //cas level=0
@@ -674,7 +1002,7 @@ if (upd==1 & delay<=it & level==0 & gestInd==1) {
                 double *Fothi3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e), 44));
                 int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,e))), "modI"));
 
-                //attention : valable que si boolQ = true et si reff indï¿½pendant de t
+                //attention : valable que si boolQ = true et si reff indépendant de t
 
 
                 if (ind_m==0 & ind_f==0) {
@@ -709,7 +1037,7 @@ if (upd==1 & delay<=it & level==0 & gestInd==1) {
 //cas level=1
 if (delay<=it & level==1 & gestInd==1) {
 
-//on remet au niveau de l'instant prï¿½cï¿½dent la mise en action du module Gestion
+//on remet au niveau de l'instant précédent la mise en action du module Gestion
 
     double *nbdsFM3 = REAL(getListElement(FList, "nbds_f_m"));
     double *nbdsF3 = REAL(getListElement(FList, "nbds_f"));
@@ -733,8 +1061,6 @@ if (delay<=it & level==1 & gestInd==1) {
 
 }
 
-
-
 }
 //Rprintf("K");
 SET_VECTOR_ELT(out_effort, 0, NBVF); SET_VECTOR_ELT(out_effort, 1, NBDSF);
@@ -747,7 +1073,7 @@ setAttrib(out_effort, R_NamesSymbol, nmsEF);
 //Rprintf("L");
 free_vector(Ztemp,1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
 
-UNPROTECT(48+nbE+nbE+1);
+UNPROTECT(52+nbE+nbE+1);
 }
 
 //------------------------------------------------------------------------------------
@@ -760,7 +1086,7 @@ UNPROTECT(48+nbE+nbE+1);
 
 
 
-//extern "C" : pour ï¿½viter le "name mangling process" qui renomme les fonctions exportï¿½es dans les dll.
+//extern "C" : pour éviter le "name mangling process" qui renomme les fonctions exportées dans les dll.
 
 
 //-------------------------------------------------------------------------------------------------------------------------
@@ -775,7 +1101,7 @@ UNPROTECT(48+nbE+nbE+1);
 
 
 //------------------------------------------
-// accesseur ï¿½ un ï¿½lï¿½ment d'une liste donnï¿½e (list = liste en question , str {caractï¿½re} = intitulï¿½ de l'ï¿½lï¿½ment de la liste)
+// accesseur à un élément d'une liste donnée (list = liste en question , str {caractère} = intitulé de l'élément de la liste)
 //------------------------------------------
 extern "C" {
 
@@ -797,7 +1123,7 @@ SEXP BioEcoPar::getListElement(SEXP list, const char *str)
 
 
 //------------------------------------------
-// fonction all.is.na (teste si tous les ï¿½lï¿½ments d'un objet sont ï¿½ NA ou non)
+// fonction all.is.na (teste si tous les éléments d'un objet sont à NA ou non)
 //------------------------------------------
 
 int BioEcoPar::all_is_na(SEXP object)
@@ -830,7 +1156,7 @@ double BioEcoPar::finite(double value)
 
 //------------------------------------------
 // fonction de calcul de multiplicateurs d'indices selon les dimensions d'un objet 'array'
-// (permet la gï¿½nï¿½ricitï¿½ des ï¿½quations en assurant la compatibilitï¿½ des variables en prï¿½sence,
+// (permet la généricité des équations en assurant la compatibilité des variables en présence,
 //  quelles que soient leurs dimensions respectives)
 // INPUT : attribut 'DimCst' de l'objet en question
 //------------------------------------------
@@ -853,8 +1179,8 @@ SEXP BioEcoPar::iDim(int *dimInput) {
 
 
 //------------------------------------------
-// fonction d'agrï¿½gation d'un objet attribuï¿½ type ('object'), en fonction d'un nouveau vecteur dimension DimCst ('newDim')
-// NB : toutes les valeurs de 'newDim' doivent ï¿½tre au plus ï¿½gales aux dimensions correspondantes de l'objet pour que la fonction s'applique
+// fonction d'agrégation d'un objet attribué type ('object'), en fonction d'un nouveau vecteur dimension DimCst ('newDim')
+// NB : toutes les valeurs de 'newDim' doivent être au plus égales aux dimensions correspondantes de l'objet pour que la fonction s'applique
 //------------------------------------------
 
 extern "C" {
@@ -874,7 +1200,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
     dim = INTEGER(dimObj); ndim = INTEGER(newDim);
 
     //tests sur les dimensions
-    if (dim[0]==0 & dim[1]==0 & dim[2]==0 & dim[3]==0) {  //c'est terminï¿½, rien ï¿½ agrï¿½ger
+    if (dim[0]==0 & dim[1]==0 & dim[2]==0 & dim[3]==0) {  //c'est terminé, rien à agréger
 
         return(object);
 
@@ -885,7 +1211,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
             error("Check input dimensions in 'aggregObj'!!\n");
         }
 
-        //on calcule le nombre de cellules ï¿½ remplir et le nombre de dimensions nulles
+        //on calcule le nombre de cellules à remplir et le nombre de dimensions nulles
         int nbCell = 1, nbDim = 0, incr = 0, incr2 = 0;
         for (int i = 0 ; i < 4 ; i++) {
 
@@ -906,7 +1232,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
 
         if (nbDim>0) {
 
-            //en-tï¿½tes
+            //en-têtes
             PROTECT(Dim = allocVector(INTSXP,nbDim));
             rdim = INTEGER(Dim);
             PROTECT(dimnames = allocVector(VECSXP,nbDim));
@@ -930,7 +1256,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
         int *index_dim = INTEGER(iDim(dim));
         int *index_ndim = INTEGER(iDim(ndim));
 
-        //il ne reste plus qu'ï¿½ effectuer l'agrï¿½gation
+        //il ne reste plus qu'à effectuer l'agrégation
         for (int ind_f = 0 ; ind_f < (1 + (dim[0] - 1)*(dim[0]>0)) ; ind_f++)
         for (int ind_m = 0 ; ind_m< (1 + (dim[1] - 1)*(dim[1]>0)) ; ind_m++)
         for (int ind_i = 0 ; ind_i < (1 + (dim[2] - 1)*(dim[2]>0)) ; ind_i++)
@@ -959,7 +1285,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
 
 
 //------------------------------------------
-// fonction de calcul de l'indice de capturabilitï¿½ en fonction de la mortalitï¿½ par pï¿½che et d'une variable d'effort donnï¿½e : ï¿½ opï¿½rer ï¿½ t=0
+// fonction de calcul de l'indice de capturabilité en fonction de la mortalité par pêche et d'une variable d'effort donnée : à opérer à t=0
 //------------------------------------------
 
 
@@ -996,7 +1322,7 @@ SEXP BioEcoPar::calcCapturabilite(SEXP adjustedMortal, SEXP effortIni)
     PROTECT(dimCstEff = allocVector(INTSXP,4));
     dimEffort = INTEGER(dimCstEff);
     for (int i = 0 ; i < 3 ; i++) dimEffort[i] = imin2(dimM[i], dimE[i]);
-    dimEffort[3] = dimE[3]; //on n'agrï¿½ge pas sur le temps puisque on ne considï¿½re ensuite que l'instant initial
+    dimEffort[3] = dimE[3]; //on n'agrège pas sur le temps puisque on ne considère ensuite que l'instant initial
 
         PROTECT(formatEff = aggregObj(effortIni, dimCstEff));
         rEff = REAL(formatEff);
@@ -1046,7 +1372,7 @@ SEXP BioEcoPar::calcCapturabilite(SEXP adjustedMortal, SEXP effortIni)
 //-------------------------------------------------------------------------------------------------------------------------
 
 //------------------------------------------
-// Module 'Mortalitï¿½ par pï¿½che et survie des rejets'
+// Module 'Mortalité par pêche et survie des rejets'
 //------------------------------------------
 
 extern "C" {
@@ -1069,7 +1395,7 @@ SEXP ans_11 = R_NilValue, ans_11l = R_NilValue, dimnames= R_NilValue, dimnamesIT
 
 SEXP effort;
 
-//on intï¿½gre la donnï¿½e d'effort (qu'on l'utilise ensuite pour le calcul de la capturabilitï¿½, ou pas)
+//on intègre la donnée d'effort (qu'on l'utilise ensuite pour le calcul de la capturabilité, ou pas)
 
     if (level==1) {
         PROTECT(effort = getListElement(Flist, "nbds_f_m_tot"));
@@ -1087,7 +1413,7 @@ int nbI;
 double *rans_11, *rans_11l, *r_Sr_e, *r_d_efi, *r_doth_ei, *r_F_efmi, *rEff, *r_nbNav_f,  //*r_fm, *r_ventilMoy_f,
         *r_nbds_f, *r_Foth_i, *r_Froth_i;
 
-//prï¿½paration de l'output
+//préparation de l'output
 if (ind_t==0) {
 
     PROTECT(rnames = allocVector(STRSXP, nbE));
@@ -1103,7 +1429,7 @@ for (int e = 0 ; e < nbE ; e++) {
     //---------
 
 if (trim[e]==0){
-    if (Qt==0) { //on n'opï¿½re dans ce cas que si Qt est le premier trimestre
+    if (Qt==0) { //on n'opère dans ce cas que si Qt est le premier trimestre
 
 
     //--------------------------------------------------------------------------------------   pas de dimension trimestre
@@ -1124,7 +1450,7 @@ if (trim[e]==0){
                         PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
 
                     //---------------------------------------------------------------------
-                    // 1ï¿½re ï¿½tape : on ventile la mortalitï¿½ par les captures si possible
+                    // 1ère étape : on ventile la mortalité par les captures si possible
                     //---------------------------------------------------------------------
 
                     PROTECT(v_F_efmi = getListElement(elmt, "F_fmi"));
@@ -1143,11 +1469,11 @@ if (trim[e]==0){
                     r_nbds_f = REAL(v_nbds_f);
 
 
-                    //on calcule la mortalitï¿½ via la capturabilitï¿½
+                    //on calcule la mortalité via la capturabilité
 
                             PROTECT(v_F_efmi2 = calcCapturabilite(v_F_efmi , effort));
                     //PrintValue(v_F_efmi2);
-                            //et dans ce cas, l'effort ï¿½ appliquer ï¿½ la capturabilitï¿½ est...
+                            //et dans ce cas, l'effort à appliquer à la capturabilité est...
 
                         dimE = INTEGER(dimEff);
                         dimM = INTEGER(getAttrib(v_F_efmi2, install("DimCst")));
@@ -1155,7 +1481,7 @@ if (trim[e]==0){
                         dimEffort = INTEGER(dimCstEff);
                         for (int i = 0 ; i < 3 ; i++) dimEffort[i] = imin2( dimM[i] , dimE[i] );
 
-                        //on conserve tout de mï¿½me la dimension temporelle
+                        //on conserve tout de même la dimension temporelle
                         dimEffort[3] = dimE[3];
 
 
@@ -1193,7 +1519,7 @@ if (trim[e]==0){
                             error("Non_homogeneous dimensions in F_efmi element. Check .ini biological parameters files !!\n");
                         }
 
-                        //on dï¿½termine l'attribut Dimension du tableau rï¿½sultant -> dimCst (on en profite pour compter les dimensions rï¿½elles + nombre de cellules)
+                        //on détermine l'attribut Dimension du tableau résultant -> dimCst (on en profite pour compter les dimensions réelles + nombre de cellules)
                         PROTECT(dimCst = allocVector(INTSXP, 4));
                         dimC = INTEGER(dimCst);
                         int count = 0, prod = 1, count2 = 0, count3 = 0;
@@ -1201,7 +1527,7 @@ if (trim[e]==0){
                         for (int k = 0 ; k < 4 ; k++) {
 
                             dimC[k] = imax2( imax2(dim_d_efi[k] , dim_F_efmi[k]) , dimEffort[k]);
-                            if (k==3) dimC[3] = nbT; //on considï¿½re la donnï¿½e temporellement
+                            if (k==3) dimC[3] = nbT; //on considère la donnée temporellement
                             if (dimC[k]>0) {
                                 count++;
                                 prod = prod * dimC[k];
@@ -1222,7 +1548,7 @@ if (trim[e]==0){
 
                     if (ind_t==0) {
 
-                        //on crï¿½e les tableaux rï¿½sultat pour l'espï¿½ce en question
+                        //on crée les tableaux résultat pour l'espèce en question
                         PROTECT(ans_11 = NEW_NUMERIC(prod));
                         PROTECT(ans_11l = NEW_NUMERIC(prod));
 
@@ -1249,7 +1575,7 @@ if (trim[e]==0){
                         r_d_efi = REAL(v_d_efi);
                         r_doth_ei = REAL(v_doth_ei);
 
-                            //facteurs des indices pour genï¿½riciser le processus
+                            //facteurs des indices pour genériciser le processus
 
                             PROTECT(fFACT1 = iDim(dimC));
                             PROTECT(fFACT2 = iDim(dim_d_efi));
@@ -1268,7 +1594,7 @@ if (trim[e]==0){
                             int *fFact6 = INTEGER(fFACT6);
 
 
-                            //ï¿½quation
+                            //équation
 
                         for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                         for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -1296,9 +1622,9 @@ if (trim[e]==0){
 
                     }
 
-                    //il ne reste plus qu'ï¿½ calculer Foth_i en soutrayant de Ftot_i la somme aux ï¿½ges de la mortalitï¿½ ventilï¿½e non corrigï¿½e, et Froth_i en lui appliquant doth_i
+                    //il ne reste plus qu'à calculer Foth_i en soutrayant de Ftot_i la somme aux âges de la mortalité ventilée non corrigée, et Froth_i en lui appliquant doth_i
 
-                        PROTECT(Foth_i = NEW_NUMERIC(nbI*nbT)); //attention, on considï¿½re la mortalitï¿½ initiale comme ï¿½tant dï¿½finie sans dimension temporelle --> ï¿½ revoir
+                        PROTECT(Foth_i = NEW_NUMERIC(nbI*nbT)); //attention, on considère la mortalité initiale comme étant définie sans dimension temporelle --> à revoir
                         PROTECT(Froth_i = NEW_NUMERIC(nbI*nbT));
                         PROTECT(dimI = allocVector(INTSXP,4));
                         PROTECT(dimIT = allocVector(INTSXP,4));
@@ -1357,7 +1683,7 @@ if (trim[e]==0){
                                     r_doth_ei[0*fFact6[0] + 0*fFact6[1] + ind_i*fFact6[2] + ind_t*fFact6[3]]);
 
 
-                        //on n'oublie pas d'archiver dans eVar ce dont on aura besoin dans les itï¿½rations suivantes
+                        //on n'oublie pas d'archiver dans eVar ce dont on aura besoin dans les itérations suivantes
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 0, v_F_efmi2);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 1, formatEff);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 2, v_Sr_e);
@@ -1400,7 +1726,7 @@ if (trim[e]==0){
                     PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
 
                 //---------------------------------------------------------------------
-                // 1ï¿½re ï¿½tape : on ventile la mortalitï¿½ par les captures si possible
+                // 1ère étape : on ventile la mortalité par les captures si possible
                 //---------------------------------------------------------------------
 
                 PROTECT(v_F_efmi = getListElement(getListElement(elmt, "F_fmi"),CHAR(STRING_ELT(trimInt,Qt))));
@@ -1419,11 +1745,11 @@ if (trim[e]==0){
                 r_nbds_f = REAL(v_nbds_f);
 
 
-                //on calcule la mortalitï¿½ via la capturabilitï¿½
+                //on calcule la mortalité via la capturabilité
 
                         PROTECT(v_F_efmi2 = calcCapturabilite(v_F_efmi , effort));
                 //PrintValue(v_F_efmi2);
-                        //et dans ce cas, l'effort ï¿½ appliquer ï¿½ la capturabilitï¿½ est...
+                        //et dans ce cas, l'effort à appliquer à la capturabilité est...
 
                     dimE = INTEGER(dimEff);
                     dimM = INTEGER(getAttrib(v_F_efmi2, install("DimCst")));
@@ -1431,7 +1757,7 @@ if (trim[e]==0){
                     dimEffort = INTEGER(dimCstEff);
                     for (int i = 0 ; i < 3 ; i++) dimEffort[i] = imin2( dimM[i] , dimE[i] );
 
-                    //on conserve tout de mï¿½me la dimension temporelle
+                    //on conserve tout de même la dimension temporelle
                     dimEffort[3] = dimE[3];
 
 
@@ -1469,7 +1795,7 @@ if (trim[e]==0){
                         error("Non_homogeneous dimensions in F_efmi element. Check .ini biological parameters files !!\n");
                     }
 
-                    //on dï¿½termine l'attribut Dimension du tableau rï¿½sultant -> dimCst (on en profite pour compter les dimensions rï¿½elles + nombre de cellules)
+                    //on détermine l'attribut Dimension du tableau résultant -> dimCst (on en profite pour compter les dimensions réelles + nombre de cellules)
                     PROTECT(dimCst = allocVector(INTSXP, 4));
                     dimC = INTEGER(dimCst);
                     int count = 0, prod = 1, count2 = 0, count3 = 0;
@@ -1477,7 +1803,7 @@ if (trim[e]==0){
                     for (int k = 0 ; k < 4 ; k++) {
 
                         dimC[k] = imax2( imax2(dim_d_efi[k] , dim_F_efmi[k]) , dimEffort[k]);
-                        if (k==3) dimC[3] = nbT; //on considï¿½re la donnï¿½e temporellement
+                        if (k==3) dimC[3] = nbT; //on considère la donnée temporellement
                         if (dimC[k]>0) {
                             count++;
                             prod = prod * dimC[k];
@@ -1498,7 +1824,7 @@ if (trim[e]==0){
 
                 if (ind_t==0) {
 
-                    //on crï¿½e les tableaux rï¿½sultat pour l'espï¿½ce en question
+                    //on crée les tableaux résultat pour l'espèce en question
                     PROTECT(ans_11 = NEW_NUMERIC(prod));
                     PROTECT(ans_11l = NEW_NUMERIC(prod));
 
@@ -1525,7 +1851,7 @@ if (trim[e]==0){
                     r_d_efi = REAL(v_d_efi);
                     r_doth_ei = REAL(v_doth_ei);
 
-                        //facteurs des indices pour genï¿½riciser le processus
+                        //facteurs des indices pour genériciser le processus
 
                         PROTECT(fFACT1 = iDim(dimC));
                         PROTECT(fFACT2 = iDim(dim_d_efi));
@@ -1544,7 +1870,7 @@ if (trim[e]==0){
                         int *fFact6 = INTEGER(fFACT6);
 
 
-                        //ï¿½quation
+                        //équation
 
                     for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -1573,9 +1899,9 @@ if (trim[e]==0){
                 }
 
 
-                //il ne reste plus qu'ï¿½ calculer Foth_i en soutrayant de Ftot_i la somme aux ï¿½ges de la mortalitï¿½ ventilï¿½e non corrigï¿½e, et Froth_i en lui appliquant doth_i
+                //il ne reste plus qu'à calculer Foth_i en soutrayant de Ftot_i la somme aux âges de la mortalité ventilée non corrigée, et Froth_i en lui appliquant doth_i
 
-                    PROTECT(Foth_i = NEW_NUMERIC(nbI*nbT)); //attention, on considï¿½re la mortalitï¿½ initiale comme ï¿½tant dï¿½finie sans dimension temporelle --> ï¿½ revoir
+                    PROTECT(Foth_i = NEW_NUMERIC(nbI*nbT)); //attention, on considère la mortalité initiale comme étant définie sans dimension temporelle --> à revoir
                     PROTECT(Froth_i = NEW_NUMERIC(nbI*nbT));
                     PROTECT(dimI = allocVector(INTSXP,4));
                     PROTECT(dimIT = allocVector(INTSXP,4));
@@ -1622,7 +1948,7 @@ if (trim[e]==0){
                                 r_doth_ei[0*fFact6[0] + 0*fFact6[1] + ind_i*fFact6[2] + ind_t*fFact6[3]]);
 
 
-                    //on n'oublie pas d'archiver dans eVar ce dont on aura besoin dans les itï¿½rations suivantes
+                    //on n'oublie pas d'archiver dans eVar ce dont on aura besoin dans les itérations suivantes
                     SET_VECTOR_ELT(VECTOR_ELT(VECTOR_ELT(EVAR, e), 0),Qt, v_F_efmi2);
                     SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 1, formatEff);
                     SET_VECTOR_ELT(VECTOR_ELT(VECTOR_ELT(EVAR, e), 2),Qt, v_Sr_e);
@@ -1678,7 +2004,6 @@ for (int e = 0 ; e < nbE ; e++) {
                     double *r_Froth_it = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
 
 
-
                     int *fFact1 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 4)),
                         *fFact2 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 5)),
                         *fFact3 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 6)),
@@ -1712,7 +2037,7 @@ for (int e = 0 ; e < nbE ; e++) {
                         if (FOTHoptim_use & e==eTemp) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_it[ind_i+(ind_t+1)*nbI] = FOTHoptim[ind_i+(ind_t+1)*nbI];
                         } else {
-                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_it[ind_i+(ind_t+1)*nbI] = r_Foth_it[ind_i+ind_t*nbI];   //ï¿½ modifier quand on considï¿½rera une mortalitï¿½ "autres" variable
+                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_it[ind_i+(ind_t+1)*nbI] = r_Foth_it[ind_i+ind_t*nbI];   //à modifier quand on considèrera une mortalité "autres" variable
                         }
                     }
 
@@ -1777,7 +2102,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                     if (ind_t<(nbT-1)) {
 
-                        for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_it[ind_i+(ind_t+1)*nbI] = r_Foth_it[ind_i+ind_t*nbI];   //ï¿½ modifier quand on considï¿½rera une mortalitï¿½ "autres" variable
+                        for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_it[ind_i+(ind_t+1)*nbI] = r_Foth_it[ind_i+ind_t*nbI];   //à modifier quand on considèrera une mortalité "autres" variable
 
                     }
 
@@ -1838,7 +2163,7 @@ if (dUpdate) {
 if (ind_t==0) {
 
 
-    //ï¿½ t=0, prï¿½paration des outputs
+    //à t=0, préparation des outputs
 
     PROTECT(rnames_Esp = allocVector(STRSXP, nbE));
 
@@ -1917,7 +2242,7 @@ if (ind_t==0) {
 
                                     dim_N_ei0 = INTEGER(dimCst_N_ei0);
                                     if ((dim_N_ei0[0]!=0) | (dim_N_ei0[1]!=0) |
-                                        (dim_N_ei0[2]!=0 & dim_N_ei0[2]!=nbI)) // | (dim_N_ei0[3]!=0)) --> peu importe, on ne prendra de toute faï¿½on que la donnï¿½e ï¿½ t0
+                                        (dim_N_ei0[2]!=0 & dim_N_ei0[2]!=nbI)) // | (dim_N_ei0[3]!=0)) --> peu importe, on ne prendra de toute façon que la donnée à t0
                                     {
                                         error("Non_homogeneous dimensions in N_ei0 element. Check .ini biological parameters files !!\n");
                                     }
@@ -1937,7 +2262,7 @@ if (ind_t==0) {
                                     // initialisation de out_Z_eit
                                     //---------
 
-                                    //on dï¿½termine l'attribut Dimension de Z_eit
+                                    //on détermine l'attribut Dimension de Z_eit
                                     PROTECT(dimCst1 = allocVector(INTSXP, 4));
                                     dimC1 = INTEGER(dimCst1);
                                     dimC1[0] = 0 ; dimC1[1] = 0 ; dimC1[2] = imax2(dim_M_ei[2] , dim_Fr_efmit[2]);
@@ -1965,7 +2290,7 @@ if (ind_t==0) {
                                     }
 
                             if (ind_t==0){
-                                    //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                                    //on crée le tableau résultat pour l'espèce en question
                                     PROTECT(ans_Z_eit = NEW_NUMERIC(prod));
                                     setAttrib(ans_Z_eit, R_DimSymbol, Dim1);
 
@@ -2001,7 +2326,7 @@ if (ind_t==0) {
 
                                     double fmax = 0.0, sumWt = 0.0;
 
-                                    //ï¿½quation
+                                    //équation
                                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
                                         double temp = 0.0, tempCap = 0.0;
@@ -2031,7 +2356,7 @@ if (ind_t==0) {
                                             temp + r_M_ei[0*fact3_D[0] + 0*fact3_D[1] + ind_i*fact3_D[2] + ind_t*fact3_D[3]] +
                                             r_Froth_i[ind_i + nbI*ind_t];
 
-                                           //on initialise aussi Ztemp (attention : indexï¿½ ï¿½ partir de 1)
+                                           //on initialise aussi Ztemp (attention : indexé à partir de 1)
 
                                            Ztemp[ind_i+1] = rans_Z_eit[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
                                         }
@@ -2071,7 +2396,7 @@ if (ind_t==0) {
                                     // calcul de N_eit
                                     //---------
 
-                                    //on dï¿½termine l'attribut Dimension de N_eit
+                                    //on détermine l'attribut Dimension de N_eit
                                     PROTECT(dimCst2 = allocVector(INTSXP, 4));
                                     dimC2 = INTEGER(dimCst2);
 
@@ -2101,7 +2426,7 @@ if (ind_t==0) {
 
                             if (ind_t==0) {
 
-                                    //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                                    //on crée le tableau résultat pour l'espèce en question
                                     PROTECT(ans_N_eit = NEW_NUMERIC(prod));
                                     setAttrib(ans_N_eit, R_DimSymbol, Dim2);
 
@@ -2131,7 +2456,7 @@ if (ind_t==0) {
                                     int *fact5_D = INTEGER(dFACT5);
                                     int *fact6_D = INTEGER(dFACT6);
 
-                                    //ï¿½quation
+                                    //équation
 
                                         for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                         for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -2151,7 +2476,7 @@ if (ind_t==0) {
                                                      if (ISNA(r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]])) {
 
                                                         rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
-                                                          r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial dï¿½fini
+                                                          r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial défini
 
                                                     } else {
 
@@ -2166,7 +2491,7 @@ if (ind_t==0) {
                                                     if (ISNA(r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]])) {
 
                                                         rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
-                                                          r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial dï¿½fini
+                                                          r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial défini
 
                                                     } else {
 
@@ -2185,7 +2510,7 @@ if (ind_t==0) {
 
                                                 } else {
 
-                                                    if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                                    if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                         rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                           rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + (ind_t-1)*fact4_D[3]] *
@@ -2231,7 +2556,7 @@ if (ind_t==0) {
                                     // calcul de SSB_et
                                     //---------
 
-                                    //on dï¿½termine l'attribut Dimension de SSB_et
+                                    //on détermine l'attribut Dimension de SSB_et
                                     PROTECT(dimCst4 = allocVector(INTSXP, 4));
                                     dimC4 = INTEGER(dimCst4);
 
@@ -2260,7 +2585,7 @@ if (ind_t==0) {
                                     }
 
                             if (ind_t==0) {
-                                    //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question (on en profite pour faire de mï¿½me avec Fbar --> mï¿½me dimension)
+                                    //on crée le tableau résultat pour l'espèce en question (on en profite pour faire de même avec Fbar --> même dimension)
                                     PROTECT(ans_SSB_et = NEW_NUMERIC(prod));
                                     PROTECT(ans_Fbar_et = NEW_NUMERIC(prod));
 
@@ -2301,13 +2626,13 @@ if (ind_t==0) {
                                     int *fact8_D = INTEGER(dFACT8);
                                     int *fact10_D = INTEGER(dFACT10);
 
-                                    //ï¿½quation
+                                    //équation
 
                                         for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                         for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
 
                                             double temp = 0.0;
-                                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                                 temp = temp +
                                                  rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                                  r_mat_ei[ind_f*fact10_D[0] + ind_m*fact10_D[1] + ind_i*fact10_D[2] + ind_t*fact10_D[3]] *
@@ -2351,7 +2676,7 @@ if (ind_t==0) {
                                     // calcul de B_et
                                     //---------
 
-                                    //on dï¿½termine l'attribut Dimension de B_et
+                                    //on détermine l'attribut Dimension de B_et
                                     PROTECT(dimCst3 = allocVector(INTSXP, 4));
                                     dimC3 = INTEGER(dimCst3);
 
@@ -2379,7 +2704,7 @@ if (ind_t==0) {
                                     }
 
                             if (ind_t==0) {
-                                    //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                                    //on crée le tableau résultat pour l'espèce en question
                                     PROTECT(ans_B_et = NEW_NUMERIC(prod));
 
                                     if (count>0) { //valable seulement si B_et n'est pas seulement un scalaire
@@ -2407,13 +2732,13 @@ if (ind_t==0) {
 
                                     int *fact7_D = INTEGER(dFACT7);
 
-                                    //ï¿½quation
+                                    //équation
 
                                         for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                         for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
 
                                             double temp = 0.0;
-                                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                                 temp = temp +
                                                  rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                                  r_w_ei[ind_f*fact8_D[0] + ind_m*fact8_D[1] + ind_i*fact8_D[2] + ind_t*fact8_D[3]] / 1000;
@@ -2505,7 +2830,7 @@ if (ind_t==0) {
 
                             dim_N_ei0 = INTEGER(dimCst_N_ei0);
                             if ((dim_N_ei0[0]!=0) | (dim_N_ei0[1]!=0) |
-                                (dim_N_ei0[2]!=0 & dim_N_ei0[2]!=nbI)) // | (dim_N_ei0[3]!=0)) --> peu importe, on ne prendra de toute faï¿½on que la donnï¿½e ï¿½ t0
+                                (dim_N_ei0[2]!=0 & dim_N_ei0[2]!=nbI)) // | (dim_N_ei0[3]!=0)) --> peu importe, on ne prendra de toute façon que la donnée à t0
                             {
                                 error("Non_homogeneous dimensions in N_ei0 element. Check .ini biological parameters files !!\n");
                             }
@@ -2525,7 +2850,7 @@ if (ind_t==0) {
                             // initialisation de out_Z_eit
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de Z_eit
+                            //on détermine l'attribut Dimension de Z_eit
                             PROTECT(dimCst1 = allocVector(INTSXP, 4));
                             dimC1 = INTEGER(dimCst1);
                             dimC1[0] = 0 ; dimC1[1] = 0 ; dimC1[2] = imax2(dim_M_ei[2] , dim_Fr_efmit[2]);
@@ -2553,7 +2878,7 @@ if (ind_t==0) {
                             }
 
                     if (ind_t==0){
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                            //on crée le tableau résultat pour l'espèce en question
                             PROTECT(ans_Z_eit = NEW_NUMERIC(prod));
                             setAttrib(ans_Z_eit, R_DimSymbol, Dim1);
 
@@ -2565,7 +2890,7 @@ if (ind_t==0) {
 
                             rans_Z_eit = REAL(ans_Z_eit);
 
-                            PROTECT(ans_F_itQ = NEW_NUMERIC(prod)); //mï¿½mes dimensions que Z
+                            PROTECT(ans_F_itQ = NEW_NUMERIC(prod)); //mêmes dimensions que Z
                             setAttrib(ans_F_itQ, R_DimSymbol, Dim1);
                             r_F_itQ = REAL(ans_F_itQ);
 
@@ -2594,7 +2919,7 @@ if (ind_t==0) {
 
                             //double fmax = 0.0, sumWt = 0.0;
 
-                            //ï¿½quation
+                            //équation
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
                                 double temp = 0.0, tempCap = 0.0;
@@ -2617,7 +2942,7 @@ if (ind_t==0) {
                                     r_Froth_i[ind_i + nbI*ind_t];
                                 }
 
-                            //on en profite pour mettre ï¿½ jour F_itQ
+                            //on en profite pour mettre à jour F_itQ
 
                             r_F_itQ[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = temp + r_Froth_i[ind_i + nbI*ind_t];
 
@@ -2657,7 +2982,7 @@ if (ind_t==0) {
                             // calcul de N_eit
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de N_eit et des composantes trimestrielles N_eitQ
+                            //on détermine l'attribut Dimension de N_eit et des composantes trimestrielles N_eitQ
                             PROTECT(dimCst2 = allocVector(INTSXP, 4));
                             dimC2 = INTEGER(dimCst2);
 
@@ -2687,7 +3012,7 @@ if (ind_t==0) {
 
                     if (ind_t==0) {
 
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                            //on crée le tableau résultat pour l'espèce en question
                             if (Qt==0) {
                                 PROTECT(ans_N_eit = NEW_NUMERIC(prod));
                                 setAttrib(ans_N_eit, R_DimSymbol, Dim2);
@@ -2727,7 +3052,7 @@ if (ind_t==0) {
                             int *fact5_D = INTEGER(dFACT5);
                             int *fact6_D = INTEGER(dFACT6);
 //Rprintf("G12");
-                            //ï¿½quation
+                            //équation
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -2755,7 +3080,7 @@ if (ind_t==0) {
                                             if (ISNA(r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]])) {
 
                                                 r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
-                                                  r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial dï¿½fini
+                                                  r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial défini
 
                                             } else {
 
@@ -2776,7 +3101,7 @@ if (ind_t==0) {
 
                                             if (Qt>0) { //trimestre 2, 3 ou 4
 
-                                                if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                                if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                     r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                       REAL(VECTOR_ELT(VECTOR_ELT(out_N_eitQ, e),Qt-1))[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + ind_t*fact4_D[3]] *
@@ -2794,7 +3119,7 @@ if (ind_t==0) {
 
                                             } else {  //trimestre 1
 
-                                               if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                               if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                     r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                       REAL(VECTOR_ELT(VECTOR_ELT(out_N_eitQ, e),3))[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + (ind_t-1)*fact4_D[3]] *
@@ -2816,7 +3141,7 @@ if (ind_t==0) {
                                     }
                             }
 
-                    //on transfï¿½re tout dans out_N_eit si Qt=0
+                    //on transfère tout dans out_N_eit si Qt=0
 
                     if (Qt==0) {
 
@@ -2897,7 +3222,7 @@ if (ind_t==0) {
                             // calcul de SSB_et
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de SSB_et
+                            //on détermine l'attribut Dimension de SSB_et
                             PROTECT(dimCst4 = allocVector(INTSXP, 4));
                             dimC4 = INTEGER(dimCst4);
 
@@ -2926,7 +3251,7 @@ if (ind_t==0) {
                             }
 //Rprintf("G14");
                     if (ind_t==0) {
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question (on en profite pour faire de mï¿½me avec Fbar --> mï¿½me dimension)
+                            //on crée le tableau résultat pour l'espèce en question (on en profite pour faire de même avec Fbar --> même dimension)
                             if (Qt==0) {
                                 PROTECT(ans_SSB_et = NEW_NUMERIC(prod));
                                 PROTECT(ans_Fbar_et = NEW_NUMERIC(prod));
@@ -2977,13 +3302,13 @@ if (ind_t==0) {
                             int *fact8_D = INTEGER(dFACT8);
                             int *fact10_D = INTEGER(dFACT10);
 
-                            //ï¿½quation
+                            //équation
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
 
                                     double temp = 0.0;
-                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                         temp = temp +
                                          r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                          r_mat_ei[ind_f*fact10_D[0] + ind_m*fact10_D[1] + ind_i*fact10_D[2] + ind_t*fact10_D[3]] *
@@ -3035,7 +3360,7 @@ if (ind_t==0) {
                             // calcul de B_et
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de B_et
+                            //on détermine l'attribut Dimension de B_et
                             PROTECT(dimCst3 = allocVector(INTSXP, 4));
                             dimC3 = INTEGER(dimCst3);
 
@@ -3063,7 +3388,7 @@ if (ind_t==0) {
                             }
 
                     if (ind_t==0 & Qt==0) {
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                            //on crée le tableau résultat pour l'espèce en question
                             PROTECT(ans_B_et = NEW_NUMERIC(prod));
 
                             if (count>0) { //valable seulement si B_et n'est pas seulement un scalaire
@@ -3091,13 +3416,13 @@ if (ind_t==0) {
 
                             int *fact7_D = INTEGER(dFACT7);
 
-                            //ï¿½quation
+                            //équation
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
 
                                     double temp = 0.0;
-                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                         temp = temp +
                                          rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                          r_w_ei[ind_f*fact8_D[0] + ind_m*fact8_D[1] + ind_i*fact8_D[2] + ind_t*fact8_D[3]] / 1000;
@@ -3162,7 +3487,7 @@ for (int e = 0 ; e < nbE ; e++) {
                     double  *r_M_ei = REAL(getListElement(elmt, "M_i"));
                     double  *r_N_ei0 = REAL(getListElement(elmt, "N_it0"));
                     double  *r_N_e0t = REAL(v_N_e0t);
-                    double  *r_w_ei = REAL(getListElement(elmt, "wStock_i"));
+                    double  *r_w_ei = REAL(getListElement(elmt, "wStock_i"));//PrintValue(getListElement(elmt, "wStock_i"));
                     double  *r_mat_ei = REAL(getListElement(elmt, "mat_i"));
                     double  *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
                     double  *r_Fbar = REAL(getListElement(elmt, "Fbar"));
@@ -3181,7 +3506,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                     double fmax = 0.0, sumWt = 0.0;
 
-                    //ï¿½quation nï¿½1 : out_Z_eit
+                    //équation n°1 : out_Z_eit
 
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -3221,7 +3546,7 @@ for (int e = 0 ; e < nbE ; e++) {
                             }
 //Rprintf("G17");
 
-                    //ï¿½quation nï¿½2 : out_N_eit
+                    //équation n°2 : out_N_eit
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -3277,7 +3602,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                         } else {
 
-                                            if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                            if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                 rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                   rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + (ind_t-1)*fact4_D[3]] *
@@ -3302,7 +3627,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                     double temp = 0.0;
 
-                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                         temp = temp +
                                          rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                          r_mat_ei[ind_f*fact10_D[0] + ind_m*fact10_D[1] + ind_i*fact10_D[2] + ind_t*fact10_D[3]] *
@@ -3377,7 +3702,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                 //double fmax = 0.0, sumWt = 0.0;
 
-                //ï¿½quation nï¿½1 : out_Z_eit
+                //équation n°1 : out_Z_eit
 
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -3401,7 +3726,7 @@ for (int e = 0 ; e < nbE ; e++) {
                                     r_Froth_i[ind_i + nbI*ind_t];
                                 }
 
-                            //on en profite pour mettre ï¿½ jour F_itQ
+                            //on en profite pour mettre à jour F_itQ
 
                             r_F_itQ[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = temp + r_Froth_i[ind_i + nbI*ind_t];
 
@@ -3411,7 +3736,7 @@ for (int e = 0 ; e < nbE ; e++) {
                             }
 
 //Rprintf("G19");
-                //ï¿½quation nï¿½2 : out_N_eit
+                //équation n°2 : out_N_eit
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -3439,7 +3764,7 @@ for (int e = 0 ; e < nbE ; e++) {
                                             if (ISNA(r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]])) {
 
                                                 r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
-                                                  r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial dï¿½fini
+                                                  r_N_ei0[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + 0*fact5_D[3]]; //seul instant initial défini
 
                                             } else {
 
@@ -3460,7 +3785,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                             if (Qt>0) { //trimestre 2, 3 ou 4
 
-                                                if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                                if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                     r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                       REAL(VECTOR_ELT(VECTOR_ELT(out_N_eitQ, e),Qt-1))[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + ind_t*fact4_D[3]] *
@@ -3478,7 +3803,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                             } else {  //trimestre 1
 
-                                               if (ind_i == (nbI-1)) {  //groupe d'ï¿½ge +
+                                               if (ind_i == (nbI-1)) {  //groupe d'âge +
 
                                                     r_N_eitQ[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                       REAL(VECTOR_ELT(VECTOR_ELT(out_N_eitQ, e),3))[ind_f*fact4_D[0] + ind_m*fact4_D[1] + (ind_i-1)*fact4_D[2] + (ind_t-1)*fact4_D[3]] *
@@ -3560,7 +3885,7 @@ for (int e = 0 ; e < nbE ; e++) {
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
 
                                     double temp = 0.0;
-                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothï¿½se que la dimension ï¿½ge est toujours prï¿½sente
+                                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++) //on fait ici l'hypothèse que la dimension âge est toujours présente
                                         temp = temp +
                                          rans_N_eit[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] *
                                          r_mat_ei[ind_f*fact10_D[0] + ind_m*fact10_D[1] + ind_i*fact10_D[2] + ind_t*fact10_D[3]] *
@@ -3612,7 +3937,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
 
 //------------------------------------------
-// Module 'Captures, rejets et dï¿½barquements'
+// Module 'Captures, rejets et débarquements'
 //------------------------------------------
 
 extern "C" {
@@ -3728,7 +4053,7 @@ if (ind_t==0) {
                             // calcul de C_efmit
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de C_efmit
+                            //on détermine l'attribut Dimension de C_efmit
                             PROTECT(dimCst = allocVector(INTSXP, 4));
                             dimC = INTEGER(dimCst);
                             dimC[0] = dim_F_efmit[0] ; dimC[1] = dim_F_efmit[1] ; dimC[2] = dim_F_efmit[2];
@@ -3764,7 +4089,7 @@ if (ind_t==0) {
 
                     if (ind_t==0){
 
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                            //on crée le tableau résultat pour l'espèce en question
                             PROTECT(ans_C_efmit = NEW_NUMERIC(prod));
                             setAttrib(ans_C_efmit, R_DimSymbol, Dim);
 
@@ -3809,7 +4134,7 @@ if (ind_t==0) {
 
                             double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -3873,7 +4198,7 @@ if (ind_t==0) {
                             // calcul de Y_efmit
                             //---------
 
-                        //on considï¿½re les dimensions de C, Y, D et L homogï¿½nes sur tout le module --> pas besoin de les redï¿½finir
+                        //on considère les dimensions de C, Y, D et L homogènes sur tout le module --> pas besoin de les redéfinir
 
                     if (ind_t==0){
 
@@ -3902,7 +4227,7 @@ if (ind_t==0) {
 
                             int *fact5_C = INTEGER(cFACT5);
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -3970,9 +4295,9 @@ if (ind_t==0) {
                             int *fact7_C = INTEGER(cFACT7);
 
 
-                            //ï¿½quation : 2 maniï¿½res de calculer selon la disponibilitï¿½ de wD_i
+                            //équation : 2 manières de calculer selon la disponibilité de wD_i
 
-                    if (all_is_na(v_wD_ei)) { //1ï¿½re mï¿½thode
+                    if (all_is_na(v_wD_ei)) { //1ère méthode
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -3986,7 +4311,7 @@ if (ind_t==0) {
                                     rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
                             }
 
-                    } else {                 //2ï¿½me mï¿½thode
+                    } else {                 //2ème méthode
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4040,7 +4365,7 @@ if (ind_t==0) {
 
                     }
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4137,7 +4462,7 @@ if (ind_t==0) {
                             // calcul de C_efmit
                             //---------
 
-                            //on dï¿½termine l'attribut Dimension de C_efmit
+                            //on détermine l'attribut Dimension de C_efmit
                             PROTECT(dimCst = allocVector(INTSXP, 4));
                             dimC = INTEGER(dimCst);
                             dimC[0] = dim_F_efmit[0] ; dimC[1] = dim_F_efmit[1] ; dimC[2] = dim_F_efmit[2];
@@ -4173,7 +4498,7 @@ if (ind_t==0) {
 
                     if (ind_t==0 & Qt==0){   //(ind_t==0 & Qt==0)
 
-                            //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+                            //on crée le tableau résultat pour l'espèce en question
                             PROTECT(ans_C_efmit = NEW_NUMERIC(prod));
                             setAttrib(ans_C_efmit, R_DimSymbol, Dim);
 
@@ -4218,7 +4543,7 @@ if (ind_t==0) {
 
                             double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44),Qt));
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4290,7 +4615,7 @@ if (ind_t==0) {
                             // calcul de Y_efmit
                             //---------
 
-                        //on considï¿½re les dimensions de C, Y, D et L homogï¿½nes sur tout le module --> pas besoin de les redï¿½finir
+                        //on considère les dimensions de C, Y, D et L homogènes sur tout le module --> pas besoin de les redéfinir
 
                     if (ind_t==0 & Qt==0){
 
@@ -4319,7 +4644,7 @@ if (ind_t==0) {
 
                             int *fact5_C = INTEGER(cFACT5);
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4411,9 +4736,9 @@ if (ind_t==0) {
                             int *fact7_C = INTEGER(cFACT7);
 
 
-                            //ï¿½quation : 2 maniï¿½res de calculer selon la disponibilitï¿½ de wD_i
+                            //équation : 2 manières de calculer selon la disponibilité de wD_i
 
-                    if (all_is_na(v_wD_ei)) { //1ï¿½re mï¿½thode
+                    if (all_is_na(v_wD_ei)) { //1ère méthode
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4435,7 +4760,7 @@ if (ind_t==0) {
                                     r_Z_eit[ind_f*fact4_C[0] + ind_m*fact4_C[1] + ind_i*fact4_C[2] + ind_t*fact4_C[3]]) / 1000));
                             }
 
-                    } else {                 //2ï¿½me mï¿½thode
+                    } else {                 //2ème méthode
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4495,7 +4820,7 @@ if (ind_t==0) {
 
                     }
 
-                            //ï¿½quation
+                            //équation
 
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4565,7 +4890,7 @@ if (ind_t==0) UNPROTECT(1);
                                         *fact6_C = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 34)),
                                         *fact7_C  = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 35));
 
-                                //ï¿½quation nï¿½1
+                                //équation n°1
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4579,7 +4904,7 @@ if (ind_t==0) UNPROTECT(1);
 
 
 
-                                //ï¿½quation
+                                //équation
 
                                 for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -4601,7 +4926,7 @@ if (ind_t==0) UNPROTECT(1);
                                 }
 
 
-                               //ï¿½quation nï¿½2
+                               //équation n°2
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4621,7 +4946,7 @@ if (ind_t==0) UNPROTECT(1);
 
 
 
-                               //ï¿½quation nï¿½3
+                               //équation n°3
 
                             if (all_is_na(v_wD_ei)) {
 
@@ -4655,7 +4980,7 @@ if (ind_t==0) UNPROTECT(1);
 
                             }
 
-                               //ï¿½quation nï¿½4
+                               //équation n°4
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4702,7 +5027,7 @@ if (ind_t==0) UNPROTECT(1);
                                         *fact6_C = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 34)),
                                         *fact7_C  = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 35));
 
-                                //ï¿½quation nï¿½1
+                                //équation n°1
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4722,7 +5047,7 @@ if (ind_t==0) UNPROTECT(1);
 
 
 
-                                //ï¿½quation
+                                //équation
 
 
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
@@ -4747,7 +5072,7 @@ if (ind_t==0) UNPROTECT(1);
                             }
 
 
-                               //ï¿½quation nï¿½2
+                               //équation n°2
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4791,7 +5116,7 @@ if (ind_t==0) UNPROTECT(1);
                               }
 
 
-                               //ï¿½quation nï¿½3
+                               //équation n°3
 
                             if (all_is_na(v_wD_ei)) {
 
@@ -4839,7 +5164,7 @@ if (ind_t==0) UNPROTECT(1);
 
                             }
 
-                               //ï¿½quation nï¿½4
+                               //équation n°4
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -4865,7 +5190,7 @@ if (ind_t==0) UNPROTECT(1);
 
 //
 ////------------------------------------------
-//// Module 'Marchï¿½'
+//// Module 'Marché'
 ////------------------------------------------
 //
 extern "C" {
@@ -4995,7 +5320,7 @@ if (ind_t==0) {
 
 if (ind_t==0){
 
-        //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question
+        //on crée le tableau résultat pour l'espèce en question
         PROTECT(ans_L_efmct = NEW_NUMERIC(prod));
         setAttrib(ans_L_efmct, R_DimSymbol, Dim_L_efmct);
 //        PROTECT(ans_L_efmct2 = NEW_NUMERIC(prod2));
@@ -5040,7 +5365,7 @@ if (ind_t==0){
         int *fact_Ci = INTEGER(cFACTi);//Rprintf("AAA6");
 //        int *fact_Cc2 = INTEGER(cFACTc2);
 
-        //ï¿½quation nï¿½1 : conversion ï¿½ge/catgï¿½gorie
+        //équation n°1 : conversion âge/catgégorie
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
         for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -5126,7 +5451,7 @@ if (ind_t==0) UNPROTECT(1);
 //        nbI = length(getListElement(elmt, "age"));
 //
 //        v_cat_i = getListElement(elmt, "cat_i");
-//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable ï¿½ remettre ï¿½ jour
+//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable à remettre à jour
 //        v_beta_i = getListElement(elmt, "beta_c");
 //        v_gamma_i = getListElement(elmt, "gamma_c");
 //        v_P_it = getListElement(elmt, "P_ct");
@@ -5154,7 +5479,7 @@ if (ind_t==0) UNPROTECT(1);
 //            error("Non_homogeneous dimensions in alpha_mi element. Check .ini biological parameters files !!\n");
 //        }
 //
-//        dim_beta_i = INTEGER(dimCst_beta_i); //les facteurs alpha, beta et gamma doivent avoir mï¿½me dimension
+//        dim_beta_i = INTEGER(dimCst_beta_i); //les facteurs alpha, beta et gamma doivent avoir même dimension
 //        if ((dim_beta_i[0]!=dim_alpha_i[0]) | (dim_beta_i[1]!=dim_alpha_i[1]) |
 //            (dim_beta_i[2]!=dim_alpha_i[2]) | (dim_beta_i[3]!=dim_alpha_i[3]))
 //        {
@@ -5182,7 +5507,7 @@ if (ind_t==0) UNPROTECT(1);
 //            error("Non_homogeneous dimensions in L_efmit element. Check .ini biological parameters files !!\n");
 //        }
 //
-//        //on dï¿½termine l'attribut Dimension du tableau rï¿½sultant -> dimCst (on en profite pour compter les dimensions rï¿½elles + nombre de cellules)
+//        //on détermine l'attribut Dimension du tableau résultant -> dimCst (on en profite pour compter les dimensions réelles + nombre de cellules)
 //        PROTECT(dimCst = allocVector(INTSXP, 4));
 //        dimC = INTEGER(dimCst);
 //        dimC[0] = nbF; dimC[1] = nbM; dimC[2] = nbI; dimC[3] =nbT;
@@ -5208,7 +5533,7 @@ if (ind_t==0) UNPROTECT(1);
 //        }
 //
 //
-//        //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question -> ans_1
+//        //on crée le tableau résultat pour l'espèce en question -> ans_1
 //        ans_1 = PROTECT(NEW_NUMERIC(prod));
 //        setAttrib(ans_1, R_DimSymbol, Dim);
 //
@@ -5234,8 +5559,8 @@ if (ind_t==0) UNPROTECT(1);
 //        fact6_P = iDim(dim_L_efmit);
 //
 //
-//        //il faut avant tout crï¿½er les tableaux sum_L_fmeit et sumNot_L_fmeit
-//            //1ï¿½re ï¿½tape : somme sur les ï¿½ges de chaque classe
+//        //il faut avant tout créer les tableaux sum_L_fmeit et sumNot_L_fmeit
+//            //1ère étape : somme sur les âges de chaque classe
 //        tab_sum_i = PROTECT(NEW_NUMERIC(prod));
 //        tab_sum_not_i = PROTECT(NEW_NUMERIC(prod));
 //        rtab_sum_i = REAL(tab_sum_i);
@@ -5256,11 +5581,11 @@ if (ind_t==0) UNPROTECT(1);
 //        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
 //        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
 //
-//        //classe associï¿½e ï¿½ l'ï¿½ge
+//        //classe associée à l'âge
 //
 //        for (int I = 0 ; I < nbI ; I++) {
 //
-//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par ï¿½ge --> pas d'autres dï¿½clinaisons
+//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par âge --> pas d'autres déclinaisons
 //
 //                rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] =
 //                 rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] +
@@ -5276,7 +5601,7 @@ if (ind_t==0) UNPROTECT(1);
 //
 //        }
 //        }
-//            //2ï¿½me ï¿½tape : on agrï¿½ge en fonction des dimensions des coefficients
+//            //2ème étape : on agrège en fonction des dimensions des coefficients
 //
 //        PROTECT(dimCoeff = allocVector(INTSXP, 4));
 //        dimCo = INTEGER(dimCoeff);
@@ -5287,7 +5612,7 @@ if (ind_t==0) UNPROTECT(1);
 //        sum_i = REAL(aggregObj(tab_sum_i,dimCoeff));
 //        sum_not_i = REAL(aggregObj(tab_sum_not_i,dimCoeff));
 //
-//        //ï¿½quation
+//        //équation
 //
 //        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
 //        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -5348,7 +5673,7 @@ if (ind_t==0) UNPROTECT(1);
 //        nbI = length(getListElement(elmt, "age"));
 //
 //        v_cat_i = getListElement(elmt, "cat_i");
-//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable ï¿½ remettre ï¿½ jour
+//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable à remettre à jour
 //        v_beta_i = getListElement(elmt, "beta_c");
 //        v_gamma_i = getListElement(elmt, "gamma_c");
 //        v_P_it = getListElement(elmt, "P_ct");
@@ -5363,7 +5688,7 @@ if (ind_t==0) UNPROTECT(1);
 //
 //        dim_alpha_i = INTEGER(dimCst_alpha_i);
 //
-//        //on crï¿½e le tableau rï¿½sultat pour l'espï¿½ce en question -> ans_1
+//        //on crée le tableau résultat pour l'espèce en question -> ans_1
 //        ans_1 = getListElement(out_P_t, CHAR(STRING_ELT(sppList,e)));
 //
 //        rans_1 = REAL(ans_1);
@@ -5387,8 +5712,8 @@ if (ind_t==0) UNPROTECT(1);
 //
 //        }
 //
-//      //il faut avant tout crï¿½er les tableaux sum_L_fmeit et sumNot_L_fmeit
-//            //1ï¿½re ï¿½tape : somme sur les ages de chaque classe
+//      //il faut avant tout créer les tableaux sum_L_fmeit et sumNot_L_fmeit
+//            //1ère étape : somme sur les ages de chaque classe
 //        tab_sum_i = PROTECT(NEW_NUMERIC(prod));
 //        tab_sum_not_i = PROTECT(NEW_NUMERIC(prod));
 //        rtab_sum_i = REAL(tab_sum_i);
@@ -5409,11 +5734,11 @@ if (ind_t==0) UNPROTECT(1);
 //        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
 //        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
 //
-//        //classe associï¿½e ï¿½ l'ï¿½ge
+//        //classe associée à l'âge
 //
 //        for (int I = 0 ; I < nbI ; I++) {
 //
-//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par ï¿½ge --> pas d'autres dï¿½clinaisons
+//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par âge --> pas d'autres déclinaisons
 //
 //                rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] =
 //                 rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] +
@@ -5429,7 +5754,7 @@ if (ind_t==0) UNPROTECT(1);
 //
 //        }
 //        }
-//            //2ï¿½me ï¿½tape : on agrï¿½ge en fonction des dimensions des coefficients
+//            //2ème étape : on agrège en fonction des dimensions des coefficients
 //
 //        PROTECT(dimCoeff = allocVector(INTSXP, 4));
 //        dimCo = INTEGER(dimCoeff);
@@ -5440,7 +5765,7 @@ if (ind_t==0) UNPROTECT(1);
 //        sum_i = REAL(aggregObj(tab_sum_i,dimCoeff));
 //        sum_not_i = REAL(aggregObj(tab_sum_not_i,dimCoeff));
 //
-//        //ï¿½quation
+//        //équation
 //
 //        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
 //        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -5491,7 +5816,7 @@ void BioEcoPar::Economic(SEXP list, int ind_t, int adj, int lev, int ue_choice, 
     PROTECT(out_Eco);
 
 //2 protect
-    SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets rï¿½sultats
+    SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets résultats
 
     SEXP eFACTf, eFACTfm, elmt;
 
@@ -5531,7 +5856,7 @@ void BioEcoPar::Economic(SEXP list, int ind_t, int adj, int lev, int ue_choice, 
             *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gcfAct_f_out, *r_psAct_f_out, *r_stsAct_f_out;
 
 
-//dï¿½finition des dimensions
+//définition des dimensions
     PROTECT(dimCstF = allocVector(INTSXP, 4));
     PROTECT(DimF = allocVector(INTSXP, 2));
     PROTECT(dimnamesF = allocVector(VECSXP,2));
@@ -5557,7 +5882,7 @@ void BioEcoPar::Economic(SEXP list, int ind_t, int adj, int lev, int ue_choice, 
     DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
     DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
 
-    //facteurs des indices gï¿½nï¿½riques F/FM
+    //facteurs des indices génériques F/FM
     PROTECT(eFACTf = iDim(dCF));
     PROTECT(eFACTfm = iDim(dCFM));
 
@@ -5714,7 +6039,7 @@ if (ind_t==0) {
 
 
 //-------------------------
-// Stade prï¿½liminaire (temps initial)
+// Stade préliminaire (temps initial)
 //-------------------------
 
     PROTECT(Loths_f = NEW_NUMERIC(nbF));                     r_Loths_f = REAL(Loths_f);
@@ -5794,18 +6119,18 @@ if (ind_t==0) {
 
 
         //------------------------------
-        //ï¿½quations de la table "p"
+        //équations de la table "p"
         //------------------------------
 
         //-- 1. Loths_f
 
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait ï¿½gal ï¿½ 0
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait égal à 0
 
             if (e==0) {
 
                 r_Loths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_Lref_f[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]] -
-                    r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]]; //on suppose que la donnï¿½e par espï¿½ce est de mï¿½me dimension que la donnï¿½e totale
+                    r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]]; //on suppose que la donnée par espèce est de même dimension que la donnée totale
 
             } else {
 
@@ -5817,13 +6142,13 @@ if (ind_t==0) {
 
         //-- 4. Lothm_f_e
 
-    if (adj==2) { //alors on cale la variable sur les valeurs issues des bases activitï¿½
+    if (adj==2) { //alors on cale la variable sur les valeurs issues des bases activité
 
         r_Lothm_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]] -
                 r_Lref_f_sum_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]];
 
-    } else {        //autrement, on se rapporte ï¿½ la valeur estimï¿½e ï¿½ t initial
+    } else {        //autrement, on se rapporte à la valeur estimée à t initial
 
         r_Lothm_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]] -
@@ -5832,7 +6157,7 @@ if (ind_t==0) {
     }
 
 
-    double countGVLtotf = 0.0; //pour sommer GVLtot_f_m_e sur les mï¿½tiers
+    double countGVLtotf = 0.0; //pour sommer GVLtot_f_m_e sur les métiers
 
             for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
@@ -5986,7 +6311,7 @@ if (ind_t==0) {
 
         }
 
-        //on formatte le(s) rï¿½sultat(s) et on les intï¿½gre ï¿½ 'eVar'
+        //on formatte le(s) résultat(s) et on les intègre à 'eVar'
 
         setAttrib(Lothm_f_e, R_NamesSymbol, fleetList);
         setAttrib(Lothm_f_e, install("DimCst"), dimCstFini);
@@ -6000,7 +6325,7 @@ if (ind_t==0) {
 
 }
 
-    // ï¿½ ce stade, plus de considï¿½ration d'espï¿½ce pour les variables ï¿½ initialiser
+    // à ce stade, plus de considération d'espèce pour les variables à initialiser
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
@@ -6482,7 +6807,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
 
 
-//on formatte le(s) rï¿½sultat(s) et on intï¿½gre ï¿½ fVar
+//on formatte le(s) résultat(s) et on intègre à fVar
 
         setAttrib(Loths_f, R_NamesSymbol, fleetList);
         setAttrib(Loths_f, install("DimCst"), dimCstFini);
@@ -6985,7 +7310,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
     SET_VECTOR_ELT(out_Eco, 59, stsAct_f_out);
 
 
-    //on nomme les ï¿½lï¿½ments de out_Eco
+    //on nomme les éléments de out_Eco
     const char *namesEco[60] = {"Lbio_f","GVL_f_m_e","GVLtot_f_m","GVLav_f_m","GVLtot_f","GVLav_f","NGVLav_f_m","NGVLav_f","vcst_f_m",
                           "vcst_f","rtbs_f_m","rtbs_f","cshrT_f_m","cshrT_f","sshr_f_m","sshr_f","ncshr_f","ocl_f","cs_f","csTot_f",
                           "gva_f","ccw_f","ccwCr_f","wageg_f","wagen_f",
@@ -7005,7 +7330,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 //55 protect    --> 101
 }
 
-//on importe les outputs afin de les mettre ï¿½ jour ï¿½ l'instant ind_t
+//on importe les outputs afin de les mettre à jour à l'instant ind_t
 
     r_Lbio_f_out = REAL(VECTOR_ELT(out_Eco,0));
     r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_Eco,2));
@@ -7122,7 +7447,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
         int *dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
 
         //---------------------
-        //ï¿½quations de la table "t"
+        //équations de la table "t"
         //---------------------
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -7228,7 +7553,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 }
 
 
-    // ï¿½ ce stade, plus de considï¿½ration d'espï¿½ce pour les indicateurs
+    // à ce stade, plus de considération d'espèce pour les indicateurs
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
@@ -7341,7 +7666,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                     (1 - 0.01*r_lc_f[ind_f*dim_lc_f[0] + 0*dim_lc_f[1] + 0*dim_lc_f[2] + ind_t*dim_lc_f[3]]);
 
 
-            } //on sort de la boucle sur les niveaux mï¿½tiers
+            } //on sort de la boucle sur les niveaux métiers
 
 
             //-- 6. GVLav_f
@@ -7504,7 +7829,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
             }
 
-            //version actualisï¿½e
+            //version actualisée
             r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                         r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7633,7 +7958,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
             }
 
-            } //on sort de la boucle sur les niveaux mï¿½tiers
+            } //on sort de la boucle sur les niveaux métiers
 
 
              //-- 17. ncshr_f
@@ -7655,7 +7980,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                     r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-                        //version actualisï¿½e
+                        //version actualisée
             r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                         r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7679,7 +8004,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                     r_comc_f[ind_f*dim_comc_f[0] + 0*dim_comc_f[1] + 0*dim_comc_f[2] + ind_t*dim_comc_f[3]] +
                     r_onvcr_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) / pow(1+0.0,ind_t) ;
 
-                //version actualisï¿½e
+                //version actualisée
             r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                         r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7736,7 +8061,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                     r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-               //version actualisï¿½e
+               //version actualisée
             r_gcfAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                         r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7768,7 +8093,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                      r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
-                //version actualisï¿½e
+                //version actualisée
             r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                          r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7780,7 +8105,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
                     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
-            //version actualisï¿½e
+            //version actualisée
             r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                          r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -7969,7 +8294,7 @@ UNPROTECT(109);
 
 //---------------------------------
 //
-// Module de recrutement alï¿½atoire
+// Module de recrutement aléatoire
 //
 //---------------------------------
 
@@ -7977,20 +8302,20 @@ UNPROTECT(109);
 
 extern "C" {
 
-void BioEcoPar::RecAlea(SEXP list, SEXP listSto, int ind_t, int type, int *recTyp) //list : liste des paramï¿½tres d'entrï¿½e ; listSto : liste des variables d'opï¿½rations stochastiques ; type : 1 -> samples sur l'historique (temps variable), 2 -> samples sur l'historique (temps constant), 3 -> loi de distribution
+void BioEcoPar::RecAlea(SEXP list, SEXP listSto, int ind_t, int type, int *recTyp) //list : liste des paramètres d'entrée ; listSto : liste des variables d'opérations stochastiques ; type : 1 -> samples sur l'historique (temps variable), 2 -> samples sur l'historique (temps constant), 3 -> loi de distribution
 {
 
 if (type<3) {
 
        SEXP elmtIn, elmtMeanSto, elmtResSto, MeanSto, ResSto, Rec, dimRec;
-    //on tire au sort pour chacune des espï¿½ces modï¿½lisï¿½es un rï¿½sidu et on l'ajoute ï¿½ la moyenne gï¿½omï¿½trique prï¿½-calculï¿½e
+    //on tire au sort pour chacune des espèces modélisées un résidu et on l'ajoute à la moyenne géométrique pré-calculée
        int index = 0;
 
     for (int e = 0 ; e < nbE ; e++) {
 
         if (trim[e]==0) { //------------------------------------------------------------------ pas de dimension trimestre
 
-                        if (recTyp[e]==1) {
+                    if (recTyp[e]==1) {
 
                         PROTECT(elmtIn = getListElement(list, CHAR(STRING_ELT(sppList,e))));
                         if (type==1) {
@@ -8012,12 +8337,12 @@ if (type<3) {
 
                     if (ll > 0) {
 
-                        if (type==1) { //multiple tirage d'indice (1 par espï¿½ce)
+                        if (type==1) { //multiple tirage d'indice (1 par espèce)
 
                             index = ll;
                             while (index >= ll) index = (int)(rand() / (((double)RAND_MAX + 1)/ ll));
 
-                        } else {        //unique tirage d'indice pour les espï¿½ces considï¿½rï¿½es (historiques de mï¿½me taille)
+                        } else {        //unique tirage d'indice pour les espèces considérées (historiques de même taille)
 
                             if (e==0) {
 
@@ -8074,12 +8399,12 @@ if (type<3) {
 
                     if (ll > 0) {
 
-                        if (type==1) { //multiple tirage d'indice (1 par espï¿½ce)
+                        if (type==1) { //multiple tirage d'indice (1 par espèce)
 
                             index = ll;
                             while (index >= ll) index = (int)(rand() / (((double)RAND_MAX + 1)/ ll));
 
-                        } else {        //unique tirage d'indice pour les espï¿½ces considï¿½rï¿½es (historiques de mï¿½me taille)
+                        } else {        //unique tirage d'indice pour les espèces considérées (historiques de même taille)
 
                             if (e==0 & Qt==0) {
 
@@ -8124,7 +8449,7 @@ if (type<3) {
 
     SEXP elmtIn, elmtDist, elmtDistParOne, elmtDistParTwo, elmtDistParThree,
          elmtDistSp, elmtDistParOneSp, elmtDistParTwoSp, elmtDistParThreeSp, Rec, dimRec;
-    //on gï¿½nï¿½re une variable alï¿½atoire suivant une loi log-normale de paramï¿½tres spï¿½cifiï¿½s
+    //on génère une variable aléatoire suivant une loi log-normale de paramètres spécifiés
 
     for (int e = 0 ; e < nbE ; e++) {
 
@@ -8170,7 +8495,7 @@ if (type<3) {
                 if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "wilcox") == 0) v_a = rwilcox(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
                 if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "signrank") == 0) v_a = rsignrank(REAL(elmtDistParOneSp)[0]);
 
-                //if ... pour les autres lois --> ï¿½ complï¿½ter
+                //if ... pour les autres lois --> à compléter
 
                 PROTECT(Rec = getListElement(elmtIn, "N_i0t"));
                 PROTECT(dimRec = getAttrib(Rec, install("DimCst")));
@@ -8232,7 +8557,7 @@ if (type<3) {
                     if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "wilcox") == 0) v_a = rwilcox(REAL(elmtDistParOneSp)[0],REAL(elmtDistParTwoSp)[0]);
                     if (strcmp(CHAR(STRING_ELT(elmtDistSp, 0)), "signrank") == 0) v_a = rsignrank(REAL(elmtDistParOneSp)[0]);
 
-                    //if ... pour les autres lois --> ï¿½ complï¿½ter
+                    //if ... pour les autres lois --> à compléter
 
                     PROTECT(Rec = getListElement(getListElement(elmtIn, "N_i0t"),CHAR(STRING_ELT(trimInt,Qt))));
                     PROTECT(dimRec = getAttrib(Rec, install("DimCst")));
@@ -8266,7 +8591,7 @@ if (type<3) {
 
 //---------------------------------
 //
-// Module de modï¿½lisation de relations S/R
+// Module de modélisation de relations S/R
 //
 //---------------------------------
 
@@ -8275,9 +8600,9 @@ if (type<3) {
 extern "C" {
 
 void BioEcoPar::SRmod(SEXP list, SEXP listSR, int ind_t, SEXP TypeSR, int *srind)
-        //list : liste des paramï¿½tres d'entrï¿½e;
-        //listSR : liste des paramï¿½tres a,b&c du modï¿½le SR + e.t bruit normal ou lognormal + type de bruit (1=normal, 2=lognormal) (un vecteur de longueur 5 par espï¿½ce modï¿½lisï¿½e contenant des "doubles")
-        //type : type de relation Stock-Recrutement : (liste de longueur "nb d'espï¿½ces modï¿½lisï¿½es" contenant des entiers)
+        //list : liste des paramètres d'entrée;
+        //listSR : liste des paramètres a,b&c du modèle SR + e.t bruit normal ou lognormal + type de bruit (1=normal, 2=lognormal) (un vecteur de longueur 5 par espèce modélisée contenant des "doubles")
+        //type : type de relation Stock-Recrutement : (liste de longueur "nb d'espèces modélisées" contenant des entiers)
         //                                              1 -> recrutement constant moyen (rec~a)
         //                                              2 -> Hockey stick (rec ~ (si (ssb<=b) a*ssb sinon a*b))
         //                                              3 -> Beverton & Holt (rec ~ a*ssb/(b+ssb))
@@ -8302,7 +8627,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
     if (srind[e]==1) {  //activation du module
 
-    if (ind_t==0) { //deuxiï¿½me ï¿½tape d'initialisation (niveau espï¿½ce)
+    if (ind_t==0) { //deuxième étape d'initialisation (niveau espèce)
 
         PROTECT(ans = NEW_NUMERIC(nbT));
         setAttrib(ans, R_NamesSymbol, times);
@@ -8315,10 +8640,10 @@ for (int e = 0 ; e < nbE ; e++) {
     typeSR = INTEGER(VECTOR_ELT(TypeSR, e))[0];
     if (ind_t>0) ssb = REAL(VECTOR_ELT(out_SSB_et, e)); else ssb = &NA_REAL;
 
-    //il nous faut aussi le dï¿½calage temporel dï¿½ au premier ï¿½ge modï¿½lisï¿½ -> un SSB(t) gï¿½nï¿½rera un R(t+age0+1)
+    //il nous faut aussi le décalage temporel dû au premier âge modélisé -> un SSB(t) générera un R(t+age0+1)
     fstAge = CHAR(STRING_ELT(VECTOR_ELT(namDC, e),0))[0] - '0'; ++fstAge;
 
-    //on en profite pour initialiser l'objet pour les premiï¿½res annï¿½es pour lesquelles on devra aller chercher l'info dans Ni0
+    //on en profite pour initialiser l'objet pour les premières années pour lesquelles on devra aller chercher l'info dans Ni0
     if (ind_t<fstAge) {
 
         rans[ind_t] = NA_REAL;
@@ -8373,7 +8698,7 @@ for (int e = 0 ; e < nbE ; e++) {
         rans[ind_t] = NA_REAL;
 
     }
-    //il ne reste plus qu'ï¿½ ajouter le bruit blanc issue de N(0,sigma) avec sigma = paramet[3]
+    //il ne reste plus qu'à ajouter le bruit blanc issue de N(0,sigma) avec sigma = paramet[3]
     double v_alea = 0.0;
 GetRNGstate();
         if (!ISNA(paramet[3])) v_alea = rnorm(0.0,paramet[3]); ////Rprintf("%f ",v_alea);Rprintf("%f ",rnorm(0.0,0.157));
@@ -8396,7 +8721,11 @@ PutRNGstate();
 
 }}
 
-
+//---------------------------------
+//
+// Module de simulation aléatoire des prix
+//
+//---------------------------------
 
 
 
@@ -8404,7 +8733,7 @@ PutRNGstate();
 
 //---------------------------------
 //
-// Module de gestion des scï¿½narios
+// Module de gestion des scénarios
 //
 //---------------------------------
 
@@ -8412,7 +8741,7 @@ PutRNGstate();
 
 extern "C" {
 
-void BioEcoPar::Scenario(SEXP list, SEXP listScen, int ind_t) //list : liste des paramï¿½tres d'entrï¿½e ; listScen : liste des multiplicateurs pour un scï¿½nario donnï¿½
+void BioEcoPar::Scenario(SEXP list, SEXP listScen, int ind_t) //list : liste des paramètres d'entrée ; listScen : liste des multiplicateurs pour un scénario donné
 {
 
 //1er niveau de la liste de multiplicateurs : Fleet ou Species --> on cible la partie de "list" correspondante
@@ -8437,7 +8766,7 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
             PROTECT(namVar = STRING_ELT(getAttrib(mult_lvl_1, R_NamesSymbol), i));
             PROTECT(mult_lvl_2 = getListElement(mult_lvl_1, CHAR(namVar)));
 
-            //ici, selon que la variable considï¿½rï¿½e est un input ou une variable interne (ex : Foth_i), on agit diffï¿½remment
+            //ici, selon que la variable considérée est un input ou une variable interne (ex : Foth_i), on agit différemment
 
             if (strcmp(CHAR(namVar), "Foth_i") == 0) {
 
@@ -8501,9 +8830,11 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
             if (IS_NUMERIC(target_lvl_2)) { //alors, pas de niveau trimestre
 
                 int *dimM, *dimT;
+                int typeSc = 0;
 
                 PROTECT(dimMult = getAttrib(mult_lvl_2, install("DimCst")));
-                //si 'target_lvl_2' est un ï¿½lï¿½ment de eVar, s'assurer au prï¿½alable de l'existence de l'attribut DimCst
+                if (getAttrib(mult_lvl_2, install("type")) != NULL) typeSc = INTEGER(getAttrib(mult_lvl_2, install("type")))[0];
+                //si 'target_lvl_2' est un élément de eVar, s'assurer au préalable de l'existence de l'attribut DimCst
                 PROTECT(dimTarget = getAttrib(target_lvl_2, install("DimCst")));
 
                 dimM = INTEGER(dimMult); dimT = INTEGER(dimTarget);
@@ -8519,17 +8850,51 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
 
                 double *target = REAL(target_lvl_2), *mult = REAL(mult_lvl_2);
 
-            //et on applique la mise ï¿½ jour
+            //et on applique la mise à jour selon typeSc
+
+            if (typeSc==0 | typeSc==1) {
 
                 for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
                 for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
                 for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
 
-                    target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
-                    target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] *
-                    mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] *
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
 
+                    }
                 }
+            }
+
+           if (typeSc==2) {
+
+                for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
+                for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
+                for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
+
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] +
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+
+                    }
+                }
+            }
+
+           if (typeSc==3) {
+
+                for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
+                for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
+                for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
+
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+
+                    }
+                }
+            }
 
                 UNPROTECT(4);
 
@@ -8538,11 +8903,14 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
               for (int Qt=0 ; Qt<4; Qt++){
 
                 int *dimM, *dimT;
+                int typeSc = 0;
 
                 if (getListElement(mult_lvl_2,CHAR(STRING_ELT(trimInt,Qt))) != NULL) {
 
                 PROTECT(dimMult = getAttrib(getListElement(mult_lvl_2,CHAR(STRING_ELT(trimInt,Qt))), install("DimCst")));
-                //si 'target_lvl_2' est un ï¿½lï¿½ment de eVar, s'assurer au prï¿½alable de l'existence de l'attribut DimCst
+                if (getAttrib(getListElement(mult_lvl_2,CHAR(STRING_ELT(trimInt,Qt))), install("type")) != NULL)
+                    typeSc = INTEGER(getAttrib(getListElement(mult_lvl_2,CHAR(STRING_ELT(trimInt,Qt))), install("type")))[0];
+                //si 'target_lvl_2' est un élément de eVar, s'assurer au préalable de l'existence de l'attribut DimCst
                 PROTECT(dimTarget = getAttrib(VECTOR_ELT(target_lvl_2, Qt), install("DimCst")));
 
                 dimM = INTEGER(dimMult); dimT = INTEGER(dimTarget);
@@ -8558,17 +8926,52 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
 
                 double *target = REAL(VECTOR_ELT(target_lvl_2,Qt)), *mult = REAL(getListElement(mult_lvl_2,CHAR(STRING_ELT(trimInt,Qt))));
 
-            //et on applique la mise ï¿½ jour
+            //et on applique la mise à jour
+
+            if (typeSc==0 | typeSc==1) {
 
                 for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
                 for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
                 for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
 
-                    target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
-                    target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] *
-                    mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] *
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
 
+                    }
                 }
+            }
+
+            if (typeSc==2) {
+
+                for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
+                for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
+                for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
+
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] +
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+
+                    }
+                }
+            }
+
+            if (typeSc==3) {
+
+                for (int ind_f = 0 ; ind_f < imax2(1,dimT[0]) ; ind_f++)
+                for (int ind_m = 0 ; ind_m < imax2(1,dimT[1]) ; ind_m++)
+                for (int ind_i = 0 ; ind_i < imax2(1,dimT[2]) ; ind_i++) {
+                    if (!ISNA(mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]])) {
+
+                        target[ind_f*ftarg[0] + ind_m*ftarg[1] + ind_i*ftarg[2] + ind_t*ftarg[3]] =
+                        mult[ind_f*fmult[0] + ind_m*fmult[1] + ind_i*fmult[2] + ind_t*fmult[3]];
+
+                    }
+                }
+            }
+
 
                 UNPROTECT(4);
 
@@ -8601,7 +9004,7 @@ for (int elt = 0 ; elt < nbElt ; elt++) {
 
 extern "C" {
 
-double BioEcoPar::fxTAC_glob(double mult) //par temps IND_T pour une espï¿½ce donnï¿½e // m_f : vecteur de pondï¿½ration par flottille
+double BioEcoPar::fxTAC_glob(double mult) //par temps IND_T pour une espèce donnée // m_f : vecteur de pondération par flottille
 {
     SEXP listTemp;
 
@@ -8741,6 +9144,7 @@ if (trgt==1 | trgt==3) {//on vise un TAC
     int *nd = INTEGER(nDim); for (int i = 0; i<3; i++) nd[i] = 0; nd[3] = nbT;
     double *tot = REAL(aggregObj(VECTOR_ELT(out_Y_eit, eTemp),nDim));
     result = TAC_glob[IND_T]-tot[IND_T];
+    //Rprintf("fxtac : TAC_glob %f TOT %f\n",TAC_glob[IND_T],tot[IND_T]);
 
 } else { //on vise un Fbar
 
@@ -8755,9 +9159,9 @@ if (trgt==1 | trgt==3) {//on vise un TAC
 
     double *tot = REAL(VECTOR_ELT(out_Fbar_et, eTemp));
     result = Fbar_trgt[IND_T]-tot[IND_T];
+    //Rprintf("fxtac : FBARtarget %f TOT %f\n",Fbar_trgt[IND_T],tot[IND_T]);
 
 }
-
 
     UNPROTECT(2);
 
@@ -8769,21 +9173,21 @@ if (trgt==1 | trgt==3) {//on vise un TAC
 
 
 //------------------------------------------
-// Module de gestion : ajustement des variables d'effort (nbds (paramï¿½tre "var" = 1) ou nbv (paramï¿½tre "var" = 2))
-// avec objectif d'atteinte du TAC (paramï¿½tre "trgt = 1") OU du Fbar (paramï¿½tre "trgt = 2")
-// Un 3ï¿½me paramï¿½tre "delay" spï¿½cifie le dï¿½lai de premiï¿½re applicaton de l'ajustement (valeur par dï¿½faut et minimale = 1).
-// Enfin, un 4ï¿½me paramï¿½tre "upd" (update) permet de spï¿½cifier si le multiplicateur s'applique ï¿½ la donnï¿½e initiale ï¿½ chaque pas de temps ("upd" = 1),
-// ou si elle s'applique ï¿½ la donnï¿½e ï¿½ l'instant prï¿½cï¿½dent ("upd" = 2).
+// Module de gestion : ajustement des variables d'effort (nbds (paramètre "var" = 1) ou nbv (paramètre "var" = 2))
+// avec objectif d'atteinte du TAC (paramètre "trgt = 1") OU du Fbar (paramètre "trgt = 2")
+// Un 3ème paramètre "delay" spécifie le délai de première applicaton de l'ajustement (valeur par défaut et minimale = 1).
+// Enfin, un 4ème paramètre "upd" (update) permet de spécifier si le multiplicateur s'applique à la donnée initiale à chaque pas de temps ("upd" = 1),
+// ou si elle s'applique à la donnée à l'instant précédent ("upd" = 2).
 //------------------------------------------
 
 
 
 extern "C" {
 
-void BioEcoPar::Gestion(SEXP list, int ind_t) //paramï¿½tres en entrï¿½e pas forcï¿½ment utiles dans la mesure oï¿½ ils doivent rester constant tout au long de la simulation
+void BioEcoPar::Gestion(SEXP list, int ind_t) //paramètres en entrée pas forcément utiles dans la mesure où ils doivent rester constant tout au long de la simulation
 {
 
-//on teste la validitï¿½ des paramï¿½tres d'entrï¿½e
+//on teste la validité des paramètres d'entrée
 
     if (var!=1 & var!=2) error("Wrong 'var' parameter in 'Gestion' module!!\n");
     if (trgt!=1 & trgt!=2 & trgt!=3) error("Wrong 'trgt' parameter in 'Gestion' module!!\n");
@@ -8795,7 +9199,7 @@ void BioEcoPar::Gestion(SEXP list, int ind_t) //paramï¿½tres en entrï¿½e pas for
 
     } else {
 
-    IND_T = ind_t;
+    IND_T = ind_t;//Rprintf("t %i",IND_T);
     double *mu_;//Rprintf("1");
     if (var==1) mu_ = REAL(mu_nbds); else mu_ = REAL(mu_nbv);
 
@@ -8814,6 +9218,7 @@ void BioEcoPar::Gestion(SEXP list, int ind_t) //paramï¿½tres en entrï¿½e pas for
     for (int i=1;i<=nb;i++) {
         tol=(1.0e-6)*(xb1[i]+xb2[i])/2.0;
         double result=zbrent(p,xb1[i],xb2[i],tol);
+        //Rprintf("result : %f",result);Rprintf("t %i",IND_T);
         mu_[IND_T] = result;
     }
     delete xb1;
@@ -8831,7 +9236,7 @@ void BioEcoPar::Gestion(SEXP list, int ind_t) //paramï¿½tres en entrï¿½e pas for
 
 // Numerical Recipes //----------------------------------------------------------------------------------------
 
-// --------  dï¿½termination racine (unidimensionnel)
+// --------  détermination racine (unidimensionnel)
 
 void BioEcoPar::zbrak(BEfn1 fx, double x1, double x2, int n, double xb1[],
 	double xb2[], int *nb)
@@ -9118,7 +9523,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
     bool GoOn = true;
 
-	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customCstV2; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customCstV2; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 	BEfn1_F foo3 = &BioEcoPar::fxTAC_F_customCst2;
 
     double DIFF = 0.0;
@@ -9128,7 +9533,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
         for (int IT2 = 0 ; IT2 < ITTOT ; IT2++){
 
-        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
     //Rprintf("IT %i \n",IT);
 
 
@@ -9163,7 +9568,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
         }
         }
 
-                //2ï¿½me ï¿½tape : redï¿½finition de Ztemp
+                //2ème étape : redéfinition de Ztemp
 
         SEXP listTemp;
 
@@ -9212,13 +9617,13 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
         }
 
-        //... et on recommence jusqu'ï¿½ convergence de Z vers la valeur coï¿½ncidant avec les mortalitï¿½s marginales
+        //... et on recommence jusqu'à convergence de Z vers la valeur coïncidant avec les mortalités marginales
 
         UNPROTECT(2);
 
         }
 
-        //3ï¿½me ï¿½tape : redï¿½finition de PxQ
+        //3ème étape : redéfinition de PxQ
 
     SEXP listTemp, nDimF;
 
@@ -9272,9 +9677,9 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
         }
 
-        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe diffï¿½rent
+        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe différent
 
-        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrï¿½te que si diffLQ<=0 (Quota respectï¿½)
+        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrête que si diffLQ<=0 (Quota respecté)
 
         IT++;
 
@@ -9337,7 +9742,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
 extern "C" {
 
-double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF;
 
@@ -9417,7 +9822,7 @@ double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation
 
     //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
-    //calcul de l'indicateur de profit ï¿½ optimiser
+    //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
 
     PROTECT(nDimF = allocVector(INTSXP,4));
@@ -9466,7 +9871,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
     bool GoOn = true;
 
-	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customReportV2; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customReportV2; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 	BEfn1_F foo3 = &BioEcoPar::fxTAC_F_customReport2;
 
     double DIFF = 0.0;
@@ -9476,7 +9881,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
         for (int IT2 = 0 ; IT2 < ITTOT ; IT2++){
 
-        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
     //Rprintf("IT %i \n",IT);
 
 
@@ -9511,7 +9916,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
         }
         }
 
-                //2ï¿½me ï¿½tape : redï¿½finition de Ztemp
+                //2ème étape : redéfinition de Ztemp
 
         SEXP listTemp;
 
@@ -9563,13 +9968,13 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
         }
 
-        //... et on recommence jusqu'ï¿½ convergence de Z vers la valeur coï¿½ncidant avec les mortalitï¿½s marginales
+        //... et on recommence jusqu'à convergence de Z vers la valeur coïncidant avec les mortalités marginales
 
         UNPROTECT(2);
 
         }
 
-        //3ï¿½me ï¿½tape : redï¿½finition de PxQ
+        //3ème étape : redéfinition de PxQ
 
     SEXP listTemp, nDimF;
 
@@ -9626,9 +10031,9 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
         }
 
-        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe diffï¿½rent
+        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe différent
 
-        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrï¿½te que si diffLQ<=0 (Quota respectï¿½)
+        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrête que si diffLQ<=0 (Quota respecté)
 
         IT++;
 
@@ -9694,7 +10099,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
 extern "C" {
 
-double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF;
 
@@ -9777,7 +10182,7 @@ double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexat
 
     //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
-    //calcul de l'indicateur de profit ï¿½ optimiser
+    //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
 
     PROTECT(nDimF = allocVector(INTSXP,4));
@@ -9801,11 +10206,11 @@ double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexat
 
 
 
-//hypothese effort mï¿½tier autre constant
+//hypothese effort métier autre constant
 
 extern "C" {
 
-double BioEcoPar::fxTAC_F_customCst2(double *x) //cas mï¿½tier Sole des flottilles modï¿½lisï¿½es seulement impactï¿½
+double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles modélisées seulement impacté
 {
     SEXP listTemp, nDimF, nDim;
 
@@ -9918,7 +10323,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 	double ftol = 0.00000001;
 
 
-	//on dï¿½clare q et z nï¿½cessaire ï¿½ la procï¿½dure d'optimisation
+	//on déclare q et z nécessaire à la procédure d'optimisation
 
 	double **q = NRmatrix(1,2,1,1);
 	double *z = NRvector(1,2);
@@ -9955,7 +10360,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
         }
 
-        //2ï¿½me ï¿½tape : redï¿½finition de Ztemp
+        //2ème étape : redéfinition de Ztemp
 
         SEXP listTemp;
 
@@ -10049,7 +10454,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
 extern "C" {
 
-double BioEcoPar::fxTAC_F_customReport2(double *x) //cas mï¿½tier Sole des flottilles modï¿½lisï¿½es seulement impactï¿½
+double BioEcoPar::fxTAC_F_customReport2(double *x) //cas métier Sole des flottilles modélisées seulement impacté
 {
     SEXP listTemp, nDimF, nDim;
 
@@ -10166,7 +10571,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 	double ftol = 0.00000001;
 
     Rprintf("TIME %i \n",IND_T);
-	//on dï¿½clare q et z nï¿½cessaire ï¿½ la procï¿½dure d'optimisation
+	//on déclare q et z nécessaire à la procédure d'optimisation
 
 	double **q = NRmatrix(1,2,1,1);
 	double *z = NRvector(1,2);
@@ -10203,7 +10608,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 
         }
 
-        //2ï¿½me ï¿½tape : redï¿½finition de Ztemp
+        //2ème étape : redéfinition de Ztemp
 
         SEXP listTemp;
 
@@ -10305,7 +10710,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 
 extern "C" {
 
-double BioEcoPar::fxTAC_F(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxTAC_F(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF, nDim;
 
@@ -10381,11 +10786,11 @@ double BioEcoPar::fxTAC_F(double *x) //attention : l'indexation de x commence ï¿
 }
 }
 
-//Attention : fonctions customisï¿½es seulement valides pour le cas modï¿½le individuel Quota Sole (2 mï¿½tiers)
+//Attention : fonctions customisées seulement valides pour le cas modèle individuel Quota Sole (2 métiers)
 
 extern "C" {
 
-double BioEcoPar::fxTAC_F_customCst(double *x) //cas mï¿½tier Sole des flottilles modï¿½lisï¿½es seulement impactï¿½
+double BioEcoPar::fxTAC_F_customCst(double *x) //cas métier Sole des flottilles modélisées seulement impacté
 {
     SEXP listTemp, nDimF, nDim;
 
@@ -10586,7 +10991,7 @@ int BioEcoPar::MinimizeF(double **p, double y[], int ndim, double ftol)
 
 }
 
-//original 'GestionF' ï¿½ conserver
+//original 'GestionF' à conserver
 
 //extern "C" {
 //
@@ -10816,7 +11221,7 @@ int BioEcoPar::GestionF(double **p, double y[], int ndim, double ftol, int ind_t
 
 
 //------------------------------------------
-// Module 'Report d'effort' selon une pondï¿½ration des ratio profit par mï¿½tier et effort par mï¿½tier anticipï¿½s
+// Module 'Report d'effort' selon une pondération des ratio profit par métier et effort par métier anticipés
 //------------------------------------------
 
 extern "C" {
@@ -10838,9 +11243,9 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
     int posMuBhv = INTEGER(getListElement(paramBehav, "MUpos"))[0];
     bool isPos = (posMuBhv==1);
 
- //type nï¿½1 : pas de report d'effort. Intervention sur l'effort au niveau flottille-mï¿½tier via la matrice FMT
- // qui opï¿½re additivement, avec redressement en cas d'effort rï¿½sultant nï¿½gatif ou supï¿½rieur ï¿½ 365 sommï¿½ sur les mï¿½tiers
- // L'effort au niveau flottille est ensuite rï¿½ï¿½valuï¿½ par agrï¿½gation du niveau flottille-mï¿½tier
+ //type n°1 : pas de report d'effort. Intervention sur l'effort au niveau flottille-métier via la matrice FMT
+ // qui opère additivement, avec redressement en cas d'effort résultant négatif ou supérieur à 365 sommé sur les métiers
+ // L'effort au niveau flottille est ensuite réévalué par agrégation du niveau flottille-métier
 
     if ((typeBhv==1) & (fmtBhv != NULL)) {
 
@@ -10881,13 +11286,13 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
     }
 
 
- //type nï¿½2 : reports d'effort pilotï¿½s. Intervention sur les mï¿½tiers par flottille avec report conditionnï¿½ par une matrice FMT
+ //type n°2 : reports d'effort pilotés. Intervention sur les métiers par flottille avec report conditionné par une matrice FMT
  // de type :   | xx  xx   1 -0.5 -0.5   xx |
  //             | xx 0.7 0.3   xx -0.2 -0.8 |
  //             | ...                       |
  //
- // La quantitï¿½ brute de report par flottille-mï¿½tier est ensuite ï¿½valuï¿½e par multiplication de FMT par un vecteur MU de dimension nbF
- // MU est contraint pour que les reports soient cohï¿½rents
+ // La quantité brute de report par flottille-métier est ensuite évaluée par multiplication de FMT par un vecteur MU de dimension nbF
+ // MU est contraint pour que les reports soient cohérents
 
 
     if (typeBhv==2 & (fmtBhv != NULL) & (muBhv != NULL)) {
@@ -10896,7 +11301,7 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 
        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-           //dï¿½termination de la validitï¿½ de MU_f et correction le cas ï¿½chï¿½ant
+           //détermination de la validité de MU_f et correction le cas échéant
 
         double mu_limSup=-1.0, mu_limInf=0.0, finalMu=0.0;
 
@@ -10904,7 +11309,7 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 
             if (!ISNA(r_nbds_f_m[ind_f + nbF*ind_m])) {
 
-                if (mu_limSup<0) { //premiï¿½re ï¿½valuation
+                if (mu_limSup<0) { //première évaluation
                     if (r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]>0) {
                        mu_limSup = (365-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
                        if (!isPos) mu_limInf = (0-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
@@ -10942,14 +11347,14 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 
         }
 
-        //normalement, pas besoin de rï¿½ï¿½valuer nbds_f car la conservation de l'effort est assurï¿½e par la mï¿½thodo
+        //normalement, pas besoin de réévaluer nbds_f car la conservation de l'effort est assurée par la méthodo
        }
     }
 
 
 
 
- //type nï¿½3 : report d'effort orientï¿½ par pondï¿½ration des ratio de profit et d'effort de l'annï¿½e prï¿½cï¿½dente (cf P. Marchal).
+ //type n°3 : report d'effort orienté par pondération des ratio de profit et d'effort de l'année précédente (cf P. Marchal).
 
     if (typeBhv==3 & ind_t>0 & (alphaBhv != NULL)) {
 
@@ -11018,7 +11423,7 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 
 extern "C" {
 
-double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF;
 
@@ -11078,7 +11483,7 @@ double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commen
 
     //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
-    //calcul de l'indicateur de profit ï¿½ optimiser
+    //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
 
     PROTECT(nDimF = allocVector(INTSXP,4));
@@ -11099,7 +11504,7 @@ double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commen
 
 extern "C" {
 
-double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF;
 
@@ -11161,7 +11566,7 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
 
     //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
-    //calcul de l'indicateur de profit ï¿½ optimiser
+    //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
 
     PROTECT(nDimF = allocVector(INTSXP,4));
@@ -11187,7 +11592,7 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
 
 extern "C" {
 
-double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexation de x commence ï¿½ 1 et non 0
+double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexation de x commence à 1 et non 0
 {
     SEXP listTemp, nDimF;
 
@@ -11246,7 +11651,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 
     //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
-    //calcul de l'indicateur de profit ï¿½ optimiser
+    //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
 
     PROTECT(nDimF = allocVector(INTSXP,4));
@@ -11284,18 +11689,18 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //	int ITquotaExch = 20;
 //
 //    Rprintf("TIME %i \n",IND_T);
-//	//on dï¿½clare q et z nï¿½cessaire ï¿½ la procï¿½dure d'optimisation
+//	//on déclare q et z nécessaire à la procédure d'optimisation
 //
 //	double **q = NRmatrix(1,2,1,1);
 //	double *z = NRvector(1,2);
 //	double *x = NRvector(1,1);
 //    double *multF = NRvector(1,nbF);
 //
-//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 //
 //    for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
-//        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+//        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
 //    //Rprintf("IT %i \n",IT);
 //
 //    if (IT==5) lambda = lambda/6;
@@ -11328,7 +11733,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        }
 //
-//        //2ï¿½me ï¿½tape : redï¿½finition de PxQ
+//        //2ème étape : redéfinition de PxQ
 //
 //        SEXP listTemp, nDimF;
 //
@@ -11431,7 +11836,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 
 
 //
-////version sans algorithme d'optimisation (hypothï¿½se de fonction de cout linï¿½aire --> solutions en coin)
+////version sans algorithme d'optimisation (hypothèse de fonction de cout linéaire --> solutions en coin)
 //
 //extern "C" {
 //
@@ -11456,7 +11861,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //    bool GoOn = true;
 //
-//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 //
 //    double DIFF = 0.0;
 //    int IT = 0;
@@ -11465,7 +11870,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //    //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
-//        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+//        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
 //    //Rprintf("IT %i \n",IT);
 //
 //        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -11483,7 +11888,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        }
 //
-//        //2ï¿½me ï¿½tape : redï¿½finition de PxQ
+//        //2ème étape : redéfinition de PxQ
 //
 //        SEXP listTemp, nDimF;
 //
@@ -11536,9 +11941,9 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        }
 //
-//        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe diffï¿½rent
+//        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe différent
 //
-//        if ((diffLQ<=0) & ((lambda<0.002) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrï¿½te que si diffLQ<=0 (Quota respectï¿½)
+//        if ((diffLQ<=0) & ((lambda<0.002) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrête que si diffLQ<=0 (Quota respecté)
 //
 //        IT++;
 //
@@ -11627,7 +12032,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
     bool GoOn = true;
 
-	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customCst; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customCst; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 
     double DIFF = 0.0;
     int IT = 0;
@@ -11636,7 +12041,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
     //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 
-        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
     //Rprintf("IT %i \n",IT);
 
         Zoptim_use = true;
@@ -11656,7 +12061,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
         }
 
-        //2ï¿½me ï¿½tape : redï¿½finition de PxQ
+        //2ème étape : redéfinition de PxQ
     Zoptim_use = false;
     SEXP listTemp, nDimF;
 
@@ -11699,9 +12104,9 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
         }
 
-        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe diffï¿½rent
+        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe différent
 
-        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrï¿½te que si diffLQ<=0 (Quota respectï¿½)
+        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrête que si diffLQ<=0 (Quota respecté)
 
         IT++;
 
@@ -11781,7 +12186,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //    bool GoOn = true;
 //
-//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customReport; //fonction calculant le profit d'une flottille donnï¿½e ï¿½ un instant donnï¿½ en fonction du prix du quota d'une espï¿½ce donnï¿½e (dï¿½pend de IND_F)
+//	BEfn1_F foo2 = &BioEcoPar::fxMaxProf_FT_customReport; //fonction calculant le profit d'une flottille donnée à un instant donné en fonction du prix du quota d'une espèce donnée (dépend de IND_F)
 //
 //    double DIFF = 0.0;
 //    int IT = 0;
@@ -11790,7 +12195,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //    //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
-//        //1ï¿½re ï¿½tape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
+//        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
 //    //Rprintf("IT %i \n",IT);
 //
 //        Zoptim_use = true;
@@ -11809,7 +12214,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //        }
 //
-//        //2ï¿½me ï¿½tape : redï¿½finition de PxQ
+//        //2ème étape : redéfinition de PxQ
 //
 //      Zoptim_use = false;
 //        SEXP listTemp, nDimF;
@@ -11857,9 +12262,9 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //        }
 //
-//        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe diffï¿½rent
+//        if ((DIFF*diffLQ)<0) lambda = lambda/3; //ie si DIFF et diffLQ de signe différent
 //
-//        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrï¿½te que si diffLQ<=0 (Quota respectï¿½)
+//        if ((diffLQ<=0) & (((diffLQ*lambda)*(diffLQ*lambda)<0.25) | (IT>ITquotaExch))) GoOn = false; //on ne s'arrête que si diffLQ<=0 (Quota respecté)
 //
 //        IT++;
 //
@@ -11930,7 +12335,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int lev, int ue_choice, in
     PROTECT(out_EcoDCF);
 
 //2 protect
-    SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets rï¿½sultats
+    SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets résultats
 
     SEXP eFACTf, eFACTfm, elmt;
 
@@ -11961,7 +12366,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int lev, int ue_choice, in
             *r_ratio_GVL_cnb_ue_f_out,
             *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gcfAct_f_out, *r_psAct_f_out, *r_stsAct_f_out;
 
-//dï¿½finition des dimensions
+//définition des dimensions
     PROTECT(dimCstF = allocVector(INTSXP, 4));
     PROTECT(DimF = allocVector(INTSXP, 2));
     PROTECT(dimnamesF = allocVector(VECSXP,2));
@@ -11987,7 +12392,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int lev, int ue_choice, in
     DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
     DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
 
-    //facteurs des indices gï¿½nï¿½riques F/FM
+    //facteurs des indices génériques F/FM
     PROTECT(eFACTf = iDim(dCF));
     PROTECT(eFACTfm = iDim(dCFM));
 
@@ -12097,7 +12502,7 @@ if (ind_t==0) {
 
 
 //-------------------------
-// Stade prï¿½liminaire (temps initial)
+// Stade préliminaire (temps initial)
 //-------------------------
 
     PROTECT(GVLreftot_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLreftot_f_m = REAL(GVLreftot_f_m);
@@ -12144,13 +12549,13 @@ if (ind_t==0) {
 
 
         //------------------------------
-        //ï¿½quations de la table "p"
+        //équations de la table "p"
         //------------------------------
 
 
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait ï¿½gal ï¿½ 0
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait égal à 0
 
-    double countGVLtotf = 0.0; //pour sommer GVLtot_f_m_e sur les mï¿½tiers
+    double countGVLtotf = 0.0; //pour sommer GVLtot_f_m_e sur les métiers
 
             for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
@@ -12304,7 +12709,7 @@ if (ind_t==0) {
 
         }
 
-        //on formatte le(s) rï¿½sultat(s) et on les intï¿½gre ï¿½ 'eVar'
+        //on formatte le(s) résultat(s) et on les intègre à 'eVar'
 
         setAttrib(GVLtot_f_m_e, R_DimSymbol, DimFM);
         setAttrib(GVLtot_f_m_e, R_DimNamesSymbol, dimnamesFM);
@@ -12315,7 +12720,7 @@ if (ind_t==0) {
 
 }
 
-    // ï¿½ ce stade, plus de considï¿½ration d'espï¿½ce pour les variables ï¿½ initialiser
+    // à ce stade, plus de considération d'espèce pour les variables à initialiser
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
@@ -12484,7 +12889,7 @@ if (ind_t==0) {
 
 
 
-//on formatte le(s) rï¿½sultat(s) et on intï¿½gre ï¿½ fVar
+//on formatte le(s) résultat(s) et on intègre à fVar
 
         setAttrib(GVLoths_f_m, R_DimSymbol, DimFMini);
         setAttrib(GVLoths_f_m, R_DimNamesSymbol, dimnamesFMini);
@@ -12822,7 +13227,7 @@ if (ind_t==0) {
     SET_VECTOR_ELT(out_EcoDCF, 44, rtbs_f_m_out);
 
 
-    //on nomme les ï¿½lï¿½ments de out_EcoDCF
+    //on nomme les éléments de out_EcoDCF
     const char *namesEco[45] = {"GVL_f_m_e","GVLtot_f_m","GVLav_f_m","GVLtot_f","GVLav_f","NGVLav_f_m","NGVLav_f",
                           "rtbs_f","cshrT_f","sshr_f","ncshr_f","oclg_f","ocl_f","csg_f","cs_f",
                           "gva_f","ccw_f","ccwCr_f","wageg_f","wagen_f","gcf_f","ngcf_f","gp_f",
@@ -12840,7 +13245,7 @@ if (ind_t==0) {
 //39 protect    --> 55
 }
 
-//on importe les outputs afin de les mettre ï¿½ jour ï¿½ l'instant ind_t
+//on importe les outputs afin de les mettre à jour à l'instant ind_t
 
     r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,1));
     r_GVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,2));
@@ -12935,7 +13340,7 @@ if (ind_t==0) {
 
 
         //---------------------
-        //ï¿½quations de la table "t"
+        //équations de la table "t"
         //---------------------
 
   for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -13023,7 +13428,7 @@ if (ind_t==0) {
 }
 
 
-    // ï¿½ ce stade, plus de considï¿½ration d'espï¿½ce pour les indicateurs
+    // à ce stade, plus de considération d'espèce pour les indicateurs
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
@@ -13151,7 +13556,7 @@ if (ind_t==0) {
 //Rprintf("%f -- ",r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]]);
 //Rprintf("%f -- ",r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]]);
 //Rprintf("BB\n ");
-            } //on sort de la boucle sur les niveaux mï¿½tiers
+            } //on sort de la boucle sur les niveaux métiers
 //Rprintf("\n ");
 //Rprintf("\n ");
 //if (ind_f<5 & ind_t<5) PrintValue(VECTOR_ELT(fVar,4));
@@ -13180,7 +13585,7 @@ if (ind_t==0) {
                         r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]]) *
                         r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t));
 
-                //version actualisï¿½e
+                //version actualisée
             r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13244,7 +13649,7 @@ if (ind_t==0) {
                     r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-                //version actualisï¿½e
+                //version actualisée
             r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13258,7 +13663,7 @@ if (ind_t==0) {
                     r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]]) / pow(1+0.0,ind_t) ;
 
 
-            //version actualisï¿½e
+            //version actualisée
             r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13317,7 +13722,7 @@ if (ind_t==0) {
                     r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
 
-            //version actualisï¿½e
+            //version actualisée
             r_gcfAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13344,7 +13749,7 @@ if (ind_t==0) {
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-            //version actualisï¿½e
+            //version actualisée
             r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13357,7 +13762,7 @@ if (ind_t==0) {
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-            //version actualisï¿½e
+            //version actualisée
             r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
@@ -13466,7 +13871,7 @@ UNPROTECT(67);
 }}
 
 
-//dï¿½tection d'un caractï¿½re donnï¿½ dans un objet SEXP de type SXPSTR
+//détection d'un caractère donné dans un objet SEXP de type SXPSTR
 
 extern "C" {
 
@@ -13492,7 +13897,8 @@ extern "C" {
 SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBoot,
             SEXP GestInd, SEXP mF, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP GestParam, SEXP EcoDcf,
-            SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX, SEXP bootVar = R_NilValue)
+            SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
+            SEXP tacCTRL, SEXP stochPrice, SEXP bootVar = R_NilValue)
 {
 //Rprintf("OO");
     if (INTEGER(Bootstrp)[0]==0) {
@@ -13500,7 +13906,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                             RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                             GestInd, mF, mOth, bounds, TAC, FBAR, GestParam, EcoDcf,
-                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX);
+                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice);
 
         SEXP output, out_names, out_Foth;
         PROTECT(output = allocVector(VECSXP, 23));
@@ -13531,7 +13937,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 21, VECTOR_ELT(object->fVar, 29));
         SET_VECTOR_ELT(output, 22, object->out_PQuot_et);
 
-        //on nomme les ï¿½lï¿½ments de output
+        //on nomme les éléments de output
         const char *namesOut[23] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Lcm","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot"};
 
         PROTECT(out_names = allocVector(STRSXP, 23));
@@ -13547,14 +13953,14 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
     } else {
 
-        //on n'oublie pas d'activer les parties stochastiques pour que ï¿½a ait un sens
+        //on n'oublie pas d'activer les parties stochastiques pour que ça ait un sens
 
-        //on commence par crï¿½er l'objet qui va accueillir la donnï¿½e  (3 outputs pour l'instant : biomasse, SSB, captures --> ï¿½ dï¿½velopper selon les besoins)
+        //on commence par créer l'objet qui va accueillir la donnée  (3 outputs pour l'instant : biomasse, SSB, captures --> à développer selon les besoins)
         SEXP output, out_names, out_Foth, emptyObj;
-        PROTECT(output = allocVector(VECSXP, 38)); //36
+        PROTECT(output = allocVector(VECSXP, 39)); //36
         SEXP eBoot;
 
-        for (int ind = 0 ; ind < 38 ; ind++) { //36
+        for (int ind = 0 ; ind < 39 ; ind++) { //36
 
             PROTECT(eBoot = allocVector(VECSXP, INTEGER(nbBoot)[0]));
             SET_VECTOR_ELT(output, ind, eBoot);
@@ -13566,15 +13972,15 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mF, mOth, bounds, TAC, FBAR, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice);
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
 
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mF, mOth, bounds, TAC, FBAR, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice);
 
-            //objet vide pour garder la structuration malgrï¿½ la non-sï¿½lection de la variable en question
+            //objet vide pour garder la structuration malgré la non-sélection de la variable en question
             PROTECT(emptyObj = allocVector(VECSXP, object->nbE));
             setAttrib(emptyObj, R_NamesSymbol, object->sppList);
 
@@ -13726,23 +14132,30 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                 SET_VECTOR_ELT(VECTOR_ELT(output, 35), it, emptyObj);
             }
 
+            if (isCharIn(bootVar, "P")) {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 38), it, object->out_P_t);
+            } else {
+                SET_VECTOR_ELT(VECTOR_ELT(output, 38), it, emptyObj);
+            }
+
+
 
             UNPROTECT(2);
 
         }
 
-        //on nomme les ï¿½lï¿½ments de output
-        const char *namesOut[38] = {"B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
+        //on nomme les éléments de output
+        const char *namesOut[39] = {"B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
                                     "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
-                                    "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit","Fr_fmi","C_efmit","vcst_f","vcst_fm"};
+                                    "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit","Fr_fmi","C_efmit","vcst_f","vcst_fm","P"};
 
-        PROTECT(out_names = allocVector(STRSXP, 38));
+        PROTECT(out_names = allocVector(STRSXP, 39));
 
-        for(int ct = 0; ct < 38; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 39; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 
-        UNPROTECT(2+38);
+        UNPROTECT(2+39);
         return(output);
         delete object;
 
@@ -13779,7 +14192,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //
 ////------------------------------------------
-//// accesseur ï¿½ un ï¿½lï¿½ment d'une liste donnï¿½e (list = liste en question , str {caractï¿½re} = intitulï¿½ de l'ï¿½lï¿½ment de la liste)
+//// accesseur à un élément d'une liste donnée (list = liste en question , str {caractère} = intitulé de l'élément de la liste)
 ////------------------------------------------
 //extern "C" {
 //
@@ -13802,8 +14215,8 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 ////------------------------------------------
 //// Transcripteur des sorties .txt de la fonction de conversion du fichier IN_IAM.r
-//// Renvoie les paramï¿½tres au format IAM sous R (listes imbriquï¿½es)
-//// Format standard des fichiers .txt input (sï¿½parateur "\t") :
+//// Renvoie les paramètres au format IAM sous R (listes imbriquées)
+//// Format standard des fichiers .txt input (séparateur "\t") :
 //
 //    // list	character	NA	NA	NA	NA	NA	NA	Langoustine	Merlu_commun	Sole_commune	Fleet
 //    // list	character	NA	NA	NA	NA	NA	NA	modI	modL	modC	icat	alk	fm	mm	M_i	mat_i	wStock_i	wL_i	wD_i	N_it0	N_i0t	F_fmi	B_i	Y_mi	C_mi	Y_i	C_i	d_i	doth_i	sr	SelRef	P_fmce	alpha_fmce	beta_fmce	gamma_fmce	TAC	Fbar	FmaxTarget	Lref_f_e	Lref_f_m_e	GVLref_f_e	GVLref_f_m_e
@@ -13815,22 +14228,22 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //// Descriptif :
 //
-//    // variable ou nouvelle liste imbriquï¿½e -- type de variable -- attributs DimCst (dim nï¿½1 -- dim nï¿½2 -- dim nï¿½3 -- dim nï¿½4) -- Codage Mï¿½tier -- Dim Age ou Catï¿½gorie -- Elements ï¿½numï¿½rï¿½s de la variable ou des noms des ï¿½lï¿½ments de la liste -- -- -- -- ...
+//    // variable ou nouvelle liste imbriquée -- type de variable -- attributs DimCst (dim n°1 -- dim n°2 -- dim n°3 -- dim n°4) -- Codage Métier -- Dim Age ou Catégorie -- Elements énumérés de la variable ou des noms des éléments de la liste -- -- -- -- ...
 //
 ////------------------------------------------
 //
 //
 //
 //extern "C" {
-//SEXP Fun(SEXP File, SEXP Specific = R_NilValue) //file : character dï¿½crivant le path du fichier ï¿½ transcrire  -----  specific : optionnel, la sortie de Fun appliquï¿½e au fichier 'specific.txt'
+//SEXP Fun(SEXP File, SEXP Specific = R_NilValue) //file : character décrivant le path du fichier à transcrire  -----  specific : optionnel, la sortie de Fun appliquée au fichier 'specific.txt'
 // {
 //
 //   SEXP imbricOBJ, file, specific;
 //   PROTECT(file = duplicate(File));
 //   PROTECT(specific = duplicate(Specific));
-//   PROTECT(imbricOBJ = allocVector(VECSXP,5));  //on donne jusqu'ï¿½ 5 niveaux d'imbrication pour l'objet
-//   int IMAX[5]; //nbre d'ï¿½lï¿½ment ï¿½ traiter
-//   int I[5]; //ï¿½lï¿½ment traitï¿½ par niveau
+//   PROTECT(imbricOBJ = allocVector(VECSXP,5));  //on donne jusqu'à 5 niveaux d'imbrication pour l'objet
+//   int IMAX[5]; //nbre d'élément à traiter
+//   int I[5]; //élément traité par niveau
 //   int n = 0; //niveau en cours de traitement
 //
 //   string ligne;
@@ -13841,7 +14254,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //    SEXP out, names, var, dimcst, Dim, DimNam;
 //
 //
-//    //ï¿½tape d'initialisation --> 1ï¿½re ligne
+//    //étape d'initialisation --> 1ère ligne
 //
 //    typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
 //    boost::char_separator<char> sep("\t" );
@@ -13857,7 +14270,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //    IMAX[n] = vec.size()-8;
 //    I[n] = 0;
 //    PROTECT(out = allocVector(VECSXP,IMAX[n]));
-//    //on ajoute les noms des ï¿½lï¿½ments
+//    //on ajoute les noms des éléments
 //    PROTECT(names = allocVector(STRSXP,IMAX[n]));
 //    int count=0;
 //    for( size_t i = 8; i < v.size(); ++i ) {SET_STRING_ELT(names,count,mkChar(v[i]));count++;}
@@ -13879,17 +14292,17 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //        for( size_t i = 8; i < v.size(); ++i ) v[i] = vec[i].c_str();
 //
-//        //1ï¿½re colonne qui dï¿½termine si on doit formater ou remplir
+//        //1ère colonne qui détermine si on doit formater ou remplir
 //
 //        if (strcmp(vec[0].c_str(), "list") == 0) {
 //
 //            //on monte d'un niveau
 //            n++;
 //            //on fixe le nouveau imax pour le niveau en cours
-//            IMAX[n] = vec.size()-8; //le premier ï¿½lï¿½ment de la ligne est seulement descriptif
+//            IMAX[n] = vec.size()-8; //le premier élément de la ligne est seulement descriptif
 //            //on initialise le compteur pour ce niveau
 //            I[n] = 0;
-//            //on crï¿½e une copie de l'objet ï¿½ modifier aprï¿½s l'avoir intï¿½grï¿½ ï¿½ l'output
+//            //on crée une copie de l'objet à modifier après l'avoir intégré à l'output
 //            SET_VECTOR_ELT(VECTOR_ELT(imbricOBJ,n-1),I[n-1],allocVector(VECSXP,IMAX[n]));
 //            SET_VECTOR_ELT(imbricOBJ,n,VECTOR_ELT(VECTOR_ELT(imbricOBJ,n-1),I[n-1]));
 //
@@ -13899,20 +14312,20 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //            setAttrib(VECTOR_ELT(imbricOBJ,n), R_NamesSymbol, names);
 //            UNPROTECT(1);
 //
-//            //on pointe sur cet ï¿½lï¿½ment dorï¿½navant
+//            //on pointe sur cet élément dorénavant
 //            I[n-1]++;
 //
 //        } else {
 //
 //            if (strcmp(vec[0].c_str(), "var") == 0) {
 //
-//            //on acccï¿½de ï¿½ l'objet ï¿½ modifier et on assigne un vecteur 'character' de taille donnï¿½e
+//            //on acccède à l'objet à modifier et on assigne un vecteur 'character' de taille donnée
 //            PROTECT(var = allocVector(STRSXP,vec.size()-8));
 //            //et on remplit
 //            int count=0;
 //            for(size_t i = 8; i < v.size(); ++i ) {SET_STRING_ELT(var,count,mkChar(v[i]));count++;}
 //
-//            //on prï¿½voit d'ores et dï¿½jï¿½ le reformatage --> attribut 'DimCst'
+//            //on prévoit d'ores et déjà le reformatage --> attribut 'DimCst'
 //            if (strcmp(vec[2].c_str(), "NA") != 0) {
 //
 //               if (specific == NULL) error("missing 'specific' input object!!");
@@ -13953,8 +14366,8 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //                        }
 //                    }
 //
-//                    if (strcmp(vec[4].c_str(), "0") != 0) { //il y a alors une dimension Espï¿½ce
-//                        //on part du niveau 'n' et on remonte dans imbricObj pour les ï¿½lï¿½ments I pour retrouver une modalitï¿½ "espï¿½ce"
+//                    if (strcmp(vec[4].c_str(), "0") != 0) { //il y a alors une dimension Espèce
+//                        //on part du niveau 'n' et on remonte dans imbricObj pour les éléments I pour retrouver une modalité "espèce"
 //                        int indSp = length(getListElt(specific, "Ages"));
 //                        int flag = -1;
 //
@@ -13989,7 +14402,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //                        SET_VECTOR_ELT(DimNam,rank,AS_CHARACTER(getListElt(specific, "times")));rank++;
 //                    }
 //
-//                    //et on assigne le rï¿½sultat
+//                    //et on assigne le résultat
 //                    setAttrib(var,R_DimNamesSymbol,DimNam);
 //
 //                    UNPROTECT(2);
@@ -14011,7 +14424,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //                    }
 //
 //                    if (strcmp(vec[4].c_str(), "0") != 0) {
-//                        //on part du niveau 'n' et on remonte dans imbricObj pour les ï¿½lï¿½ments I pour retrouver une modalitï¿½ "espï¿½ce"
+//                        //on part du niveau 'n' et on remonte dans imbricObj pour les éléments I pour retrouver une modalité "espèce"
 //                        int indSp = length(getListElt(specific, "Ages"));
 //                        int flag = -1;
 //                        for (int ii = n; ii>=0 ; ii--) {
@@ -14076,7 +14489,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //            }
 //
-//            //on insï¿½re le rï¿½sultat dans 'out' en fonction du type de sortie
+//            //on insère le résultat dans 'out' en fonction du type de sortie
 //            if (strcmp(vec[1].c_str(), "double") == 0) {
 //
 //                SET_VECTOR_ELT(VECTOR_ELT(imbricOBJ,n),I[n],AS_NUMERIC(var));
@@ -14111,7 +14524,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //
 ////------------------------------------------
-//// fonction similaire ï¿½ IAM, mais appelant des fichiers .txt de paramï¿½tres crï¿½ï¿½s ï¿½ partir des fonctions 'unl'
+//// fonction similaire à IAM, mais appelant des fichiers .txt de paramètres créés à partir des fonctions 'unl'
 ////------------------------------------------
 //
 //extern "C" {
@@ -14181,7 +14594,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //
 //
 ////------------------------------------------
-//// fonction d'exportation d'une variable de sortie au format data.frame, dans un fichier .txt avec sï¿½parateurs '\t'
+//// fonction d'exportation d'une variable de sortie au format data.frame, dans un fichier .txt avec séparateurs '\t'
 ////------------------------------------------
 //
 //SEXP IDim(int *dimInput) {
@@ -14204,8 +14617,8 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //extern "C" {
 //SEXP IAM_export(SEXP vrbl, SEXP fileExp, SEXP replic, SEXP species) { // vrbl : variable de sortie
 //                                                             // fileExp : nom du fichier en sortie
-//                                                             // rep : 1/0 itï¿½rations ou non
-//                                                             // spp : 1/0 par espï¿½ce ou non
+//                                                             // rep : 1/0 itérations ou non
+//                                                             // spp : 1/0 par espèce ou non
 //
 //    SEXP vrblType, val = R_NilValue, dimnam = R_NilValue, namSpp = R_NilValue;
 //    int nbIter = 0, nbSpp = 0, rep = INTEGER(replic)[0], spp = INTEGER(species)[0];
@@ -14244,7 +14657,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 ////Rprintf("CC\n");
 //
 //    if (flux)
-//    {   //en-tï¿½tes
+//    {   //en-têtes
 //        if (rep) flux << "iter" << '\t';
 //        if (spp) flux << "spp" << '\t';
 //        if (dimCst[0]>0) flux << "fleet" << '\t';
@@ -14280,7 +14693,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //                        index[i] = -1;
 //                    }
 //                }
-//                    //on en dï¿½duit les intitulï¿½s de la variable
+//                    //on en déduit les intitulés de la variable
 //                if (nb>1) {
 //                    PROTECT(dimnam = getAttrib(val,R_DimNamesSymbol));
 //                } else {
@@ -14430,7 +14843,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //if (is_scenar) is_scen=true; else is_scen=false; is_scenar.close();
 //if (is_stochastic) is_sto=true; else is_sto=false; is_stochastic.close();
 //
-////on doit determiner ï¿½ partir du fichier 'arguments' si on est en prï¿½sence de rï¿½plicats ou non
+////on doit determiner à partir du fichier 'arguments' si on est en présence de réplicats ou non
 //PROTECT(spec = Fun(VECTOR_ELT(nmsIN,1)));
 //PROTECT(args = Fun(VECTOR_ELT(nmsIN,0),spec));
 //PROTECT(reP = getListElt(args,"Bootstrp")); repInt = INTEGER(reP);
@@ -14449,12 +14862,12 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //    }
 //}
 //
-////on exporte maintenant les rï¿½sultats
+////on exporte maintenant les résultats
 //
-//PROTECT(spP = allocVector(INTSXP,1)); sppInt = INTEGER(spP); //ï¿½ remettre ï¿½ jour pour chacun des cas (chaque variable)
+//PROTECT(spP = allocVector(INTSXP,1)); sppInt = INTEGER(spP); //à remettre à jour pour chacun des cas (chaque variable)
 //
 ////SSB
-//sppInt[0] = 1; //variable Sp -> double contrï¿½le ï¿½ opï¿½rer sur la disponibilitï¿½ de la donnï¿½e
+//sppInt[0] = 1; //variable Sp -> double contrôle à opérer sur la disponibilité de la donnée
 //if (repInt[0]>0) {
 //    if (length(getListElt(result,"SSB"))>0 & length(VECTOR_ELT(getListElt(result,"SSB"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"SSB"),0),0))>0)
 //        out = IAM_export(getListElt(result,"SSB"),  VECTOR_ELT(nmsOUT,0), reP, spP);
@@ -14464,7 +14877,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 //}
 //
 ////Fbar
-//sppInt[0] = 1; // <- intutile mais ï¿½ but illustratif
+//sppInt[0] = 1; // <- intutile mais à but illustratif
 //if (repInt[0]>0) {
 //    if (length(getListElt(result,"Fbar"))>0 & length(VECTOR_ELT(getListElt(result,"Fbar"),0))>0 & length(VECTOR_ELT(VECTOR_ELT(getListElt(result,"Fbar"),0),0))>0)
 //        out = IAM_export(getListElt(result,"Fbar"),  VECTOR_ELT(nmsOUT,1), reP, spP);
