@@ -377,7 +377,7 @@ if (dim=="2D") {
 
   return(DF)  
 }  
-                
+
 #-------------------------------------------------------------------------------
 
 #extrapole les valeurs aux temps non décrits pour chaque pas de temps 
@@ -404,7 +404,7 @@ for (i in 1:nbStep) {
      {
       if (scenario) {
       
-       #tab$value[is.na(tab$value)] <- 1
+       tab$value[is.na(tab$value)] <- 1
       
       } else {
       
@@ -948,8 +948,7 @@ listInput <- lapply(listInput, function(x) {if (ncol(x)==1) {
                                             })
 
 #on recode les noms de variables conformément à 'rec'
-renam <- c(as.character(rec$Variable),as.character(rec$Variable)) ; names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable))
-renam <- renam[!duplicated(names(renam))]
+renam <- as.character(rec$Variable) ; names(renam) <- as.character(rec$Alias)
 names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)] 
 #et on applique le multiplicateur à chaque variable dans les deux listes
 rec <- rec[suppressWarnings(!is.na(as.numeric(as.character(rec$Multi)))),]
@@ -1011,21 +1010,9 @@ indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","Lref_f_m
         "GVLref_f_m_e","GVLref_f_m_e","GVLref_f_m_e","gc_f_m","nbh_f_m","nbtrip_f_m","fc_f_m","vf_f_m",
         "ovc_f_m","oilc_f_m","bc_f_m","foc_f_m","icec_f_m","cshr_f_m"),function(x) grepl(x,names(listScenar)))),2,any)
 
-listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMbio,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
-listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
+listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMbio,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,1)
+listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,1)
 listScenar <- c(listScenarBio,listScenarEco)
-
-#on ajoute l'attribut 'intervention'
-for (nn in names(listScenar)) {
-  if (length(grep("__x__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(1)  #1 -> multiplication
-  if (length(grep("__+__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(2)  #2 -> addition
-  if (length(grep("__o__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(3)  #3 -> remplacement
-  if (length(grep("__x__",nn))==0 & length(grep("__+__",nn))==0 & length(grep("__o__",nn))==0) attributes(listScenar[[nn]])$type <- as.integer(0)  #0 -> par défaut (multiplication ??)
-}
-
-names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__x__","",NN))
-names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__+__","",NN))
-names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__o__","",NN))
 
 #if (k==1) {disti <- grepl("f__",names(listScenar)) ; )
 namS <- names(listScenar) ; namV <- sapply(namS,function(x) strsplit(x,"s__")[[1]][1])
