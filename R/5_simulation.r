@@ -13,7 +13,7 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 )
 
 
-setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=1, TACbyF=as.double(NA), 
+setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=1, TACbyF=list(TACbyF=NA,lambda=NA,IT=10,expEff=1.2), 
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
                   parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),...){
 	
@@ -54,7 +54,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     lapply(objArgs@arguments$Recruitment,function(x) 
                                 as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))),
                     as.double(objArgs@arguments$Gestion$mfm),
-                    as.double(TACbyF),                    #devra être intégrée dans objArgs, dimension = nbF+1
+                    list(TACbyF=as.double(TACbyF$TACbyF),lambda=as.double(TACbyF$lambda),IT=as.integer(TACbyF$IT),expEff=as.double(TACbyF$expEff)),                    #devra être intégrée dans objArgs, dimension = nbF+1
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=as.double(parOptQuot$pxQuIni), pxQuMin=as.double(parOptQuot$pxQuMin), 
                           pxQuMax=as.double(parOptQuot$pxQuMax), lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol)),                           #fonctionne en conjugaison avec TACbyF
