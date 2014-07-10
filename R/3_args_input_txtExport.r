@@ -188,7 +188,7 @@ setMethod("IAM.export", signature("iamArgs"), function(object, folder, ...){
                     SRind=as.integer(unlist(lapply(object@arguments$Recruitment,function(x) x$modSRactive))),
                     listSR=lapply(object@arguments$Recruitment,function(x) as.double(c(x$parAmodSR,x$parBmodSR,x$parCmodSR,x$wnNOISEmodSR,x$noiseTypeSR))),
                     TypeSR=lapply(object@arguments$Recruitment,function(x) 
-                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))),
+                                as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))),
                     bootVar=as.character(object@arguments$Replicates$SELECTvar)) 
        
     unl(cppArgs,file=file.path(fullPathFold,"argsCPP.txt"),spec=object@specific)

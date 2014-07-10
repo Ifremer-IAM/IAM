@@ -10,7 +10,7 @@ e1 <- new.env()
 ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
                  "GVL_fme","GVLtot_fm","GVLav_f","vcst_fm","vcst_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
                  "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit",
-                 "Fr_fmi","C_efmit")
+                 "Fr_fmi","C_efmit","P")
 
 if (classInp=="args") {
 
@@ -43,7 +43,7 @@ if (classInp=="args") {
   SELECTscen <- 1
   SELECTvar <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Eff",
                  "GVL_fme","GVLtot_fm","GVLav_f","rtbs_f","vcst_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
-                 "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f")
+                 "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","P")
   tacfbar <- matrix(0,nrow=2,ncol=length(years),dimnames=list(c("TAC","Fbar"),years))
   level <- 0
   matF <- matrix(1,nrow=1,ncol=length(fleets),dimnames=list(NULL,fleets))
@@ -538,7 +538,7 @@ for (i in 1:length(spp)){
   eval(parse('',text=paste("comboTypeRec",i," <- tk2combobox(tbook",i,
             ",width=12,state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(comboTypeRec",i,", textvariable = TypeModSR[[",i,
-            "]], values=c(\"Mean\",\"Hockey-Stick\",\"Beverton-Holt\",\"Ricker\",\"Shepherd\",\"Quadratic-HS\"))",sep="")))
+            "]], values=c(\"Mean\",\"Hockey-Stick\",\"Beverton-Holt\",\"Ricker\",\"Shepherd\",\"Quadratic-HS\",\"Smooth-HS\"))",sep="")))
 
     #Paramètre a
   eval(parse('',text=paste("spinboxParA",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",

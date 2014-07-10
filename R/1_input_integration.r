@@ -23,6 +23,7 @@ convertInput <- function(inp) {
               Ymi <- inp@input[[i]]$Y_mi
               Yi <- inp@input[[i]]$Y_i
               Lref <- inp@input[[i]]$Lref_f_e
+              Lrefm <- inp@input[[i]]$Lref_f_m_e
               FM <- inp@input[[i]]$fm
             
             if (attributes(Fini)$DimCst[1]>0 & attributes(Fini)$DimCst[2]>0) {
@@ -82,6 +83,10 @@ convertInput <- function(inp) {
                          aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
                          Ffmi[] <- Cfm/rep(CtotM,each=nF)
                          Ffmi <- Ffmi*rep(Fmi,each=nF) 
+                        } else {    # cas ultime : on utilise les débarquements f*m de référence dans les feuillets Fleet sur Fi et Ytot calculé à partir de Yi 
+                          if (attributes(Fini)$DimCst[1]==0 & attributes(Fini)$DimCst[2]==0 & !all(is.na(Lrefm)) & !all(is.na(Yi))) {
+                            Ffmi[] <- (Lrefm/sum(Yi,na.rm=TRUE))%o%Fini            # fait le 26/07/2013
+                          }
                         }
                       }
                     }
@@ -91,7 +96,7 @@ convertInput <- function(inp) {
               
             #ici, Ffmi devrait être dispo
             
-            if (all(is.na(Ffmi))) stop("wrong or missing data for F allocation! Check C_mi, C_i, Y_mi, Y_i inputs!!")  
+            if (all(is.na(Ffmi))) stop("wrong or missing data for F allocation! Check C_mi, C_i, Y_mi, Y_i, or Lref_f_m inputs!!")  
               
             llF[[i]] <- Ffmi  
               
@@ -115,7 +120,7 @@ convertInput <- function(inp) {
         #conversion des données de mortalités --> on utilise les valeurs brutes
         tabF <- cbind.data.frame(expand.grid(dimnames(llF[[i]])),value1=as.vector(llF[[i]])) ; names(tabF) <- c("f","m","a","val1")
         tabF$fm <- paste(tabF$f,tabF$m,sep="__") 
-        if (all(is.na(tabMM))) TABF <- cbind(tabF,mEco=tabF$m,val2=MM) else TABF <- merge(tabMM,tabF,all=TRUE)
+        if (all(is.na(tabMM))) TABF <- cbind(tabF,mEco=tabF$m,val2=as.vector(MM)) else TABF <- merge(tabMM,tabF,all=TRUE)
         TABF$val <- TABF$val1*TABF$val2 ; TABF <- TABF[!is.na(TABF$val),] 
         TABF$f <- factor(as.character(TABF$f),levels=namF)
         TABF$mEco <- factor(as.character(TABF$mEco),levels=namME)    
@@ -377,7 +382,7 @@ if (dim=="2D") {
 
   return(DF)  
 }  
-
+                
 #-------------------------------------------------------------------------------
 
 #extrapole les valeurs aux temps non décrits pour chaque pas de temps 
@@ -404,7 +409,7 @@ for (i in 1:nbStep) {
      {
       if (scenario) {
       
-       tab$value[is.na(tab$value)] <- 1
+       #tab$value[is.na(tab$value)] <- 1
       
       } else {
       
@@ -550,7 +555,7 @@ vec <- vec[vec!=""]
 MOD <- lapply(c("f__","m__"),function(x) {gsub(x,"",unique(vec[sapply(vec,function(y) substring(y,1,3)==x)]))})
 modF <- unique(c(modF,MOD[[1]])) ; modMeco <- unique(c(modMeco,MOD[[2]]))
 
-
+if (length(modMbio)==0) modMbio <- modMeco
 
 FLEET <- as.data.frame(FLEET[,c(1,4:7)])
 if (!is.null(folderFleet)) FLEET <- FLEET[-1,]
@@ -948,7 +953,8 @@ listInput <- lapply(listInput, function(x) {if (ncol(x)==1) {
                                             })
 
 #on recode les noms de variables conformément à 'rec'
-renam <- as.character(rec$Variable) ; names(renam) <- as.character(rec$Alias)
+renam <- c(as.character(rec$Variable),as.character(rec$Variable)) ; names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable))
+renam <- renam[!duplicated(names(renam))]
 names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)] 
 #et on applique le multiplicateur à chaque variable dans les deux listes
 rec <- rec[suppressWarnings(!is.na(as.numeric(as.character(rec$Multi)))),]
@@ -1010,9 +1016,21 @@ indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","Lref_f_m
         "GVLref_f_m_e","GVLref_f_m_e","GVLref_f_m_e","gc_f_m","nbh_f_m","nbtrip_f_m","fc_f_m","vf_f_m",
         "ovc_f_m","oilc_f_m","bc_f_m","foc_f_m","icec_f_m","cshr_f_m"),function(x) grepl(x,names(listScenar)))),2,any)
 
-listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMbio,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,1)
-listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,1)
+listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)    #modif 07/04/2014
+listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
 listScenar <- c(listScenarBio,listScenarEco)
+
+#on ajoute l'attribut 'intervention'
+for (nn in names(listScenar)) {
+  if (length(grep("__x__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(1)  #1 -> multiplication
+  if (length(grep("__+__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(2)  #2 -> addition
+  if (length(grep("__o__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(3)  #3 -> remplacement
+  if (length(grep("__x__",nn))==0 & length(grep("__+__",nn))==0 & length(grep("__o__",nn))==0) attributes(listScenar[[nn]])$type <- as.integer(0)  #0 -> par défaut (multiplication ??)
+}
+
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__x__","",NN))
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__+__","",NN))
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__o__","",NN))
 
 #if (k==1) {disti <- grepl("f__",names(listScenar)) ; )
 namS <- names(listScenar) ; namV <- sapply(namS,function(x) strsplit(x,"s__")[[1]][1])
@@ -1169,8 +1187,11 @@ MMmodif$f <- gsub("f__","",MMmodif$f)
 MMmodif$e <- gsub("e__","",MMmodif$e)
 MMmodif$mBio <- gsub("m__","",MMmodif$mBio)
 MMmodif$m <- gsub("m__","",MMmodif$m)
-tabMM <- with(MMmodif,tapply(value,list(paste(f,mBio,sep="__"),m,e),function(x) x[1]))
-for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[,,gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",spp))))]
+#tabMM <- with(MMmodif,tapply(value,list(paste(f,mBio,sep="__"),m,e),function(x) x[1]))
+#modif MM 27/08/2013 : ligne au dessus engendre un plantage si 1 seule occurence métier (généralisation du drop)
+tabMM <- lapply(unique(MMmodif$e),function(z) with(MMmodif[MMmodif$e%in%z,],tapply(value,list(paste(f,mBio,sep="__"),m),function(x) x[1])))
+names(tabMM) <- unique(MMmodif$e)
+for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[[gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",spp))))]]
 
 #détermination du pas de temps en fonction de la liste Espece
 repTr <- c(grep("__T2",as.character(namList)),grep("__T3",as.character(namList)),grep("__T4",as.character(namList)))

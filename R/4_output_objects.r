@@ -57,7 +57,8 @@ setClass("iamOutput",
                     P = list(),               #prix moyen par espèce et catégorie
                     GVL_f_m_e = list(),      #CA total par espèce, flottille et métier éco
                     PQuot = list()),
-    output = list(nbv_f = numeric(),                   #Nb de navires par flottille
+    output = list(typeGest = integer(),                #type de scénario de gestion appliqué
+                  nbv_f = numeric(),                   #Nb de navires par flottille
                   nbds_f = numeric(),                  #Nb de jdm moyen par an et par flottille
                   nbv_f_m = numeric(),                 #Nb de navires par flottille-métier
                   nbds_f_m = numeric(),                #Nb de jdm moyen par an et par flottille-métier

@@ -218,7 +218,7 @@ spe <- object@specific
 if (length(arg$Recruitment)!=length(spe$Species)) stop("wrong 'Recruitment' argument in iamArgs object!!") 
 if (!all(unlist(lapply(arg$Recruitment,length)==9))) stop("missing argument in a 'Recruitment' element of iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) x$modSRactive)%in%(0:1)))) stop("wrong 'modSRactive' argument in iamArgs object!!")
-if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeMODsr)%in%c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS")))) stop("wrong 'typeMODsr' argument in iamArgs object!!")
+if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeMODsr)%in%c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))) stop("wrong 'typeMODsr' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parAmodSR))))) stop("wrong 'modSRactive' argument in iamArgs object!!")                           
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parAmodSR))))) stop("wrong 'parAmodSR' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) is.numeric(x$parBmodSR))))) stop("wrong 'parBmodSR' argument in iamArgs object!!")
