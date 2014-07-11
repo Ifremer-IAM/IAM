@@ -86,11 +86,11 @@ int var, trgt, delay, upd, level, gestInd, gestyp;
 SEXP    mu_nbds, mu_nbv;  //mulitplicateurs d'effort
 int IND_T, IND_F, eTemp, fTemp;  //indicateurs de temps, d'espèces et de flottilles considérés
 double PxQ;
-int spQ;
+int spQ, tacIT;
 double expEff;
 
 SEXP m_f, m_fm, m_oth;
-double X1, X2;
+double X1, X2, tacLambda;
 double *TAC_glob, *Fbar_trgt, *TAC_byFleet;
 int *SRInd, *trim, *EcoIndCopy;
 double drCopy;
@@ -334,7 +334,9 @@ X1 = REAL(bounds)[0];
 X2 = REAL(bounds)[1];
 TAC_glob = REAL(TAC);  //à corriger
 Fbar_trgt = REAL(FBAR);  //à corriger
-TAC_byFleet = REAL(TACbyF);  //à corriger
+TAC_byFleet = REAL(getListElement(TACbyF, "TACbyF"));
+tacLambda = REAL(getListElement(TACbyF, "lambda"))[0];
+tacIT = INTEGER(getListElement(TACbyF, "IT"))[0];
 
 eTemp = INTEGER(GestParam)[0];//2;
 var = INTEGER(GestParam)[1];//1;
@@ -344,7 +346,7 @@ upd = INTEGER(GestParam)[4];//2;
 level = INTEGER(GestParam)[5];//2;
 
 Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
-expEff = 1.2; //1;  //facteur d'expansion de l'effort maximal par flottille autorisé dans le cadre de l'optimisation GestionF2 et QuotaExch
+expEff = REAL(getListElement(TACbyF, "expEff"))[0]; //1;  //facteur d'expansion de l'effort maximal par flottille autorisé dans le cadre de l'optimisation GestionF2 et QuotaExch
 
 int DCFok = INTEGER(EcoDcf)[0];
 
@@ -10244,7 +10246,7 @@ extern "C" {
 
 double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles modélisées seulement impacté
 {
-    SEXP listTemp, nDimF, nDim;
+    SEXP listTemp, nDimF, nDim, nDimFM;
 
     PROTECT(listTemp = duplicate(list));
     PROTECT(eVarCopy = duplicate(eVar));
@@ -10254,7 +10256,7 @@ double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles
 
     if (IND_F < nbF) {
 
-        if (var==1) g_nbdsFM[IND_F+nbF*0] = fmin2(fmax2(x[1],0.0),fmin2(effortIni[IND_F]*expEff,350.0)-g_nbdsFM[IND_F+nbF*1]);
+        if (var==1) g_nbdsFM[IND_F+nbF*0] = x[1];//fmin2(fmax2(x[1],0.0),fmin2(effortIni[IND_F]*expEff,350.0)-g_nbdsFM[IND_F+nbF*1]);
         if (var==1) g_nbdsF[IND_F] = g_nbdsFM[IND_F+nbF*0] + g_nbdsFM[IND_F+nbF*1];
 
     } else {
@@ -10277,6 +10279,7 @@ double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles
         REAL(VECTOR_ELT(out_Z_eit,eTemp))[i+NBI*IND_T] = Ztemp[i+1];
 
     CatchDL(listTemp, IND_T, eVarCopy,0);
+
     Mortalite(listTemp, IND_T, eVarCopy,1);
     DynamicPop(listTemp, IND_T, eVarCopy,1);
 
@@ -10299,21 +10302,24 @@ double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles
 
     CatchDL(listTemp, IND_T, eVarCopy,3);
 
-    PROTECT(nDimF = allocVector(INTSXP,4));
+    PROTECT(nDimF = allocVector(INTSXP,4)); PROTECT(nDimFM = allocVector(INTSXP,4));
     int *ndF = INTEGER(nDimF); ndF[0] = nbF; ndF[1] = 0; ndF[2] = 0; ndF[3] = nbT;
+    int *ndFM = INTEGER(nDimFM); ndFM[0] = nbF; ndFM[1] = nbMe; ndFM[2] = 0; ndFM[3] = nbT;
     PROTECT(nDim = allocVector(INTSXP,4));
     int *nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
     double *totF = REAL(aggregObj(VECTOR_ELT(out_Y_efmit, eTemp),nDimF));
+    double *totFM = REAL(aggregObj(VECTOR_ELT(out_Y_efmit, eTemp),nDimFM));
     double *tot = REAL(aggregObj(VECTOR_ELT(out_Y_eit, eTemp),nDim));
     double *totMod = REAL(aggregObj(VECTOR_ELT(out_Y_efmit, eTemp),nDim));
     //PrintValue(aggregObj(VECTOR_ELT(out_Y_eit, eTemp),nDim));
 
-    if (IND_F < nbF) Rprintf("totF %f TAC %f\n",totF[IND_F + nbF*IND_T],TAC_byFleet[IND_F + (nbF+1)*IND_T]);
+    //if (IND_F < nbF) Rprintf("totF %f TAC %f\n",totF[IND_F + nbF*IND_T],TAC_byFleet[IND_F + (nbF+1)*IND_T]);
 
     double result = 0.0;
     if (IND_F < nbF) {
             //result = result + fabs(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
-            result = (totF[IND_F + nbF*IND_T]-TAC_byFleet[IND_F + (nbF+1)*IND_T]);//*(totF[IND_F + nbF*IND_T]-TAC_byFleet[IND_F + (nbF+1)*IND_T]);
+            result = (TAC_byFleet[IND_F + (nbF+1)*IND_T] - totFM[IND_F + nbF*1 + nbF*nbMe*IND_T])/totFM[IND_F + nbF*0 + nbF*nbMe*IND_T];
+            result = fmin2(fmax2(result,0.0),fmin2(effortIni[IND_F]*expEff,350.0)-g_nbdsFM[IND_F+nbF*1]);
             //Rprintf("%12.6f ",result);
     } else {
 
@@ -10325,12 +10331,12 @@ double BioEcoPar::fxTAC_F_customCst2(double *x) //cas métier Sole des flottilles
     }
     //Rprintf("ccc");
     //Rprintf("%12.6f \n",result);
-    Rprintf("result %f x %f\n",result,x[1]);
+    //Rprintf("result %f x %f\n",result,x[1]);
 
 
-    UNPROTECT(4);
+    UNPROTECT(5);
 
-    return (result*result);
+    if (IND_F < nbF) return(result); else return (result*result);
 
 }
 }
@@ -10350,8 +10356,8 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
     spQ = spp;
 
 	int nfunc;
-	int ITtot = 7;
-	double lambda = 0.9;
+	int ITtot = tacIT;
+	double lambda = tacLambda;
 	double ftol = 0.00000001;
 
 
@@ -10368,7 +10374,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
         for (int ind_f = 0 ; ind_f <= nbF ; ind_f++){
 
-        Rprintf("T %i F %i \n",ind_t,ind_f);
+        Rprintf("T %i F %i IT %i\n",ind_t,ind_f,IT);
 
         IND_F = ind_f;
 
@@ -10377,16 +10383,17 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
             z[1]=(this->*foo2)(x);
             q[2][1]=x[1]=1;
             z[2]=(this->*foo2)(x);
+
+            amoeba(foo2, q,z,1,ftol,&nfunc);
+
+            multF[ind_f+1] = q[2][1];
+
         } else {            //optimisation de nbds --> x effort
-            q[1][1]=x[1]=REAL(getListElement(getListElement(list, "Fleet"), "nbds_f_m"))[IND_F+nbF*0] - 0.5;//0.0;
-            z[1]=(this->*foo2)(x);
-            q[2][1]=x[1]=REAL(getListElement(getListElement(list, "Fleet"), "nbds_f_m"))[IND_F+nbF*0] + 0.5;//1.0;
-            z[2]=(this->*foo2)(x);
+            x[1]=1.0;
+            multF[ind_f+1] = fxTAC_F_customCst2(x);
         }
 
-        amoeba(foo2, q,z,1,ftol,&nfunc);
 
-        multF[ind_f+1] = q[2][1];
 
 //        Rprintf("Mult %f \n",multF[ind_f+1]);
 
