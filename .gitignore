@@ -4,3 +4,4 @@ inst/
 src/*.o
 src/*.dll
 src/*.exe
+src/symbols.rds

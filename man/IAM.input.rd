@@ -27,6 +27,9 @@
 \bold{\code{t_hist_max}} \tab Only for first signature. Last year considered for 'historical' slot.  \cr
 \bold{\code{desc}} \tab Object descriptor (default value : "My Input").  \cr
 \bold{\code{folderFleet}} \tab Folder containing fleets input sheets (Optionnal. Default value : NULL).  \cr
+\bold{\code{Fq_i}} \tab List containing SS3 parameters arrays for quarterly stock dynamic simulation. One element per considered species, all names must match with input species. Fishing mortality per season, morph, and age. (Optionnal. Default value : NULL. Example : list(hake=array(...,dim=c(4,4,nAge))).  \cr
+\bold{\code{Fq_fmi}} \tab See above. Fishing mortality per season, morph, fleet, "economic" metiers and age (Optionnal. Default value : NULL).  \cr
+\bold{\code{Ni0q}} \tab See above. Recruits numbers per season (Optionnal. Default value : NULL).  \cr
 }
 }
 

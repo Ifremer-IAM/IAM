@@ -30,6 +30,7 @@ setClass("iamOutput",
                      Gestion = list(), 
                      Eco = list()),
 		specific = list(Species = character(),
+                    StaticSpp=character(),
     	              Fleet = character(),
                   	Metier = character(),
                   	MetierEco = character(),	
@@ -37,7 +38,8 @@ setClass("iamOutput",
                    	Cat = list(),
                     t_init = double(),
                     NbSteps = integer(),
-                   	times = integer()),
+                   	times = integer(),
+                    Q=integer()),
 		outputSp = list(F = list(),               #mortalité par pêche non corrigée (-> captures)
                     Fr = list(),              #mortalité par pêche corrigée (-> morts)
                     Fothi = list(),           #mortalité "autres flottilles, autres métiers"
@@ -48,21 +50,42 @@ setClass("iamOutput",
                     SSB = list(),             #biomasse reproductrice
                     C = list(),               #captures totales en nombre pour les flottilles et métiers modélisés
                     Ctot = list(),            #captures totales en nombre
-                    Y = list(),               #captures totales en poids pour les flottilles et métiers modélisés
-                    Ytot = list(),            #captures totales en poids
-                    D = list(),               #rejets totaux en poids pour les flottilles et métiers modélisés
-                    Li = list(),              #débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés
-                    Lc = list(),              #débarquements totaux en poids par catégorie pour les flottilles et métiers bio modélisés        
-                    Lcm = list(),             #débarquements totaux en poids par catégorie pour les flottilles et métiers éco modélisés  
+                    Y = list(),               #captures totales en poids pour les flottilles et métiers modélisés (composante âge)
+                    Ytot = list(),            #captures totales en poids (composante âge)
+                    D = list(),               #rejets totaux en poids pour les flottilles et métiers modélisés (composante âge)
+                    Li = list(),              #débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés  (composante âge)
+                    Lc = list(),              #débarquements totaux en poids par catégorie pour les flottilles et métiers bio modélisés  (composante âge)
+                    Ltot = list(),            #débarquements totaux en poids (composante âge)
                     P = list(),               #prix moyen par espèce et catégorie
-                    GVL_f_m_e = list(),      #CA total par espèce, flottille et métier éco
-                    PQuot = list()),
+                    GVL_f_m_e = list(),       #CA total par espèce, flottille et métier éco
+                    statY = list(),           #captures par flottille, métier pour les espèces sans dynamique
+                    statL = list(),           #débarquements par flottille, métier pour les espèces sans dynamique
+                    statD = list(),           #rejets par flottille, métier pour les espèces sans dynamique
+                    statP = list(),           #Prix pour les espèces sans dynamique
+                    statGVL_f_m = list(),     #CA total par espèce statique , flottille et métier éco
+                    PQuot = list(),
+                    F_S1M1= list(),F_S1M2= list(),F_S1M3= list(),F_S1M4= list(),
+                    F_S2M1= list(),F_S2M2= list(),F_S2M3= list(),F_S2M4= list(),
+                    F_S3M1= list(),F_S3M2= list(),F_S3M3= list(),F_S3M4= list(),
+                    F_S4M1= list(),F_S4M2= list(),F_S4M3= list(),F_S4M4= list(),
+                    Fr_S1M1= list(),Fr_S1M2= list(),Fr_S1M3= list(),Fr_S1M4= list(),
+                    Fr_S2M1= list(),Fr_S2M2= list(),Fr_S2M3= list(),Fr_S2M4= list(),
+                    Fr_S3M1= list(),Fr_S3M2= list(),Fr_S3M3= list(),Fr_S3M4= list(),
+                    Fr_S4M1= list(),Fr_S4M2= list(),Fr_S4M3= list(),Fr_S4M4= list(),
+                    Z_S1M1= list(),Z_S1M2= list(),Z_S1M3= list(),Z_S1M4= list(),
+                    Z_S2M1= list(),Z_S2M2= list(),Z_S2M3= list(),Z_S2M4= list(),
+                    Z_S3M1= list(),Z_S3M2= list(),Z_S3M3= list(),Z_S3M4= list(),
+                    Z_S4M1= list(),Z_S4M2= list(),Z_S4M3= list(),Z_S4M4= list(),
+                    N_S1M1= list(),N_S1M2= list(),N_S1M3= list(),N_S1M4= list(),
+                    N_S2M1= list(),N_S2M2= list(),N_S2M3= list(),N_S2M4= list(),
+                    N_S3M1= list(),N_S3M2= list(),N_S3M3= list(),N_S3M4= list(),
+                    N_S4M1= list(),N_S4M2= list(),N_S4M3= list(),N_S4M4= list()),
     output = list(typeGest = integer(),                #type de scénario de gestion appliqué
                   nbv_f = numeric(),                   #Nb de navires par flottille
                   nbds_f = numeric(),                  #Nb de jdm moyen par an et par flottille
                   nbv_f_m = numeric(),                 #Nb de navires par flottille-métier
                   nbds_f_m = numeric(),                #Nb de jdm moyen par an et par flottille-métier
-                  Lbio_f = numeric(),                  #Débarquements totaux par flottille
+                  Lbio_f = numeric(),                  #Débarquements totaux par flottille (incluant les espèces sans dynamique)
                   GVLtot_f_m = numeric(),              #CA total par flottille et métier
                   GVLav_f_m = numeric(),               #CA moyen par navire d'une flottille-métier
                   GVLtot_f = numeric(),                #CA total par flottille
@@ -160,6 +183,7 @@ setClass("iamOutputRep",
                      Gestion = list(), 
                      Eco = list()),
 		specific = list(Species = character(),
+                    StaticSpp=character(),
     	              Fleet = character(),
                   	Metier = character(),
                   	MetierEco = character(),	
@@ -167,7 +191,8 @@ setClass("iamOutputRep",
                    	Cat = list(),
                     t_init = double(),
                     NbSteps = integer(),
-                   	times = integer()),
+                   	times = integer(),
+                    Q=integer()),
 		outputSp = list(F = list(),               #mortalité par pêche non corrigée (-> captures)
                     Fr = list(),              #mortalité par pêche corrigée (-> morts)
                     Fothi = list(),           #mortalité "autres flottilles, autres métiers"
@@ -182,7 +207,12 @@ setClass("iamOutputRep",
                     Ytot = list(),            #captures totales en poids
                     D = list(),               #rejets totaux en poids pour les flottilles et métiers modélisés
                     Li = list(),              #débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés
-                    GVL_f_m_e = list()),      #CA total par espèce, flottille et métier éco
+                    GVL_f_m_e = list(),       #CA total par espèce dynamique, flottille et métier éco
+                    statY = list(),           #captures par flottille, métier pour les espèces sans dynamique
+                    statL = list(),           #débarquements par flottille, métier pour les espèces sans dynamique
+                    statD = list(),           #rejets par flottille, métier pour les espèces sans dynamique
+                    statGVL_f_m = list(),     #CA total par espèce statique , flottille et métier éco
+                    PQuot = list()),
     output = list(nbv_f = list(),                   #Nb de navires par flottille
                   nbds_f = list(),                  #Nb de jdm moyen par an et par flottille
                   nbv_f_m = list(),                 #Nb de navires par flottille-métier

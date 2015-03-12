@@ -25,6 +25,7 @@ setClass("iamInput",
 	prototype(
 		desc="iamInput",
 		specific = list(Species=character(),
+                    StaticSpp=character(),
     	              Fleet=character(),
                   	Metier=character(),
                   	MetierEco=character(),	
@@ -32,7 +33,8 @@ setClass("iamInput",
                    	Cat=list(),
                     t_init=double(),
                     NbSteps=integer(),
-                   	times=integer()),
+                   	times=integer(),
+                    Q=integer()),
 		historical=list(),
 		input=list(),
 		scenario=list(),
@@ -80,8 +82,18 @@ setClass("stockInput",
       wD_i	= NA,     #Poids individuels moyens dans les rejets (kg)	
       N_it0	= NA,     #Effectifs population aux âges à l'instant initial 	
       N_i0t	= NA,     #Effectifs population à l'âge 0
+      #Ni0_S1	= NA, Ni0_S2	= NA, Ni0_S3	= NA, Ni0_S4	= NA,   #effectifs population à l'âge 0 pour chaque morph (ie saison)
       F_i = NA,	      #Mortalité par pêche aux âges
-      F_fmi	= NA,	    #Mortalité par pêche aux âges ventilée	
+      F_fmi	= NA,	    #Mortalité par pêche aux âges ventilée
+       #mortalité par pêche aux âges pour chaque saison et chaque morph
+      #Fi_S1M1 = NA, Fi_S1M2 = NA, Fi_S1M3 = NA, Fi_S1M4 = NA, Fi_S2M1 = NA, Fi_S2M2 = NA, Fi_S2M3 = NA, Fi_S2M4 = NA,
+      #Fi_S3M1 = NA, Fi_S3M2 = NA, Fi_S3M3 = NA, Fi_S3M4 = NA, Fi_S4M1 = NA, Fi_S4M2 = NA, Fi_S4M3 = NA, Fi_S4M4 = NA,
+       #mortalité par pêche flottille-métier-âges pour chaque saison et chaque morph
+      #Ffmi_S1M1 = NA, Ffmi_S1M2 = NA, Ffmi_S1M3 = NA, Ffmi_S1M4 = NA, Ffmi_S2M1 = NA, Ffmi_S2M2 = NA, Ffmi_S2M3 = NA, Ffmi_S2M4 = NA,
+      #Ffmi_S3M1 = NA, Ffmi_S3M2 = NA, Ffmi_S3M3 = NA, Ffmi_S3M4 = NA, Ffmi_S4M1 = NA, Ffmi_S4M2 = NA, Ffmi_S4M3 = NA, Ffmi_S4M4 = NA,
+       #mortalité par pêche "autres" aux âges pour chaque saison et chaque morph
+      #Fothi_S1M1 = NA, Fothi_S1M2 = NA, Fothi_S1M3 = NA, Fothi_S1M4 = NA, Fothi_S2M1 = NA, Fothi_S2M2 = NA, Fothi_S2M3 = NA, Fothi_S2M4 = NA,
+      #Fothi_S3M1 = NA, Fothi_S3M2 = NA, Fothi_S3M3 = NA, Fothi_S3M4 = NA, Fothi_S4M1 = NA, Fothi_S4M2 = NA, Fothi_S4M3 = NA, Fothi_S4M4 = NA,
       B_i	= NA,       #Biomasse aux âges (t)	
       Y_mi = NA,      #Capture totale par métier et par a/l en poids pour ventilation de la mortalité par pêche	(t)
       C_mi = NA,      #Capture totale par métier et par a/l en nombres pour ventilation de la mortalité par pêche	
@@ -91,7 +103,7 @@ setClass("stockInput",
       doth_i= NA,     #Proportion des captures totales rejetées "autres flottilles"
       sr = NA,        #Taux de survie des rejets
 #      SelRef = NA,	  #Facteur de sélectivité de référence (PSo)
-      P_fmce = NA,    #Prix moyen par catégorie (euros)	
+      P_fmce = NA,    #Prix moyen par catégorie (euros)
       alpha_fmce = NA,     #Coefficient modèle de prix	
       beta_fmce = NA,      #Coefficient modèle de prix	
       gamma_fmce = NA,     #Coefficient modèle de prix
@@ -109,6 +121,41 @@ setClass("stockInput",
 )
 
 
+#====================================================================
+# Définition de l'objet StaticStockInput et test de validité (paramètres requis renseignés,...)
+#====================================================================
+
+val.staticStockInput <- function(object){
+
+#à remplir avec les tests de validité à appliquer aux données de paramétrage
+  #if ... stop(...)
+
+	return(TRUE)
+
+}
+
+setClass("staticStockInput",
+	representation(
+		stock="character",
+		input="list"
+	),
+	prototype(
+		stock="My stock",
+		input=list(
+      LPUE_f_m_e=NA,  #Débarquements moyens par unité d'effort pour les espèces non modélisées (t/nbds)
+      d_f_m_e=NA,     #Proportion des captures totales rejetées pour les espèces non modélisées sur les flottilles modélisées
+      P_fme = NA,     #Prix moyen espèces non modélisées (euros)
+      alpha_fme = NA,     #Coefficient modèle de prix
+      beta_fme = NA,      #Coefficient modèle de prix
+      gamma_fme = NA,
+      Lref_f_e = NA,
+      Lref_f_m_e = NA,
+      GVLref_f_e = NA,
+      GVLref_f_m_e = NA
+    )
+  ),
+	validity=val.staticStockInput
+)
 
 #====================================================================
 # Définition de l'objet Fleet et test de validité (paramètres requis renseignés,...)
@@ -215,7 +262,7 @@ arg <- object@arguments
 spe <- object@specific
 
 #Recruitments
-if (length(arg$Recruitment)!=length(spe$Species)) stop("wrong 'Recruitment' argument in iamArgs object!!") 
+if (length(arg$Recruitment)!=sum(spe$Q%in%0)) stop("wrong 'Recruitment' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,length)==9))) stop("missing argument in a 'Recruitment' element of iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) x$modSRactive)%in%(0:1)))) stop("wrong 'modSRactive' argument in iamArgs object!!")
 if (!all(unlist(lapply(arg$Recruitment,function(x) x$typeMODsr)%in%c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))) stop("wrong 'typeMODsr' argument in iamArgs object!!")
@@ -241,19 +288,23 @@ if (!ind) {if (!arg$Scenario$SELECTscen%in%(c(1:length(arg$Scenario$ALLscenario)
 
 #Gestion
 if (!arg$Gestion$active%in%(0:1)) stop("wrong 'Gest$active' argument in iamArgs object!!")
-if (!arg$Gestion$control%in%c("Nb navires","Nb jdm")) stop("wrong 'control' argument in iamArgs object!!")
+if (!arg$Gestion$control%in%c("Nb vessels","Nb daysAtSea")) stop("wrong 'control' argument in iamArgs object!!")
 if (!arg$Gestion$target%in%c("TAC","Fbar","TAC->Fbar")) stop("wrong 'target' argument in iamArgs object!!")
 if (!arg$Gestion$espece%in%spe$Species) stop("wrong 'espece' argument in iamArgs object!!")
-if (!arg$Gestion$level%in%(0:1)) stop("wrong 'level' argument in iamArgs object!!")
+if (!arg$Gestion$typeG%in%(0:1)) stop("wrong 'level' argument in iamArgs object!!")
 if (!arg$Gestion$delay%in%(1:spe$NbSteps)) stop("wrong 'delay' argument in iamArgs object!!")
 if (!arg$Gestion$upd%in%(1:2)) stop("wrong 'upd' argument in iamArgs object!!")
 if (!is.numeric(arg$Gestion$sup)) stop("wrong 'sup' argument in iamArgs object!!")
 if (!is.numeric(arg$Gestion$inf)) stop("wrong 'inf' argument in iamArgs object!!")
 if (length(arg$Gestion$tac)!=length(spe$times)) stop("wrong 'tac' argument in iamArgs object!!")
 if (length(arg$Gestion$fbar)!=length(spe$times)) stop("wrong 'fbar' argument in iamArgs object!!")
-if (length(arg$Gestion$mf)!=length(spe$Fleet)) stop("wrong 'mf' argument in iamArgs object!!")
 if (nrow(arg$Gestion$mfm)!=length(spe$Fleet)) stop("wrong 'mfm' argument in iamArgs object!!")
 if (ncol(arg$Gestion$mfm)!=length(spe$MetierEco)) stop("wrong 'mfm' argument in iamArgs object!!")
+if (length(arg$Gestion$othSpSup)!=length(spe$Species)+length(spe$StaticSpp)-1) stop("wrong 'othSpSup' argument in iamArgs object!!")
+if (nrow(arg$Gestion$effSup)!=length(spe$Fleet)) stop("wrong 'effSup' argument in iamArgs object!!")
+if (ncol(arg$Gestion$effSup)!=length(spe$times)) stop("wrong 'effSup' argument in iamArgs object!!")
+
+
 
 #Eco
 if (!arg$Eco$active%in%(0:1)) stop("wrong 'Eco$active' argument in iamArgs object!!")
@@ -286,6 +337,7 @@ setClass("iamArgs",
       Gestion = list(), 
       Eco = list()),
     specific = list(Species=character(),
+                    StaticSpp=character(),
     	              Fleet=character(),
                   	Metier=character(),
                   	MetierEco=character(),	
@@ -293,7 +345,8 @@ setClass("iamArgs",
                    	Cat=list(),
                     t_init=double(),
                     NbSteps=integer(),
-                   	times=integer())
+                   	times=integer(),
+                    Q=integer())
   ),
 	validity=val.iamArgs
 )

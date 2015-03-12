@@ -1,6 +1,6 @@
 #fonction de conversion des inputs au niveau métier Eco (inclus implémentation de l'allocation de mortalité par pêche
 
-convertInput <- function(inp) {
+convertInput <- function(inp,Fq_fmi=NULL) {
 
         namF <- inp@specific$Fleet ; nF <- length(namF) 
         namM <- inp@specific$Metier ; nM <- length(namM)
@@ -11,7 +11,8 @@ convertInput <- function(inp) {
         #-------------------------------------------------------------------------------
             
             for (i in inp@specific$Species) {
-            
+            if (inp@specific$Q[i]==0) {
+
             namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
             
               Fini <- inp@input[[i]]$F_fmi
@@ -100,6 +101,11 @@ convertInput <- function(inp) {
               
             llF[[i]] <- Ffmi  
               
+            } else {
+
+            llF[[i]] <- adrop(Fq_fmi[[i]][1,1,,,,drop=FALSE],1:2)
+
+            }
             }
          
          
@@ -113,6 +119,7 @@ convertInput <- function(inp) {
         namME <- inp@specific$MetierEco ; nME <- length(namME)
          
         MM <- inp@input[[i]]$mm 
+        if (is.null(MM)) MM <- NA
         if (length(MM)==1) tabMM <- NA else {
           tabMM <- cbind.data.frame(expand.grid(dimnames(MM)),value2=as.vector(MM))
           names(tabMM) <- c("fm","mEco","val2") }
@@ -275,8 +282,10 @@ if (is.null(ncol(DF))) {
 } else {
   
   if (ncol(DF)==1) {
-  
-     return(as.numeric(as.character(DF$value)))
+
+     Mat <- as.numeric(as.character(DF$value))
+     attributes(Mat)$DimCst <- as.integer(rep(0,4))
+     return(Mat)
      
   } else {
 #  if ("t" %in% names(DF)) DF <- expand.time(DF,nbStep)
@@ -479,8 +488,8 @@ if (is.null(folderFleet)) {
 } else {
   namF <- nam_fleet
 }
-LL <- list(historique=list(),input=list(),scenario=list()) ; LL$historique <- LL$input <- vector("list", length(namList))
-names(LL$historique) <- names(LL$input) <- namList
+#LL <- list(historique=list(),input=list(),scenario=list()) ; LL$historique <- LL$input <- vector("list", length(namList))
+#names(LL$historique) <- names(LL$input) <- namList
  
 #modalités flottilles et métiers (bio et eco)
 modF <- NULL                                                                   
@@ -569,10 +578,9 @@ Fstock <- FLEET[FLEET[,4]!="",]
 Fleet <- FLEET[FLEET[,4]=="",]
 
 
-
-
-
-
+nam_stock_bis <- unique(Fstock$e[!Fstock$e%in%c("espece",namList)])
+LL <- list(historique=list(),input=list(),scenario=list()) ; LL$historique <- LL$input <- vector("list", length(namList)+length(nam_stock_bis))
+names(LL$historique) <- names(LL$input) <- c(namList,nam_stock_bis)
 
 ##Scénarii
 
@@ -674,8 +682,7 @@ result[is.na(result)] <- ""
 
 
 #on va ajouter la table market
-MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8)]
-if (nrow(MarketSp)==0) MarketSp <- Market[Market[,6]%in%paste("e__",gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",namList[k])))),sep=""),c(1,4:5,7:8)]
+MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8),drop=FALSE]
 #on sépare les tables par variables en intercalant une (ou 2) ligne vide
 tabicat <- do.call("rbind",lapply(c("v__P_fmce","v__Q_fmce","v__alpha_fmce","v__beta_fmce","v__gamma_fmce"),
                     function(x) MarketSp[c(NA,grep(x,MarketSp[,1]),NA),]))
@@ -799,26 +806,11 @@ if (length(indMM)>0) MMmodif <- List[[indMM]]
 #si k==1, on n'oublie pas d'extraire les données "fm" et "mm" pour les insérer avec les données flottille par espèce
 if (k==1) {
 TAB_FM <- do.call("rbind",lapply(List,function(x) if ("v__fm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"fm",names(Fstock)]) } else NULL))
-  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
-TAB_FM_T1 <- TAB_FM_T2 <- TAB_FM_T3 <- TAB_FM_T4 <- TAB_FM
-TAB_FM_T1$e <- paste(TAB_FM_T1$e,"__T1",sep="") ; TAB_FM_T2$e <- paste(TAB_FM_T2$e,"__T2",sep="")
-TAB_FM_T3$e <- paste(TAB_FM_T3$e,"__T3",sep="") ; TAB_FM_T4$e <- paste(TAB_FM_T4$e,"__T4",sep="")
-TAB_FM <- rbind(TAB_FM,TAB_FM_T1,TAB_FM_T2,TAB_FM_T3,TAB_FM_T4)
 
 TAB_MM <- do.call("rbind",lapply(List,function(x) if ("v__mm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"mm",]) } else NULL))
-  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
-TAB_MM_T1 <- TAB_MM_T2 <- TAB_MM_T3 <- TAB_MM_T4 <- TAB_MM
-TAB_MM_T1$e <- paste(TAB_MM_T1$e,"__T1",sep="") ; TAB_MM_T2$e <- paste(TAB_MM_T2$e,"__T2",sep="")
-TAB_MM_T3$e <- paste(TAB_MM_T3$e,"__T3",sep="") ; TAB_MM_T4$e <- paste(TAB_MM_T4$e,"__T4",sep="")
-TAB_MM <- rbind(TAB_MM,TAB_MM_T1,TAB_MM_T2,TAB_MM_T3,TAB_MM_T4)
 
 #List <- lapply(List,function(x) if ("v__fm"%in%x$v) return(NULL) else x)   
 iCATtab <- do.call("rbind",lapply(List,function(x) if ("v__icat"%in%x$v) return(x[x$v%in%"v__icat",])  else NULL))
-  #added 21/03/2013 : on ajoute de la donnée au niveau trimestriel
-iCATtab_T1 <- iCATtab_T2 <- iCATtab_T3 <- iCATtab_T4 <- iCATtab
-iCATtab_T1$e <- paste(iCATtab_T1$e,"__T1",sep="") ; iCATtab_T2$e <- paste(iCATtab_T2$e,"__T2",sep="")
-iCATtab_T3$e <- paste(iCATtab_T3$e,"__T3",sep="") ; iCATtab_T4$e <- paste(iCATtab_T4$e,"__T4",sep="")
-iCATtab <- rbind(iCATtab,iCATtab_T1,iCATtab_T2,iCATtab_T3,iCATtab_T4)
 
  
 LLL <- length(List)
@@ -952,8 +944,14 @@ listInput <- lapply(listInput, function(x) {if (ncol(x)==1) {
                                             }
                                             })
 
-#on recode les noms de variables conformément à 'rec'
-renam <- c(as.character(rec$Variable),as.character(rec$Variable)) ; names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable))
+#on recode les noms de variables conformément à 'rec' (on ajoute les variables SS3 pilotables par le module scenario)
+SS3nam_N <- paste("Ni0_S",1:4,sep="")
+SS3nam_F <- paste("Ffmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
+SS3nam_Flanwt <- paste("FLWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
+SS3nam_Fdiswt <- paste("FDWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
+
+renam <- c(as.character(rec$Variable),as.character(rec$Variable),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt) ;
+names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt)
 renam <- renam[!duplicated(names(renam))]
 names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)] 
 #et on applique le multiplicateur à chaque variable dans les deux listes
@@ -992,7 +990,12 @@ listInput <- listInput[-match("alk",names(listInput))]
 
 #on ajoute mm à partir de TAB_MM
 tabMMtemp <- TAB_MM[TAB_MM$e%in%namList[k],c(2,4,5,6)]
-colnames(tabMMtemp) <- c("f","mBio","mEco","value") ; rownames(tabMMtemp) <- 1:nrow(tabMMtemp)
+colnames(tabMMtemp) <- c("f","mBio","mEco","value")
+if (nrow(tabMMtemp)==0) {
+ tabMMtemp <- NULL
+} else {
+ rownames(tabMMtemp) <- 1:nrow(tabMMtemp)
+}
 
 #mod_i <- unique(unlist(lapply(listInput,function(x) if (length(x)<2) return(NULL) else if ("i"%in%names(x)) return(as.character(x$i)) else return(NULL) )))
 
@@ -1010,13 +1013,13 @@ invisible(sapply(1:nrow(rec),function(x) if (as.character(rec$Variable)[x]%in%na
 listInput$modI <- MOD[[1]] ; listInput$modL <- MOD[[2]] ; listInput$modC <- MOD[[3]] ; listInput$alk <- ALK
 
 listScenar <- List[grepl("s__",names(List))]
-listScenar<- lapply(listScenar,function(x) if ("t"%in%names(x)) expand.time(x,t_init,nbStep,TRUE) else return(x))
+listScenar <- lapply(listScenar,function(x) if ("t"%in%names(x)) expand.time(x,t_init,nbStep,TRUE) else return(x))
 
 indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","Lref_f_m","Lref_f_m_e","Lref_f_m_e","Lref_f_m_e","GVLref_f_m",
         "GVLref_f_m_e","GVLref_f_m_e","GVLref_f_m_e","gc_f_m","nbh_f_m","nbtrip_f_m","fc_f_m","vf_f_m",
         "ovc_f_m","oilc_f_m","bc_f_m","foc_f_m","icec_f_m","cshr_f_m"),function(x) grepl(x,names(listScenar)))),2,any)
 
-listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)    #modif 07/04/2014
+listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
 listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
 listScenar <- c(listScenarBio,listScenarEco)
 
@@ -1067,6 +1070,242 @@ listInput[is.na(names(listInput))] <- NULL
 LL$historique[[k]] <- listHisto ; LL$input[[k]] <- listInput ; LL$scenario <- c(LL$scenario,listScenar)
 
 }
+
+#-----------------------------------------------------------------------------------------
+
+if (length(nam_stock_bis)>0) {
+
+for (k in 1:length(nam_stock_bis)) {
+
+nam <- nam_stock_bis[k]
+
+#on va ajouter la table market
+MarketSp <- Market[Market[,6]%in%paste("e__",nam,sep=""),c(1,4:5,8),drop=FALSE]
+#on sépare les tables par variables en intercalant une (ou 2) ligne vide
+tabicat <- do.call("rbind",lapply(c("v__P_fme","v__Q_fme","v__alpha_fme","v__beta_fme","v__gamma_fme"),
+                    function(x) MarketSp[c(NA,grep(x,MarketSp[,1]),NA),]))
+tabicat[,4][tabicat[,4]==""] <- "-1"
+
+result <- tabicat
+result[is.na(result)] <- "NA"
+
+#on commence par extraire le tableau de codage des variables
+indEmpt <- suppressWarnings(apply(result,1,function(x) min(unlist(sapply(c("v__","t__","i__","f__","m__","l__","e__","c__"),grep,x)))))
+#tout ce qui se trouve avant une modalité de variable est passé à ""
+invisible(sapply(1:nrow(result),function(x) if (is.finite(indEmpt[x])) {if (indEmpt[x]>1) result[x,1:(indEmpt[x]-1)] <<- ""}))
+
+#on filtre tout ce qui n'est ni numérique, ni paramètre
+#conversion en numérique
+
+num <- apply(suppressWarnings(apply(result,1,as.numeric)),1,as.character)
+
+#on ajoute les paramètres
+indic <- substring(result,1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")
+num[indic] <- result[indic]
+
+indicRow <- apply(result,1,function(x) any(substring(x,1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")))
+indicTbl <- cumsum(apply(num,1,function(x) all(is.na(x))))
+#on sépare les tables (sauts de lignes)
+sepTabl <- split(as.data.frame(num)[indicRow,],indicTbl[indicRow])
+tbl <- lapply(sepTabl,function(x) x[,!apply(x,2,function(y) all(is.na(y)))])
+
+#il faut maintenant filtrer toutes les anomalies de format
+
+#on distingue pour commencer les tables 1D des tables 2D
+tbl2Dind <- lapply(tbl,function(x) !substring(as.character(x[1,1]),1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__"))
+tbl2D <- tbl[(1:length(tbl))[unlist(tbl2Dind)]]
+tbl1D <- tbl[(1:length(tbl))[!unlist(tbl2Dind)]]
+
+#règles des tables 1d :
+
+  #une seule colonne de numériques
+
+if (length(tbl1D)>0) {tbl1D <- lapply(tbl1D,function(x) x[,1:((1:ncol(x))[!substring(as.matrix(x[1,]),1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")][1])])
+                      invisible(lapply(1:length(tbl1D),function(x) tbl1D[[x]][tbl1D[[x]]==-1] <<- as.numeric(NA)))}
+
+#règles des tables 2d :
+
+  #une colonne de numérique doit être précédée d'une variable
+
+if (length(tbl2D)>0) {tbl2D <- lapply(tbl2D,function(x) x[,apply(x,2,function(y) any(substring(as.matrix(y),1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")))])
+                      invisible(lapply(1:length(tbl2D),function(x) tbl2D[[x]][tbl2D[[x]]==-1] <<- as.numeric(NA)))}
+
+#on peut maintenant séparer les variables
+  #pour cela, il faut tout mettre sous forme 1D
+
+
+
+if (length(tbl2D)>0) tbl2 <- lapply(tbl2D,twoDto1D,"2D") else tbl2 <- NULL
+if (length(tbl1D)>0) tbl1 <- lapply(tbl1D,twoDto1D,"1D") else tbl1 <- NULL
+
+
+List <- c(tbl1,tbl2)
+
+#on peut intégrer ici les tables de scénarios
+
+#test pour savoir quelles tables intégrer dans la liste déjà construite
+testS <- lapply(ListS,function(x) { tst <- FALSE
+                                    if ((as.character(x$v[1])%in%paste("v__",as.character(rec$Alias),sep="")) & !"e"%in%names(x)) {
+                                      tst <- TRUE
+                                    } else {
+                                      if ("e"%in%names(x)) {
+                                        if (nam%in%gsub("e__","",as.character(x$e))) tst <- TRUE
+                                        }
+                                    }
+                                      return(tst)})
+
+
+ListStemp <- lapply(ListS,function(x) {x$v <- paste(x$v,x$s,sep="") ; return(x)})
+keep <- ListStemp[unlist(testS)]
+#on retire la colonne "espèce" après avoir filtré sur l'espèce
+keep <- lapply(keep,function(x) x[x$e%in%paste("e__",nam,sep=""),])
+keep <- lapply(keep,function(x) if ("e"%in%names(x)) x[,-match("e",names(x))])
+if (k==1) keepF <-  ListStemp[unlist(testF)]
+if (k==1) {if (length(keepF)>0) {keepF <- lapply(keepF,function(x) {x$v <- paste(x$v,"f__",sep="") ; return(x)})
+                                  keep <- c(keep,keepF)}
+                                  } #on balise les infos Fleet
+
+if (length(keep)>0) List <- c(List,keep)
+
+
+
+List <- lapply(List,function(x) split(x[,-match("v",names(x)),drop=FALSE],as.character(x[,match("v",names(x))])))
+namL <- gsub("v__","",unlist(lapply(List,names)))
+List <- unlist(List,recursive=FALSE,use.names = FALSE)
+names(List) <- namL
+
+#il faut regrouper les tables de même variable découpées en plusieurs parties
+Nam <- unique(names(List))
+List <- lapply(Nam,function(x) {tt <- do.call("rbind",List[names(List)%in%x])
+                                rownames(tt) <- NULL
+                                return(tt)})
+names(List) <- Nam
+
+
+#on en fait maintenant des objets standards accompagnés de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
+#il faut considérer l'historique... (t<=t_init)
+listHisto <- List[!grepl("s__",names(List))]
+invisible(sapply(c("v__","t__","i__","f__","m__","l__","e__","c__") ,
+              function(y) listHisto <<- lapply(listHisto,function(x) as.data.frame(gsub(y,"",as.matrix(x))))))
+listHisto <- lapply(listHisto, function(x) {if (ncol(x)==1) {
+                                              return(as.numeric(as.character(x$value)))
+                                            } else {
+                                              rownames(x) <- 1:nrow(x)
+                                              if ("t"%in%names(x)) {    #si l'occurence n'est pas présente, on prend toute la table
+                                                rp <- match(as.character(t_hist_max),as.character(x$t))
+                                                if (!is.na(rp)) {
+                                                x <- x[unique(sort(c(1:match(as.character(t_hist_max),as.character(x$t)),
+                                                                      (1:nrow(x))[x$t%in%t_hist_max]))),]
+                                                }}
+                                              x$value <- as.numeric(as.character(x$value))
+                                              return(x)
+                                              }})
+#... et les paramètres d'entrée (t>=t_init)
+listInput <- List[!grepl("s__",names(List))]
+
+listInput <- lapply(listInput, function(x) {if (ncol(x)==1) {
+                                              return(x)
+                                            } else {
+                                              if ("t"%in%names(x)) {
+                                              #il faut distinguer ce qui va servir à calculer la valeur initiale (tab), et ce qui sert pour les projections (proj)
+                                                ind <- grep("t__t__",as.character(x$t))
+                                                indic <- length(ind)>0
+                                                #occ <- unique(as.character(x$t)) ; occ <- occ[length(occ)]
+                                                if (indic) tab <- x[ind,] else
+                                                            tab <- x[x$t%in%paste("t__",t_init,sep=""),]
+                                                if (indic) {
+
+                                                  if (max(ind)<nrow(x)) {
+                                                    proj <- x[(max(ind)+1):nrow(x),]
+                                                  } else {
+                                                    proj <- NULL }  #pas de donnée de projection
+
+                                                } else {
+
+                                                if (match(paste("t__",t_init,sep=""),rev(as.character(x$t)))==1) {
+                                                    proj <- NULL
+                                                } else {
+                                                    proj <- x[(nrow(x)+2-match(paste("t__",t_init,sep=""),rev(as.character(x$t)))):nrow(x),] }
+
+                                                }
+
+                                                if (ncol(tab)==2) {
+
+                                                  if (is.null(proj))
+                                                    return(mean(as.numeric(as.character(tab$value)),na.rm=TRUE))
+                                                  else {
+                                                    intTab <- rbind.data.frame(tab[nrow(tab),],proj)
+                                                    intTab$value[1] <- mean(as.numeric(as.character(tab$value)),na.rm=TRUE)
+                                                    intTab$t <- gsub("t__t__","t__",intTab$t)
+                                                    return(expand.time(intTab,t_init,nbStep))
+                                                  }
+
+                                                } else {
+
+                                                  nams <- names(tab) ; nams <- nams[-match(c("t","value"),nams)]
+                                                  eval(parse('',text=paste("TAB <- with(tab,aggregate(as.numeric(as.character(value)),list(",
+                                                          paste(nams,collapse=","),"),mean,na.rm=TRUE))",sep="")))
+
+                                                  if (is.null(proj)) {
+                                                      names(TAB) <- c(nams,"value")
+                                                      return(TAB)
+                                                  } else {
+                                                      TAB$newField <- paste("t__",t_init,sep="")
+                                                      names(TAB) <- c(nams,"value","t")
+                                                      return(expand.time(rbind.data.frame(TAB[,names(proj)],proj),t_init,nbStep))
+                                                  }
+                                                }
+                                              } else {
+                                              return(x)
+                                              }
+                                            }
+                                            })
+
+#il ne reste plus qu'à ajouter à listInput les paramètres par espèce issus des fichiers flottilles
+Fle <- Fstock[Fstock[,4]%in%nam,] ; n <- unique(Fle[,1])
+Fle <- lapply(n,function(x) {df <- as.data.frame(Fle[Fle[,1]%in%x,c(2,3,5)]); rownames(df) <- 1:nrow(df); return(df)})
+Fle <- lapply(1:length(n),function(x) {df <- Fle[[x]] ; if (all(is.na(df[,3]))) df[,1:2] <- "" ; return(df)})
+Fle <- lapply(Fle,function(x) x[,c(apply(x[,1:(ncol(x)-1)],2,function(y) !all(y=="")),TRUE)])   #on ejecte les colonnes vides
+#on gère les constantes
+Fle <- lapply(Fle,function(x) if (is.null(dim(x))) return(x[1]) else return(x))
+names(Fle) <- n
+listInput <- c(listInput,Fle)
+
+listInput <- lapply(listInput,standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),alk=NULL)
+
+listScenar <- List[grepl("s__",names(List))]
+listScenar <- lapply(listScenar,function(x) if ("t"%in%names(x)) expand.time(x,t_init,nbStep,TRUE) else return(x))
+
+listScenar <- lapply(listScenar,standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),alk=NULL,NA)
+
+#on ajoute l'attribut 'intervention'
+for (nn in names(listScenar)) {
+  if (length(grep("__x__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(1)  #1 -> multiplication
+  if (length(grep("__+__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(2)  #2 -> addition
+  if (length(grep("__o__",nn))>0) attributes(listScenar[[nn]])$type <- as.integer(3)  #3 -> remplacement
+  if (length(grep("__x__",nn))==0 & length(grep("__+__",nn))==0 & length(grep("__o__",nn))==0) attributes(listScenar[[nn]])$type <- as.integer(0)  #0 -> par défaut (multiplication ??)
+}
+
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__x__","",NN))
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__+__","",NN))
+names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__o__","",NN))
+
+#if (k==1) {disti <- grepl("f__",names(listScenar)) ; )
+namS <- names(listScenar) ; namV <- sapply(namS,function(x) strsplit(x,"s__")[[1]][1])
+namS <- sapply(namS,function(x) strsplit(x,"s__")[[1]][2])
+
+if (length(listScenar)>0) names(listScenar) <- paste(names(listScenar),nam,sep="e__")
+
+listInput[is.na(names(listInput))] <- NULL
+
+LL$historique[[length(nam_stock)+k]] <- listHisto ; LL$input[[length(nam_stock)+k]] <- listInput ; LL$scenario <- c(LL$scenario,listScenar)
+
+}
+}
+
+
+
+
 
 #il manque un élément Fleet à historique --> à voir
 LL$historique$Fleet <- list()
@@ -1122,10 +1361,15 @@ reformat <- function(x,slotN="stockInput") {
 
 
 LL$historique <- c(lapply(LL$historique[1:length(nam_stock)],reformat),
-    lapply(LL$historique[length(nam_stock)+1],reformat,"fleetInput"))
+    if (length(nam_stock_bis)>0) lapply(LL$historique[(1:length(nam_stock_bis))+length(nam_stock)],reformat,"staticStockInput") else NULL,
+    lapply(LL$historique[length(nam_stock)+length(nam_stock_bis)+1],reformat,"fleetInput"))
 
 LL$input <- c(lapply(LL$input[1:length(nam_stock)],reformat),
-    lapply(LL$input[length(nam_stock)+1],reformat,"fleetInput"))
+    if (length(nam_stock_bis)>0) lapply(LL$input[(1:length(nam_stock_bis))+length(nam_stock)],reformat,"staticStockInput") else NULL,
+    lapply(LL$input[length(nam_stock)+length(nam_stock_bis)+1],reformat,"fleetInput"))
+
+#LL$input <- c(lapply(LL$input[1:(length(nam_stock)+length(nam_stock_bis))],reformat),
+#    lapply(LL$input[length(nam_stock)+length(nam_stock_bis)+1],reformat,"fleetInput"))
 
 #on laisse l'élément "scénario" tel quel pour le moment
 
@@ -1139,8 +1383,7 @@ indexSt <- seq(from=grep("Samples : recruitment" ,stoch[,1]),to=grep("END Sample
 indexSp <- grep("e__",stoch[,1]) 
 tabSto <- stoch[indexSp[indexSp%in%indexSt],]
 tabSto[,1] <- gsub("e__","",tabSto[,1])
-STO$RecHist <- lapply(as.character(namList),function(x) {tab <- tabSto[tabSto[,1]%in%x,] ; 
-                                       if (nrow(tab)==0) tab <- tabSto[tabSto[,1]%in%gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",x)))),]
+STO$RecHist <- lapply(as.character(namList),function(x) {tab <- tabSto[tabSto[,1]%in%x,,drop=FALSE] ;
                                           return(rep(as.numeric(tab[,3])*as.numeric(tab[,4]),as.numeric(tab[,5])))})
 
 names(STO$RecHist) <- as.character(namList)
@@ -1149,7 +1392,7 @@ STO$RecResiduals <- mapply(function(x,y) x-y,STO$RecHist,STO$GeoMeanRec,SIMPLIFY
 
 allSp <- tapply(tabSto[,1],list(tabSto[,2]),function(x) all(namList%in%x))       #années pour lesquelles on a un historique pour toutes les epsèces
 allSp <- names(allSp)[allSp]
-STO$RecHistLink <- lapply(as.character(namList),function(x) {tab <- tabSto[tabSto[,1]%in%x,] ; tab <- tab[match(allSp,tab[,2]),]; 
+STO$RecHistLink <- lapply(as.character(namList),function(x) {tab <- tabSto[tabSto[,1]%in%x,,drop=FALSE] ; tab <- tab[match(allSp,tab[,2]),,drop=FALSE];
                                           return(rep(as.numeric(tab[,3])*as.numeric(tab[,4]),as.numeric(tab[,5])))})
 names(STO$RecHistLink) <- as.character(namList)
 STO$GeoMeanRecLink <- lapply(STO$RecHistLink,function(x) if (length(x)>0) prod(x,na.rm=TRUE)^(1/sum(!is.na(x))) else numeric(0))
@@ -1165,7 +1408,6 @@ tabSto2[,5] <- gsub("e__","",tabSto2[,5])
 
 ff <- lapply(1:4,function(x) {
         comp <- lapply(as.character(namList),function(y) {tab <- tabSto2[tabSto2[,5]%in%y,,drop=FALSE] ;
-                                      if (nrow(tab)==0) tab <- tabSto2[tabSto2[,5]%in%gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",y)))),,drop=FALSE] 
                                           if (length(tab)>0) {
                                             if (tab[1,x]!="") {
                                               if (x%in%(2:4)) as.numeric(tab[1,x]) else as.character(tab[1,x])
@@ -1191,19 +1433,15 @@ MMmodif$m <- gsub("m__","",MMmodif$m)
 #modif MM 27/08/2013 : ligne au dessus engendre un plantage si 1 seule occurence métier (généralisation du drop)
 tabMM <- lapply(unique(MMmodif$e),function(z) with(MMmodif[MMmodif$e%in%z,],tapply(value,list(paste(f,mBio,sep="__"),m),function(x) x[1])))
 names(tabMM) <- unique(MMmodif$e)
-for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[[gsub("__T1","",gsub("__T2","",gsub("__T3","",gsub("__T4","",spp))))]]
+for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[[spp]]
+Qvec <- as.integer(rep(0,length(namList))) ; names(Qvec) <- as.character(namList)
 
-#détermination du pas de temps en fonction de la liste Espece
-repTr <- c(grep("__T2",as.character(namList)),grep("__T3",as.character(namList)),grep("__T4",as.character(namList)))
-delTrim <- as.character(namList)
-if (length(repTr)>0) delTrim <- as.character(sapply(as.character(namList)[-repTr],function(x) gsub("__T1","",x)))
-
-return(new("iamInput",desc=desc,specific=list(Species=as.character(namList),Fleet=modF,Metier=modMbio,MetierEco=modMeco,
+return(new("iamInput",desc=desc,specific=list(Species=as.character(namList),StaticSpp=as.character(nam_stock_bis),
+                                              Fleet=modF,Metier=modMbio,MetierEco=modMeco,
                                               Ages=lapply(LL$input,function(x) x$modI)[namList],
                                               Cat=lapply(LL$input,function(x) x$modC)[namList],t_init=t_init,
                                               NbSteps=as.integer(nbStep),times=as.integer(as.character(seq(t_init,by=1,length=nbStep))),
-                                              trim=as.integer(paste(delTrim,"__T1",sep="")%in%as.character(namList)),
-                                              trimInt=c("T1","T2","T3","T4")),
+                                              Q=Qvec), #initialise Q
             historical=LL$historique,input=LL$input,scenario=LL$scenario,stochastic=STO))
 
 }
@@ -1224,128 +1462,134 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
   # à partir d'un fichier .xls
 
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
-                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,...){
+                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,
+                                    Fq_i=NULL,iniFq_i=NULL,Fq_fmi=NULL,iniFq_fmi=NULL,
+                                    FqLwt_i=NULL,iniFqLwt_i=NULL,FqLwt_fmi=NULL,iniFqLwt_fmi=NULL,
+                                    FqDwt_i=NULL,iniFqDwt_i=NULL,FqDwt_fmi=NULL,iniFqDwt_fmi=NULL,
+                                    Nt0s1q=NULL,Ni0q=NULL,iniNt0q=NULL,matwt=NULL,...) {
+                                                                               #Fq_i matrice season*morph*age
+                                                                               #Fq_fmi matrice season*morph*flottille*metier*age
+                                                                               #Nt0s1q matrice morph*age  (Effectifs initiaux de projection (saison 1 de t=1) par cohorte)
+                                                                               #iniNt0q matrice season*morph*age  (Effectifs initiaux (t=0))
+                                                                               #Ni0q vecteur season (Recrutement par saison)
+                                                                               #matwt poids moyen pondéré pour calcul de la SSB (morph*age)
+
 
 if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") stop("'fileIN' must be an .xls file!!")
-	
+
+require(abind)
+
 out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet)
-OUT <- convertInput(out)
-if (all(OUT@specific$trim%in%0)) {
-  return(OUT)
-} else { #intervention trimestre
 
-  #@specific
-  repTrim234 <- c(grep("__T2",OUT@specific$Species),grep("__T3",OUT@specific$Species),grep("__T4",OUT@specific$Species))
-  if (length(repTrim234)>0) OUT@specific$Species <- as.character(sapply(as.character(OUT@specific$Species)[-repTrim234],function(x) gsub("__T1","",x)))
-  OUT@specific$Ages[repTrim234] <- NULL ; names(OUT@specific$Ages) <- OUT@specific$Species
-  OUT@specific$Cat[repTrim234] <- NULL ; names(OUT@specific$Cat) <- OUT@specific$Species
-  
-  #@input
-  copyInput <- OUT@input ; copyInput[repTrim234] <- NULL ; names(copyInput) <- c(OUT@specific$Species,"Fleet")
-  for (ind in 1:length(OUT@specific$Species)) {
-    SPP <- OUT@specific$Species[ind] 
-     if (OUT@specific$trim[ind]) {
-      for (vrbl in c("alk","M_i","mat_i","wStock_i","wL_i","wD_i","N_i0t","F_i","F_fmi",        #remplissage des trimestres
-                      "Y_mi","C_mi","Y_i","C_i","d_i","doth_i","sr")) {
-                      
-      copyInput[[SPP]][[vrbl]] <- list(T1=OUT@input[[paste(SPP,"__T1",sep="")]][[vrbl]],                
-                                       T2=OUT@input[[paste(SPP,"__T2",sep="")]][[vrbl]],
-                                       T3=OUT@input[[paste(SPP,"__T3",sep="")]][[vrbl]],
-                                       T4=OUT@input[[paste(SPP,"__T4",sep="")]][[vrbl]])
-                           
+nmQ <- names(Fq_i) ; nmQ <- names(Fq_fmi)[names(Fq_fmi)%in%nmQ] ; nmQ <- names(Nt0s1q)[names(Nt0s1q)%in%nmQ]
+nmQ <- names(Ni0q)[names(Ni0q)%in%nmQ] ; nmQ <- names(FqLwt_i)[names(FqLwt_i)%in%nmQ] ; nmQ <- names(FqLwt_fmi)[names(FqLwt_fmi)%in%nmQ]
+nmQ <- names(FqDwt_i)[names(FqDwt_i)%in%nmQ] ; nmQ <- names(FqDwt_fmi)[names(FqDwt_fmi)%in%nmQ]
+nmQ <- names(iniFq_i)[names(iniFq_i)%in%nmQ] ; nmQ <- names(iniFq_fmi)[names(iniFq_fmi)%in%nmQ]
+nmQ <- names(iniFqLwt_i)[names(iniFqLwt_i)%in%nmQ] ; nmQ <- names(iniFqLwt_fmi)[names(iniFqLwt_fmi)%in%nmQ]
+nmQ <- names(iniFqDwt_i)[names(iniFqDwt_i)%in%nmQ] ; nmQ <- names(iniFqDwt_fmi)[names(iniFqDwt_fmi)%in%nmQ]
+nmQ <- names(iniNt0q)[names(iniNt0q)%in%nmQ] ; nmQ <- names(matwt)[names(matwt)%in%nmQ]
+out@specific$Q[out@specific$Species%in%nmQ] <- as.integer(1)
+
+OUT <- convertInput(out,Fq_fmi=Fq_fmi)
+
+    # Fq_i <- lapply(OUT@specific$Species[1],function(x)
+    #                array(0.1,dim=c(4,4,length(OUT@specific$Ages[[x]])),
+    #                         dimnames=list(paste("S",1:4,sep=""),paste("M",1:4,sep=""),OUT@specific$Ages[[x]])))
+    #
+    # Fq_fmi <- lapply(OUT@specific$Species[1],function(x)
+    #                array(0.1,dim=c(4,4,length(OUT@specific$Fleet),length(OUT@specific$MetierEco),length(OUT@specific$Ages[[x]])),
+    #                         dimnames=list(paste("S",1:4,sep=""),paste("M",1:4,sep=""),OUT@specific$Fleet,
+    #                                      OUT@specific$MetierEco,OUT@specific$Ages[[x]])))
+    #
+    # Ni0q <- lapply(OUT@specific$Species[1],function(x) array(10183000/4,dim=4,dimnames=list(paste("S",1:4,sep=""))))
+    #
+    # names(Fq_i) <- names(Fq_fmi) <- names(Ni0q) <- OUT@specific$Species[1]
+
+#gestion des indicateurs trimestre
+         # mise en commun : seules les espèces renseignées pour les 3 variables sont conservées
+FL <- OUT@specific$Fleet
+ME <- OUT@specific$MetierEco
+
+if (length(nmQ)>0) {
+   for (i in nmQ) {
+      lFq_i <- lFq_fmi <- lFothq_i <- lFqLwt_i <- lFqLwt_fmi <- lFothqLwt_i <- lFqDwt_i <- lFqDwt_fmi <- lFothqDwt_i <- lNt0s1q <- lNi0q <- list()
+      liniFq_i <- liniFq_fmi <- liniFothq_i <- liniFqLwt_i <- liniFqLwt_fmi <- liniFothqLwt_i <- liniFqDwt_i <- liniFqDwt_fmi <- liniFothqDwt_i <- liniNt0q <- lmatwt <- list()
+      AG <- OUT@specific$Ages[[i]]
+      Nt0s1q[[i]][2:4,AG[1]] <- 0 ; Nt0s1q[[i]][1,AG[1]] <- Ni0q[[i]][1]      #pas d'individus d'âge 0 et de morph>1 à l'état initial
+      for (season in 1:4) {
+          temp <- as.double(Ni0q[[i]][season]) ; attributes(temp)$DimCst <- as.integer(c(0,0,0,0))
+          lNi0q[[paste("Ni0_S",season,"M",season,sep="")]] <- temp
+        for (morph in 1:4) {
+          if (season==1) {
+             temp <- adrop(Nt0s1q[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+             lNt0s1q[[paste("Nt0_S1M",morph,sep="")]] <- temp
+             temp <- adrop(matwt[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+             lmatwt[[paste("matwt_M",morph,sep="")]] <- temp
+          }
+          temp <- adrop(Fq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFq_i[[paste("Fi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(Fq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          lFq_fmi[[paste("Ffmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(Fq_i[[i]][season,morph,AG,drop=FALSE]-apply(Fq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFothq_i[[paste("Fothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(iniFq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFq_i[[paste("iniFi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          liniFq_fmi[[paste("iniFfmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFq_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFothq_i[[paste("iniFothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(FqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFqLwt_i[[paste("FLWi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(FqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          lFqLwt_fmi[[paste("FLWfmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(FqLwt_i[[i]][season,morph,AG,drop=FALSE]-apply(FqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFothqLwt_i[[paste("FLWothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(iniFqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFqLwt_i[[paste("iniFLWi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          liniFqLwt_fmi[[paste("iniFLWfmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFqLwt_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFothqLwt_i[[paste("iniFLWothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(FqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFqDwt_i[[paste("FDWi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(FqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          lFqDwt_fmi[[paste("FDWfmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(FqDwt_i[[i]][season,morph,AG,drop=FALSE]-apply(FqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          lFothqDwt_i[[paste("FDWothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFqDwt_i[[paste("iniFDWi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          liniFqDwt_fmi[[paste("iniFDWfmi_S",season,"M",morph,sep="")]] <- temp
+          temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
+          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniFothqDwt_i[[paste("iniFDWothi_S",season,"M",morph,sep="")]] <- temp
+
+          temp <- adrop(iniNt0q[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          liniNt0q[[paste("iniNt0q_S",season,"M",morph,sep="")]] <- temp
+        }
+          #OUT@specific$Q[OUT@specific$Species%in%i] <- as.integer(1)
       }
-     
-  
-  #on passe en annuel pour Lref et GVLref
-  copyInput[[SPP]][["Lref_f_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["Lref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T2",sep="")]][["Lref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T3",sep="")]][["Lref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T4",sep="")]][["Lref_f_e"]][] 
-  
-  copyInput[[SPP]][["Lref_f_m_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["Lref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T2",sep="")]][["Lref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T3",sep="")]][["Lref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T4",sep="")]][["Lref_f_m_e"]][] 
-
-  copyInput[[SPP]][["GVLref_f_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["GVLref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T2",sep="")]][["GVLref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T3",sep="")]][["GVLref_f_e"]][] +
-                                      OUT@input[[paste(SPP,"__T4",sep="")]][["GVLref_f_e"]][] 
-
-  copyInput[[SPP]][["GVLref_f_m_e"]][] <- OUT@input[[paste(SPP,"__T1",sep="")]][["GVLref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T2",sep="")]][["GVLref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T3",sep="")]][["GVLref_f_m_e"]][] +
-                                      OUT@input[[paste(SPP,"__T4",sep="")]][["GVLref_f_m_e"]][] 
-  
-  }}
-  
-  OUT@input <- copyInput
-  
-  #@historical
-  OUT@historical <- list()
-  
-  #@scenario
-  ll <- list()
-  for (sc in names(OUT@scenario)) {
-  for (ind in 1:length(OUT@specific$Species)) {
-    SPP <- OUT@specific$Species[ind]
-     if (OUT@specific$trim[ind]) {
-     #on recueille l'ensemble des variables définies
-     allVar <- unique(c(names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]), 
-                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]),
-                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]]),
-                        names(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]])))
-     if (length(allVar)>0) {
-     
-      for (vrbl in allVar) {
-                        
-      if (vrbl%in%c("alk","M_i","mat_i","wStock_i","wL_i","wD_i","N_i0t","F_i","F_fmi",        #dimension trimestre
-                      "Y_mi","C_mi","Y_i","C_i","d_i","doth_i","sr")) {
-      
-        ll[[sc]][[SPP]][[vrbl]][["T1"]] <- OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]]
-        ll[[sc]][[SPP]][[vrbl]][["T2"]] <- OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]]
-        ll[[sc]][[SPP]][[vrbl]][["T3"]] <- OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]]
-        ll[[sc]][[SPP]][[vrbl]][["T4"]] <- OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]]
-      
-      } else {
-      
-        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]])) 
-          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T4",sep="")]][[vrbl]]
-        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]])) 
-          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T3",sep="")]][[vrbl]]
-        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]])) 
-          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T2",sep="")]][[vrbl]]
-        if (!is.null(OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]])) 
-          ll[[sc]][[SPP]][[vrbl]] <- OUT@scenario[[sc]][[paste(SPP,"__T1",sep="")]][[vrbl]]
-      }}}
-      } else {
-          ll[[sc]][[SPP]] <- OUT@scenario[[sc]][[SPP]]
-      }
-     }
-      ll[[sc]][["Fleet"]] <- OUT@scenario[[sc]][["Fleet"]]
-     }
-       
-    OUT@scenario <- ll                  
-
-    #@stochastic
-    copyStoch <- OUT@stochastic ; nam <- names(OUT@stochastic)
-    for (ind in 1:length(OUT@specific$Species)) {
-     if (OUT@specific$trim[ind]) {
-      for (vrbl in nam) {
-      copyStoch[[vrbl]][repTrim234] <- NULL ; names(copyStoch[[vrbl]]) <- c(OUT@specific$Species) 
-      SPP <- OUT@specific$Species[ind]                
-      copyStoch[[vrbl]][[SPP]] <- list(T1=OUT@stochastic[[vrbl]][[paste(SPP,"__T1",sep="")]],                
-                                       T2=OUT@stochastic[[vrbl]][[paste(SPP,"__T2",sep="")]],
-                                       T3=OUT@stochastic[[vrbl]][[paste(SPP,"__T3",sep="")]],
-                                       T4=OUT@stochastic[[vrbl]][[paste(SPP,"__T4",sep="")]])
-                           
-      }
-     }}
-     
-     OUT@stochastic <- copyStoch
-  
-    return(OUT)
+      OUT@input[[i]] <- c(OUT@input[[i]],liniNt0q,lNi0q,lNt0s1q,lmatwt,liniFq_i,lFq_i,liniFq_fmi,lFq_fmi,liniFothq_i,lFothq_i,
+                     liniFqLwt_i,lFqLwt_i,liniFqLwt_fmi,lFqLwt_fmi,liniFothqLwt_i,lFothqLwt_i,liniFqDwt_i,lFqDwt_i,
+                     liniFqDwt_fmi,lFqDwt_fmi,liniFothqDwt_i,lFothqDwt_i)
+      OUT@input[[i]]$N_it0 <- as.double(NA) ; attributes(OUT@input[[i]]$N_it0)$DimCst <- as.integer(c(0,0,0,0))
+      OUT@input[[i]]$N_i0t <- as.double(NA) ; attributes(OUT@input[[i]]$N_i0t)$DimCst <- as.integer(c(0,0,0,0))
+      OUT@input[[i]]$F_i <- as.double(NA) ; attributes(OUT@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,0,0))
+      OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
+    }
 }
+
+return(OUT)
 
 })
 
