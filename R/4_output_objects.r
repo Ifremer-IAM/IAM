@@ -58,11 +58,15 @@ setClass("iamOutput",
                     Ltot = list(),            #débarquements totaux en poids (composante âge)
                     P = list(),               #prix moyen par espèce et catégorie
                     GVL_f_m_e = list(),       #CA total par espèce, flottille et métier éco
+                     GVLcom_f_m_e = list(),
+                     GVLst_f_m_e = list(),
                     statY = list(),           #captures par flottille, métier pour les espèces sans dynamique
                     statL = list(),           #débarquements par flottille, métier pour les espèces sans dynamique
                     statD = list(),           #rejets par flottille, métier pour les espèces sans dynamique
                     statP = list(),           #Prix pour les espèces sans dynamique
                     statGVL_f_m = list(),     #CA total par espèce statique , flottille et métier éco
+                     statGVLcom_f_m = list(),
+                     statGVLst_f_m = list(),
                     PQuot = list(),
                     F_S1M1= list(),F_S1M2= list(),F_S1M3= list(),F_S1M4= list(),
                     F_S2M1= list(),F_S2M2= list(),F_S2M3= list(),F_S2M4= list(),
@@ -79,12 +83,22 @@ setClass("iamOutput",
                     N_S1M1= list(),N_S1M2= list(),N_S1M3= list(),N_S1M4= list(),
                     N_S2M1= list(),N_S2M2= list(),N_S2M3= list(),N_S2M4= list(),
                     N_S3M1= list(),N_S3M2= list(),N_S3M3= list(),N_S3M4= list(),
-                    N_S4M1= list(),N_S4M2= list(),N_S4M3= list(),N_S4M4= list()),
+                    N_S4M1= list(),N_S4M2= list(),N_S4M3= list(),N_S4M4= list(),
+                    DD_efmi= list(),
+                    DD_efmc= list(),
+                    LD_efmi= list(),
+                    LD_efmc= list(),
+                    statDD_efm= list(),
+                    statLD_efm= list(),
+                    statLDst_efm= list(),
+                    statLDor_efm= list()),
     output = list(typeGest = integer(),                #type de scénario de gestion appliqué
                   nbv_f = numeric(),                   #Nb de navires par flottille
-                  nbds_f = numeric(),                  #Nb de jdm moyen par an et par flottille
+                  effort1_f = numeric(),               #1ère composante d'effort moyen par an et par flottille
+                  effort2_f = numeric(),               #2ème composante d'effort moyen par an et par flottille
                   nbv_f_m = numeric(),                 #Nb de navires par flottille-métier
-                  nbds_f_m = numeric(),                #Nb de jdm moyen par an et par flottille-métier
+                  effort1_f_m = numeric(),             #1ère composante d'effort moyen par an et par flottille-métier
+                  effort2_f_m = numeric(),             #2ème composante d'effort moyen par an et par flottille-métier
                   Lbio_f = numeric(),                  #Débarquements totaux par flottille (incluant les espèces sans dynamique)
                   GVLtot_f_m = numeric(),              #CA total par flottille et métier
                   GVLav_f_m = numeric(),               #CA moyen par navire d'une flottille-métier
@@ -98,6 +112,10 @@ setClass("iamOutput",
                   rtbs_f_m = numeric(),                #Reste à partager par navire d'une flottille-métier
                   rtbs_f = numeric(),                  #Reste à partager par navire d'une flottille
                   rtbsAct_f = numeric(),               #Reste à partager actualisé par navire d'une flottille
+                   ETini_f_m = numeric(),
+                   ETini_f = numeric(),
+                   cnb_f_m = numeric(),
+                   cnb_f = numeric(),
                   cshrT_f_m = numeric(),               #Part équipage par navire d'une flottille-métier
                   cshrT_f = numeric(),                 #Part équipage par navire d'une flottille
                   sshr_f_m = numeric(),                #Part armement par navire d'une flottille-métier
@@ -144,7 +162,8 @@ setClass("iamOutput",
                   ratio_gcf_K_f = numeric(),           #Ratio excédent brut d'exploitation / valeur d'assurance d'un navire moyen d'une flottille
                   ratio_ngcf_K_f = numeric(),          #Ratio excédent net d'exploitation / valeur d'assurance d'un navire moyen d'une flottille
                   ratio_gp_K_f = numeric(),            #Ratio résultat net d'exploitation / valeur d'assurance d'un navire moyen d'une flottille
-                  ratio_GVL_cnb_ue_f = numeric())      #Ratio CA / effectif moyen  / unité d'effort  d'un navire moyen d'une flottille 
+                  ratio_GVL_cnb_ue_f = numeric(),      #Ratio CA / effectif moyen  / unité d'effort  d'un navire moyen d'une flottille
+                  YTOT_fm = numeric())
   ),
 	validity=val.iamOutput
 )

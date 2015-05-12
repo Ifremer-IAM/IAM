@@ -79,6 +79,9 @@ mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs
 
 nT <- objInput@specific$NbSteps
 
+TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
+if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
+
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
                     as.integer(objArgs@arguments$Scenario$active), as.integer(objArgs@arguments$Replicates$active),
@@ -89,7 +92,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     objArgs@arguments$Gestion$othSpSup,objArgs@arguments$Gestion$effSup,
                     as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb daysAtSea","Nb vessels")),
-                                 trgt = match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar")),
+                                 trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
                                  upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)),
                     as.integer(objArgs@arguments$Eco$type-1),
@@ -196,11 +199,15 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     Ltot = out$Ltot,
                     P = out$P,             
                     GVL_f_m_e = out$E$GVL_f_m_e,
+                     GVLcom_f_m_e = out$E$GVLcom_f_m_e,
+                     GVLst_f_m_e = out$E$GVLst_f_m_e,
                     statY = out$Ystat,
                     statL = out$Lstat,
                     statD = out$Dstat,
                     statP = out$Pstat,
                     statGVL_f_m = out$E$GVL_f_m_eStat,
+                     statGVLcom_f_m = out$E$GVLcom_f_m_eStat,
+                     statGVLst_f_m = out$E$GVLst_f_m_eStat,
                     PQuot = out$PQuot,
                     F_S1M1= out$F_S1M1,F_S1M2= out$F_S1M2,F_S1M3= out$F_S1M3,F_S1M4= out$F_S1M4,
                     F_S2M1= out$F_S2M1,F_S2M2= out$F_S2M2,F_S2M3= out$F_S2M3,F_S2M4= out$F_S2M4,
@@ -217,13 +224,23 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     N_S1M1= out$N_S1M1,N_S1M2= out$N_S1M2,N_S1M3= out$N_S1M3,N_S1M4= out$N_S1M4,
                     N_S2M1= out$N_S2M1,N_S2M2= out$N_S2M2,N_S2M3= out$N_S2M3,N_S2M4= out$N_S2M4,
                     N_S3M1= out$N_S3M1,N_S3M2= out$N_S3M2,N_S3M3= out$N_S3M3,N_S3M4= out$N_S3M4,
-                    N_S4M1= out$N_S4M1,N_S4M2= out$N_S4M2,N_S4M3= out$N_S4M3,N_S4M4= out$N_S4M4),
+                    N_S4M1= out$N_S4M1,N_S4M2= out$N_S4M2,N_S4M3= out$N_S4M3,N_S4M4= out$N_S4M4,
+                    DD_efmi= out$DD_efmi,
+                    DD_efmc= out$DD_efmc,
+                    LD_efmi= out$LD_efmi,
+                    LD_efmc= out$LD_efmc,
+                    statDD_efm= out$statDD_efm,
+                    statLD_efm= out$statLD_efm,
+                    statLDst_efm= out$statLDst_efm,
+                    statLDor_efm= out$statLDor_efm),
                 output = list(
                   typeGest = out$typeGest,
                   nbv_f = out$Eff$nbv_f,              
-                  nbds_f = out$Eff$nbds_f,                 
+                  effort1_f = out$Eff$effort1_f,
+                  effort2_f = out$Eff$effort2_f,
                   nbv_f_m = out$Eff$nbv_f_m,          
-                  nbds_f_m = out$Eff$nbds_f_m,               
+                  effort1_f_m = out$Eff$effort1_f_m,
+                  effort2_f_m = out$Eff$effort2_f_m,
                   Lbio_f = out$E$Lbio_f,             
                   GVLtot_f_m = out$E$GVLtot_f_m,            
                   GVLav_f_m = out$E$GVLav_f_m,          
@@ -236,7 +253,11 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   vcst_f = out$E$vcst_f,             
                   rtbs_f_m = out$E$rtbs_f_m,      
                   rtbs_f = out$E$rtbs_f,             
-                  rtbsAct_f = out$E$rtbsAct_f,          
+                  rtbsAct_f = out$E$rtbsAct_f,
+                   ETini_f_m = out$E$ETini_f_m,
+                   ETini_f = out$E$ETini_f,
+                   cnb_f_m = out$E$cnb_f_m,
+                   cnb_f = out$E$cnb_f,
                   cshrT_f_m = out$E$cshrT_f_m,            
                   cshrT_f = out$E$cshrT_f,             
                   sshr_f_m = out$E$sshr_f_m,           
@@ -283,7 +304,8 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   ratio_gcf_K_f = out$E$ratio_gcf_K_f,        
                   ratio_ngcf_K_f = out$E$ratio_ngcf_K_f,      
                   ratio_gp_K_f = out$E$ratio_gp_K_f,           
-                  ratio_GVL_cnb_ue_f = out$E$ratio_GVL_cnb_ue_f)   
+                  ratio_GVL_cnb_ue_f = out$E$ratio_GVL_cnb_ue_f,
+                  YTOT_fm= out$YTOT_fm)
   ))
 }              
                                  

@@ -101,9 +101,14 @@ setClass("stockInput",
       C_i = NA,       #Capture totale par a/l en nombres pour ventilation de la mortalité par pêche	
       d_i= NA,        #Proportion des captures totales rejetées "flottilles modélisées"
       doth_i= NA,     #Proportion des captures totales rejetées "autres flottilles"
+      dd1_f_m_e = NA, #taux de rejets exemption en % de la capture totale de l'espèce
+      dd2_f_m_e = NA, #taux de rejets exemption en % de la capture totale
       sr = NA,        #Taux de survie des rejets
 #      SelRef = NA,	  #Facteur de sélectivité de référence (PSo)
       P_fmce = NA,    #Prix moyen par catégorie (euros)
+      Pst_e = NA,     #Prix farine
+      OD_e = NA,      #obligation de débarquement ? (oui(1)/non(0))
+      theta_e = NA,   #multiplicateur de prix pour les rejets débarqués (0<=...<=1)
       alpha_fmce = NA,     #Coefficient modèle de prix	
       beta_fmce = NA,      #Coefficient modèle de prix	
       gamma_fmce = NA,     #Coefficient modèle de prix
@@ -144,7 +149,13 @@ setClass("staticStockInput",
 		input=list(
       LPUE_f_m_e=NA,  #Débarquements moyens par unité d'effort pour les espèces non modélisées (t/nbds)
       d_f_m_e=NA,     #Proportion des captures totales rejetées pour les espèces non modélisées sur les flottilles modélisées
+      dd1_f_m_e = NA, #taux de rejets exemption en % de la capture totale de l'espèce
+      dd2_f_m_e = NA, #taux de rejets exemption en % de la capture totale
+      dst_f_m_e = NA, #taux de rejets débarqués sous-taille en % du tonnage de rejets débarqués de l'espèce
       P_fme = NA,     #Prix moyen espèces non modélisées (euros)
+      Pst_e = NA,     #Prix farine
+      OD_e = NA,      #obligation de débarquement ? (oui(1)/non(0))
+      theta_e = NA,   #multiplicateur de prix pour les rejets débarqués (0<=...<=1)
       alpha_fme = NA,     #Coefficient modèle de prix
       beta_fme = NA,      #Coefficient modèle de prix
       gamma_fme = NA,
@@ -183,21 +194,35 @@ setClass("fleetInput",
 		  modMbio = NA,
 		  modMeco = NA,
 		  #variables 
+      sorting = NA,
 		  Lref_f = NA,             #Débarquements de référence par flottille
 		  Lref_f_m = NA,           #Débarquements de référence par flottille - métier
       GVLref_f = NA,           #CA moyen initial par navire d'une flottille
       GVLref_f_m = NA,         #CA moyen initial par navire d'une flottille - métier
+      Yothsue_f_m = NA,
       nbv_f = NA,              #Nombre de navires par flottille
       nbv_f_m = NA,            #Nombre de navire par flottille - métier
-      lc_f = NA,               #Taxes de débarquement (% CA éco)
+      lc_f_m = NA,             #Taxes de débarquement (% CA éco)
+      lcd_f_m = NA,            #Taxes de débarquement relatives aux rejets débarqués sous-taille (% CA éco)
       gc_f = NA,               #Coût total engins par navire d'une flottille
       gc_f_m = NA,             #Coût total engins par navire d'une flottille - métier
       nbds_f = NA,             #Nombre moyen de Jours de Mer par navire d'une flottille par an
       nbds_f_m = NA,           #Nombre moyen de Jours de Mer par navire d'une flottille - métier par an
       nbh_f = NA,              #Nombre d'heures moteur par navire d'une flottille par an
       nbh_f_m = NA,            #Nombre d'heures moteur par navire d'une flottille - métier par an
-      nbtrip_f = NA,           #Nombre de marées annuel par navire d'une flottille
-      nbtrip_f_m = NA,         #Nombre de marées annuel par navire d'une flottile - métier
+      nbTrip_f = NA,           #Nombre de marées annuel par navire d'une flottille
+      nbTrip_f_m = NA,         #Nombre de marées annuel par navire d'une flottile - métier
+      tripLgth_f = NA,         #durée moyenne d'une marée par navire d'une flottille
+      tripLgth_f_m = NA,       #durée moyenne d'une marée par navire d'une flottile - métier
+      tripLgthIniMax_f_m = NA,
+      effort1_f = NA,
+      effort1_f_m = NA,
+      effort2_f = NA,
+      effort2_f_m = NA,
+      effort1max_nbds_f = NA,
+      effort1max_nbTrip_f = NA,
+      effort1max_f = NA,
+      H_f = NA,
       fc_f = NA,               #Coûts du carburant par navire d'une flottille
       fc_f_m = NA,             #Coûts du carburant par navire d'une flottille - métier
       vf_f = NA,               #Prix du carburant par navire d'une flottille
@@ -238,10 +263,11 @@ setClass("fleetInput",
       ovcDCF_f = NA,	         #Autres coûts variables DCF par navire d'une flottille
       ovcDCF_f_m = NA,	       #Autres coûts variables DCF par navire d'une flottille - métier
       fixc_f = NA,             #Coûts fixes (DCF)
-
+      effort_f_tot=NA,
       nbds_f_tot = NA,         #Nombre total de Jours de Mer par navire par an et par flottille
       GVLref_f_tot = NA,       #Valeur totale débarquée par navire par an et par flottille en milliers d'euros (CA nav)
       nbh_f_tot = NA,          #Nombre total d'heures moteur par navire par an et par flottille
+      effort_f_m_tot=NA,
       nbds_f_m_tot = NA,       #Nombre total de jour de mer par navire par an et par flottille - métier
       GVLref_f_m_tot = NA,     #Valeur totale débarquée par navire par an et par flottille - métier en milliers d'euro 			
       nbh_f_m_tot = NA         #Nombre total d'heure moteur par navire par an  et par flottille - métier   
@@ -289,7 +315,7 @@ if (!ind) {if (!arg$Scenario$SELECTscen%in%(c(1:length(arg$Scenario$ALLscenario)
 #Gestion
 if (!arg$Gestion$active%in%(0:1)) stop("wrong 'Gest$active' argument in iamArgs object!!")
 if (!arg$Gestion$control%in%c("Nb vessels","Nb daysAtSea")) stop("wrong 'control' argument in iamArgs object!!")
-if (!arg$Gestion$target%in%c("TAC","Fbar","TAC->Fbar")) stop("wrong 'target' argument in iamArgs object!!")
+if (!arg$Gestion$target%in%c("TAC","Fbar","TAC->Fbar","biomasse")) stop("wrong 'target' argument in iamArgs object!!")
 if (!arg$Gestion$espece%in%spe$Species) stop("wrong 'espece' argument in iamArgs object!!")
 if (!arg$Gestion$typeG%in%(0:1)) stop("wrong 'level' argument in iamArgs object!!")
 if (!arg$Gestion$delay%in%(1:spe$NbSteps)) stop("wrong 'delay' argument in iamArgs object!!")
@@ -310,11 +336,11 @@ if (ncol(arg$Gestion$effSup)!=length(spe$times)) stop("wrong 'effSup' argument i
 if (!arg$Eco$active%in%(0:1)) stop("wrong 'Eco$active' argument in iamArgs object!!")
 if (!arg$Eco$type%in%(1:2)) stop("wrong 'Eco$type' argument in iamArgs object!!")
 if (!arg$Eco$adj%in%(1:2)) stop("wrong 'Eco$adj' argument in iamArgs object!!")
-if (!arg$Eco$lev%in%(1:2)) stop("wrong 'Eco$lev' argument in iamArgs object!!")
+#if (!arg$Eco$lev%in%(1:2)) stop("wrong 'Eco$lev' argument in iamArgs object!!")
 if (!arg$Eco$ue_choice%in%(1:2)) stop("wrong 'Eco$ue_choice' argument in iamArgs object!!")
 if (!arg$Eco$oths%in%(0:1)) stop("wrong 'Eco$oths' argument in iamArgs object!!")
 if (!arg$Eco$othsFM%in%(0:1)) stop("wrong 'Eco$othsFM' argument in iamArgs object!!")
-if (!arg$Eco$perscCalc%in%(0:2)) stop("wrong 'Eco$perscCalc' argument in iamArgs object!!")
+if (!arg$Eco$perscCalc%in%(0:4)) stop("wrong 'Eco$perscCalc' argument in iamArgs object!!")
 if (!arg$Eco$report%in%(0:1)) stop("wrong 'Eco$report' argument in iamArgs object!!")
 if (!is.numeric(arg$Eco$dr)) stop("wrong 'Eco$dr' argument in iamArgs object!!")
 

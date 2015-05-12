@@ -684,7 +684,7 @@ result[is.na(result)] <- ""
 #on va ajouter la table market
 MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8),drop=FALSE]
 #on sépare les tables par variables en intercalant une (ou 2) ligne vide
-tabicat <- do.call("rbind",lapply(c("v__P_fmce","v__Q_fmce","v__alpha_fmce","v__beta_fmce","v__gamma_fmce"),
+tabicat <- do.call("rbind",lapply(c("v__OD_e","v__theta_e","v__Pst_e","v__P_fmce","v__Q_fmce","v__alpha_fmce","v__beta_fmce","v__gamma_fmce"),
                     function(x) MarketSp[c(NA,grep(x,MarketSp[,1]),NA),]))
 tabicat[,5][tabicat[,5]==""] <- "-1"
 
@@ -950,8 +950,8 @@ SS3nam_F <- paste("Ffmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,
 SS3nam_Flanwt <- paste("FLWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
 SS3nam_Fdiswt <- paste("FDWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
 
-renam <- c(as.character(rec$Variable),as.character(rec$Variable),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt) ;
-names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt)
+renam <- c(as.character(rec$Variable),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt) ;
+names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt)
 renam <- renam[!duplicated(names(renam))]
 names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)] 
 #et on applique le multiplicateur à chaque variable dans les deux listes
@@ -999,9 +999,9 @@ if (nrow(tabMMtemp)==0) {
 
 #mod_i <- unique(unlist(lapply(listInput,function(x) if (length(x)<2) return(NULL) else if ("i"%in%names(x)) return(as.character(x$i)) else return(NULL) )))
 
-listInputBio <- lapply(listInput[!names(listInput)%in%c("GVLref_f_m_e","Lref_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme","mm")],
+listInputBio <- lapply(listInput[!names(listInput)%in%c("GVLref_f_m_e","Lref_f_m_e","dd1_f_m_e","dd2_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme","mm")],
                     standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMbio,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK)
-listInputEco <- lapply(listInput[c("GVLref_f_m_e","Lref_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme")],
+listInputEco <- lapply(listInput[c("GVLref_f_m_e","Lref_f_m_e","dd1_f_m_e","dd2_f_m_e","P_fmce","Q_fmce","P_fme","Q_fme")],
                     standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK)
 listInput <- c(listInputBio,list(mm=tabMMtemp),listInputEco)
 
@@ -1015,7 +1015,7 @@ listInput$modI <- MOD[[1]] ; listInput$modL <- MOD[[2]] ; listInput$modC <- MOD[
 listScenar <- List[grepl("s__",names(List))]
 listScenar <- lapply(listScenar,function(x) if ("t"%in%names(x)) expand.time(x,t_init,nbStep,TRUE) else return(x))
 
-indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","Lref_f_m","Lref_f_m_e","Lref_f_m_e","Lref_f_m_e","GVLref_f_m",
+indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","effort1_f_m","effort2_f_m","Lref_f_m","Lref_f_m_e","Lref_f_m_e","Lref_f_m_e","GVLref_f_m",
         "GVLref_f_m_e","GVLref_f_m_e","GVLref_f_m_e","gc_f_m","nbh_f_m","nbtrip_f_m","fc_f_m","vf_f_m",
         "ovc_f_m","oilc_f_m","bc_f_m","foc_f_m","icec_f_m","cshr_f_m"),function(x) grepl(x,names(listScenar)))),2,any)
 
@@ -1039,7 +1039,7 @@ names(listScenar) <- sapply(names(listScenar),function(NN) gsub("__o__","",NN))
 namS <- names(listScenar) ; namV <- sapply(namS,function(x) strsplit(x,"s__")[[1]][1])
 namS <- sapply(namS,function(x) strsplit(x,"s__")[[1]][2])
 #on ne procède au recodage que sur les variables Stock (exceptée les variables internes)    <<----- variables internes à mettre à jour ici  <<<--------
-testSt <- grepl("f__",namS) | grepl("Foth_i",namV) | grepl("F_fmi",namV)
+testSt <- grepl("f__",namS) | grepl("Foth_i",namV) | grepl("F_fmi",namV) | grepl("Froth_i",namV) | grepl("FDWToth_i",namV) | grepl("FRWToth_i",namV) | grepl("Ni0_",namV) | grepl("N_i0t",namV)
 
 if (length(listScenar)>0) {
   names(listScenar)[!testSt] <- paste(paste(renam[namV],namS,sep="s__"),namList[k],sep="e__")[!testSt]
@@ -1082,7 +1082,7 @@ nam <- nam_stock_bis[k]
 #on va ajouter la table market
 MarketSp <- Market[Market[,6]%in%paste("e__",nam,sep=""),c(1,4:5,8),drop=FALSE]
 #on sépare les tables par variables en intercalant une (ou 2) ligne vide
-tabicat <- do.call("rbind",lapply(c("v__P_fme","v__Q_fme","v__alpha_fme","v__beta_fme","v__gamma_fme"),
+tabicat <- do.call("rbind",lapply(c("v__OD_e","v__theta_e","v__Pst_e","v__P_fme","v__Q_fme","v__alpha_fme","v__beta_fme","v__gamma_fme"),
                     function(x) MarketSp[c(NA,grep(x,MarketSp[,1]),NA),]))
 tabicat[,4][tabicat[,4]==""] <- "-1"
 
@@ -1160,7 +1160,7 @@ keep <- ListStemp[unlist(testS)]
 #on retire la colonne "espèce" après avoir filtré sur l'espèce
 keep <- lapply(keep,function(x) x[x$e%in%paste("e__",nam,sep=""),])
 keep <- lapply(keep,function(x) if ("e"%in%names(x)) x[,-match("e",names(x))])
-if (k==1) keepF <-  ListStemp[unlist(testF)]
+if (k==1 & length(nam_stock)==0) keepF <-  ListStemp[unlist(testF)] else keepF <- NULL
 if (k==1) {if (length(keepF)>0) {keepF <- lapply(keepF,function(x) {x$v <- paste(x$v,"f__",sep="") ; return(x)})
                                   keep <- c(keep,keepF)}
                                   } #on balise les infos Fleet
@@ -1325,15 +1325,18 @@ LL$input$Fleet <- lapply(FL,standFormat,nbStep,paste("f__",modF,sep=""),paste("m
 
 #on calcule les valeurs totales à partir des valeurs moyennes sur les champs "nbact_f_tot","nbds_f_tot","nbdf_f_tot",
 #"prodtot_f_tot","GR_f_tot","nbh_f_tot","nbds_f_m_tot","nbdf_f_m_tot","prodtot_f_m_tot","GR_f_m_tot","nbh_f_m_tot"
-namFtot <- c("nbds_f_tot","GVLref_f_tot","nbh_f_tot","nbds_f_m_tot","GVLref_f_m_tot","nbh_f_m_tot")
+namFtot <- c("effort_f_tot","nbds_f_tot","GVLref_f_tot","nbh_f_tot","effort_f_m_tot","nbds_f_m_tot","GVLref_f_m_tot","nbh_f_m_tot")
 Ftot <- LL$input$Fleet[gsub("_tot","",namFtot)]
+Ftot[[1]] <- LL$input$Fleet$effort1_f * LL$input$Fleet$effort2_f
+Ftot[[5]] <- LL$input$Fleet$effort1_f_m * LL$input$Fleet$effort2_f_m
 if (is.null(LL$input$Fleet$nbv_f)) LL$input$Fleet$nbv_f <- NA
 if (is.null(LL$input$Fleet$nbv_f_m)) LL$input$Fleet$nbv_f_m <- NA 
-Ftot <- lapply(1:length(namFtot),function(x) if (x<4) Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f) else Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f_m))
+Ftot <- lapply(1:length(namFtot),function(x) if (x<5) Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f) else Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f_m))
 names(Ftot) <- namFtot 
 LL$input$Fleet <- c(LL$input$Fleet,Ftot)
 
-
+LL$input$Fleet$Yothsue_f_m <- (LL$input$Fleet$Lref_f_m - Reduce("+",lapply(LL$input[-length(LL$input)],function(x) x$Lref_f_m_e)))/Ftot[[5]]
+LL$input$Fleet$tripLgthIniMax_f_m <- LL$input$Fleet$tripLgth_f_m * as.vector(LL$input$Fleet$H_f*LL$input$Fleet$nbTrip_f*LL$input$Fleet$nbv_f / LL$input$Fleet$Lref_f)
 
 #on va traiter les inputs scénarios pour les organiser de la même manière que dans input
 SC <- LL$scenario
@@ -1481,6 +1484,8 @@ require(abind)
 
 out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet)
 
+
+
 nmQ <- names(Fq_i) ; nmQ <- names(Fq_fmi)[names(Fq_fmi)%in%nmQ] ; nmQ <- names(Nt0s1q)[names(Nt0s1q)%in%nmQ]
 nmQ <- names(Ni0q)[names(Ni0q)%in%nmQ] ; nmQ <- names(FqLwt_i)[names(FqLwt_i)%in%nmQ] ; nmQ <- names(FqLwt_fmi)[names(FqLwt_fmi)%in%nmQ]
 nmQ <- names(FqDwt_i)[names(FqDwt_i)%in%nmQ] ; nmQ <- names(FqDwt_fmi)[names(FqDwt_fmi)%in%nmQ]
@@ -1491,6 +1496,11 @@ nmQ <- names(iniNt0q)[names(iniNt0q)%in%nmQ] ; nmQ <- names(matwt)[names(matwt)%
 out@specific$Q[out@specific$Species%in%nmQ] <- as.integer(1)
 
 OUT <- convertInput(out,Fq_fmi=Fq_fmi)
+
+#sorting
+ODpar_list <- unlist(lapply(OUT@input,function(x) x$OD_e))
+if (all(ODpar_list%in%0)) OD <- 0 else OD <- min(ODpar_list,na.rm=TRUE)
+OUT@input$Fleet$sorting <- as.integer(as.character(OD))
 
     # Fq_i <- lapply(OUT@specific$Species[1],function(x)
     #                array(0.1,dim=c(4,4,length(OUT@specific$Ages[[x]])),

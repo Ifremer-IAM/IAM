@@ -82,7 +82,7 @@ if (classInp=="args") {
   EcoDisable <- tclVar(as.character(input$Eco$active))
   Type <- tclVar(as.character(input$Eco$type))
   Adj <- tclVar(as.character(input$Eco$adj))
-  Lev <- tclVar(as.character(input$Eco$lev))
+  #Lev <- tclVar(as.character(input$Eco$lev))
   Ue_choice <- tclVar(as.character(input$Eco$ue_choice))
   Oths <- tclVar(as.character(input$Eco$oths))
   OthsFM <- tclVar(as.character(input$Eco$othsFM))
@@ -95,7 +95,7 @@ if (classInp=="args") {
   EcoDisable <- tclVar("0")
   Type <- tclVar("1")
   Adj <- tclVar("1")
-  Lev <- tclVar("1")
+  #Lev <- tclVar("1")
   Ue_choice <- tclVar("1")
   Oths <- tclVar("0")
   OthsFM <- tclVar("0")
@@ -113,8 +113,8 @@ set.eco.state<-function(){
                      tkconfigure(butType2, state="normal");
                      tkconfigure(butAdj1, state="normal");
                      tkconfigure(butAdj2, state="normal");
-                     tkconfigure(butLev1, state="normal");
-                     tkconfigure(butLev2, state="normal");
+                     #tkconfigure(butLev1, state="normal");
+                     #tkconfigure(butLev2, state="normal");
                      tkconfigure(butUe1, state="normal");
                      tkconfigure(butUe2, state="normal");
                      tkconfigure(butOths1, state="normal");
@@ -124,6 +124,8 @@ set.eco.state<-function(){
                      tkconfigure(butPerscCalc1, state="normal");
                      tkconfigure(butPerscCalc2, state="normal");
                      tkconfigure(butPerscCalc3, state="normal");
+                     tkconfigure(butPerscCalc4, state="normal");
+                     tkconfigure(butPerscCalc5, state="normal");
                      tkconfigure(butReport1, state="normal");
                      tkconfigure(butReport2, state="normal");
                      tkconfigure(spinboxDR, state="normal")}
@@ -132,8 +134,8 @@ set.eco.state<-function(){
                      tkconfigure(butType2, state="disabled");
                      tkconfigure(butAdj1, state="disabled");
                      tkconfigure(butAdj2, state="disabled");
-                     tkconfigure(butLev1, state="disabled");
-                     tkconfigure(butLev2, state="disabled");
+                     #tkconfigure(butLev1, state="disabled");
+                     #tkconfigure(butLev2, state="disabled");
                      tkconfigure(butUe1, state="disabled");
                      tkconfigure(butUe2, state="disabled");
                      tkconfigure(butOths1, state="disabled");
@@ -143,6 +145,8 @@ set.eco.state<-function(){
                      tkconfigure(butPerscCalc1, state="disabled");
                      tkconfigure(butPerscCalc2, state="disabled");
                      tkconfigure(butPerscCalc3, state="disabled");
+                     tkconfigure(butPerscCalc4, state="disabled");
+                     tkconfigure(butPerscCalc5, state="disabled");
                      tkconfigure(butReport1, state="disabled");
                      tkconfigure(butReport2, state="disabled");
                      tkconfigure(spinboxDR, state="disabled")}
@@ -167,12 +171,12 @@ butAdj2 <- ttkradiobutton(frmAdj,text="2",value="2",variable=Adj,
 tkpack(butAdj1,ttklabel(frmAdj,text="      "),butAdj2,side="left")
 
   #lev
-frmLev <- tkframe(frmEco)
-butLev1 <- ttkradiobutton(frmLev,text="1",value="1",variable=Lev,
-              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
-butLev2 <- ttkradiobutton(frmLev,text="2",value="2",variable=Lev,
-              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
-tkpack(butLev1,ttklabel(frmLev,text="      "),butLev2,side="left")
+#frmLev <- tkframe(frmEco)
+#butLev1 <- ttkradiobutton(frmLev,text="1",value="1",variable=Lev,
+#              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
+#butLev2 <- ttkradiobutton(frmLev,text="2",value="2",variable=Lev,
+#              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
+#tkpack(butLev1,ttklabel(frmLev,text="      "),butLev2,side="left")
 
   #ue_choice
 frmUe <- tkframe(frmEco)
@@ -206,8 +210,12 @@ butPerscCalc2 <- ttkradiobutton(frmPerscCalc,text="1",value="1",variable=PerscCa
               state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
 butPerscCalc3 <- ttkradiobutton(frmPerscCalc,text="2",value="2",variable=PerscCalc,
               state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
-
-tkpack(butPerscCalc1,ttklabel(frmPerscCalc,text="  "),butPerscCalc2,ttklabel(frmPerscCalc,text="  "),butPerscCalc3,side="left")
+butPerscCalc4 <- ttkradiobutton(frmPerscCalc,text="3",value="3",variable=PerscCalc,
+              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
+butPerscCalc5 <- ttkradiobutton(frmPerscCalc,text="4",value="4",variable=PerscCalc,
+              state=ifelse(tclvalue(EcoDisable)=="0","disabled","normal"))
+tkpack(butPerscCalc1,ttklabel(frmPerscCalc,text=" "),butPerscCalc2,ttklabel(frmPerscCalc,text=" "),butPerscCalc3,
+        ttklabel(frmPerscCalc,text=" "),butPerscCalc4,ttklabel(frmPerscCalc,text=" "),butPerscCalc5,side="left")
 
   #report
 frmReport <- tkframe(frmEco)
@@ -229,8 +237,8 @@ tkgrid(tk2label(frmEco,text="Type",justify="left"),frmType)
 tkgrid(tk2label(frmEco,text="    "))
 tkgrid(tk2label(frmEco,text="adj",justify="left"),frmAdj)
 tkgrid(tk2label(frmEco,text="    "))
-tkgrid(tk2label(frmEco,text="lev",justify="left"),frmLev)
-tkgrid(tk2label(frmEco,text="    "))
+#tkgrid(tk2label(frmEco,text="lev",justify="left"),frmLev)
+#tkgrid(tk2label(frmEco,text="    "))
 tkgrid(tk2label(frmEco,text="ue_choice",justify="left"),frmUe)
 tkgrid(tk2label(frmEco,text="    "))
 tkgrid(tk2label(frmEco,text="oths",justify="left"),frmOths)
@@ -779,7 +787,7 @@ RETURN <- function() {
 listEco <- list(active = as.integer(tclvalue(EcoDisable)),
                type = as.integer(tclvalue(Type)),
                adj = as.integer(tclvalue(Adj)),
-               lev = as.integer(tclvalue(Lev)),
+               #lev = as.integer(tclvalue(Lev)),
                ue_choice = as.integer(tclvalue(Ue_choice)),
                oths = as.integer(tclvalue(Oths)),
                othsFM = as.integer(tclvalue(OthsFM)),
