@@ -34,6 +34,7 @@ if (classInp=="args") {
    tacOth[rownames(part),colnames(part)] <- part
   }
   supEff <- input$Gest$effSup
+  TACbyF <- input$Gest$TACbyF
 
 
 } else {
@@ -58,6 +59,8 @@ if (classInp=="args") {
   tacOth <- matrix(as.numeric(NA),nrow=length(sppStat)+length(spp),ncol=length(years),dimnames=list(c(spp,sppStat),years))
   #limite sup effort par flottille/année
   supEff <- matrix(as.numeric(NA),nrow=length(fleets),ncol=length(years),dimnames=list(fleets,years))
+  #TAC par flottille/année (complété par tac pour déduire les TAC autres)
+  TACbyF <- matrix(as.numeric(NA),nrow=length(fleets),ncol=length(years),dimnames=list(fleets,years))
 
   matFM <- input@input$Fleet$nbv_f_m ; matFM[!is.na(matFM)] <- 1
 
@@ -278,6 +281,7 @@ if (classInp=="args") {
   assign("mFM",matFM,envir=e1)
   assign("tacOth",tacOth,envir=e1)
   assign("supEff",supEff,envir=e1)
+  assign("TACbyF",TACbyF,envir=e1)
 
 } else {
 
@@ -285,7 +289,7 @@ if (classInp=="args") {
   GestDisable <- tclVar("0")
   Controle <- tclVar("Nb vessels")
   Target <- tclVar("TAC")
-  Espece <- tclVar(spp[1])
+  Espece <- tclVar(c(spp,sppStat)[1])
   TypeG <- tclVar("0")
   Delay <- tclVar("2")
   Update <- tclVar("1")
@@ -295,6 +299,7 @@ if (classInp=="args") {
   assign("mFM",matFM,envir=e1) 
   assign("tacOth",tacOth,envir=e1)
   assign("supEff",supEff,envir=e1)
+  assign("TACbyF",TACbyF,envir=e1)
 
 }
 
@@ -315,7 +320,8 @@ set.ges.state<-function(){
                      tkconfigure(TFbut, state="normal");
                      tkconfigure(MFbut, state="normal");
                      tkconfigure(OTHbut, state="normal");
-                     tkconfigure(EFFbut, state="normal")}
+                     tkconfigure(EFFbut, state="normal");
+                     tkconfigure(TACbyFbut, state="normal")}
 
     if(on.off=="0") {tkconfigure(comboControl, state="disabled") ;
                      tkconfigure(comboTarget, state="disabled");
@@ -330,7 +336,8 @@ set.ges.state<-function(){
                      tkconfigure(TFbut, state="disabled");
                      tkconfigure(MFbut, state="disabled");
                      tkconfigure(OTHbut, state="disabled");
-                     tkconfigure(EFFbut, state="disabled")}
+                     tkconfigure(EFFbut, state="disabled");
+                     tkconfigure(TACbyFbut, state="disabled")}
 }
 
 butGes <- ttkcheckbutton(base2_1,text="Management",variable=GestDisable,command=set.ges.state)
@@ -338,7 +345,7 @@ frmGes <- ttklabelframe(base2_1,labelwidget=butGes,borderwidth=2,height=500,widt
 
   #Contrôle
 comboControl <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
-tkconfigure(comboControl, textvariable = Controle, values=c("Nb vessels","Nb daysAtSea"))
+tkconfigure(comboControl, textvariable = Controle, values=c("Nb vessels","Nb trips"))
 
    #Cible
 comboTarget <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
@@ -346,7 +353,7 @@ tkconfigure(comboTarget, textvariable = Target, values=c("TAC","Fbar","TAC->Fbar
 
   #espèce
 comboSpecies <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
-tkconfigure(comboSpecies, textvariable = Espece, values=spp)
+tkconfigure(comboSpecies, textvariable = Espece, values=c(spp,sppStat))
 
   #typeG
 frmLvl <- tkframe(frmGes)
@@ -386,14 +393,14 @@ tkconfigure(spinboxInf, textvariable = Infer)
 frmBut1 <- tkframe(frmGes)
 frmBut2 <- tkframe(frmGes)
   #TAC/Fbar
-TFbut <- tk2button(frmBut1, text="TAC/Fbar", width=5, command=function() {temp <- get("TACFbar",envir=e1)
+TFbut <- tk2button(frmBut1, text="T/F", width=5, command=function() {temp <- get("TACFbar",envir=e1)
                                                                           res <- fix(temp)
                                                                           assign("TACFbar",res,envir=e1)
                                                                           tkfocus(BASE)},
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
   #tacOTH
-OTHbut <- tk2button(frmBut1, text="OTH", width=5, command=function() {
+OTHbut <- tk2button(frmBut1, text="Oth", width=5, command=function() {
                                                                       res <- get("tacOth",envir=e1)
                                                                       temp <- res[-which(rownames(res)%in%tclvalue(Espece)),]
                                                                       if (nrow(res)>1){
@@ -406,7 +413,7 @@ OTHbut <- tk2button(frmBut1, text="OTH", width=5, command=function() {
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
   #mF
-MFbut <- tk2button(frmBut2, text="mFM", width=5, command=function() {
+MFbut <- tk2button(frmBut2, text="Wfm", width=5, command=function() {
                                                                       temp <- get("mFM",envir=e1)
                                                                       res <- fix(temp)
                                                                       assign("mFM",res,envir=e1)
@@ -415,7 +422,7 @@ MFbut <- tk2button(frmBut2, text="mFM", width=5, command=function() {
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
   #supEff
-EFFbut <- tk2button(frmBut2, text="EFF", width=5, command=function() {
+EFFbut <- tk2button(frmBut2, text="Eff", width=5, command=function() {
                                                                       temp <- get("supEff",envir=e1)
                                                                       res <- fix(temp)
                                                                       assign("supEff",res,envir=e1)
@@ -423,8 +430,18 @@ EFFbut <- tk2button(frmBut2, text="EFF", width=5, command=function() {
                                                                     },
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
+  #TACbyF
+TACbyFbut <- tk2button(frmBut2, text="Tf", width=5, command=function() {
+                                                                      temp <- get("TACbyF",envir=e1)
+                                                                      res <- fix(temp)
+                                                                      assign("TACbyF",res,envir=e1)
+                                                                      tkfocus(BASE)
+                                                                    },
+              state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
+
+
 tkpack(TFbut,OTHbut,side="left")
-tkpack(EFFbut,MFbut,side="left")
+tkpack(EFFbut,TACbyFbut,MFbut,side="left")
 
 tkgrid(tk2label(frmGes,text="  "))
 tkgrid(tk2label(frmGes,text="Control"),comboControl)
@@ -817,11 +834,13 @@ listGestion <- list(active = as.integer(tclvalue(GestDisable)),
                    fbar = get("TACFbar",envir=e1)["Fbar",],
                    othSpSup = tabO,
                    effSup = get("supEff",envir=e1),
-                   mfm = get("mFM",envir=e1))
+                   mfm = get("mFM",envir=e1),
+                   TACbyF = get("TACbyF",envir=e1))
                    
 attributes(listGestion$tac)$DimCst <- as.integer(c(0,0,0,length(listGestion$tac)))
 attributes(listGestion$fbar)$DimCst <- as.integer(c(0,0,0,length(listGestion$fbar)))
 attributes(listGestion$effSup)$DimCst <- as.integer(c(nrow(listGestion$effSup),0,0,ncol(listGestion$effSup)))
+attributes(listGestion$TACbyF)$DimCst <- as.integer(c(nrow(listGestion$TACbyF),0,0,ncol(listGestion$TACbyF)))
 attributes(listGestion$mfm)$DimCst <- as.integer(c(dim(listGestion$mfm),0,0))
 
 if (length(sppY)>0) {

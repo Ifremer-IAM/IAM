@@ -13,7 +13,8 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 )
 
 
-setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0, TACbyF=as.double(NA),
+setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0,
+                  TACbyFoptimCTRL=list(maxIter = as.integer(7), diffZmax = 0.0001, lambda = 0.9),
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
                   parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
@@ -89,9 +90,9 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     as.double(mOth),
                     as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
                     as.double(objArgs@arguments$Gestion$tac),as.double(objArgs@arguments$Gestion$fbar),
-                    objArgs@arguments$Gestion$othSpSup,objArgs@arguments$Gestion$effSup,
-                    as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)-1,
-                                 var = match(objArgs@arguments$Gestion$control,c("Nb daysAtSea","Nb vessels")),
+                    objArgs@arguments$Gestion$othSpSup,as.double(objArgs@arguments$Gestion$effSup),
+                    as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(objArgs@specific$Species,objArgs@specific$StaticSpp))-1,
+                                 var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
                                  upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)),
@@ -110,13 +111,14 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     lapply(objArgs@arguments$Recruitment,function(x) 
                                 as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))),
                     as.double(objArgs@arguments$Gestion$mfm),
-                    as.double(TACbyF),                    #devra être intégrée dans objArgs, dimension = nbF+1
+                    as.double(objArgs@arguments$Gestion$TACbyF),
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=as.double(parOptQuot$pxQuIni), pxQuMin=as.double(parOptQuot$pxQuMin), 
                           pxQuMax=as.double(parOptQuot$pxQuMax), lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol)),                           #fonctionne en conjugaison avec TACbyF
                     list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
-                          Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng)),
+                          Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
+                          maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda)),
                     newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
                                          #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.character(objArgs@arguments$Replicates$SELECTvar) 

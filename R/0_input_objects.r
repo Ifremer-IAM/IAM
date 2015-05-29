@@ -314,9 +314,9 @@ if (!ind) {if (!arg$Scenario$SELECTscen%in%(c(1:length(arg$Scenario$ALLscenario)
 
 #Gestion
 if (!arg$Gestion$active%in%(0:1)) stop("wrong 'Gest$active' argument in iamArgs object!!")
-if (!arg$Gestion$control%in%c("Nb vessels","Nb daysAtSea")) stop("wrong 'control' argument in iamArgs object!!")
+if (!arg$Gestion$control%in%c("Nb vessels","Nb trips")) stop("wrong 'control' argument in iamArgs object!!")
 if (!arg$Gestion$target%in%c("TAC","Fbar","TAC->Fbar","biomasse")) stop("wrong 'target' argument in iamArgs object!!")
-if (!arg$Gestion$espece%in%spe$Species) stop("wrong 'espece' argument in iamArgs object!!")
+if (!arg$Gestion$espece%in%c(spe$Species,spe$StaticSpp)) stop("wrong 'espece' argument in iamArgs object!!")
 if (!arg$Gestion$typeG%in%(0:1)) stop("wrong 'level' argument in iamArgs object!!")
 if (!arg$Gestion$delay%in%(1:spe$NbSteps)) stop("wrong 'delay' argument in iamArgs object!!")
 if (!arg$Gestion$upd%in%(1:2)) stop("wrong 'upd' argument in iamArgs object!!")
