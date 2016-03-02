@@ -16,9 +16,9 @@ if (classInp=="args") {
 
   input <- INPUT@arguments
   
-  spp <- INPUT@specific$Species
-  sppY <- spp[!as.logical(INPUT@specific$Q)]     #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
-  sppStat <- INPUT@specific$StaticSpp
+  spp <- c(na.omit(INPUT@specific$Species))
+  sppY <- c(na.omit(spp[!as.logical(INPUT@specific$Q)]))    #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
+  sppStat <- c(na.omit(INPUT@specific$StaticSpp))
   years <- INPUT@specific$times
   fleets <- INPUT@specific$Fleet
   metier <- INPUT@specific$MetierEco
@@ -41,9 +41,9 @@ if (classInp=="args") {
 
   input <- INPUT
 
-  spp <- input@specific$Species
-  sppY <- spp[!as.logical(input@specific$Q)]     #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
-  sppStat <- input@specific$StaticSpp
+  spp <- c(na.omit(input@specific$Species))
+  sppY <- c(na.omit(spp[!as.logical(input@specific$Q)]))     #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
+  sppStat <- c(na.omit(input@specific$StaticSpp))
   RecIni <- unlist(lapply(input@input,function(x) as.numeric(x$N_it0[1]))[sppY])   #NULL si sppY=character(0)
   years <- input@specific$times 
   fleets <- input@specific$Fleet
@@ -65,6 +65,7 @@ if (classInp=="args") {
   matFM <- input@input$Fleet$nbv_f_m ; matFM[!is.na(matFM)] <- 1
 
 }
+
 
 
 BASE <- tktoplevel(height=500,width=1000)     #interface entière
@@ -289,7 +290,7 @@ if (classInp=="args") {
   GestDisable <- tclVar("0")
   Controle <- tclVar("Nb vessels")
   Target <- tclVar("TAC")
-  Espece <- tclVar(c(spp,sppStat)[1])
+  Espece <- tclVar(c(na.omit(c(spp,sppStat)))[1])
   TypeG <- tclVar("0")
   Delay <- tclVar("2")
   Update <- tclVar("1")
@@ -862,7 +863,7 @@ if (length(sppY)>0) {
 
 } else {
 
- listRec <- NULL
+ listRec <- list()
 
 }
 

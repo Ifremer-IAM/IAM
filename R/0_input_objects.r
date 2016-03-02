@@ -326,7 +326,7 @@ if (length(arg$Gestion$tac)!=length(spe$times)) stop("wrong 'tac' argument in ia
 if (length(arg$Gestion$fbar)!=length(spe$times)) stop("wrong 'fbar' argument in iamArgs object!!")
 if (nrow(arg$Gestion$mfm)!=length(spe$Fleet)) stop("wrong 'mfm' argument in iamArgs object!!")
 if (ncol(arg$Gestion$mfm)!=length(spe$MetierEco)) stop("wrong 'mfm' argument in iamArgs object!!")
-if (length(arg$Gestion$othSpSup)!=length(spe$Species)+length(spe$StaticSpp)-1) stop("wrong 'othSpSup' argument in iamArgs object!!")
+if (length(arg$Gestion$othSpSup)!=length(c(na.omit(spe$Species)))+length(c(na.omit(spe$StaticSpp)))-1) stop("wrong 'othSpSup' argument in iamArgs object!!")
 if (nrow(arg$Gestion$effSup)!=length(spe$Fleet)) stop("wrong 'effSup' argument in iamArgs object!!")
 if (ncol(arg$Gestion$effSup)!=length(spe$times)) stop("wrong 'effSup' argument in iamArgs object!!")
 
