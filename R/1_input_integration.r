@@ -52,7 +52,9 @@ convertInput <- function(inp,Fq_fmi=NULL) {
                             aggYmi <- apply(Ymi,2,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
                             Fmi <- Fmi*rep(Fini/Yi,each=nM)
                           }
-                         }
+                         } else {                   #
+                           Fmi[] <- Fini[]          #  added 18/07/16
+                         }                          #
                        }
                 } else {
                   Fmi[] <- Fini[]
@@ -1394,7 +1396,7 @@ reformat <- function(x,slotN="stockInput") {
   ll <- x[n]
   names(ll) <- n 
   ll <- lapply(ll,function(y) {if (is.null(y)) return(as.numeric(NA)) else {if (all(is.na(y))) return(as.numeric(NA)) else return(y)}})
-  return(lapply(ll,function(y){if (length(y)==1 & is.null(names(y)) & is.null(dimnames(y))) attributes(y)$DimCst <- as.integer(c(0,0,0,0))
+  return(lapply(ll,function(y){if (length(y)==1 & is.null(names(y)) & is.null(dimnames(y)) & is.numeric(y)) attributes(y)$DimCst <- as.integer(c(0,0,0,0))   #added 18/07/16
                                 return(y)}))
 }    #si on veut plutôt des NAs, on remplace 'll)}' par 'lapply(ll,function(y) if (is.null(y)) NA else y))}'
 

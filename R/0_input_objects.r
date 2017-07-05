@@ -105,6 +105,11 @@ setClass("stockInput",
       dd2_f_m_e = NA, #taux de rejets exemption en % de la capture totale
       sr = NA,        #Taux de survie des rejets
 #      SelRef = NA,	  #Facteur de sélectivité de référence (PSo)
+      r = NA,         #SPiCT : Intrinsic growth rate : growth, recruitment, natural mortality
+      K = NA,         #SPiCT : Carrying capacity (or equilibrium biomass or virgin stock biomass)
+      n = NA,         #SPiCT : Parameter determining the shape of the production curve
+      sigmaF = NA,    #SPiCT : Standard deviation of F
+      sigmaB = NA,    #SPiCT : Standard deviation of B
       P_fmce = NA,    #Prix moyen par catégorie (euros)
       Pst_e = NA,     #Prix farine
       OD_e = NA,      #obligation de débarquement ? (oui(1)/non(0))
