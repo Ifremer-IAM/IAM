@@ -20,6 +20,7 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
                   stochPrice=list(), #liste d'éléments nommés par espèce considérée, chaque élément étant une liste selon le schéma :
                                 #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA)) 
+                  parOQD=list(activeQR=as.integer(0),listQR=NULL,listQR_f=NULL),      #10/07/17   activeQR=0 => désactivé, sinon, commence à l'instant spécifié
                   ...){
 	
 	
@@ -38,6 +39,17 @@ if (any(objArgs@specific$Q%in%1)) {
    objArgs@arguments$Recruitment <- newL[objArgs@specific$Species]
 
 }
+
+nT <- objInput@specific$NbSteps
+nF <- length(objInput@specific$Fleet)
+
+#on étend les listes 'parOQD' à l'ensemble des espèces modélisées                                          #10/07/17
+allSpp <- c(objArgs@specific$Species,objArgs@specific$StaticSpp)                                           #10/07/17
+listQR_TMP <- lapply(parOQD$listQR,function(z) rep(z,length=nT)) ; names(listQR_TMP) <- names(parOQD$listQR) ; parOQD$listQR <- listQR_TMP      #10/07/17
+listQR_f_TMP <- lapply(parOQD$listQR_f,function(z) if ((nrow(z)!=nF) & (ncol(z)!=nT)) return(NULL) else return(z)) ; names(listQR_f_TMP) <- names(parOQD$listQR_f) ; parOQD$listQR_f <- listQR_f_TMP    #10/07/17
+newParOQD <- list(activeQR=parOQD$activeQR,listQR=parOQD$listQR[allSpp],listQR_f=parOQD$listQR_f[allSpp])  #10/07/17
+names(newParOQD$listQR) <- names(newParOQD$listQR_f) <- allSpp                                             #10/07/17
+
 #---------------------------------
 
 
@@ -77,8 +89,6 @@ if (is.null(parBehav$MUpos)) parBehav$MUpos <- as.integer(0)
 Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHactive * x$typeSIMUstoch))
 
 mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- mOTH
-
-nT <- objInput@specific$NbSteps
 
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
 if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
@@ -122,6 +132,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
                                          #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.integer(updateE),
+                    newParOQD,                                                  #10/07/17
                     as.character(objArgs@arguments$Replicates$SELECTvar) 
               )
               
@@ -235,7 +246,10 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     statDD_efm= out$statDD_efm,
                     statLD_efm= out$statLD_efm,
                     statLDst_efm= out$statLDst_efm,
-                    statLDor_efm= out$statLDor_efm),
+                    statLDor_efm= out$statLDor_efm,
+                    oqD_ef= out$oqD_ef,
+                    oqD_e= out$oqD_e,
+                    oqDstat_ef= out$oqDstat_ef),
                 output = list(
                   typeGest = out$typeGest,
                   nbv_f = out$Eff$nbv_f,              

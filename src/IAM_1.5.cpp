@@ -49,9 +49,16 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
         out_L_efmit,//débarquements en poids aux âges(t)
         out_L_efmct,//débarquements en poids par catégories(t)
         out_L_eit,//débarquements en poids par catégories(t) pour le codage métier eco
+
+        out_oqD_eft,//rejets over-quotas par flottille (espèces dynamiques)
+        out_oqD_et,//rejets over-quotas total (espèces dynamiques)
+
         out_Ystat,  //captures totales en poids (t) pour les espèces statiques
         out_Lstat,  //débarquements totaux en poids (t) pour les espèces statiques
         out_Dstat,  //rejets totaux en poids (t) pour les espèces statiques
+
+        out_oqDstat, //rejets over-quotas par flottille espèces statiques
+
         out_P_t,    //prix moyen (en euros) (niveau métier éco si dispo)
         out_Pstat,    //prix moyen (en euros) (niveau métier éco si dispo) pour les espèces statiques
         out_CA_eft, //chiffre d'affaires par espèce dynamique (en euros)
@@ -92,13 +99,13 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
 SEXP    FList, sppList, sppListStat, fleetList, metierList, metierListEco, namDC, t_init, times, Q,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables intermédiaires par espèces
-        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat;
+        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f;
 
 
 int     nbT, nbF, nbM, nbMe, nbE, nbEstat, //dimensions
         curQ, spQ, scen, //application du scénario??
         bhv_active /*application du module report d'effort*/, type, boot, nbBoot, ecodcf, typeGest, //special request ICES 2013 : pistage des règles de scénario intégré dans la variable out_typeGest
-        var, trgt, delay, upd, gestInd, gestyp, //Module de gestion
+        var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
         IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'espèces et de flottilles considérés*/, corVarTACnby_CPP, Blim_trigger, maxIter, t_stop,
         *SRInd, *EcoIndCopy, *Qvec, *recType1, *recType2, *recType3; //indicateur conditionnant l'utilisation d'un recrutement aléatoire défini par la méthode implémentée RecAlea
 
@@ -121,7 +128,7 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                 SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-                SEXP tacCTRL, SEXP stochPrice, SEXP updateE);
+                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD);
 
 	//destructeur
     ~BioEcoPar();
@@ -167,11 +174,8 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
     // Module 'Marché' : 'modCatch'
     void Marche(SEXP list, int ind_t);
 
-    // Module 'Economie'
-    void Economic(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr);
-
     // Module 'Economie' DCF
-    void EcoDCF(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr);
+    void EcoDCF(SEXP list, int ind_t, int perscCalc, double dr);
 
     // Module Gestion
     double fxTAC_glob(double mult);
@@ -244,10 +248,11 @@ BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                      SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                      SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE)
+                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
 {
 
 PROTECT(listSpec);
+PROTECT(parOQD); //+1
 effortIni = REAL(getListElement(getListElement(listInput, "Fleet"), "nbds_f"));
 effort1Ini = REAL(getListElement(getListElement(listInput, "Fleet"), "effort1_f"));
 PROTECT_INDEX ipx_list;
@@ -268,6 +273,11 @@ PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
 PROTECT_WITH_INDEX(FList = getListElement(list, "Fleet"),&ipx_FList);
 PROTECT_WITH_INDEX(FList_copy = getListElement(list_copy, "Fleet"),&ipx_FList_copy);
 
+
+PROTECT(listQR = getListElement(parOQD, "listQR")); //+1
+PROTECT(listQR_f = getListElement(parOQD, "listQR_f")); //+1
+activeQR = INTEGER(getListElement(parOQD, "activeQR"))[0];
+
 PROTECT(sppList = getListElement(listSpec, "Species"));
 PROTECT(sppListStat = getListElement(listSpec, "StaticSpp"));
 PROTECT(fleetList = getListElement(listSpec, "Fleet"));
@@ -284,6 +294,8 @@ Zoptim = effortIni;
 FOTHoptim = effortIni;
 Zoptim_use = false;
 FOTHoptim_use = false;
+
+
 
 //Rprintf("step0\n");
 
@@ -398,7 +410,7 @@ PROTECT_WITH_INDEX(eStatVar_copy = duplicate(eStatVar),&ipx_eStatVar_copy); //21
 
 //Rprintf("step0\n");
 
-PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 33),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m
+PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 34),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m & 34=ETini_f_m
 PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
 
 ////Rprintf("A");
@@ -424,6 +436,10 @@ PROTECT(out_D_efmit = allocVector(VECSXP, nbE));
 PROTECT(out_L_efmit = allocVector(VECSXP, nbE));
 PROTECT(out_L_efmct = allocVector(VECSXP, nbE));
 PROTECT(out_L_eit = allocVector(VECSXP, nbE)); //43
+
+PROTECT(out_oqDstat = allocVector(VECSXP, nbEstat));
+PROTECT(out_oqD_eft = allocVector(VECSXP, nbE));
+PROTECT(out_oqD_et = allocVector(VECSXP, nbE));
 
 PROTECT(intermBIOMspict = allocVector(VECSXP, nbE)); //+1 ajout pour insérer les 16 valeurs de biomasses intermédiaires de chacune des espèces SPiCT lors de l'évaluation des Bt+1 et des captures
 
@@ -1696,15 +1712,9 @@ if (conform==4) trgt=2;
 //-----------------------------------------------------------------------------
 //Rprintf("preJ\n");
 Marche(list, it);
-//Rprintf("J\n");
-if (DCFok==0) {
 
-    Economic(list, it, INTEGER(EcoInd)[0], INTEGER(EcoInd)[1], INTEGER(EcoInd)[2], INTEGER(EcoInd)[3], INTEGER(EcoInd)[4],
-                       INTEGER(EcoInd)[5], REAL(dr)[0]);
-} else {
-    EcoDCF(list, it, INTEGER(EcoInd)[0], INTEGER(EcoInd)[1], INTEGER(EcoInd)[2], INTEGER(EcoInd)[3], INTEGER(EcoInd)[4],
-                     INTEGER(EcoInd)[5], REAL(dr)[0]);
-}
+EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
+
 //Rprintf("K\n");// if (it>4) error("AAAhh");
 //module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt à 2
 if (eTemp<nbE) {
@@ -1736,7 +1746,7 @@ if (eTemp<nbE) {
 }
 free_vector(Etemp,1,nbF);
 //Rprintf("K2\n");
-UNPROTECT(123+nbE+nbE+32+11+1);
+UNPROTECT(123+nbE+nbE+32+11+1+3+3); //+6 ajoutés après intégration de 'parOQD'
 if (nbEstat>0) UNPROTECT(nbEstat);
 }
 
@@ -8168,22 +8178,25 @@ if (cUpdate) {
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
             intAge, v_F_efmit, v_N_eit, v_Z_eit, v_wL_ei, v_wD_ei, v_d_efmit, v_doth_eit, dimCst2, Dim2,
             cFACT1, cFACT2, cFACT3, cFACT4, cFACT5, cFACT6, cFACT7,
-            dimYtot, dimCstYtot, dimNamYtot;
+            dimYtot, dimCstYtot, dimNamYtot,
+            dimCstOQ_ft, dimCstOQ_t, dimnames_oqD_eft, dimnames_oqD_et;
 
     SEXP ans_C_efmit=R_NilValue, ans_Y_efmit=R_NilValue, ans_D_efmit=R_NilValue, ans_L_efmit=R_NilValue,
          dimnames=R_NilValue, rnames_Esp=R_NilValue, ans_C_eit=R_NilValue, ans_Y_eit=R_NilValue, ans_L_eit=R_NilValue, dimnames2=R_NilValue,
          ans_Ystat=R_NilValue, ans_Lstat=R_NilValue, ans_Dstat=R_NilValue, dimnames_eStat=R_NilValue, rnames_eStat=R_NilValue,
          ans_DD_efmit=R_NilValue, ans_LD_efmit=R_NilValue,
-         ans_statDD=R_NilValue, ans_statLD=R_NilValue, ans_statLDst=R_NilValue, ans_statLDor=R_NilValue;
+         ans_statDD=R_NilValue, ans_statLD=R_NilValue, ans_statLDst=R_NilValue, ans_statLDor=R_NilValue,
+         ans_oqD_eft=R_NilValue, ans_oqD_et=R_NilValue, ans_oqDstat=R_NilValue;
 
     int *dim_F_efmit, *dim_N_eit, *dim_Z_eit, *dim_wL_ei, *dim_wD_ei, *dim_d_efmit, *dimC, *dim, *dim2, *dimcst2,
-            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot;
+            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot, *dimOQ_ft, *dimOQ_t;
     int nbI;
 
     double *rans_C_efmit, *rans_Y_efmit, *rans_D_efmit, *rans_L_efmit, *r_F_efmit, *r_N_eit, *r_Z_eit, *r_wL_ei, *r_wD_ei, *r_d_efmit, *r_B_et,
             *rans_C_eit, *rans_Y_eit, *rans_L_eit, *rans_Ystat, *rans_Lstat, *rans_Dstat,
             *rans_Ytot_fm, *rans_tripLgthIniMax_fm, *rans_DD_efmit,
-            *rans_LD_efmit, *rans_statDD, *rans_statLD, *rans_statLDst, *rans_statLDor, *doth_eit;
+            *rans_LD_efmit, *rans_statDD, *rans_statLD, *rans_statLDst, *rans_statLDor, *doth_eit,
+            *rans_oqD_eft, *rans_oqD_et, *rans_oqDstat;
 
 if (ind_t==0) {
 
@@ -8197,6 +8210,8 @@ if (ind_t==0) {
     setAttrib(out_L_efmit, R_NamesSymbol, rnames_Esp);
     setAttrib(out_DD_efmi, R_NamesSymbol, rnames_Esp);
     setAttrib(out_LD_efmi, R_NamesSymbol, rnames_Esp);
+    setAttrib(out_oqD_eft, R_NamesSymbol, rnames_Esp);
+    setAttrib(out_oqD_et, R_NamesSymbol, rnames_Esp);
 
     PROTECT(rnames_eStat = allocVector(STRSXP, nbEstat)); //+1 t0
     setAttrib(out_Ystat, R_NamesSymbol, rnames_eStat);
@@ -8206,6 +8221,7 @@ if (ind_t==0) {
     setAttrib(out_statLD_efm, R_NamesSymbol, rnames_eStat);
     setAttrib(out_statLDst_efm, R_NamesSymbol, rnames_eStat);
     setAttrib(out_statLDor_efm, R_NamesSymbol, rnames_eStat);
+    setAttrib(out_oqDstat, R_NamesSymbol, rnames_eStat);
 
 }
 
@@ -8765,6 +8781,8 @@ double *r_dd1_efm = REAL(getListElement(elmt, "dd1_f_m_e"));
 double *r_dd2_efm = REAL(getListElement(elmt, "dd2_f_m_e"));
 double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
+
+
                     if (ind_t==0) {
 
                             PROTECT(ans_D_efmit = NEW_NUMERIC(prod));
@@ -8782,11 +8800,52 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
                             rans_DD_efmit = REAL(ans_DD_efmit);  //19/03/15 +2
 
+                       //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) { //over quota discards sera implémenté
+
+                            PROTECT(ans_oqD_eft = NEW_NUMERIC(nbF*nbT));//Rprintf("AA1");
+                            PROTECT(ans_oqD_et = NEW_NUMERIC(nbT));
+
+                            PROTECT(dimCstOQ_ft = allocVector(INTSXP, 2));//Rprintf("AA2");
+                            dimOQ_ft = INTEGER(dimCstOQ_ft);
+                            dimOQ_ft[0] = nbF; dimOQ_ft[1] = nbT;
+
+                            PROTECT(dimCstOQ_t = allocVector(INTSXP, 1));//Rprintf("AA3");
+                            dimOQ_t = INTEGER(dimCstOQ_t);
+                            dimOQ_t[0] = nbT;
+
+                            setAttrib(ans_oqD_eft, R_DimSymbol, dimCstOQ_ft);//Rprintf("AA31");
+                            setAttrib(ans_oqD_et, R_DimSymbol, dimCstOQ_t);//Rprintf("AA32");
+
+                            PROTECT(dimnames_oqD_eft = allocVector(VECSXP,2));//Rprintf("AA4");
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 0, fleetList);
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 1, times);
+
+                            PROTECT(dimnames_oqD_et = allocVector(VECSXP,1));
+                            SET_VECTOR_ELT(dimnames_oqD_et, 0, times);
+
+                            setAttrib(ans_oqD_eft, R_DimNamesSymbol, dimnames_oqD_eft);
+                            setAttrib(ans_oqD_et, R_DimNamesSymbol, dimnames_oqD_et); //Rprintf("AA5");
+
+                            rans_oqD_eft = REAL(ans_oqD_eft);
+                            for (int tt = 0; tt<nbF*nbT; tt++) rans_oqD_eft[tt] = 0.0;
+                            rans_oqD_et = REAL(ans_oqD_et); //Rprintf("BB");
+                            for (int tt = 0; tt<nbT; tt++) rans_oqD_et[tt] = 0.0;
+
+                        //}
+
                     } else {
 
                             rans_D_efmit = REAL(VECTOR_ELT(out_D_efmit,e));
                             rans_DD_efmit = REAL(VECTOR_ELT(out_DD_efmi,e));
                             rans_LD_efmit = REAL(VECTOR_ELT(out_LD_efmi,e));
+
+                        //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) {Rprintf("CC");
+
+                            rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));
+                            rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("DD");
+
+
+                        //}
 
                     }
 
@@ -8803,6 +8862,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
                 if (Qvec[e]==0) {
                             //équation : 2 manières de calculer selon la disponibilité de wD_i
+
 
                     if (all_is_na(v_wD_ei)) { //1ère méthode
 
@@ -8844,13 +8904,13 @@ if (nbI>1) {
                             if (r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
 
                                 rans_L_eit[0 + ind_t*1] =
-                                        r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]];
+                                        r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]];
 
 
                             } else { //pas d'OD
 
                                 rans_L_eit[0 + ind_t*1] =
-                                        r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]] * (1-doth_eit[0]);
+                                        r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]] * (1-doth_eit[0]);
 
                             }
 
@@ -8986,6 +9046,9 @@ if (nbI>1) {
 
                             SET_VECTOR_ELT(out_DD_efmi, e, ans_DD_efmit);
 
+                            SET_VECTOR_ELT(out_oqD_eft, e, ans_oqD_eft);
+                            SET_VECTOR_ELT(out_oqD_et, e, ans_oqD_et);
+
                     }
 
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 32, v_wD_ei);
@@ -9043,6 +9106,9 @@ if (nbI>1) {
                             SET_STRING_ELT(rnames_Esp, e, STRING_ELT(sppList,e));
 //Rprintf("K12\n");
                             UNPROTECT(11);
+
+                            /*if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) */UNPROTECT(6); //over quota discards
+
                     }
 
 
@@ -9598,7 +9664,145 @@ if (nbI>1) {
                             }
 
 //Rprintf("K13\n");
-                        UNPROTECT(26+1);
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces dynamiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+
+ // on s'occupe d'abord de la partie "autres"
+
+    if (!isNull(getListElement(listQR, CHAR(STRING_ELT(sppList,e)))) & !isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))))) { //TACs renseignés aux 2 niveaux
+
+        double *QR = REAL(getListElement(listQR, CHAR(STRING_ELT(sppList,e))));
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))));
+
+        double QRoth = QR[ind_t];
+        bool recal = false;
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) QRoth = QRoth - QR_f[ind_f + nbF*ind_t];
+
+            double Ltot_oth = 0.0, Ytot_oth = 0.0; //, Ytot_othini = 0.0;
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                //double Yothini = rans_Y_eit[ind_i + 0*nbI];
+                double Loth = rans_L_eit[ind_i + ind_t*nbI], Yoth = rans_Y_eit[ind_i + ind_t*nbI];
+                for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  Yothini = Yothini - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                if (!ISNA(rans_L_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Loth = Loth - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Yoth = Yoth - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                }
+                Ltot_oth = Ltot_oth + Loth; Ytot_oth = Ytot_oth + Yoth; //Ytot_othini = Ytot_othini + Yothini;
+            }
+
+            rans_oqD_et[ind_t] = 0.0;
+
+            if (Ltot_oth>QRoth) { //on procède à la correction "autres"
+
+                recal = true;
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    double Doth_i_t = rans_Y_eit[ind_i + ind_t*nbI] - rans_L_eit[ind_i + ind_t*nbI],// Yoth_i_0 = rans_Y_eit[ind_i + 0*nbI],
+                           Yoth_i_t = rans_Y_eit[ind_i + ind_t*nbI], Loth_i_t = rans_L_eit[ind_i + ind_t*nbI];
+                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                    if (!ISNA(rans_D_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Doth_i_t = Doth_i_t - rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                    //    Yoth_i_0 = Yoth_i_0 - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                    if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Yoth_i_t = Yoth_i_t - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+                    rans_oqD_et[ind_t] = fmin2((Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t - Doth_i_t); //fmin2((Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t - Doth_i_t);
+                    Doth_i_t = fmin2( Doth_i_t + (Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t ); //fmin2( Doth_i_t + (Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t );
+
+                    if (ISNAN(Doth_i_t)) Doth_i_t = 0.0;
+                    if (ISNAN(rans_oqD_et[ind_t])) rans_oqD_et[ind_t] = 0.0;
+                    rans_L_eit[ind_i + ind_t*nbI] = Yoth_i_t - Doth_i_t; //on incrémentera par la suite avec les L recalculés
+
+                }
+            }
+
+
+
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+
+            double sumL = 0.0; //, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  sumL = sumL + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                //if (!ISNA(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  sumYini = sumYini + rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]];
+            }
+
+            rans_oqD_eft[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    //if (!ISNA(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                    //        rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                    //        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])))
+                    rans_oqD_eft[ind_f + nbF*ind_t] = rans_oqD_eft[ind_f + nbF*ind_t] +
+                      fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                            finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) -
+                            finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       fmin2(
+                        finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) +
+                        (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //(sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                        finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    if (ISNAN(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
+
+
+                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                                rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+
+                    rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                       rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+
+
+                }
+            }
+
+            if (recal) {
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
+                      if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                      rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                      }
+            }
+
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
+
+  UNPROTECT(26+1);
 
          }
 
@@ -9613,7 +9817,7 @@ if (nbEstat>0) {
                             PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 
                             PROTECT(v_LPUE_eStat = getListElement(elmt, "LPUE_f_m_e"));
-                            PROTECT(v_d_eStat = getListElement(elmt, "d_f_m_e"));
+                            PROTECT(v_d_eStat = getListElement(elmt, "d_f_m_e")); //if (e==2) PrintValue(getListElement(elmt, "d_f_m_e"));
 
                             PROTECT(dimCst_LPUE_eStat = getAttrib(v_LPUE_eStat, install("DimCst")));
                             PROTECT(dimCst_d_eStat = getAttrib(v_d_eStat, install("DimCst")));
@@ -9706,6 +9910,30 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                             rans_statLDst = REAL(ans_statLDst);
                             rans_statLDor = REAL(ans_statLDor);
 
+
+                         //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) { //over quota discards sera implémenté
+
+
+                            PROTECT(ans_oqDstat = NEW_NUMERIC(nbF*nbT));
+
+                            PROTECT(dimCstOQ_ft = allocVector(INTSXP, 2));
+                            dimOQ_ft = INTEGER(dimCstOQ_ft);
+                            dimOQ_ft[0] = nbF; dimOQ_ft[1] = nbT;
+
+                            setAttrib(ans_oqDstat, R_DimSymbol, dimCstOQ_ft);
+
+                            PROTECT(dimnames_oqD_eft = allocVector(VECSXP,2));
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 0, fleetList);
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 1, times);
+
+                            setAttrib(ans_oqDstat, R_DimNamesSymbol, dimnames_oqD_eft);//Rprintf("EE");
+
+                            rans_oqDstat = REAL(ans_oqDstat);// Rprintf("FF");
+                            for (int tt=0; tt<(nbF*nbT); tt++) rans_oqDstat[tt] = 0.0;
+
+                        //}
+
+
                     } else {
 //Rprintf("H12\n");
                             rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
@@ -9714,13 +9942,15 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                             rans_statDD = REAL(VECTOR_ELT(out_statDD_efm, e));
                             rans_statLD = REAL(VECTOR_ELT(out_statLD_efm, e));
                             rans_statLDst = REAL(VECTOR_ELT(out_statLDst_efm, e));
-                            rans_statLDor = REAL(VECTOR_ELT(out_statLDor_efm, e));
+                            rans_statLDor = REAL(VECTOR_ELT(out_statLDor_efm, e));//Rprintf("GG");
+
+                            rans_oqDstat = REAL(VECTOR_ELT(out_oqDstat, e));//Rprintf("HH");
 
                     }
 
 
                    double *r_LPUE_eStat = REAL(v_LPUE_eStat);
-                   double *r_d_eStat = REAL(v_d_eStat);
+                   double *r_d_eStat = REAL(v_d_eStat); //if (e==2) PrintValue(v_d_eStat);
 //Rprintf("H13\n");
                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
@@ -9805,7 +10035,55 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                                 rans_statLD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_statLDst[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
 
 
+/* insertion over quota management discards pour corriger D et L -> espèces statiques */
 
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+    if (!isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))))) { //TACs renseignés au niveau flottille
+
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))));
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+                if (!ISNA(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                  sumL = sumL + rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                //if (!ISNA(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0]))
+                //  sumYini = sumYini + rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0];
+            }
+
+            rans_oqDstat[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+
+                    if (!ISNAN(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))))
+                    rans_oqDstat[ind_f + nbF*ind_t] = rans_oqDstat[ind_f + nbF*ind_t] +
+                                fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
+                       fmin2(finite(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) + (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])/sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                             finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    if (ISNAN(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                        rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
+
+                    rans_statDD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                    rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                }
+            }
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
 
 
 
@@ -9849,11 +10127,16 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
 
                             SET_VECTOR_ELT(out_statLDor_efm, e, ans_statLDor);
 
-
+                            SET_VECTOR_ELT(out_oqDstat, e, ans_oqDstat);
 
                     }
 //Rprintf("H14.1\n");
-                    if (ind_t==0) UNPROTECT(9);
+                    if (ind_t==0) {
+
+                      UNPROTECT(9);
+                      /*if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) */UNPROTECT(3);
+
+                    }
 
                     UNPROTECT(6);
 
@@ -9910,7 +10193,9 @@ double Btemp;
                                         *r_wL_ei = REAL(getListElement(elmt, "wL_i")),
                                         *r_wD_ei = REAL(getListElement(elmt, "wD_i")),
                                         *r_d_efmit = REAL(getListElement(elmt, "d_i")),
-                                        *doth_eit = REAL(getListElement(elmt, "doth_i"));
+                                        *doth_eit = REAL(getListElement(elmt, "doth_i")); //Rprintf("II");PrintValue(out_oqD_eft);
+                                       double *rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));//Rprintf("JJ");
+                                       double *rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("KK");
 //Rprintf("H15.1\n");
                                 double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                 double *r_B_et = REAL(VECTOR_ELT(out_B_et,e));
@@ -10201,12 +10486,12 @@ if (nbI>1) {
 
                                 }
 
-                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];
+                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];//if (nbI==1) {Rprintf("Yi");PrintValue(out_Y_eit);}
 
 }
                                //équation n°3
 
-                            if (all_is_na(v_wD_ei)) {
+                            if (all_is_na(v_wD_ei)) { // on peut aussi laisser le test SPiCT à l'intérieur car les deux conditions sont équivalentes
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10244,17 +10529,18 @@ if (nbI>1) {
                                         r_wL_ei[0*fact5_C[0]  + 0*fact5_C[1] + ind_i*fact5_C[2] + ind_t*fact5_C[3]] / 1000;
                             }
 } else {
-
+//Rprintf("LtotAvant4");PrintValue(out_L_eit);
                             if (r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
 
                                 rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]];
 
 
                             } else { //pas d'OD
-
-                                rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]] * (1-doth_eit[0]);
-
+//Rprintf("LtotAvant31");PrintValue(out_L_eit);Rprintf("Foth %f B %f doth %f 1-doth %f",r_Fot_i[0 + ind_t*1],r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]],doth_eit[0],1-doth_eit[0]);
+                                rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]] * (1-doth_eit[0]);
+//Rprintf("LtotAvant32");PrintValue(out_L_eit);
                             }
+                            //Rprintf("LtotAvant3");PrintValue(out_L_eit);
 
 }
 
@@ -10358,6 +10644,7 @@ if (nbI>1) {
                     }
                  }
 
+//if (nbI==1) {Rprintf("LtotAvant2");PrintValue(out_L_eit);}
 
                     for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10374,7 +10661,7 @@ if (nbI>1) {
                     }
 
 
-
+//if (nbI==1) {Rprintf("LtotAvant");PrintValue(out_L_eit);}
                                //équation n°4
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
@@ -10391,6 +10678,7 @@ if (nbI>1) {
                                         rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]; //Ltot constitué
 
                                 }
+//if (nbI==1) {Rprintf("LtotApres");PrintValue(out_L_eit);}
 
                             } else {
 //Rprintf("H4.6\n");
@@ -10949,6 +11237,151 @@ if (nbI>1) {
 
                             }
 
+
+
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces dynamiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+
+ // on s'occupe d'abord de la partie "autres"
+
+    if (!isNull(getListElement(listQR, CHAR(STRING_ELT(sppList,e)))) & !isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))))) { //TACs renseignés aux 2 niveaux
+
+        double *QR = REAL(getListElement(listQR, CHAR(STRING_ELT(sppList,e))));
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))));
+
+        double QRoth = QR[ind_t];
+        bool recal = false;
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) QRoth = QRoth - QR_f[ind_f + nbF*ind_t];
+
+            double Ltot_oth = 0.0, Ytot_oth = 0.0; //, Ytot_othini = 0.0;
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                //double Yothini = rans_Y_eit[ind_i + 0*nbI];
+                double Loth = rans_L_eit[ind_i + ind_t*nbI], Yoth = rans_Y_eit[ind_i + ind_t*nbI];
+                for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  Yothini = Yothini - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                if (!ISNA(rans_L_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Loth = Loth - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Yoth = Yoth - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                }
+                Ltot_oth = Ltot_oth + Loth; Ytot_oth = Ytot_oth + Yoth; //Ytot_othini = Ytot_othini + Yothini;
+            }
+            //if (e==1 & ind_t==13) Rprintf("ind_t %i QRoth %f Ltot_oth %f Ytot_oth %f Ytot_othini %f \n",ind_t,QRoth,Ltot_oth,Ytot_oth,Ytot_othini);
+
+            rans_oqD_et[ind_t] = 0.0;
+
+            if (Ltot_oth>QRoth) { //on procède à la correction "autres"
+
+                recal = true;
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    double Doth_i_t = rans_Y_eit[ind_i + ind_t*nbI] - rans_L_eit[ind_i + ind_t*nbI],// Yoth_i_0 = rans_Y_eit[ind_i + 0*nbI],
+                           Yoth_i_t = rans_Y_eit[ind_i + ind_t*nbI], Loth_i_t = rans_L_eit[ind_i + ind_t*nbI];
+                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                    if (!ISNA(rans_D_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Doth_i_t = Doth_i_t - rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                    //    Yoth_i_0 = Yoth_i_0 - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                    if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Yoth_i_t = Yoth_i_t - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+                    rans_oqD_et[ind_t] = fmin2((Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t - Doth_i_t); //fmin2((Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t - Doth_i_t);
+                    Doth_i_t = fmin2( Doth_i_t + (Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t ); //fmin2( Doth_i_t + (Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t );
+
+                    if (ISNAN(Doth_i_t)) Doth_i_t = 0.0;
+                    if (ISNAN(rans_oqD_et[ind_t])) rans_oqD_et[ind_t] = 0.0;
+                    rans_L_eit[ind_i + ind_t*nbI] = Yoth_i_t - Doth_i_t; //on incrémentera par la suite avec les L recalculés
+
+                //if (e==1 & ind_t==13) Rprintf("Yoth_i_t %f Doth_i_t %f rans_L_eit[ind_i + ind_t*nbI] %f \n",Yoth_i_t,Doth_i_t,rans_L_eit[ind_i + ind_t*nbI]);
+                }
+            }
+
+
+
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  sumL = sumL + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                //if (!ISNA(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  sumYini = sumYini + rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]];
+            }
+
+            rans_oqD_eft[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    //if (!ISNA(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                    //        rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                    //        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])))
+                    rans_oqD_eft[ind_f + nbF*ind_t] = rans_oqD_eft[ind_f + nbF*ind_t] +
+                      fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                            finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) -
+                            finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       fmin2(
+                        finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) +
+                        (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //(sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                        finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    if (ISNAN(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
+
+                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                                rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+//if (e==1 & ind_t==13) Rprintf("1 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+//if (e==1 & ind_t==13) Rprintf("2 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+                    rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                       rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+//if (e==1 & ind_t==13) Rprintf("3 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+//if (e==1 & ind_t==13) Rprintf("4 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+
+                }
+            }
+
+            if (recal) {
+                    //if (e==1 & ind_t==13) Rprintf("recal\n");
+
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
+                    if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                      rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+            }
+
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
                             UNPROTECT(2);
 //Rprintf("H20\n");
     }
@@ -10986,7 +11419,10 @@ if (nbEstat>0) {
 
                     double *rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
                     double *rans_Lstat = REAL(VECTOR_ELT(out_Lstat, e));
-                    double *rans_Dstat = REAL(VECTOR_ELT(out_Dstat, e));
+                    double *rans_Dstat = REAL(VECTOR_ELT(out_Dstat, e));//Rprintf("LL");
+
+                    double *rans_oqDstat = REAL(VECTOR_ELT(out_oqDstat, e));//Rprintf("MM");
+
                     double *rans_statDD = REAL(VECTOR_ELT(out_statDD_efm, e));
                     double *rans_statLD = REAL(VECTOR_ELT(out_statLD_efm, e));
                     double *rans_statLDst = REAL(VECTOR_ELT(out_statLDst_efm, e));
@@ -11074,6 +11510,60 @@ if (nbEstat>0) {
 
                              rans_statLDor[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
                                 rans_statLD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_statLDst[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces statiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+    if (!isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))))) { //TACs renseignés au niveau flottille
+
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))));
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+                if (!ISNA(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                  sumL = sumL + rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                //if (!ISNA(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0]))
+                //  sumYini = sumYini + rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0];
+            }
+
+            rans_oqDstat[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+
+                    if (!ISNAN(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))))
+                    rans_oqDstat[ind_f + nbF*ind_t] = rans_oqDstat[ind_f + nbF*ind_t] +
+                                fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
+                       fmin2(finite(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) + (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])/sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                             finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    if (ISNAN(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                        rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
+
+                    rans_statDD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                    rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                }
+            }
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
 
 
                    UNPROTECT(1);
@@ -11459,3135 +11949,6 @@ UNPROTECT(7);
 if (ind_t==0) UNPROTECT(1);
 
 }}
-
-
-//extern "C" {
-//
-//void BioEcoPar::Marche(SEXP list, int ind_t)
-//{
-//
-//
-//    SEXP    elmt, intC, v_P_fmce, v_icat, v_L_efmit, dimCst_P_fmce, dimCst_L_efmit, dimCst_L_efmct, Dim_L_efmct,
-//            ans_L_efmct = R_NilValue, dimnames_Lc = R_NilValue, rnames_Esp, cFACTc, cFACTi; //dimnames_Lc2 = R_NilValue,
-//    SEXP v_P_eStat, dimCst_P_eStat;
-//
-//    //SEXP ans_L_efmct2 = R_NilValue,  dimCst_L_efmct2, Dim_L_efmct2;
-//
-//    int *dim_P_fmce, *dim_L_efmit, *dim_icat, *dim_L_efmct, *dimLc, *dim_P_eStat;
-//    //int *dim_L_efmct2, *dim_mme, *dimLc2, *r_mme;
-//
-//    int nbI, nbC;
-//
-//    double *rans_L_efmct, *r_L_efmit, *r_P_fmce, *r_icat;
-//    //double *rans_L_efmct2;
-////Rprintf("CCC1");
-//
-//if (ind_t==0) {
-//
-//
-//    PROTECT(rnames_Esp = getAttrib(out_L_efmit,R_NamesSymbol));////PrintValue(rnames_Esp);
-//    setAttrib(out_L_efmct, R_NamesSymbol, rnames_Esp);
-//
-//    setAttrib(out_P_t, R_NamesSymbol, rnames_Esp);
-//    if (nbEstat>0) setAttrib(out_Pstat, R_NamesSymbol, sppListStat);
-//
-//    setAttrib(out_L_efmct2, R_NamesSymbol, rnames_Esp);
-//
-//}
-//
-////Rprintf("M1\n");
-//
-//    for (int e = 0 ; e < nbE ; e++) {
-////Rprintf("M2\n");
-//        PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
-//
-//        nbI = length(getListElement(elmt, "modI"));
-//        intC = getListElement(elmt, "modC");
-//        nbC = length(intC);
-//
-//        PROTECT(v_P_fmce = getListElement(elmt, "P_fmce"));////Rprintf("CCC1");
-//        PROTECT(v_icat = getListElement(elmt, "icat"));   //qqsoit i, sum_c icat = 1
-//        PROTECT(v_L_efmit = getListElement(out_L_efmit, CHAR(STRING_ELT(sppList,e))));////Rprintf("BBB1");
-////        PROTECT(v_mme = getListElement(elmt, "mm"));
-//
-//        PROTECT(dimCst_P_fmce = getAttrib(v_P_fmce, install("DimCst")));
-//        PROTECT(dimCst_L_efmit = getAttrib(v_L_efmit, install("DimCst")));
-////        PROTECT(dimCst_mme = getAttrib(v_mme, install("DimCst")));
-////Rprintf("M3\n");
-//        //tests sur les dimensions :
-//        dim_P_fmce = INTEGER(dimCst_P_fmce);////Rprintf("AAA1");
-//        if ((dim_P_fmce[0]!=0 & dim_P_fmce[0]!=nbF) | (dim_P_fmce[1]!=0 & dim_P_fmce[1]!=nbMe) |
-//            (dim_P_fmce[2]!=0 & dim_P_fmce[2]!=nbC) | (dim_P_fmce[3]!=0 & dim_P_fmce[3]!=nbT))
-//        {
-//            error("Non_homogeneous dimensions in P_fmce element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_L_efmit = INTEGER(dimCst_L_efmit);////Rprintf("AAA2");
-//        if ((dim_L_efmit[0]!=0 & dim_L_efmit[0]!=nbF) | (dim_L_efmit[1]!=0 & dim_L_efmit[1]!=nbM) |
-//            (dim_L_efmit[2]!=0 & dim_L_efmit[2]!=nbI) | (dim_L_efmit[3]!=0 & dim_L_efmit[3]!=nbT))
-//        {
-//            error("Non_homogeneous dimensions in L_efmit element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_icat = INTEGER(getAttrib(v_icat, R_DimSymbol));////Rprintf("AAA3");
-//        if ((dim_icat[0]!=nbI) & (dim_icat[1]!=nbC))
-//        {
-//            error("Non_homogeneous dimensions in icat element. Check .ini biological parameters files !!\n");
-//        }
-////Rprintf("M4\n");
-////        dim_mme = INTEGER(getAttrib(v_mme, R_DimSymbol));
-////        if ((dim_mme[0]!=nbF) & (dim_mme[1]!=nbM))
-////        {
-////            error("Non_homogeneous dimensions in mm element. Check .ini biological parameters files !!\n");
-////        }
-//
-//    /////////////////////////////////////////////////////////////////////////////////////////////////
-//    /////////////////////////////////////////////////////////////////////////////////////////////////
-//    /////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//        //---------
-//        // calcul de L_efmct
-//        //---------
-//
-//        PROTECT(dimCst_L_efmct = allocVector(INTSXP, 4));
-////        PROTECT(dimCst_L_efmct2 = allocVector(INTSXP, 4));
-//        dim_L_efmct = INTEGER(dimCst_L_efmct);////Rprintf("AAA4");
-////        dim_L_efmct2 = INTEGER(dimCst_L_efmct2);
-//        dim_L_efmct[0] = dim_L_efmit[0] ; dim_L_efmct[1] = dim_L_efmit[1] ; dim_L_efmct[2] = nbC; dim_L_efmct[3] = dim_L_efmit[3];
-////        dim_L_efmct2[0] = dim_L_efmit[0] ; dim_L_efmct2[1] = nbMe*(dim_L_efmit[1]>0) ; dim_L_efmct2[2] = nbC; dim_L_efmct2[3] = dim_L_efmit[3];
-//
-//        int count = 0, prod = 1, count2 = 0, count3 = 0; //prod2 = 1, count22 = 0,
-//        for (int k = 0 ; k < 4 ; k++) {
-//
-//            if (dim_L_efmct[k]>0) {
-//                count++;
-//                prod = prod * dim_L_efmct[k];
-////                prod2 = prod2 * dim_L_efmct2[k];
-//            }
-//
-//        }
-//
-//        PROTECT(Dim_L_efmct = allocVector(INTSXP, count));
-//        dimLc = INTEGER(Dim_L_efmct);////Rprintf("AAA5");
-////        PROTECT(Dim_L_efmct2 = allocVector(INTSXP, count));
-////        dimLc2 = INTEGER(Dim_L_efmct2);
-//
-////Rprintf("M5\n");
-//        for (int k = 0 ; k < 4 ; k++) {
-//
-//            if (dim_L_efmct[k]>0) {
-//                dimLc[count2] = dim_L_efmct[k];
-//                count2++;
-//            }
-//
-////            if (dim_L_efmct2[k]>0) {
-////                dimLc2[count22] = dim_L_efmct2[k];
-////                count22++;
-////            }
-//
-//        }
-//
-//
-//if (ind_t==0){
-////Rprintf("M6\n");
-//        //on crée le tableau résultat pour l'espèce en question
-//        PROTECT(ans_L_efmct = NEW_NUMERIC(prod));
-//        setAttrib(ans_L_efmct, R_DimSymbol, Dim_L_efmct);
-////        PROTECT(ans_L_efmct2 = NEW_NUMERIC(prod2));
-////        setAttrib(ans_L_efmct2, R_DimSymbol, Dim_L_efmct2);
-//
-//        PROTECT(dimnames_Lc = allocVector(VECSXP,count));
-//        if (dim_L_efmct[0]>0) {SET_VECTOR_ELT(dimnames_Lc, count3, fleetList) ; count3++;}
-//        if (dim_L_efmct[1]>0) {SET_VECTOR_ELT(dimnames_Lc, count3, metierList) ; count3++;}
-//        if (dim_L_efmct[2]>0) {SET_VECTOR_ELT(dimnames_Lc, count3, intC) ; count3++;}
-//        if (dim_L_efmct[3]>0) {SET_VECTOR_ELT(dimnames_Lc, count3, times) ; count3++;}
-//
-////        count3 = 0;
-////        PROTECT(dimnames_Lc2 = allocVector(VECSXP,count));
-////        if (dim_L_efmct2[0]>0) {SET_VECTOR_ELT(dimnames_Lc2, count3, fleetList) ; count3++;}
-////        if (dim_L_efmct2[1]>0) {SET_VECTOR_ELT(dimnames_Lc2, count3, metierListEco) ; count3++;}
-////        if (dim_L_efmct2[2]>0) {SET_VECTOR_ELT(dimnames_Lc2, count3, intC) ; count3++;}
-////        if (dim_L_efmct2[3]>0) {SET_VECTOR_ELT(dimnames_Lc2, count3, times) ; count3++;}
-//
-//        rans_L_efmct = REAL(ans_L_efmct);
-////        rans_L_efmct2 = REAL(ans_L_efmct2);
-////Rprintf("M7\n");
-//} else {
-//
-//        rans_L_efmct = REAL(VECTOR_ELT(out_L_efmct, e));
-////        rans_L_efmct2 = REAL(VECTOR_ELT(out_L_efmct2, e));
-////Rprintf("M8\n");
-//}
-//
-//        r_L_efmit = REAL(v_L_efmit);
-//        r_P_fmce = REAL(v_P_fmce);
-//        r_icat = REAL(v_icat);
-////        r_mme = INTEGER(AS_INTEGER(v_mme));
-////        double *r_mme2 = REAL(v_mme);
-////Rprintf("M9\n");
-//        //facteurs des indices
-//        PROTECT(cFACTc = iDim(dim_L_efmct));
-////        PROTECT(cFACTc2 = iDim(dim_L_efmct2));
-//        PROTECT(cFACTi = iDim(dim_L_efmit));
-////        PROTECT(cFACTmm = iDim(dim_mme));
-//
-//        int *fact_Cc = INTEGER(cFACTc);
-//        int *fact_Ci = INTEGER(cFACTi);////Rprintf("AAA6");
-////        int *fact_Cc2 = INTEGER(cFACTc2);
-//
-//        //équation n°1 : conversion âge/catgégorie
-//
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_c = 0 ; ind_c < nbC ; ind_c++) {
-//
-//            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
-//
-//                if (ind_i ==0) {
-//
-//            rans_L_efmct[ind_f*fact_Cc[0] + ind_m*fact_Cc[1] + ind_c*fact_Cc[2] + ind_t*fact_Cc[3]] =
-//                r_L_efmit[ind_f*fact_Ci[0] + ind_m*fact_Ci[1] + ind_i*fact_Ci[2] + ind_t*fact_Ci[3]] * r_icat[ind_i + nbI*ind_c];
-//
-//                } else {
-//
-//            rans_L_efmct[ind_f*fact_Cc[0] + ind_m*fact_Cc[1] + ind_c*fact_Cc[2] + ind_t*fact_Cc[3]] =
-//                rans_L_efmct[ind_f*fact_Cc[0] + ind_m*fact_Cc[1] + ind_c*fact_Cc[2] + ind_t*fact_Cc[3]] +
-//                r_L_efmit[ind_f*fact_Ci[0] + ind_m*fact_Ci[1] + ind_i*fact_Ci[2] + ind_t*fact_Ci[3]] * r_icat[ind_i + nbI*ind_c];
-//
-//                }
-//            }
-//        }
-//
-//
-////Rprintf("M10\n");
-//
-//if (ind_t==0) {
-//
-//        setAttrib(ans_L_efmct, R_DimNamesSymbol, dimnames_Lc);
-//        setAttrib(ans_L_efmct, install("DimCst"), dimCst_L_efmct);
-//
-////        setAttrib(ans_L_efmct2, R_DimNamesSymbol, dimnames_Lc2);
-////        setAttrib(ans_L_efmct2, install("DimCst"), dimCst_L_efmct2);
-//
-//        SET_VECTOR_ELT(out_L_efmct, e, ans_L_efmct);
-//        SET_VECTOR_ELT(out_L_efmct2, e, ans_L_efmct);
-//
-//}
-//
-//        SET_VECTOR_ELT(out_P_t, e, v_P_fmce); //à modifier dès qu'il faudra une modélisation plus précise !!!!!!!!!!!
-//
-////Rprintf("M11\n");
-//if (ind_t==0) UNPROTECT(2);
-//UNPROTECT(10);
-//
-//}
-//
-//
-//if (nbEstat>0) {
-////Rprintf("M12\n");
-//    for (int e = 0 ; e < nbEstat ; e++) {
-//
-//            PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
-//
-//            PROTECT(v_P_eStat = getListElement(elmt, "P_fme"));////Rprintf("CCC1");
-//            PROTECT(dimCst_P_eStat = getAttrib(v_P_eStat, install("DimCst")));
-////Rprintf("M13\n");
-//            //tests sur les dimensions :
-//            dim_P_eStat = INTEGER(dimCst_P_eStat);////Rprintf("AAA1");
-//            if ((dim_P_eStat[0]!=0 & dim_P_eStat[0]!=nbF) | (dim_P_eStat[1]!=0 & dim_P_eStat[1]!=nbMe) |
-//                (dim_P_eStat[2]!=0) | (dim_P_eStat[3]!=0 & dim_P_eStat[3]!=nbT))
-//            {
-//                error("Non_homogeneous dimensions in P_fme element. Check .ini biological parameters files !!\n");
-//            }
-//
-//            SET_VECTOR_ELT(out_Pstat, e, v_P_eStat);  //à modifier dès qu'il faudra une modélisation plus précise !!!!!!!!!!!
-////Rprintf("K14\n");
-//    UNPROTECT(3);
-////Rprintf("M14\n");
-//    }
-//
-//}
-//
-//if (ind_t==0) UNPROTECT(1);
-//
-//}}
-
-
-
-//extern "C" {
-//
-//void BioEcoPar::Marche(SEXP list, int t)
-//{
-//
-//if (t==0){
-//
-//    SEXP    ans_1, elmt,
-//            dimCst, Dim, dimnames, dimCst_L_efmit, dimCst_cat_i, dimCst_alpha_i, dimCst_beta_i, dimCst_gamma_i, dimCst_P_it, intAge,
-//            v_L_efmit, v_cat_i, v_alpha_i, v_beta_i, v_gamma_i, v_P_it, tab_sum_i, tab_sum_not_i, dimCoeff;
-//
-//    SEXP rnames;
-//
-//    int *dim_L_efmit, *dim_cat_i, *dim_alpha_i, *dim_beta_i, *dim_gamma_i, *dim_P_it, *dimC, *dimCo;
-//    int nbI;
-//
-//    double *rans_1, *r_L_efmit, *r_alpha_i, *r_beta_i, *r_gamma_i, *r_P_it, *sum_i, *sum_not_i, *rtab_sum_i, *rtab_sum_not_i;
-//
-//    PROTECT(out_P_t = allocVector(VECSXP, nbE));
-//    PROTECT(rnames = allocVector(STRSXP, nbE));
-//    setAttrib(out_P_t , R_NamesSymbol, rnames);
-//
-//    for (int e = 0 ; e < nbE ; e++) {
-//
-//        //---------
-//        // calcul de P_eit
-//        //---------
-//
-//        elmt = getListElement(bioList, CHAR(STRING_ELT(sppList,e)));
-//        intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e)));
-//
-//        nbI = length(getListElement(elmt, "age"));
-//
-//        v_cat_i = getListElement(elmt, "cat_i");
-//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable à remettre à jour
-//        v_beta_i = getListElement(elmt, "beta_c");
-//        v_gamma_i = getListElement(elmt, "gamma_c");
-//        v_P_it = getListElement(elmt, "P_ct");
-//        v_L_efmit = getListElement( out_L_efmit , CHAR(STRING_ELT(sppList,e))) ;
-//
-//        dimCst_cat_i = getAttrib(v_cat_i, install("DimCst"));
-//        dimCst_alpha_i = getAttrib(v_alpha_i, install("DimCst"));
-//        dimCst_beta_i = getAttrib(v_beta_i, install("DimCst"));
-//        dimCst_gamma_i = getAttrib(v_gamma_i, install("DimCst"));
-//        dimCst_P_it = getAttrib(v_P_it, install("DimCst"));
-//        dimCst_L_efmit = getAttrib(v_L_efmit, install("DimCst"));
-//
-//        //tests sur les dimensions
-//        dim_cat_i = INTEGER(dimCst_cat_i);
-//        if ((dim_cat_i[0]!=0) | (dim_cat_i[1]!=0) |
-//            (dim_cat_i[2]!=0 & dim_cat_i[2]!=nbI) | (dim_cat_i[3]!=0))
-//        {
-//            error("Non_homogeneous dimensions in cat_i element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_alpha_i = INTEGER(dimCst_alpha_i);
-//        if ((dim_alpha_i[0]!=0 & dim_alpha_i[0]!=nbF) | (dim_alpha_i[1]!=0 & dim_alpha_i[1]!=nbM) |
-//            (dim_alpha_i[2]!=0 & dim_alpha_i[2]!=nbI) | (dim_alpha_i[3]!=0 & dim_alpha_i[3]!=nbT))
-//        {
-//            error("Non_homogeneous dimensions in alpha_mi element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_beta_i = INTEGER(dimCst_beta_i); //les facteurs alpha, beta et gamma doivent avoir même dimension
-//        if ((dim_beta_i[0]!=dim_alpha_i[0]) | (dim_beta_i[1]!=dim_alpha_i[1]) |
-//            (dim_beta_i[2]!=dim_alpha_i[2]) | (dim_beta_i[3]!=dim_alpha_i[3]))
-//        {
-//            error("Non_homogeneous dimensions in beta_mi element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_gamma_i = INTEGER(dimCst_gamma_i);
-//        if ((dim_gamma_i[0]!=dim_alpha_i[0]) | (dim_gamma_i[1]!=dim_alpha_i[1]) |
-//            (dim_gamma_i[2]!=dim_alpha_i[2]) | (dim_gamma_i[3]!=dim_alpha_i[3]))
-//        {
-//            error("Non_homogeneous dimensions in gamma_mi element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_P_it = INTEGER(dimCst_P_it);
-//        if ((dim_P_it[0]!=0 & dim_P_it[0]!=nbF) | (dim_P_it[1]!=0 & dim_P_it[1]!=nbM) |
-//            (dim_P_it[2]!=0 & dim_P_it[2]!=nbI) | (dim_P_it[3]!=0 & dim_P_it[3]!=nbT))
-//        {
-//            error("Non_homogeneous dimensions in P_mit element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        dim_L_efmit = INTEGER(dimCst_L_efmit);
-//        if ((dim_L_efmit[0]!=0 & dim_L_efmit[0]!=nbF) | (dim_L_efmit[1]!=0 & dim_L_efmit[1]!=nbM) |
-//            (dim_L_efmit[2]!=nbI) | (dim_L_efmit[3]!=0 & dim_L_efmit[3]!=nbT))
-//        {
-//            error("Non_homogeneous dimensions in L_efmit element. Check .ini biological parameters files !!\n");
-//        }
-//
-//        //on détermine l'attribut Dimension du tableau résultant -> dimCst (on en profite pour compter les dimensions réelles + nombre de cellules)
-//        PROTECT(dimCst = allocVector(INTSXP, 4));
-//        dimC = INTEGER(dimCst);
-//        dimC[0] = nbF; dimC[1] = nbM; dimC[2] = nbI; dimC[3] =nbT;
-//        int count = 0, prod = 1, count2 = 0, count3 = 0;
-//
-//        for (int k = 0 ; k < 4 ; k++) {
-//
-//            if (dimC[k]>0) {
-//                count++;
-//                prod = prod * dimC[k];
-//            }
-//
-//        }
-//
-//        PROTECT(Dim = allocVector(INTSXP, count));
-//        int *dim = INTEGER(Dim);
-//
-//        for (int k = 0 ; k < 4 ; k++) {
-//            if (dimC[k]>0) {
-//                dim[count2] = dimC[k];
-//                count2++;
-//                }
-//        }
-//
-//
-//        //on crée le tableau résultat pour l'espèce en question -> ans_1
-//        ans_1 = PROTECT(NEW_NUMERIC(prod));
-//        setAttrib(ans_1, R_DimSymbol, Dim);
-//
-//        PROTECT(dimnames = allocVector(VECSXP,count));
-//        if (dimC[0]>0) {SET_VECTOR_ELT(dimnames, count3, getListElement(paramList, "Fleet")) ; count3++;}
-//        if (dimC[1]>0) {SET_VECTOR_ELT(dimnames, count3, getListElement(paramList, "Metier")) ; count3++;}
-//        if (dimC[2]>0) {SET_VECTOR_ELT(dimnames, count3, intAge) ; count3++;}
-//        if (dimC[3]>0) {SET_VECTOR_ELT(dimnames, count3, getListElement(paramList, "times")) ; count3++;}
-//
-//        rans_1 = REAL(ans_1);
-//        r_L_efmit = REAL(v_L_efmit);
-//        r_alpha_i = REAL(v_alpha_i);
-//        r_beta_i = REAL(v_beta_i);
-//        r_gamma_i = REAL(v_gamma_i);
-//        r_P_it = REAL(v_P_it);
-//
-//        //facteurs des indices
-//        fact1_P = iDim(dimC);
-//        fact2_P = iDim(dim_alpha_i);
-//    //   fact3_P = iDim(dim_beta_i);
-//    //   fact4_P = iDim(dim_gamma_i);
-//        fact5_P = iDim(dim_P_it);
-//        fact6_P = iDim(dim_L_efmit);
-//
-//
-//        //il faut avant tout créer les tableaux sum_L_fmeit et sumNot_L_fmeit
-//            //1ère étape : somme sur les âges de chaque classe
-//        tab_sum_i = PROTECT(NEW_NUMERIC(prod));
-//        tab_sum_not_i = PROTECT(NEW_NUMERIC(prod));
-//        rtab_sum_i = REAL(tab_sum_i);
-//        rtab_sum_not_i = REAL(tab_sum_not_i);
-//
-//                //initialisation
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//            rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] = 0.0;
-//            rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] = 0.0;
-//
-//        }
-//
-//                //somme sur i
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//        //classe associée à l'âge
-//
-//        for (int I = 0 ; I < nbI ; I++) {
-//
-//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par âge --> pas d'autres déclinaisons
-//
-//                rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] =
-//                 rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] +
-//                 r_L_efmit[ind_f*fact6_P[0] + ind_m*fact6_P[1] + I*fact6_P[2] + 0*fact6_P[3]];
-//
-//            } else {
-//
-//                rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] =
-//                 rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] +
-//                 r_L_efmit[ind_f*fact6_P[0] + ind_m*fact6_P[1] + I*fact6_P[2] + 0*fact6_P[3]];
-//
-//            }
-//
-//        }
-//        }
-//            //2ème étape : on agrège en fonction des dimensions des coefficients
-//
-//        PROTECT(dimCoeff = allocVector(INTSXP, 4));
-//        dimCo = INTEGER(dimCoeff);
-//        dimCo[0] = dim_alpha_i[0]; dimCo[1] = dim_alpha_i[1]; dimCo[2] = nbI; dimCo[3] = nbT;
-//        setAttrib(tab_sum_i, install("DimCst"), dimCst);
-//        setAttrib(tab_sum_not_i, install("DimCst"), dimCst);
-//
-//        sum_i = REAL(aggregObj(tab_sum_i,dimCoeff));
-//        sum_not_i = REAL(aggregObj(tab_sum_not_i,dimCoeff));
-//
-//        //équation
-//
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//            if (!ISNA(r_P_it[ind_f*fact5_P[0] + ind_m*fact5_P[1] + ind_i*fact5_P[2] + 0*fact5_P[3]])) {
-//
-//                rans_1[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] =
-//                    r_P_it[ind_f*fact5_P[0] + ind_m*fact5_P[1] + ind_i*fact5_P[2] + 0*fact5_P[3]];
-//
-//            } else {
-//
-//                rans_1[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + 0*fact1_P[3]] =
-//                 exp(r_alpha_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + 0*fact2_P[3]] +
-//                  r_beta_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + 0*fact2_P[3]] *
-//                  log(sum_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + 0*fact2_P[3]]) +
-//                  r_gamma_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + 0*fact2_P[3]] *
-//                  log(sum_not_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + 0*fact2_P[3]]));
-//            }
-//        }
-//
-//        setAttrib(ans_1, R_DimNamesSymbol, dimnames);
-//        setAttrib(ans_1, install("DimCst"), dimCst);
-//
-//        SET_VECTOR_ELT(out_P_t, e, ans_1);
-//        SET_STRING_ELT(rnames, e, STRING_ELT(sppList,e));
-//
-//        UNPROTECT(7);
-//    }
-//
-//    UNPROTECT(2);
-//
-//
-//
-//} else {
-//
-//
-//
-//
-//    SEXP    ans_1, elmt,
-//            dimCst, dimCst_L_efmit, dimCst_cat_i, dimCst_alpha_i, dimCst_beta_i, dimCst_gamma_i, dimCst_P_it, intAge,
-//            v_L_efmit, v_cat_i, v_alpha_i, v_beta_i, v_gamma_i, v_P_it, tab_sum_i, tab_sum_not_i, dimCoeff;
-//
-//    int *dim_alpha_i, *dimC, *dimCo;
-//    int nbI;
-//
-//    double *rans_1, *r_L_efmit, *r_alpha_i, *r_beta_i, *r_gamma_i, *r_P_it, *sum_i, *sum_not_i, *rtab_sum_i, *rtab_sum_not_i;
-//
-//    for (int e = 0 ; e < nbE ; e++) {
-//
-//        //---------
-//        // calcul de P_eit
-//        //---------
-//
-//        elmt = getListElement(bioList, CHAR(STRING_ELT(sppList,e)));
-//        intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e)));
-//
-//        nbI = length(getListElement(elmt, "age"));
-//
-//        v_cat_i = getListElement(elmt, "cat_i");
-//        v_alpha_i = getListElement(elmt, "alpha_c");    //attention : nom de variable à remettre à jour
-//        v_beta_i = getListElement(elmt, "beta_c");
-//        v_gamma_i = getListElement(elmt, "gamma_c");
-//        v_P_it = getListElement(elmt, "P_ct");
-//        v_L_efmit = getListElement( out_L_efmit, CHAR(STRING_ELT(sppList,e))) ;
-//
-//        dimCst_cat_i = getAttrib(v_cat_i, install("DimCst"));
-//        dimCst_alpha_i = getAttrib(v_alpha_i, install("DimCst"));
-//        dimCst_beta_i = getAttrib(v_beta_i, install("DimCst"));
-//        dimCst_gamma_i = getAttrib(v_gamma_i, install("DimCst"));
-//        dimCst_P_it = getAttrib(v_P_it, install("DimCst"));
-//        dimCst_L_efmit = getAttrib(v_L_efmit, install("DimCst"));
-//
-//        dim_alpha_i = INTEGER(dimCst_alpha_i);
-//
-//        //on crée le tableau résultat pour l'espèce en question -> ans_1
-//        ans_1 = getListElement(out_P_t, CHAR(STRING_ELT(sppList,e)));
-//
-//        rans_1 = REAL(ans_1);
-//        r_L_efmit = REAL(v_L_efmit);
-//        r_alpha_i = REAL(v_alpha_i);
-//        r_beta_i = REAL(v_beta_i);
-//        r_gamma_i = REAL(v_gamma_i);
-//        r_P_it = REAL(v_P_it);
-//
-//        PROTECT(dimCst = allocVector(INTSXP, 4));
-//        dimC = INTEGER(dimCst);
-//        dimC[0] = nbF; dimC[1] = nbM; dimC[2] = nbI; dimC[3] =nbT;
-//        int count = 0, prod = 1;
-//
-//        for (int k = 0 ; k < 4 ; k++) {
-//
-//            if (dimC[k]>0) {
-//                count++;
-//                prod = prod * dimC[k];
-//            }
-//
-//        }
-//
-//      //il faut avant tout créer les tableaux sum_L_fmeit et sumNot_L_fmeit
-//            //1ère étape : somme sur les ages de chaque classe
-//        tab_sum_i = PROTECT(NEW_NUMERIC(prod));
-//        tab_sum_not_i = PROTECT(NEW_NUMERIC(prod));
-//        rtab_sum_i = REAL(tab_sum_i);
-//        rtab_sum_not_i = REAL(tab_sum_not_i);
-//
-//                //initialisation
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//            rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] = 0.0;
-//            rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] = 0.0;
-//
-//        }
-//
-//                //somme sur i
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//        //classe associée à l'âge
-//
-//        for (int I = 0 ; I < nbI ; I++) {
-//
-//            if (CHAR(STRING_ELT(v_cat_i, I))==CHAR(STRING_ELT(v_cat_i, ind_i))){   //ATTENTION : ceci implique que cat_i reste un vecteur par âge --> pas d'autres déclinaisons
-//
-//                rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] =
-//                 rtab_sum_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] +
-//                 r_L_efmit[ind_f*fact6_P[0] + ind_m*fact6_P[1] + I*fact6_P[2] + t*fact6_P[3]];
-//
-//            } else {
-//
-//                rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] =
-//                 rtab_sum_not_i[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] +
-//                 r_L_efmit[ind_f*fact6_P[0] + ind_m*fact6_P[1] + I*fact6_P[2] + t*fact6_P[3]];
-//
-//            }
-//
-//        }
-//        }
-//            //2ème étape : on agrège en fonction des dimensions des coefficients
-//
-//        PROTECT(dimCoeff = allocVector(INTSXP, 4));
-//        dimCo = INTEGER(dimCoeff);
-//        dimCo[0] = dim_alpha_i[0]; dimCo[1] = dim_alpha_i[1]; dimCo[2] = nbI; dimCo[3] = nbT;
-//        setAttrib(tab_sum_i, install("DimCst"), dimCst);
-//        setAttrib(tab_sum_not_i, install("DimCst"), dimCst);
-//
-//        sum_i = REAL(aggregObj(tab_sum_i,dimCoeff));
-//        sum_not_i = REAL(aggregObj(tab_sum_not_i,dimCoeff));
-//
-//        //équation
-//
-//        for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
-//        for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
-//        for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
-//
-//            if (!ISNA(r_P_it[ind_f*fact5_P[0] + ind_m*fact5_P[1] + ind_i*fact5_P[2] + t*fact5_P[3]])) {
-//
-//                rans_1[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] =
-//                    r_P_it[ind_f*fact5_P[0] + ind_m*fact5_P[1] + ind_i*fact5_P[2] + t*fact5_P[3]];
-//
-//            } else {
-//
-//                rans_1[ind_f*fact1_P[0] + ind_m*fact1_P[1] + ind_i*fact1_P[2] + t*fact1_P[3]] =
-//                 exp(r_alpha_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + t*fact2_P[3]] +
-//                  r_beta_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + t*fact2_P[3]] *
-//                  log(sum_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + t*fact2_P[3]]) +
-//                  r_gamma_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + t*fact2_P[3]] *
-//                  log(sum_not_i[ind_f*fact2_P[0] + ind_m*fact2_P[1] + ind_i*fact2_P[2] + t*fact2_P[3]]));
-//            }
-//        }
-//
-//        UNPROTECT(4);
-//    }
-//}
-//
-//}
-//}
-//
-//
-//
-//
-
-
-
-
-//------------------------------------------
-// Module 'Economie'
-//------------------------------------------
-
-extern "C" {
-
-void BioEcoPar::Economic(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr)
-{
-
-    SEXP Flist;
-    PROTECT(Flist = getListElement(list, "Fleet"));
-
-    PROTECT(out_Eco);
-
-//2 protect
-    SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets résultats
-
-    SEXP eFACTf, eFACTfm, elmt;
-
-    SEXP    Lref_f, GVLref_f, GVLref_f_m, nbv_f, nbv_f_m, lc_f_m, lcd_f_m, gc_f, gc_f_m, nbh_f, ue_f, ue_f_m, fc_f, fc_f_m, vf_f, vf_f_m, ovc_f, ovc_f_m,
-            oilc_f, oilc_f_m, bc_f, bc_f_m, foc_f, foc_f_m, cnb_f, cnb_f_m, icec_f, icec_f_m, cshr_f, cshr_f_m, eec_f, mwh_f, altwh_f,
-            rep_f, onvc_f, insp_f, ownc_f, mngc_f, licc_f, comc_f, finc_f, dep_f, ic_f, K_f, vc_f, persc_f, ecc_f, pl_f;
-
-    SEXP    dc_Lref_f, dc_GVLref_f, dc_GVLref_f_m, dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_gc_f, dc_gc_f_m, dc_nbh_f, dc_ue_f, dc_ue_f_m, dc_fc_f,
-            dc_fc_f_m, dc_vf_f, dc_vf_f_m, dc_ovc_f, dc_ovc_f_m, dc_oilc_f, dc_oilc_f_m, dc_bc_f, dc_bc_f_m, dc_foc_f, dc_foc_f_m,
-            dc_cnb_f, dc_cnb_f_m, dc_icec_f, dc_icec_f_m, dc_cshr_f, dc_cshr_f_m, dc_eec_f, dc_mwh_f, dc_altwh_f, dc_rep_f, dc_onvc_f,
-            dc_insp_f, dc_ownc_f, dc_mngc_f, dc_licc_f, dc_comc_f, dc_finc_f, dc_dep_f, dc_ic_f, dc_K_f, dc_vc_f, dc_persc_f, dc_ecc_f,
-            dc_pl_f;
-
-    int *dCF,*dCFM,*dCFini,*dCFMini,*DF,*DFM, *DFMini;
-
-    int *dim_Lref_f, *dim_GVLref_f, *dim_GVLref_f_m, *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_lcd_f_m, *dim_gc_f, *dim_gc_f_m, *dim_nbh_f, *dim_ue_f, *dim_ue_f_m,
-        *dim_fc_f, *dim_fc_f_m, *dim_vf_f, *dim_vf_f_m, *dim_ovc_f, *dim_ovc_f_m, *dim_oilc_f, *dim_oilc_f_m, *dim_bc_f, *dim_bc_f_m,
-        *dim_foc_f, *dim_foc_f_m, *dim_cnb_f, *dim_cnb_f_m, *dim_icec_f, *dim_icec_f_m, *dim_cshr_f, *dim_cshr_f_m, *dim_eec_f, *dim_mwh_f,
-        *dim_altwh_f, *dim_rep_f, *dim_onvc_f, *dim_insp_f, *dim_ownc_f, *dim_mngc_f, *dim_licc_f, *dim_comc_f, *dim_finc_f,
-        *dim_dep_f, *dim_ic_f, *dim_K_f, *dim_vc_f, *dim_persc_f, *dim_ecc_f, *dim_pl_f;
-
-    double  *r_Lref_f, *r_GVLref_f, *r_GVLref_f_m, *r_nbv_f, *r_nbv_f_m, *r_lc_f_m, *r_lcd_f_m, *r_gc_f, *r_gc_f_m, *r_nbh_f, *r_ue_f, *r_ue_f_m, *r_fc_f,
-            *r_fc_f_m, *r_vf_f, *r_vf_f_m, *r_ovc_f, *r_ovc_f_m, *r_oilc_f, *r_oilc_f_m, *r_bc_f, *r_bc_f_m, *r_foc_f, *r_foc_f_m,
-            *r_cnb_f, *r_cnb_f_m, *r_icec_f, *r_icec_f_m, *r_cshr_f, *r_cshr_f_m, *r_eec_f, *r_mwh_f, *r_altwh_f, *r_rep_f, *r_onvc_f,
-            *r_insp_f, *r_ownc_f, *r_mngc_f, *r_licc_f, *r_comc_f, *r_finc_f, *r_dep_f, *r_ic_f, *r_K_f, *r_vc_f, *r_persc_f, *r_ecc_f,
-            *r_pl_f;
-
-    double  *r_Lbio_f_out, *r_GVLtot_f_m_out, *r_GVLav_f_m_out, *r_GVLtot_f_out, *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out,
-            *r_vcst_f_m_out, *r_vcst_f_out, *r_rtbs_f_m_out, *r_rtbs_f_out, *r_cshrT_f_m_out, *r_cshrT_f_out, *r_sshr_f_m_out,
-            *r_sshr_f_out, *r_ncshr_f_out, *r_ocl_f_out, *r_cs_f_out, *r_csTot_f_out, *r_gva_f_out, *r_ccw_f_out, *r_ccwCr_f_out,
-            *r_wageg_f_out, *r_wagen_f_out, *r_gcf_f_out, *r_ngcf_f_out, *r_gp_f_out, *r_ssTot_f_out, *r_ps_f_out, *r_sts_f_out,
-            *r_ber_f_out, *r_ratio_gva_GVL_f_out, *r_ratio_gcf_GVL_f_out, *r_ratio_fc_GVL_f_out,
-            *r_ratio_oilc_GVL_f_out, *r_ratio_bc_GVL_f_out, *r_ratio_foc_GVL_f_out, *r_ratio_icec_GVL_f_out, *r_ratio_gc_GVL_f_out,
-            *r_ratio_vc_GVL_f_out, *r_ratio_rep_GVL_f_out, *r_ratio_mngc_GVL_f_out, *r_ratio_licc_GVL_f_out, *r_ratio_fvol_GVL_f_out,
-            *r_ratio_fvol_Lbio_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gcf_gva_f_out, *r_ratio_K_cnb_f_out, *r_ratio_GVL_K_f_out,
-            *r_ratio_gcf_K_f_out, *r_ratio_ngcf_K_f_out, *r_ratio_gp_K_f_out, *r_ratio_GVL_cnb_ue_f_out,
-            *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gcfAct_f_out, *r_psAct_f_out, *r_stsAct_f_out, *r_ETini_f_m_out, *r_ETini_f_out,
-            *r_GVLcom_f_m_e_out, *r_GVLst_f_m_e_out, *r_GVLcom_f_m_eStat_out, *r_GVLst_f_m_eStat_out, *r_cnb_f_m_out, *r_cnb_f_out;
-
-//Rprintf("Ee1\n");
-
-//définition des dimensions
-    PROTECT(dimCstF = allocVector(INTSXP, 4));
-    PROTECT(DimF = allocVector(INTSXP, 2));
-    PROTECT(dimnamesF = allocVector(VECSXP,2));
-    PROTECT(dimCstFM = allocVector(INTSXP, 4));
-    PROTECT(DimFM = allocVector(INTSXP, 3));
-    PROTECT(dimnamesFM = allocVector(VECSXP,3));
-
-    PROTECT(dimCstFini = allocVector(INTSXP, 4));
-    PROTECT(dimCstFMini = allocVector(INTSXP, 4));
-    PROTECT(DimFMini = allocVector(INTSXP, 2));
-    PROTECT(dimnamesFMini = allocVector(VECSXP,2));
-
-    SET_VECTOR_ELT(dimnamesF, 0, fleetList); SET_VECTOR_ELT(dimnamesF, 1, times);
-    SET_VECTOR_ELT(dimnamesFM, 0, fleetList); SET_VECTOR_ELT(dimnamesFM, 1, metierListEco); SET_VECTOR_ELT(dimnamesFM, 2, times);
-    SET_VECTOR_ELT(dimnamesFMini, 0, fleetList); SET_VECTOR_ELT(dimnamesFMini, 1, metierListEco);
-
-    dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
-    dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
-    dCFini = INTEGER(dimCstFini) ; dCFini[0] = nbF; dCFini[1] = 0; dCFini[2] = 0; dCFini[3] = 0;
-    dCFMini = INTEGER(dimCstFMini) ; dCFMini[0] = nbF; dCFMini[1] = nbMe; dCFMini[2] = 0; dCFMini[3] = 0;
-
-    DF = INTEGER(DimF) ; DF[0] = nbF; DF[1] = nbT;
-    DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
-    DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
-
-    //facteurs des indices génériques F/FM
-    PROTECT(eFACTf = iDim(dCF));
-    PROTECT(eFACTfm = iDim(dCFM));
-
-// protect -> 14
-
-    int *eF_f = INTEGER(eFACTf);
-    int *eF_fm = INTEGER(eFACTfm);
-//Rprintf("Ee2\n");
-    PROTECT(Lref_f = getListElement(Flist, "Lref_f"));      PROTECT(dc_Lref_f = iDim(INTEGER(getAttrib(Lref_f, install("DimCst")))));
-    PROTECT(GVLref_f = getListElement(Flist, "GVLref_f"));    PROTECT(dc_GVLref_f = iDim(INTEGER(getAttrib(GVLref_f, install("DimCst")))));
-    PROTECT(GVLref_f_m = getListElement(Flist, "GVLref_f_m")); PROTECT(dc_GVLref_f_m = iDim(INTEGER(getAttrib(GVLref_f_m, install("DimCst")))));
-    PROTECT(nbv_f = getListElement(Flist, "nbv_f"));        PROTECT(dc_nbv_f = iDim(INTEGER(getAttrib(nbv_f, install("DimCst")))));
-    PROTECT(nbv_f_m = getListElement(Flist, "nbv_f_m"));    PROTECT(dc_nbv_f_m = iDim(INTEGER(getAttrib(nbv_f_m, install("DimCst")))));
-    PROTECT(lc_f_m = getListElement(Flist, "lc_f_m"));          PROTECT(dc_lc_f_m = iDim(INTEGER(getAttrib(lc_f_m, install("DimCst")))));
-    PROTECT(lcd_f_m = getListElement(Flist, "lcd_f_m"));          PROTECT(dc_lcd_f_m = iDim(INTEGER(getAttrib(lcd_f_m, install("DimCst")))));
-    PROTECT(gc_f = getListElement(Flist, "gc_f"));          PROTECT(dc_gc_f = iDim(INTEGER(getAttrib(gc_f, install("DimCst")))));
-    PROTECT(gc_f_m = getListElement(Flist, "gc_f_m"));      PROTECT(dc_gc_f_m = iDim(INTEGER(getAttrib(gc_f_m, install("DimCst")))));
-    PROTECT(nbh_f = getListElement(Flist, "nbh_f"));        PROTECT(dc_nbh_f = iDim(INTEGER(getAttrib(nbh_f, install("DimCst")))));
-    PROTECT(fc_f = getListElement(Flist, "fc_f"));          PROTECT(dc_fc_f = iDim(INTEGER(getAttrib(fc_f, install("DimCst")))));
-    PROTECT(fc_f_m = getListElement(Flist, "fc_f_m"));      PROTECT(dc_fc_f_m = iDim(INTEGER(getAttrib(fc_f_m, install("DimCst")))));
-    PROTECT(vf_f = getListElement(Flist, "vf_f"));          PROTECT(dc_vf_f = iDim(INTEGER(getAttrib(vf_f, install("DimCst")))));
-    PROTECT(vf_f_m = getListElement(Flist, "vf_f_m"));      PROTECT(dc_vf_f_m = iDim(INTEGER(getAttrib(vf_f_m, install("DimCst")))));
-    PROTECT(ovc_f = getListElement(Flist, "ovc_f"));        PROTECT(dc_ovc_f = iDim(INTEGER(getAttrib(ovc_f, install("DimCst")))));
-    PROTECT(ovc_f_m = getListElement(Flist, "ovc_f_m"));    PROTECT(dc_ovc_f_m = iDim(INTEGER(getAttrib(ovc_f_m, install("DimCst")))));
-    PROTECT(oilc_f = getListElement(Flist, "oilc_f"));      PROTECT(dc_oilc_f = iDim(INTEGER(getAttrib(oilc_f, install("DimCst")))));
-    PROTECT(oilc_f_m = getListElement(Flist, "oilc_f_m"));  PROTECT(dc_oilc_f_m = iDim(INTEGER(getAttrib(oilc_f_m, install("DimCst")))));
-    PROTECT(bc_f = getListElement(Flist, "bc_f"));          PROTECT(dc_bc_f = iDim(INTEGER(getAttrib(bc_f, install("DimCst")))));
-    PROTECT(bc_f_m = getListElement(Flist, "bc_f_m"));      PROTECT(dc_bc_f_m = iDim(INTEGER(getAttrib(bc_f_m, install("DimCst")))));
-    PROTECT(foc_f = getListElement(Flist, "foc_f"));        PROTECT(dc_foc_f = iDim(INTEGER(getAttrib(foc_f, install("DimCst")))));
-    PROTECT(foc_f_m = getListElement(Flist, "foc_f_m"));    PROTECT(dc_foc_f_m = iDim(INTEGER(getAttrib(foc_f_m, install("DimCst")))));
-    PROTECT(cnb_f = getListElement(Flist, "cnb_f"));        PROTECT(dc_cnb_f = iDim(INTEGER(getAttrib(cnb_f, install("DimCst")))));
-    PROTECT(cnb_f_m = getListElement(Flist, "cnb_f_m"));    PROTECT(dc_cnb_f_m = iDim(INTEGER(getAttrib(cnb_f_m, install("DimCst")))));
-    PROTECT(icec_f = getListElement(Flist, "icec_f"));      PROTECT(dc_icec_f = iDim(INTEGER(getAttrib(icec_f, install("DimCst")))));
-    PROTECT(icec_f_m = getListElement(Flist, "icec_f_m"));  PROTECT(dc_icec_f_m = iDim(INTEGER(getAttrib(icec_f_m, install("DimCst")))));
-    PROTECT(cshr_f = getListElement(Flist, "cshr_f"));      PROTECT(dc_cshr_f = iDim(INTEGER(getAttrib(cshr_f, install("DimCst")))));
-    PROTECT(cshr_f_m = getListElement(Flist, "cshr_f_m"));  PROTECT(dc_cshr_f_m = iDim(INTEGER(getAttrib(cshr_f_m, install("DimCst")))));
-    PROTECT(eec_f = getListElement(Flist, "eec_f"));        PROTECT(dc_eec_f = iDim(INTEGER(getAttrib(eec_f, install("DimCst")))));
-    PROTECT(mwh_f = getListElement(Flist, "mwh_f"));        PROTECT(dc_mwh_f = iDim(INTEGER(getAttrib(mwh_f, install("DimCst")))));
-    PROTECT(altwh_f = getListElement(Flist, "altwh_f"));    PROTECT(dc_altwh_f = iDim(INTEGER(getAttrib(altwh_f, install("DimCst")))));
-    PROTECT(rep_f = getListElement(Flist, "rep_f"));        PROTECT(dc_rep_f = iDim(INTEGER(getAttrib(rep_f, install("DimCst")))));
-    PROTECT(onvc_f = getListElement(Flist, "onvc_f"));      PROTECT(dc_onvc_f = iDim(INTEGER(getAttrib(onvc_f, install("DimCst")))));
-    PROTECT(insp_f = getListElement(Flist, "insp_f"));      PROTECT(dc_insp_f = iDim(INTEGER(getAttrib(insp_f, install("DimCst")))));
-    PROTECT(ownc_f = getListElement(Flist, "ownc_f"));      PROTECT(dc_ownc_f = iDim(INTEGER(getAttrib(ownc_f, install("DimCst")))));
-    PROTECT(mngc_f = getListElement(Flist, "mngc_f"));      PROTECT(dc_mngc_f = iDim(INTEGER(getAttrib(mngc_f, install("DimCst")))));
-    PROTECT(licc_f = getListElement(Flist, "licc_f"));      PROTECT(dc_licc_f = iDim(INTEGER(getAttrib(licc_f, install("DimCst")))));
-    PROTECT(comc_f = getListElement(Flist, "comc_f"));      PROTECT(dc_comc_f = iDim(INTEGER(getAttrib(comc_f, install("DimCst")))));
-    PROTECT(finc_f = getListElement(Flist, "finc_f"));      PROTECT(dc_finc_f = iDim(INTEGER(getAttrib(finc_f, install("DimCst")))));
-    PROTECT(dep_f = getListElement(Flist, "dep_f"));        PROTECT(dc_dep_f = iDim(INTEGER(getAttrib(dep_f, install("DimCst")))));
-    PROTECT(ic_f = getListElement(Flist, "ic_f"));          PROTECT(dc_ic_f = iDim(INTEGER(getAttrib(ic_f, install("DimCst")))));
-    PROTECT(K_f = getListElement(Flist, "K_f"));            PROTECT(dc_K_f = iDim(INTEGER(getAttrib(K_f, install("DimCst")))));
-    PROTECT(vc_f = getListElement(Flist, "vc_f"));          PROTECT(dc_vc_f = iDim(INTEGER(getAttrib(vc_f, install("DimCst")))));
-    PROTECT(persc_f = getListElement(Flist, "persc_f"));    PROTECT(dc_persc_f = iDim(INTEGER(getAttrib(persc_f, install("DimCst")))));
-    PROTECT(ecc_f = getListElement(Flist, "ecc_f"));        PROTECT(dc_ecc_f = iDim(INTEGER(getAttrib(ecc_f, install("DimCst")))));
-    PROTECT(pl_f = getListElement(Flist, "pl_f"));          PROTECT(dc_pl_f = iDim(INTEGER(getAttrib(pl_f, install("DimCst")))));
-//90 protect  ->104
-
-if (ue_choice == 1) {
-
-        PROTECT(ue_f = NEW_NUMERIC(nbF));
-        setAttrib(ue_f, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
-        setAttrib(ue_f, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
-        setAttrib(ue_f, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f"), install("DimCst")));
-
-        PROTECT(ue_f_m = NEW_NUMERIC(nbF*nbMe));
-        setAttrib(ue_f_m, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
-        setAttrib(ue_f_m, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
-        setAttrib(ue_f_m, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")));
-
-double *ruef = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *ruefm = REAL(ue_f_m); double *reff1_fm = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2_fm = REAL(getListElement(Flist, "effort2_f_m"));
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  ruef[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
-  for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) ruefm[ind_f + nbF*ind_m] = reff1_fm[ind_f + nbF*ind_m]*reff2_fm[ind_f + nbF*ind_m];
-}
-
-
-} else {
-
-    if (ue_choice == 2) {
-
-        PROTECT(ue_f = getListElement(Flist, "nbh_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbh_f_m"));
-
-    } else {
-
-        PROTECT(ue_f = getListElement(Flist, "nbtrip_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbtrip_f_m"));
-
-    }
-}
-
-    PROTECT(dc_ue_f = iDim(INTEGER(getAttrib(ue_f, install("DimCst")))));
-    PROTECT(dc_ue_f_m = iDim(INTEGER(getAttrib(ue_f_m, install("DimCst")))));
-//4 protect -> 108
-//Rprintf("Ee3\n");
-    dim_Lref_f = INTEGER(dc_Lref_f);                        r_Lref_f = REAL(Lref_f);
-    dim_GVLref_f = INTEGER(dc_GVLref_f);                    r_GVLref_f = REAL(GVLref_f);
-    dim_GVLref_f_m = INTEGER(dc_GVLref_f_m);                r_GVLref_f_m = REAL(GVLref_f_m);
-    dim_nbv_f = INTEGER(dc_nbv_f);                          r_nbv_f = REAL(nbv_f);
-    dim_nbv_f_m = INTEGER(dc_nbv_f_m);                      r_nbv_f_m = REAL(nbv_f_m);
-    dim_lc_f_m = INTEGER(dc_lc_f_m);                        r_lc_f_m = REAL(lc_f_m);
-    dim_lcd_f_m = INTEGER(dc_lcd_f_m);                      r_lcd_f_m = REAL(lcd_f_m);
-    dim_gc_f = INTEGER(dc_gc_f);                            r_gc_f = REAL(gc_f);
-    dim_gc_f_m = INTEGER(dc_gc_f_m);                        r_gc_f_m = REAL(gc_f_m);
-    dim_nbh_f = INTEGER(dc_nbh_f);                          r_nbh_f = REAL(nbh_f);
-    dim_ue_f = INTEGER(dc_ue_f);                            r_ue_f = REAL(ue_f);
-    dim_ue_f_m = INTEGER(dc_ue_f_m);                        r_ue_f_m = REAL(ue_f_m);
-    dim_fc_f = INTEGER(dc_fc_f);                            r_fc_f = REAL(fc_f);
-    dim_fc_f_m = INTEGER(dc_fc_f_m);                        r_fc_f_m = REAL(fc_f_m);
-    dim_vf_f = INTEGER(dc_vf_f);                            r_vf_f = REAL(vf_f);
-    dim_vf_f_m = INTEGER(dc_vf_f_m);                        r_vf_f_m = REAL(vf_f_m);
-    dim_ovc_f = INTEGER(dc_ovc_f);                          r_ovc_f = REAL(ovc_f);
-    dim_ovc_f_m = INTEGER(dc_ovc_f_m);                      r_ovc_f_m = REAL(ovc_f_m);
-    dim_oilc_f = INTEGER(dc_oilc_f);                        r_oilc_f = REAL(oilc_f);
-    dim_oilc_f_m = INTEGER(dc_oilc_f_m);                    r_oilc_f_m = REAL(oilc_f_m);
-    dim_bc_f = INTEGER(dc_bc_f);                            r_bc_f = REAL(bc_f);
-    dim_bc_f_m = INTEGER(dc_bc_f_m);                        r_bc_f_m = REAL(bc_f_m);
-    dim_foc_f = INTEGER(dc_foc_f);                          r_foc_f = REAL(foc_f);
-    dim_foc_f_m = INTEGER(dc_foc_f_m);                      r_foc_f_m = REAL(foc_f_m);
-    dim_cnb_f = INTEGER(dc_cnb_f);                          r_cnb_f = REAL(cnb_f);
-    dim_cnb_f_m = INTEGER(dc_cnb_f_m);                      r_cnb_f_m = REAL(cnb_f_m);
-    dim_icec_f = INTEGER(dc_icec_f);                        r_icec_f = REAL(icec_f);
-    dim_icec_f_m = INTEGER(dc_icec_f_m);                    r_icec_f_m = REAL(icec_f_m);
-    dim_cshr_f = INTEGER(dc_cshr_f);                        r_cshr_f = REAL(cshr_f);
-    dim_cshr_f_m = INTEGER(dc_cshr_f_m);                    r_cshr_f_m = REAL(cshr_f_m);
-    dim_eec_f = INTEGER(dc_eec_f);                          r_eec_f = REAL(eec_f);
-    dim_mwh_f = INTEGER(dc_mwh_f);                          r_mwh_f = REAL(mwh_f);
-    dim_altwh_f = INTEGER(dc_altwh_f);                      r_altwh_f = REAL(altwh_f);
-    dim_rep_f = INTEGER(dc_rep_f);                          r_rep_f = REAL(rep_f);
-    dim_onvc_f = INTEGER(dc_onvc_f);                        r_onvc_f = REAL(onvc_f);
-    dim_insp_f = INTEGER(dc_insp_f);                        r_insp_f = REAL(insp_f);
-    dim_ownc_f = INTEGER(dc_ownc_f);                        r_ownc_f = REAL(ownc_f);
-    dim_mngc_f = INTEGER(dc_mngc_f);                        r_mngc_f = REAL(mngc_f);
-    dim_licc_f = INTEGER(dc_licc_f);                        r_licc_f = REAL(licc_f);
-    dim_comc_f = INTEGER(dc_comc_f);                        r_comc_f = REAL(comc_f);
-    dim_finc_f = INTEGER(dc_finc_f);                        r_finc_f = REAL(finc_f);
-    dim_dep_f = INTEGER(dc_dep_f);                          r_dep_f = REAL(dep_f);
-    dim_ic_f = INTEGER(dc_ic_f);                            r_ic_f = REAL(ic_f);
-    dim_K_f = INTEGER(dc_K_f);                              r_K_f = REAL(K_f);
-    dim_vc_f = INTEGER(dc_vc_f);                            r_vc_f = REAL(vc_f);
-    dim_persc_f = INTEGER(dc_persc_f);                      r_persc_f = REAL(persc_f);
-    dim_ecc_f = INTEGER(dc_ecc_f);                          r_ecc_f = REAL(ecc_f);
-    dim_pl_f = INTEGER(dc_pl_f);                            r_pl_f = REAL(pl_f);
-
-    int nbI=0, nbC=0;
-//Rprintf("Ee4\n");
-if (ind_t==0) {
-
-    SEXP  Lbio_f_out, GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out, vcst_f_m_out,
-          vcst_f_out, rtbs_f_m_out, rtbs_f_out,
-          cshrT_f_m_out, cshrT_f_out, sshr_f_m_out, sshr_f_out, ncshr_f_out, ocl_f_out, cs_f_out, csTot_f_out, gva_f_out,
-          ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, gcf_f_out,
-          ngcf_f_out, gp_f_out, ssTot_f_out, ps_f_out, sts_f_out, ber_f_out, ratio_gva_GVL_f_out, ratio_gcf_GVL_f_out, ratio_fc_GVL_f_out,
-          ratio_oilc_GVL_f_out, ratio_bc_GVL_f_out, ratio_foc_GVL_f_out, ratio_icec_GVL_f_out, ratio_gc_GVL_f_out, ratio_vc_GVL_f_out,
-          ratio_rep_GVL_f_out, ratio_mngc_GVL_f_out, ratio_licc_GVL_f_out, ratio_fvol_GVL_f_out, ratio_fvol_Lbio_f_out, ratio_fvol_gva_f_out,
-          ratio_gcf_gva_f_out, ratio_K_cnb_f_out, ratio_GVL_K_f_out, ratio_gcf_K_f_out, ratio_ngcf_K_f_out, ratio_gp_K_f_out, ratio_GVL_cnb_ue_f_out,
-          rtbsAct_f_out, csAct_f_out, gvaAct_f_out, gcfAct_f_out, psAct_f_out, stsAct_f_out,
-          GVLcom_f_m_e_out, GVLst_f_m_e_out, GVLcom_f_m_eStat_out, GVLst_f_m_eStat_out, cnb_f_m_out, ETini_f_m_out, ETini_f_out, cnb_f_out;
-
-    SEXP  Loths_f, Lothm_f_e, GVLtot_f_m_e, GVLcom_f_m_e, GVLst_f_m_e, GVLreftot_f_m_e, GVLreftot_f_m, GVLoths_f_m, GVLothsref_f_m, GVLothsue_f_m, GVLothsrefue_f_m,
-    GVLtot_f_e, GVLreftot_f, GVLoths_f, GVLothsue_f, GVLothmet_f, GVLothmetue_f,
-    gcue_f_m, fvolue_f_m, ovcue_f_m, oilcue_f_m, bcue_f_m, focue_f_m, focuecnb_f_m, icecue_f_m, gcue_f, fvolue_f, ovcue_f, oilcue_f,
-    bcue_f, focue_f, focuecnb_f, icecue_f, onvcr_f, fvol_f, NGVLav_f, NGVLav_f_m, vcst_f_m, vcst_f, vcstOthm_f, rtbs_f,
-    rtbs_f_m, rtbsOthm_f, cshrT_f_m, cshrT_f, cshrTothm_f, sshr_f_m, sshr_f, sshrOthm_f, perscr_f, ccwr_f, opersc_f, eco_names;
-
-    double *r_Loths_f, *r_GVLreftot_f_m, *r_GVLoths_f_m, *r_GVLothsref_f_m,
-    *r_GVLothsue_f_m, *r_GVLothsrefue_f_m, *r_GVLreftot_f, *r_GVLoths_f, *r_GVLothsue_f, *r_GVLothmet_f, *r_GVLothmetue_f,
-    *r_gcue_f_m, *r_fvolue_f_m, *r_ovcue_f_m, *r_oilcue_f_m, *r_bcue_f_m, *r_focue_f_m, *r_focuecnb_f_m, *r_icecue_f_m, *r_gcue_f,
-    *r_fvolue_f, *r_ovcue_f, *r_oilcue_f, *r_bcue_f, *r_focue_f, *r_focuecnb_f, *r_icecue_f, *r_onvcr_f, *r_fvol_f, *r_NGVLav_f,
-    *r_NGVLav_f_m, *r_vcst_f_m, *r_vcst_f, *r_vcstOthm_f, *r_rtbs_f, *r_rtbs_f_m, *r_rtbsOthm_f, *r_cshrT_f_m, *r_cshrT_f,
-    *r_cshrTothm_f, *r_sshr_f_m, *r_sshr_f, *r_sshrOthm_f, *r_perscr_f, *r_ccwr_f, *r_opersc_f;
-
-
-//-------------------------
-// Stade préliminaire (temps initial)
-//-------------------------
-//Rprintf("Ee5\n");
-    PROTECT(Loths_f = NEW_NUMERIC(nbF));                     r_Loths_f = REAL(Loths_f);
-    PROTECT(GVLreftot_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLreftot_f_m = REAL(GVLreftot_f_m);
-    PROTECT(GVLoths_f_m = NEW_NUMERIC(nbF*nbMe));            r_GVLoths_f_m = REAL(GVLoths_f_m);
-    PROTECT(GVLothsref_f_m = NEW_NUMERIC(nbF*nbMe));         r_GVLothsref_f_m = REAL(GVLothsref_f_m);
-    PROTECT(GVLothsue_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLothsue_f_m = REAL(GVLothsue_f_m);
-    PROTECT(GVLothsrefue_f_m = NEW_NUMERIC(nbF*nbMe));       r_GVLothsrefue_f_m = REAL(GVLothsrefue_f_m);
-    PROTECT(GVLreftot_f = NEW_NUMERIC(nbF));                 r_GVLreftot_f = REAL(GVLreftot_f);
-    PROTECT(GVLoths_f = NEW_NUMERIC(nbF));                   r_GVLoths_f = REAL(GVLoths_f);
-    PROTECT(GVLothsue_f = NEW_NUMERIC(nbF));                 r_GVLothsue_f = REAL(GVLothsue_f);
-    PROTECT(GVLothmet_f = NEW_NUMERIC(nbF));                 r_GVLothmet_f = REAL(GVLothmet_f);
-    PROTECT(GVLothmetue_f = NEW_NUMERIC(nbF));               r_GVLothmetue_f = REAL(GVLothmetue_f);
-    PROTECT(gcue_f_m = NEW_NUMERIC(nbF*nbMe));               r_gcue_f_m = REAL(gcue_f_m);
-    PROTECT(fvolue_f_m = NEW_NUMERIC(nbF*nbMe));             r_fvolue_f_m = REAL(fvolue_f_m);
-    PROTECT(ovcue_f_m = NEW_NUMERIC(nbF*nbMe));              r_ovcue_f_m = REAL(ovcue_f_m);
-    PROTECT(oilcue_f_m = NEW_NUMERIC(nbF*nbMe));             r_oilcue_f_m = REAL(oilcue_f_m);
-    PROTECT(bcue_f_m = NEW_NUMERIC(nbF*nbMe));               r_bcue_f_m = REAL(bcue_f_m);
-    PROTECT(focue_f_m = NEW_NUMERIC(nbF*nbMe));              r_focue_f_m = REAL(focue_f_m);
-    PROTECT(focuecnb_f_m = NEW_NUMERIC(nbF*nbMe));           r_focuecnb_f_m = REAL(focuecnb_f_m);
-    PROTECT(icecue_f_m = NEW_NUMERIC(nbF*nbMe));             r_icecue_f_m = REAL(icecue_f_m);
-    PROTECT(gcue_f = NEW_NUMERIC(nbF));                     r_gcue_f = REAL(gcue_f);
-    PROTECT(fvolue_f = NEW_NUMERIC(nbF));                   r_fvolue_f = REAL(fvolue_f);
-    PROTECT(ovcue_f = NEW_NUMERIC(nbF));                    r_ovcue_f = REAL(ovcue_f);
-    PROTECT(oilcue_f = NEW_NUMERIC(nbF));                   r_oilcue_f = REAL(oilcue_f);
-    PROTECT(bcue_f = NEW_NUMERIC(nbF));                     r_bcue_f = REAL(bcue_f);
-    PROTECT(focue_f = NEW_NUMERIC(nbF));                    r_focue_f = REAL(focue_f);
-    PROTECT(focuecnb_f = NEW_NUMERIC(nbF));                 r_focuecnb_f = REAL(focuecnb_f);
-    PROTECT(icecue_f = NEW_NUMERIC(nbF));                   r_icecue_f = REAL(icecue_f);
-    PROTECT(onvcr_f = NEW_NUMERIC(nbF));                    r_onvcr_f = REAL(onvcr_f);
-    PROTECT(fvol_f = NEW_NUMERIC(nbF));                     r_fvol_f = REAL(fvol_f);
-    PROTECT(NGVLav_f = NEW_NUMERIC(nbF));                   r_NGVLav_f = REAL(NGVLav_f);
-    PROTECT(NGVLav_f_m = NEW_NUMERIC(nbF*nbMe));             r_NGVLav_f_m = REAL(NGVLav_f_m);
-    PROTECT(vcst_f_m = NEW_NUMERIC(nbF*nbMe));               r_vcst_f_m = REAL(vcst_f_m);
-    PROTECT(vcst_f = NEW_NUMERIC(nbF));                     r_vcst_f = REAL(vcst_f );
-    PROTECT(vcstOthm_f = NEW_NUMERIC(nbF));                 r_vcstOthm_f = REAL(vcstOthm_f);
-    PROTECT(rtbs_f = NEW_NUMERIC(nbF));                     r_rtbs_f = REAL(rtbs_f);
-    PROTECT(rtbs_f_m = NEW_NUMERIC(nbF*nbMe));               r_rtbs_f_m = REAL(rtbs_f_m);
-    PROTECT(rtbsOthm_f = NEW_NUMERIC(nbF));                 r_rtbsOthm_f = REAL(rtbsOthm_f);
-    PROTECT(cshrT_f_m = NEW_NUMERIC(nbF*nbMe));              r_cshrT_f_m = REAL(cshrT_f_m);
-    PROTECT(cshrT_f = NEW_NUMERIC(nbF));                    r_cshrT_f = REAL(cshrT_f);
-    PROTECT(cshrTothm_f = NEW_NUMERIC(nbF));                r_cshrTothm_f = REAL(cshrTothm_f);
-    PROTECT(sshr_f_m = NEW_NUMERIC(nbF*nbMe));               r_sshr_f_m = REAL(sshr_f_m);
-    PROTECT(sshr_f = NEW_NUMERIC(nbF));                     r_sshr_f = REAL(sshr_f);
-    PROTECT(sshrOthm_f = NEW_NUMERIC(nbF));                 r_sshrOthm_f = REAL(sshrOthm_f);
-    PROTECT(perscr_f = NEW_NUMERIC(nbF));                   r_perscr_f = REAL(perscr_f);
-    PROTECT(ccwr_f = NEW_NUMERIC(nbF));                   r_ccwr_f = REAL(ccwr_f);
-    PROTECT(opersc_f = NEW_NUMERIC(nbF));                   r_opersc_f = REAL(opersc_f);
-
-//46 protect    -> 46 (t0)
-
-PROTECT(ETini_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-r_ETini_f_m_out = REAL(ETini_f_m_out);
-PROTECT(ETini_f_out = NEW_NUMERIC(nbF*nbT));
-r_ETini_f_out = REAL(ETini_f_out);
-
-// on initialise ETini
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
-double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-r_ETini_f_out[ind_f + nbF*ind_t] = 0.0;
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-  if (ISNA(r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-}}
-
-    for (int e = 0 ; e < nbE+nbEstat ; e++) {
-//Rprintf("Ee6\n");
-        if (e<nbE) {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
-        } else {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE))));
-        }
-        if (e<nbE) nbI = length(getListElement(elmt, "modI"));
-        if (e<nbE) nbC = length(getListElement(elmt, "modC"));
-
-        PROTECT(GVLtot_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
-        PROTECT(GVLcom_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
-        PROTECT(GVLst_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
-        PROTECT(GVLreftot_f_m_e = NEW_NUMERIC(nbF*nbMe));
-        PROTECT(GVLtot_f_e = NEW_NUMERIC(nbF));
-
-        double *r_GVLtot_f_m_e = REAL(GVLtot_f_m_e);
-        double *r_GVLcom_f_m_e = REAL(GVLcom_f_m_e);
-        double *r_GVLst_f_m_e = REAL(GVLst_f_m_e);
-        double *r_GVLreftot_f_m_e = REAL(GVLreftot_f_m_e);
-        double *r_GVLtot_f_e = REAL(GVLtot_f_e);
-        //double *r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
-        //double *r_Lref_f_sum_e = REAL(aggregObj(getListElement(elmt, "Lref_f_m_e"),dimCstFini));
-
-        double *r_Lbio_f_m_e, *r_Lbio_f_sum_e, *r_P_f_m_e, r_Pst_e, *r_LD_efmc, *r_statLDor_efm, *r_statLDst_efm, r_theta_e, *r_Lref_f_e;
-        int *dim_Lbio_e, *dim_P_e;
-
-        if (e<nbE) {
-            r_Lbio_f_m_e = REAL(VECTOR_ELT(out_L_efmct, e));
-            r_Lbio_f_sum_e = REAL(aggregObj(VECTOR_ELT(out_L_efmct, e),dimCstF));
-            r_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
-            r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
-        } else {
-            r_Lbio_f_m_e = REAL(VECTOR_ELT(out_Lstat, e-nbE));
-            r_Lbio_f_sum_e = REAL(aggregObj(VECTOR_ELT(out_Lstat, e-nbE),dimCstF));
-            r_statLDor_efm = REAL(VECTOR_ELT(out_statLDor_efm, e-nbE));
-            r_statLDst_efm = REAL(VECTOR_ELT(out_statLDst_efm, e-nbE));
-            r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
-        }
-
-        double *r_GVLref_f_m_e = REAL(getListElement(elmt, "GVLref_f_m_e"));
-        double *r_GVLref_f_e = REAL(getListElement(elmt, "GVLref_f_e"));
-
-        if (e<nbE) {
-            r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
-            dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
-            dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
-        } else {
-            r_P_f_m_e = REAL(VECTOR_ELT(out_Pstat, e-nbE));
-            dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Lstat, e-nbE), install("DimCst")))));
-            dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
-            r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
-        }
-
-//Rprintf("Ee8\n");
-
-        //------------------------------
-        //équations de la table "p"
-        //------------------------------
-
-        //-- 1. Loths_f
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait égal à 0
-
-            if (e==0) {
-
-                r_Loths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_Lref_f[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]] -
-                    r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]]; //on suppose que la donnée par espèce est de même dimension que la donnée totale
-
-            } else {
-
-                r_Loths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_Loths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_Lref_f_e[ind_f*dim_Lref_f[0] + 0*dim_Lref_f[1] + 0*dim_Lref_f[2] + ind_t*dim_Lref_f[3]];
-
-            }
-
-
-
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-         //-- 5. GVLtot_f_m_e
-
-             double countCom = 0.0;
-
-    if (e<nbE) {
-
-             for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
-
-                if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-                countCom = countCom +
-                  r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                  r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-
-             r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-             }
-
-             }
-
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-                  r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                   r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                   r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-                  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                    r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-               } else {
-
-                  r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
-
-               }
-
-    } else {
-
-        if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-            countCom = r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                  r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 *
-                  r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] ;
-
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-        }
-
-        if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-            r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-        }
-
-    }
-
-            r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-
-            r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
-            r_GVLtot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-            r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-            r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-         //-- 6. GVLreftot_f_m_e
-
-                r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m_e[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-
-
-
-        //-- 7. GVLreftot_f_m
-
-            if (e==0) {
-
-                r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-            }
-
-
-
-
-        //-- 9. GVLothsref_f_m
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                } else {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-            }
-
-            }
-
-    //-- 12. GVLtot_f_e
-
-
-
-            r_GVLtot_f_e[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                r_GVLref_f_e[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-
-    //-- 13. GVLreftot_f
-
-    if (e==0) {
-
-            r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLref_f[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-    }
-
-    //-- 14. GVLoths_f
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
-
-                r_GVLoths_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLtot_f_e[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                } else {
-
-                r_GVLoths_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                r_GVLoths_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLoths_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLtot_f_e[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-            }
-
-
-
-        }
-
-        //on formatte le(s) résultat(s) et on les intègre à 'eVar'
-        setAttrib(GVLtot_f_m_e, R_DimSymbol, DimFM);
-        setAttrib(GVLtot_f_m_e, R_DimNamesSymbol, dimnamesFM);
-        setAttrib(GVLtot_f_m_e, install("DimCst"), dimCstFM);
-        if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 41, GVLtot_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 1, GVLtot_f_m_e);
-        setAttrib(GVLcom_f_m_e, R_DimSymbol, DimFM);
-        setAttrib(GVLcom_f_m_e, R_DimNamesSymbol, dimnamesFM);
-        setAttrib(GVLcom_f_m_e, install("DimCst"), dimCstFM);
-        if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 228, GVLcom_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 8, GVLcom_f_m_e);
-        setAttrib(GVLst_f_m_e, R_DimSymbol, DimFM);
-        setAttrib(GVLst_f_m_e, R_DimNamesSymbol, dimnamesFM);
-        setAttrib(GVLst_f_m_e, install("DimCst"), dimCstFM);
-        if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 229, GVLst_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 9, GVLst_f_m_e);
-
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 40, Lothm_f_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 0, Lothm_f_e);
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 41, GVLtot_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 1, GVLtot_f_m_e);
-//Rprintf("Ee9\n");
-        UNPROTECT(6);
-
-}
-
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*rcnb_f[ind_f]);
-
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-    r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*rcnb[ind_f + nbF*ind_m]);
-
-}
-
-    // à ce stade, plus de considération d'espèce pour les variables à initialiser
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
- double countEff = 0.0;
-
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-
-           //-- terme : SUM_m (ue_f_m * nbv_f_m)
-
-            countEff = countEff +
-                r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
-
-            }
-
-        //-- 15. GVLothsue_f
-
-                r_GVLothsue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_GVLoths_f[ind_f*eF_fm[0] + 0*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    (r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]) );
-
-
-
-    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-
-        //-- 11. GVLothsrefue_f_m
-
-                r_GVLothsrefue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    (r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]) );
-
-        //-- 18. gcue_f_m
-
-                r_gcue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_gc_f_m[ind_f*dim_gc_f_m[0] + ind_m*dim_gc_f_m[1] + 0*dim_gc_f_m[2] + ind_t*dim_gc_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        //-- 19. fvolue_f_m
-
-                r_fvolue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]] /
-                    (r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]] *
-                     r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]]) );
-
-        //-- 20. ovcue_f_m
-
-                r_ovcue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_ovc_f_m[ind_f*dim_ovc_f_m[0] + ind_m*dim_ovc_f_m[1] + 0*dim_ovc_f_m[2] + ind_t*dim_ovc_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        //-- 21. oilcue_f_m
-
-                r_oilcue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_oilc_f_m[ind_f*dim_oilc_f_m[0] + ind_m*dim_oilc_f_m[1] + 0*dim_oilc_f_m[2] + ind_t*dim_oilc_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        //-- 22. bcue_f_m
-
-                r_bcue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_bc_f_m[ind_f*dim_bc_f_m[0] + ind_m*dim_bc_f_m[1] + 0*dim_bc_f_m[2] + ind_t*dim_bc_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        //-- 23. focue_f_m
-
-                r_focue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite(r_foc_f_m[ind_f*dim_foc_f_m[0] + ind_m*dim_foc_f_m[1] + 0*dim_foc_f_m[2] + ind_t*dim_foc_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        //-- 24. focuecnb_f_m
-
-                r_focuecnb_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_focue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    r_cnb_f_m[ind_f*dim_cnb_f_m[0] + ind_m*dim_cnb_f_m[1] + 0*dim_cnb_f_m[2] + ind_t*dim_cnb_f_m[3]] );
-
-        //-- 25. icecue_f_m
-
-                r_icecue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_icec_f_m[ind_f*dim_icec_f_m[0] + ind_m*dim_icec_f_m[1] + 0*dim_icec_f_m[2] + ind_t*dim_icec_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
-
-        }
-
-
-
-        //-- 26. gcue_f
-
-                r_gcue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 27. fvolue_f
-
-                r_fvolue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_fc_f[ind_f*dim_fc_f_m[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] /
-                    (r_vf_f[ind_f*dim_vf_f_m[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f_m[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]) );
-
-        //-- 28. ovcue_f
-
-                r_ovcue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_ovc_f[ind_f*dim_ovc_f[0] + 0*dim_ovc_f[1] + 0*dim_ovc_f[2] + ind_t*dim_ovc_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 29. oilcue_f
-
-                r_oilcue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_oilc_f[ind_f*dim_oilc_f[0] + 0*dim_oilc_f[1] + 0*dim_oilc_f[2] + ind_t*dim_oilc_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 30. bcue_f
-
-                r_bcue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_bc_f[ind_f*dim_bc_f[0] + 0*dim_bc_f[1] + 0*dim_bc_f[2] + ind_t*dim_bc_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 31. focue_f
-
-                r_focue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_foc_f[ind_f*dim_foc_f[0] + 0*dim_foc_f[1] + 0*dim_foc_f[2] + ind_t*dim_foc_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 32. focuecnb_f
-
-                r_focuecnb_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_focue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] );
-
-        //-- 33. icecue_f
-
-                r_icecue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_icec_f[ind_f*dim_icec_f[0] + 0*dim_icec_f[1] + 0*dim_icec_f[2] + ind_t*dim_icec_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-        //-- 34. onvcr_f
-
-                r_onvcr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_onvc_f[ind_f*dim_onvc_f[0] + 0*dim_onvc_f[1] + 0*dim_onvc_f[2] + ind_t*dim_onvc_f[3]] -
-                    r_insp_f[ind_f*dim_insp_f[0] + 0*dim_insp_f[1] + 0*dim_insp_f[2] + ind_t*dim_insp_f[3]] -
-                    r_ownc_f[ind_f*dim_ownc_f[0] + 0*dim_ownc_f[1] + 0*dim_ownc_f[2] + ind_t*dim_ownc_f[3]] -
-                    r_mngc_f[ind_f*dim_mngc_f[0] + 0*dim_mngc_f[1] + 0*dim_mngc_f[2] + ind_t*dim_mngc_f[3]] -
-                    r_licc_f[ind_f*dim_licc_f[0] + 0*dim_licc_f[1] + 0*dim_licc_f[2] + ind_t*dim_licc_f[3]] -
-                    r_comc_f[ind_f*dim_comc_f[0] + 0*dim_comc_f[1] + 0*dim_comc_f[2] + ind_t*dim_comc_f[3]];
-
-        //-- 35. fvol_f
-
-            r_fvol_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                finite( r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] /
-                r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] );
-
-
-double totNGVLav_f_m = 0.0;
-
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-        //-- 37. NGVLav_f_m
-
-            r_NGVLav_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) /
-                r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
-
-            totNGVLav_f_m = totNGVLav_f_m + r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-}
-
-
-
-        //-- 36. NGVLav_f
-
-            r_NGVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                 totNGVLav_f_m / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]] ;
-
-
-       //-- 39. vcst_f
-
-                if (!all_is_na(oilc_f) & !(all_is_na(bc_f)) & !(all_is_na(foc_f)) & !(all_is_na(icec_f))) {
-
-                    r_vcst_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] +
-                        r_oilc_f[ind_f*dim_oilc_f[0] + 0*dim_oilc_f[1] + 0*dim_oilc_f[2] + ind_t*dim_oilc_f[3]] +
-                        r_bc_f[ind_f*dim_bc_f[0] + 0*dim_bc_f[1] + 0*dim_bc_f[2] + ind_t*dim_bc_f[3]] +
-                        r_foc_f[ind_f*dim_foc_f[0] + 0*dim_foc_f[1] + 0*dim_foc_f[2] + ind_t*dim_foc_f[3]] +
-                        r_icec_f[ind_f*dim_icec_f[0] + 0*dim_icec_f[1] + 0*dim_icec_f[2] + ind_t*dim_icec_f[3]];
-
-                } else {
-
-                    r_vcst_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_ovc_f[ind_f*dim_ovc_f[0] + 0*dim_ovc_f[1] + 0*dim_ovc_f[2] + ind_t*dim_ovc_f[3]] +
-                        r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]];
-
-                }
-
-
-        //-- 41. rtbs_f
-
-            r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_NGVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                r_vcst_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-        //-- 51. ccwr_f
-
-            r_ccwr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] /
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-        //-- 45. cshrT_f
-
-        if (perscCalc==0 | perscCalc==1 | perscCalc==3) {
-
-            r_cshrT_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-        } else {
-
-            r_cshrT_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]];
-
-        }
-
-        //-- 48. sshr_f
-
-            r_sshr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                r_cshrT_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-        //-- 38. vcst_f_m
-
-                if (!all_is_na(oilc_f_m) & !(all_is_na(bc_f_m)) & !(all_is_na(foc_f_m)) & !(all_is_na(icec_f_m))) {
-
-                    r_vcst_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                        r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]] +
-                        r_oilc_f_m[ind_f*dim_oilc_f_m[0] + ind_m*dim_oilc_f_m[1] + 0*dim_oilc_f_m[2] + ind_t*dim_oilc_f_m[3]] +
-                        r_bc_f_m[ind_f*dim_bc_f_m[0] + ind_m*dim_bc_f_m[1] + 0*dim_bc_f_m[2] + ind_t*dim_bc_f_m[3]] +
-                        r_foc_f_m[ind_f*dim_foc_f_m[0] + ind_m*dim_foc_f_m[1] + 0*dim_foc_f_m[2] + ind_t*dim_foc_f_m[3]] +
-                        r_icec_f_m[ind_f*dim_icec_f_m[0] + ind_m*dim_icec_f_m[1] + 0*dim_icec_f_m[2] + ind_t*dim_icec_f_m[3]];
-
-                } else {
-
-                    r_vcst_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                        r_ovc_f_m[ind_f*dim_ovc_f_m[0] + ind_m*dim_ovc_f_m[1] + 0*dim_ovc_f_m[2] + ind_t*dim_ovc_f_m[3]] +
-                        r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]];
-
-                }
-
-
-        //-- 42. rtbs_f_m
-
-                r_rtbs_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_NGVLav_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_vcst_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-
-
-        //-- 44. cshrT_f_m
-
-
-        if (perscCalc==0 | perscCalc==1 | perscCalc==3) {
-
-            r_cshrT_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-        } else {
-
-            r_cshrT_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                r_ccwr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    r_rtbs_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-        }
-
-
-
-        //-- 47. sshr_f_m
-
-                r_sshr_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_rtbs_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_cshrT_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-}
-
-        //-- 50. perscr_f
-
-            r_perscr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] -
-                r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]] -
-                r_ecc_f[ind_f*dim_ecc_f[0] + 0*dim_ecc_f[1] + 0*dim_ecc_f[2] + ind_t*dim_ecc_f[3]] -
-                r_pl_f[ind_f*dim_pl_f[0] + 0*dim_pl_f[1] + 0*dim_pl_f[2] + ind_t*dim_pl_f[3]];
-
-
-        //-- 52. opersc_f
-
-            r_opersc_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] -
-                r_cshrT_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-}
-
-
-
-//on formatte le(s) résultat(s) et on intègre à fVar
-
-        setAttrib(Loths_f, R_NamesSymbol, fleetList);
-        setAttrib(Loths_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 0, Loths_f);
-
-//        SET_VECTOR_ELT(fVar, 1, GVLoths_f_m);
-
-        setAttrib(GVLothsref_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsref_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsref_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 2, GVLothsref_f_m);
-
-//        SET_VECTOR_ELT(fVar, 23, GVLothsue_f_m);
-
-        setAttrib(GVLothsrefue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsrefue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsrefue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 24, GVLothsrefue_f_m);
-
-//        SET_VECTOR_ELT(fVar, 3, GVLothmet_f);
-
-//        SET_VECTOR_ELT(fVar, 25, GVLothmetue_f);
-
-        setAttrib(GVLothsue_f, R_NamesSymbol, fleetList);
-        setAttrib(GVLothsue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 26, GVLothsue_f);
-
-        setAttrib(fvolue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(fvolue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(fvolue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 4, fvolue_f_m);
-
-        setAttrib(oilcue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(oilcue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(oilcue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 5, oilcue_f_m);
-
-        setAttrib(bcue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(bcue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(bcue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 6, bcue_f_m);
-
-        setAttrib(focuecnb_f_m, R_DimSymbol, DimFMini);
-        setAttrib(focuecnb_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(focuecnb_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 7, focuecnb_f_m);
-
-        setAttrib(icecue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(icecue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(icecue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 8, icecue_f_m);
-
-        setAttrib(gcue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(gcue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(gcue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 9, gcue_f_m);
-
-        setAttrib(ovcue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(ovcue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(ovcue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 10, ovcue_f_m);
-
-//        SET_VECTOR_ELT(fVar, 11, vcstOthm_f);
-
-//        SET_VECTOR_ELT(fVar, 12, rtbsOthm_f);
-
-//        SET_VECTOR_ELT(fVar, 13, cshrTothm_f);
-
-//        SET_VECTOR_ELT(fVar, 14, sshrOthm_f);
-
-        setAttrib(fvol_f, R_NamesSymbol, fleetList);
-        setAttrib(fvol_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 15, fvol_f);
-
-        setAttrib(gcue_f, R_NamesSymbol, fleetList);
-        setAttrib(gcue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 16, gcue_f);
-
-        setAttrib(fvolue_f, R_NamesSymbol, fleetList);
-        setAttrib(fvolue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 17, fvolue_f);
-
-        setAttrib(ovcue_f, R_NamesSymbol, fleetList);
-        setAttrib(ovcue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 18, ovcue_f);
-
-        setAttrib(oilcue_f, R_NamesSymbol, fleetList);
-        setAttrib(oilcue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 19, oilcue_f);
-
-        setAttrib(bcue_f, R_NamesSymbol, fleetList);
-        setAttrib(bcue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 20, bcue_f);
-
-        setAttrib(focuecnb_f, R_NamesSymbol, fleetList);
-        setAttrib(focuecnb_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 21, focuecnb_f);
-
-        setAttrib(icecue_f, R_NamesSymbol, fleetList);
-        setAttrib(icecue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 22, icecue_f);
-
-        setAttrib(ccwr_f, R_NamesSymbol, fleetList);
-        setAttrib(ccwr_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 27, ccwr_f);
-
-        setAttrib(opersc_f, R_NamesSymbol, fleetList);
-        setAttrib(opersc_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 28, opersc_f);
-
-        setAttrib(GVLoths_f, R_NamesSymbol, fleetList);
-        setAttrib(GVLoths_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 29, GVLoths_f);
-
-        setAttrib(onvcr_f, R_NamesSymbol, fleetList);
-        setAttrib(onvcr_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 30, onvcr_f);
-
-        SET_VECTOR_ELT(fVar, 31, rtbs_f);
-        SET_VECTOR_ELT(fVar, 32, rtbs_f_m);
-//Rprintf("Ee10\n");
-
-//enfin, on initialise l'output
-
-
-    PROTECT(Lbio_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(Lbio_f_out, R_DimSymbol, DimF);
-    setAttrib(Lbio_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(Lbio_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 0, Lbio_f_out);
-
-    PROTECT(GVLcom_f_m_e_out = allocVector(VECSXP, nbE));
-    setAttrib(GVLcom_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_Eco, 61, GVLcom_f_m_e_out);
-
-    PROTECT(GVLst_f_m_e_out = allocVector(VECSXP, nbE));
-    setAttrib(GVLst_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_Eco, 62, GVLst_f_m_e_out);
-
-    PROTECT(GVL_f_m_e_out = allocVector(VECSXP, nbE));
-    setAttrib(GVL_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_Eco, 1, GVL_f_m_e_out);
-
-    PROTECT(GVLtot_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(GVLtot_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(GVLtot_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(GVLtot_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 2, GVLtot_f_m_out);
-
-    PROTECT(GVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(GVLav_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(GVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(GVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 3, GVLav_f_m_out);
-
-    PROTECT(GVLtot_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(GVLtot_f_out, R_DimSymbol, DimF);
-    setAttrib(GVLtot_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(GVLtot_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 4, GVLtot_f_out);
-
-    PROTECT(GVLav_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(GVLav_f_out, R_DimSymbol, DimF);
-    setAttrib(GVLav_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(GVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 5, GVLav_f_out);
-
-    PROTECT(NGVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(NGVLav_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(NGVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(NGVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 6, NGVLav_f_m_out);
-
-    PROTECT(NGVLav_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(NGVLav_f_out, R_DimSymbol, DimF);
-    setAttrib(NGVLav_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(NGVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 7, NGVLav_f_out);
-
-    PROTECT(vcst_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(vcst_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(vcst_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(vcst_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 8, vcst_f_m_out);
-
-    PROTECT(vcst_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(vcst_f_out, R_DimSymbol, DimF);
-    setAttrib(vcst_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(vcst_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 9, vcst_f_out);
-
-    PROTECT(rtbs_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(rtbs_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(rtbs_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 10, rtbs_f_m_out);
-
-    PROTECT(rtbs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbs_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 11, rtbs_f_out);
-
-    PROTECT(cshrT_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(cshrT_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(cshrT_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(cshrT_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 12, cshrT_f_m_out);
-
-    PROTECT(cshrT_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cshrT_f_out, R_DimSymbol, DimF);
-    setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cshrT_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 13, cshrT_f_out);
-
-    PROTECT(sshr_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(sshr_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(sshr_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(sshr_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 14, sshr_f_m_out);
-
-    PROTECT(sshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sshr_f_out, R_DimSymbol, DimF);
-    setAttrib(sshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 15, sshr_f_out);
-
-    PROTECT(ncshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ncshr_f_out, R_DimSymbol, DimF);
-    setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ncshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 16, ncshr_f_out);
-
-    PROTECT(ocl_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ocl_f_out, R_DimSymbol, DimF);
-    setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ocl_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 17, ocl_f_out);
-
-    PROTECT(cs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cs_f_out, R_DimSymbol, DimF);
-    setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 18, cs_f_out);
-
-    PROTECT(csTot_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csTot_f_out, R_DimSymbol, DimF);
-    setAttrib(csTot_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csTot_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 19, csTot_f_out);
-
-    PROTECT(gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gva_f_out, R_DimSymbol, DimF);
-    setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 20, gva_f_out);
-
-    PROTECT(ccw_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccw_f_out, R_DimSymbol, DimF);
-    setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccw_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 21, ccw_f_out);
-
-    PROTECT(ccwCr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
-    setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccwCr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 22, ccwCr_f_out);
-
-    PROTECT(wageg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wageg_f_out, R_DimSymbol, DimF);
-    setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wageg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 23, wageg_f_out);
-
-    PROTECT(wagen_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wagen_f_out, R_DimSymbol, DimF);
-    setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wagen_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 24, wagen_f_out);
-
-    PROTECT(gcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcf_f_out, R_DimSymbol, DimF);
-    setAttrib(gcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 25, gcf_f_out);
-
-    PROTECT(ngcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ngcf_f_out, R_DimSymbol, DimF);
-    setAttrib(ngcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ngcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 26, ngcf_f_out);
-
-    PROTECT(gp_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gp_f_out, R_DimSymbol, DimF);
-    setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gp_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 27, gp_f_out);
-
-    PROTECT(ssTot_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ssTot_f_out, R_DimSymbol, DimF);
-    setAttrib(ssTot_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ssTot_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 28, ssTot_f_out);
-
-    PROTECT(ps_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ps_f_out, R_DimSymbol, DimF);
-    setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ps_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 29, ps_f_out);
-
-    PROTECT(sts_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sts_f_out, R_DimSymbol, DimF);
-    setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sts_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 30, sts_f_out);
-
-    PROTECT(ber_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ber_f_out, R_DimSymbol, DimF);
-    setAttrib(ber_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ber_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 31, ber_f_out);
-
-    PROTECT(ratio_gva_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gva_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gva_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gva_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 32, ratio_gva_GVL_f_out);
-
-    PROTECT(ratio_gcf_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 33, ratio_gcf_GVL_f_out);
-
-    PROTECT(ratio_fc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 34, ratio_fc_GVL_f_out);
-
-    PROTECT(ratio_oilc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_oilc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_oilc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_oilc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 35, ratio_oilc_GVL_f_out);
-
-    PROTECT(ratio_bc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_bc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_bc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_bc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 36, ratio_bc_GVL_f_out);
-
-    PROTECT(ratio_foc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_foc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_foc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_foc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 37, ratio_foc_GVL_f_out);
-
-    PROTECT(ratio_icec_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_icec_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_icec_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_icec_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 38, ratio_icec_GVL_f_out);
-
-    PROTECT(ratio_gc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 39, ratio_gc_GVL_f_out);
-
-    PROTECT(ratio_vc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_vc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_vc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_vc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 40, ratio_vc_GVL_f_out);
-
-    PROTECT(ratio_rep_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_rep_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_rep_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_rep_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 41, ratio_rep_GVL_f_out);
-
-    PROTECT(ratio_mngc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_mngc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_mngc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_mngc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 42, ratio_mngc_GVL_f_out);
-
-    PROTECT(ratio_licc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_licc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_licc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_licc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 43, ratio_licc_GVL_f_out);
-
-    PROTECT(ratio_fvol_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 44, ratio_fvol_GVL_f_out);
-
-    PROTECT(ratio_fvol_Lbio_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_Lbio_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_Lbio_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_Lbio_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 45, ratio_fvol_Lbio_f_out);
-
-    PROTECT(ratio_fvol_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 46, ratio_fvol_gva_f_out);
-
-    PROTECT(ratio_gcf_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 47, ratio_gcf_gva_f_out);
-
-    PROTECT(ratio_K_cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_K_cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_K_cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_K_cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 48, ratio_K_cnb_f_out);
-
-    PROTECT(ratio_GVL_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 49, ratio_GVL_K_f_out);
-
-    PROTECT(ratio_gcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 50, ratio_gcf_K_f_out);
-
-    PROTECT(ratio_ngcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_ngcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_ngcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_ngcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 51, ratio_ngcf_K_f_out);
-
-    PROTECT(ratio_gp_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gp_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 52, ratio_gp_K_f_out);
-
-    PROTECT(ratio_GVL_cnb_ue_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 53, ratio_GVL_cnb_ue_f_out);
-
-    PROTECT(rtbsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 54, rtbsAct_f_out);
-
-    PROTECT(csAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csAct_f_out, R_DimSymbol, DimF);
-    setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 55, csAct_f_out);
-
-    PROTECT(gvaAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gvaAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 56, gvaAct_f_out);
-
-    PROTECT(gcfAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcfAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gcfAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcfAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 57, gcfAct_f_out);
-
-    PROTECT(psAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(psAct_f_out, R_DimSymbol, DimF);
-    setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(psAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 58, psAct_f_out);
-
-    PROTECT(stsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(stsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(stsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 59, stsAct_f_out);
-
-    PROTECT(GVL_f_m_eStat_out = allocVector(VECSXP, nbEstat));
-    setAttrib(GVL_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_Eco, 60, GVL_f_m_eStat_out);
-
-    PROTECT(GVLcom_f_m_eStat_out = allocVector(VECSXP, nbEstat));
-    setAttrib(GVLcom_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_Eco, 63, GVLcom_f_m_eStat_out);
-
-    PROTECT(GVLst_f_m_eStat_out = allocVector(VECSXP, nbEstat));
-    setAttrib(GVLst_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_Eco, 64, GVLst_f_m_eStat_out);
-
-    PROTECT(cnb_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(cnb_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(cnb_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(cnb_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 65, cnb_f_m_out);
-
-    setAttrib(ETini_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(ETini_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(ETini_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_Eco, 66, ETini_f_m_out);
-
-    PROTECT(cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 67, cnb_f_out);
-
-    setAttrib(ETini_f_out, R_DimSymbol, DimF);
-    setAttrib(ETini_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ETini_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_Eco, 68, ETini_f_out);
-
-//Rprintf("Ee11\n");
-
-    //on nomme les éléments de out_Eco
-    const char *namesEco[69] = {"Lbio_f","GVL_f_m_e","GVLtot_f_m","GVLav_f_m","GVLtot_f","GVLav_f","NGVLav_f_m","NGVLav_f","vcst_f_m",
-                          "vcst_f","rtbs_f_m","rtbs_f","cshrT_f_m","cshrT_f","sshr_f_m","sshr_f","ncshr_f","ocl_f","cs_f","csTot_f",
-                          "gva_f","ccw_f","ccwCr_f","wageg_f","wagen_f",
-                          "gcf_f","ngcf_f","gp_f","ssTot_f","ps_f","sts_f","ber_f","ratio_gva_GVL_f","ratio_gcf_GVL_f","ratio_fc_GVL_f",
-                          "ratio_oilc_GVL_f","ratio_bc_GVL_f","ratio_foc_GVL_f","ratio_icec_GVL_f","ratio_gc_GVL_f","ratio_vc_GVL_f",
-                          "ratio_rep_GVL_f","ratio_mngc_GVL_f","ratio_licc_GVL_f","ratio_fvol_GVL_f","ratio_fvol_Lbio_f",
-                          "ratio_fvol_gva_f","ratio_gcf_gva_f","ratio_K_cnb_f","ratio_GVL_K_f","ratio_gcf_K_f","ratio_ngcf_K_f",
-                          "ratio_gp_K_f","ratio_GVL_cnb_ue_f","rtbsAct_f","csAct_f","gvaAct_f","gcfAct_f","psAct_f",
-                          "stsAct_f","GVL_f_m_eStat","GVLcom_f_m_e_out","GVLst_f_m_e_out","GVLcom_f_m_eStat","GVLst_f_m_eStat","cnb_f_m","ET_f_m","cnb_f","ET_f"};
-
-    PROTECT(eco_names = allocVector(STRSXP, 69));
-
-    for(int ct = 0; ct < 69; ct++) SET_STRING_ELT(eco_names, ct, mkChar(namesEco[ct]));
-
-    setAttrib(out_Eco, R_NamesSymbol, eco_names);
-//Rprintf("Ee12\n");
-//PrintValue(out_Fbar_et);
-//62 protect    --> 108
-}
-
-//on importe les outputs afin de les mettre à jour à l'instant ind_t
-
-    r_Lbio_f_out = REAL(VECTOR_ELT(out_Eco,0));
-    r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_Eco,2));
-    r_GVLav_f_m_out = REAL(VECTOR_ELT(out_Eco,3));
-    r_GVLtot_f_out = REAL(VECTOR_ELT(out_Eco,4));
-    r_GVLav_f_out = REAL(VECTOR_ELT(out_Eco,5));
-    r_NGVLav_f_m_out = REAL(VECTOR_ELT(out_Eco,6));
-    r_NGVLav_f_out = REAL(VECTOR_ELT(out_Eco,7));
-    r_vcst_f_m_out = REAL(VECTOR_ELT(out_Eco,8));
-    r_vcst_f_out = REAL(VECTOR_ELT(out_Eco,9));
-    r_rtbs_f_m_out = REAL(VECTOR_ELT(out_Eco,10));
-    r_rtbs_f_out = REAL(VECTOR_ELT(out_Eco,11));
-    r_cshrT_f_m_out = REAL(VECTOR_ELT(out_Eco,12));
-    r_cshrT_f_out = REAL(VECTOR_ELT(out_Eco,13));
-    r_sshr_f_m_out = REAL(VECTOR_ELT(out_Eco,14));
-    r_sshr_f_out = REAL(VECTOR_ELT(out_Eco,15));
-    r_ncshr_f_out = REAL(VECTOR_ELT(out_Eco,16));
-    r_ocl_f_out = REAL(VECTOR_ELT(out_Eco,17));
-    r_cs_f_out = REAL(VECTOR_ELT(out_Eco,18));
-    r_csTot_f_out = REAL(VECTOR_ELT(out_Eco,19));
-    r_gva_f_out = REAL(VECTOR_ELT(out_Eco,20));
-    r_ccw_f_out = REAL(VECTOR_ELT(out_Eco,21));
-    r_ccwCr_f_out = REAL(VECTOR_ELT(out_Eco,22));
-    r_wageg_f_out = REAL(VECTOR_ELT(out_Eco,23));
-    r_wagen_f_out = REAL(VECTOR_ELT(out_Eco,24));
-    r_gcf_f_out = REAL(VECTOR_ELT(out_Eco,25));
-    r_ngcf_f_out = REAL(VECTOR_ELT(out_Eco,26));
-    r_gp_f_out = REAL(VECTOR_ELT(out_Eco,27));
-    r_ssTot_f_out = REAL(VECTOR_ELT(out_Eco,28));
-    r_ps_f_out = REAL(VECTOR_ELT(out_Eco,29));
-    r_sts_f_out = REAL(VECTOR_ELT(out_Eco,30));
-    r_ber_f_out = REAL(VECTOR_ELT(out_Eco,31));
-    r_ratio_gva_GVL_f_out = REAL(VECTOR_ELT(out_Eco,32));
-    r_ratio_gcf_GVL_f_out = REAL(VECTOR_ELT(out_Eco,33));
-    r_ratio_fc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,34));
-    r_ratio_oilc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,35));
-    r_ratio_bc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,36));
-    r_ratio_foc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,37));
-    r_ratio_icec_GVL_f_out = REAL(VECTOR_ELT(out_Eco,38));
-    r_ratio_gc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,39));
-    r_ratio_vc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,40));
-    r_ratio_rep_GVL_f_out = REAL(VECTOR_ELT(out_Eco,41));
-    r_ratio_mngc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,42));
-    r_ratio_licc_GVL_f_out = REAL(VECTOR_ELT(out_Eco,43));
-    r_ratio_fvol_GVL_f_out = REAL(VECTOR_ELT(out_Eco,44));
-    r_ratio_fvol_Lbio_f_out = REAL(VECTOR_ELT(out_Eco,45));
-    r_ratio_fvol_gva_f_out = REAL(VECTOR_ELT(out_Eco,46));
-    r_ratio_gcf_gva_f_out = REAL(VECTOR_ELT(out_Eco,47));
-    r_ratio_K_cnb_f_out = REAL(VECTOR_ELT(out_Eco,48));
-    r_ratio_GVL_K_f_out = REAL(VECTOR_ELT(out_Eco,49));
-    r_ratio_gcf_K_f_out = REAL(VECTOR_ELT(out_Eco,50));
-    r_ratio_ngcf_K_f_out = REAL(VECTOR_ELT(out_Eco,51));
-    r_ratio_gp_K_f_out = REAL(VECTOR_ELT(out_Eco,52));
-    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_Eco,53));
-    r_rtbsAct_f_out = REAL(VECTOR_ELT(out_Eco,54));
-    r_csAct_f_out = REAL(VECTOR_ELT(out_Eco,55));
-    r_gvaAct_f_out = REAL(VECTOR_ELT(out_Eco,56));
-    r_gcfAct_f_out = REAL(VECTOR_ELT(out_Eco,57));
-    r_psAct_f_out = REAL(VECTOR_ELT(out_Eco,58));
-    r_stsAct_f_out = REAL(VECTOR_ELT(out_Eco,59));
-    r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(out_Eco,61));
-    r_GVLst_f_m_e_out = REAL(VECTOR_ELT(out_Eco,62));
-    r_GVLcom_f_m_eStat_out = REAL(VECTOR_ELT(out_Eco,63));
-    r_GVLst_f_m_eStat_out = REAL(VECTOR_ELT(out_Eco,64));
-    r_cnb_f_m_out = REAL(VECTOR_ELT(out_Eco,65));
-    r_ETini_f_m_out = REAL(VECTOR_ELT(out_Eco,66));
-    r_cnb_f_out = REAL(VECTOR_ELT(out_Eco,67));
-    r_ETini_f_out = REAL(VECTOR_ELT(out_Eco,68));
-//Rprintf("Ee13\n");
-
-    double *r_Loths_f2 = REAL(VECTOR_ELT(fVar,0));
-//    double *r_GVLoths_f_m2 = REAL(VECTOR_ELT(fVar,1));
-    double *r_GVLothsref_f_m2 = REAL(VECTOR_ELT(fVar,2));
-//    double *r_GVLothmet_f2 = REAL(VECTOR_ELT(fVar,3));
-    double *r_fvolue_f_m2 = REAL(VECTOR_ELT(fVar,4));
-    double *r_oilcue_f_m2 = REAL(VECTOR_ELT(fVar,5));
-    double *r_bcue_f_m2 = REAL(VECTOR_ELT(fVar,6));
-    double *r_focuecnb_f_m2 = REAL(VECTOR_ELT(fVar,7));
-    double *r_icecue_f_m2 = REAL(VECTOR_ELT(fVar,8));
-    double *r_ovcue_f_m2 = REAL(VECTOR_ELT(fVar,10));
-//    double *r_vcstOthm_f2 = REAL(VECTOR_ELT(fVar,11));
-//    double *r_rtbsOthm_f2 = REAL(VECTOR_ELT(fVar,12));
-//    double *r_cshrTothm_f2 = REAL(VECTOR_ELT(fVar,13));
-//    double *r_sshrOthm_f2 = REAL(VECTOR_ELT(fVar,14));
-    double *r_gcue_f2 = REAL(VECTOR_ELT(fVar,16));
-    double *r_fvolue_f2 = REAL(VECTOR_ELT(fVar,17));
-    double *r_ovcue_f2 = REAL(VECTOR_ELT(fVar,18));
-    double *r_oilcue_f2 = REAL(VECTOR_ELT(fVar,19));
-    double *r_bcue_f2 = REAL(VECTOR_ELT(fVar,20));
-    double *r_focuecnb_f2 = REAL(VECTOR_ELT(fVar,21));
-    double *r_icecue_f2 = REAL(VECTOR_ELT(fVar,22));
-//    double *r_GVLothsue_f_m2 = REAL(VECTOR_ELT(fVar,23));
-    double *r_GVLothsrefue_f_m2 = REAL(VECTOR_ELT(fVar,24));
-//    double *r_GVLothmetue_f2 = REAL(VECTOR_ELT(fVar,25));
-    double *r_GVLothsue_f2 = REAL(VECTOR_ELT(fVar,26));
-    double *r_ccwr_f2 = REAL(VECTOR_ELT(fVar,27));
-    //double *r_opersc_f2 = REAL(VECTOR_ELT(fVar,28));
-    double *r_GVLoths_f2 = REAL(VECTOR_ELT(fVar,29));
-    double *r_onvcr_f2 = REAL(VECTOR_ELT(fVar,30));
-    double *r_rtbs_f2 = REAL(VECTOR_ELT(fVar,31));
-    double *r_rtbs_f_m2 = REAL(VECTOR_ELT(fVar,32));
-
-//Rprintf("Ee14\n");
-
-   SEXP countGVLf;
-   PROTECT(countGVLf = NEW_NUMERIC(nbF)); // --> 109
-   double *r_countGVLf = REAL(countGVLf);
-
-
-
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
-double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
-int sorting = INTEGER(getListElement(Flist, "sorting"))[0];
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0; else r_cnb_f_out[ind_f + nbF*ind_t] = rcnb_f[ind_f];
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*0];
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-  if (sorting>0.5 & sorting<=(ind_t+1)) {
-    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-    if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
-    r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-  } else r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rcnb[ind_f + nbF*ind_m];
-}
-}
-
-   for (int e = 0 ; e < nbE+nbEstat ; e++) {
-        if (e<nbE) {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
-        } else {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE))));
-        }
-        if (e<nbE) nbI = length(getListElement(elmt, "modI"));
-        if (e<nbE) nbC = length(getListElement(elmt, "modC"));
-
-
-        double *r_Lbio_f_sum_t_e, *r_Lothm_f_e2, *r_GVLtot_f_m_e2, *r_Lbio_f_m_e, *r_P_f_m_e, *r_LD_efmc, r_theta_e, *r_Lref_f_e, *r_statLDor_efm,
-               *r_statLDst_efm, r_Pst_e, *r_LD_f_sum_t_e, *r_statLDor_f_sum_t_e, *r_statLDst_f_sum_t_e;
-        int *dim_Lbio_e, *dim_P_e;
-//Rprintf("Ee15\n");
-
-
-
-       if (e<nbE) {
-            r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),41));
-            r_Lbio_f_m_e = REAL(VECTOR_ELT(out_L_efmct, e));
-            r_Lbio_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_L_efmct, e),dimCstF));
-            r_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
-            r_LD_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_LD_efmc, e),dimCstF));
-            r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
-            r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
-            dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
-            dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
-        } else {
-            r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
-            r_Lbio_f_m_e = REAL(VECTOR_ELT(out_Lstat, e-nbE));
-            r_Lbio_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_Lstat, e-nbE),dimCstF));
-            r_statLDor_efm = REAL(VECTOR_ELT(out_statLDor_efm, e-nbE));
-            r_statLDor_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_statLDor_efm, e-nbE),dimCstF));
-            r_statLDst_efm = REAL(VECTOR_ELT(out_statLDst_efm, e-nbE));
-            r_statLDst_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_statLDst_efm, e-nbE),dimCstF));
-            r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
-            r_P_f_m_e = REAL(VECTOR_ELT(out_Pstat, e-nbE));
-            dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Lstat, e-nbE), install("DimCst")))));
-            dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
-            r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
-        }
-
-
-        //---------------------
-        //équations de la table "t"
-        //---------------------
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
-        //-- 1. Lbio_f
-
-            double cnt = 0.0;
-
-            if (e<nbE) {
-
-                cnt = r_Lbio_f_sum_t_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                       r_LD_f_sum_t_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            } else {
-
-                cnt = r_Lbio_f_sum_t_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                       r_statLDor_f_sum_t_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                       r_statLDst_f_sum_t_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            }
-
-            if (e==0) {
-
-                r_Lbio_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_Loths_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] + cnt;
-
-            } else {
-
-                r_Lbio_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_Lbio_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + cnt;
-
-            }
-
-        r_countGVLf[ind_f] = 0.0;
-        if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0;
-
-        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-        //-- 2. GVL_f_m_e
-
-              double countCom = 0.0;
-
-    if (e<nbE) {
-
-             for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
-
-                if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-                countCom = countCom +
-                  r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                  r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-        if (sorting>0.5 & sorting<=(ind_t+1))
-                r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-             }
-
-             }
-
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
-                  r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                   r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                   r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-            if (sorting>0.5 & sorting<=(ind_t+1))
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                    r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-               } else {
-
-                  r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
-
-               }
-
-    } else {
-
-        if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
-
-            countCom = r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
-                  r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                  r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 *
-                  r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] ;
-
-    if (sorting>0.5 & sorting<=(ind_t+1))
-            r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-        }
-
-        if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
-
-            r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-    if (sorting>0.5 & sorting<=(ind_t+1))
-            r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-        }
-
-
-    }
-
-
-        if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) & (sorting>0.5 & sorting<=(ind_t+1)) )
-            r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-
-            r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
-            r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-              r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-              r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-
-        //-- 3. GVLtot_f_m
-
-
-            if (e==0) {
-
-                if (othsFM==1) {
-
-                         r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
-
-                          r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) * (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                                (1 - 0.01*r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-
-
-                } else {
-
-                        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
-
-
-                        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) *
-                               (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                                (1 - 0.01*r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-
-                }
-
-            } else {
-
-                r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-                  finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]);
-
-
-                r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                  r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-
-                  finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                     (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) +
-
-                   finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) *
-                      (1 - 0.01*r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-
-            }
-
-
-        }
-   }
-
-  if (e<nbE) {
-    SET_VECTOR_ELT(VECTOR_ELT(out_Eco,1), e, VECTOR_ELT(VECTOR_ELT(eVar, e),41));
-  } else {
-    SET_VECTOR_ELT(VECTOR_ELT(out_Eco,60), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
-  }
-//Rprintf("Ee18\n");
-  UNPROTECT(1);
-
-}
-
-
-            //-- BIS. cnb_f_m
-
-if (sorting>0.5 & sorting<=(ind_t+1)) {
-    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-        r_cnb_f_out[ind_f + nbF*ind_t] =
-        r_cnb_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*r_ETini_f_out[ind_f + nbF*ind_t]);
-
-    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-      r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-        r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
-
-    }
-}
- //if (e>=nbE) error("Unexpected condition occurred");
- //error("Unexpected condition occurred");
-
-    // à ce stade, plus de considération d'espèce pour les indicateurs
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
-            double countEff = 0.0;
-
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-                countEff = countEff +
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
-
-            }
-
-
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-            //-- 4. GVLav_f_m
-
-                r_GVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + 0*dim_nbv_f_m[3]];
-
-             //-- 5. GVLtot_f
-
-                if (ind_m==0) {
-
-                    if (!ISNA(r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                                r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                                    r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                    if (!ISNA(r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                                r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                                    r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                } else { //ind_m>0
-
-                        if (!ISNA(r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                                r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                                    r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                                    r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                        if (!ISNA(r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                                r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                                    r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                                    r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                }
-
-
-
-            //-- 7. NGVLav_f_m
-
-                r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + 0*dim_nbv_f_m[3]];
-
-            } //on sort de la boucle sur les niveaux métiers
-
-
-            //-- 6. GVLav_f
-
-                r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + 0*dim_nbv_f[3]];
-
-
-            //-- 8. NGVLav_f
-
-
-                r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + 0*dim_nbv_f[3]];
-
-
-
-
-
-            //---------------------------------------------------------------------------------------------
-
-
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-            //-- 9. vcst_f_m
-
-                if (!all_is_na(VECTOR_ELT(fVar,5)) & !(all_is_na(VECTOR_ELT(fVar,6))) &
-                    !(all_is_na(VECTOR_ELT(fVar,7))) & !(all_is_na(VECTOR_ELT(fVar,8)))) {
-
-                    r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                        (r_fvolue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                        r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]] +
-                        r_oilcue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] +
-                        r_bcue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] +
-                        r_focuecnb_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                        r_cnb_f_m[ind_f*dim_cnb_f_m[0] + ind_m*dim_cnb_f_m[1] + ind_t*dim_cnb_f_m[2] + ind_t*dim_cnb_f_m[3]] +
-                        r_icecue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]]) *
-                        r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] / pow(1+0.0,ind_t);
-
-                } else {
-
-                    r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                        (r_ovcue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] +
-                        r_fvolue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                        r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]]) *
-                        r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] / pow(1+0.0,ind_t);
-
-                }
-
-
-             //-- 10. vcst_f
-
-
-                if (ind_m==0) {
-
-                    if (!ISNA(r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                        r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]))
-
-                    r_vcst_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                        r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]] /
-                        r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-
-                } else {
-
-                    if (!ISNA(r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                        r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]))
-
-                    r_vcst_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_vcst_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                        ((r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                        r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]) /
-                        r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]);
-
-                }
-
-
-             //-- 11. rtbs_f_m
-
-                r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_vcst_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-
-
-
-             //-- 13. cshrT_f_m
-
-
-        if (perscCalc==0) {  //salaires par marin fixes
-
-              r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] / r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-
-        }
-
-        if (perscCalc==1) {  //part équipage constante
-
-              r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-        }
-
-        if (perscCalc==2) {  //part équipage constante - ccwr
-
-              r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-        }
-
-
-        if (perscCalc==3) {  //salaires marin supplémentaire fixé
-
-              r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                    (r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0]) /
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-
-        }
-
-
-        if (perscCalc==4) {  //salaires marin supplémentaire fixé
-
-              r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-                0.01*r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                    (r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0]) /
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-
-
-        }
-
-
-             //-- 15. sshr_f_m
-
-                r_sshr_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-
-
-        } //on sort de la boucle sur les niveaux métiers
-
-
-             //-- 12. rtbs_f
-
-                 r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_vcst_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            //-- 14. cshrT_f
-
-        if (perscCalc==0) {  //salaires par marin fixes
-
-            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] / r_cnb_f_out[ind_f + nbF*0 + nbF*0];
-
-        }
-
-        if (perscCalc==1) {  //part équipage constante
-
-            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-        }
-
-        if (perscCalc==2) {  //part équipage constante - ccwr
-
-            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-        }
-
-
-        if (perscCalc==3) {  //salaires marin supplémentaire fixé
-
-            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
-
-        }
-
-
-        if (perscCalc==4) {  //salaires marin supplémentaire fixé
-
-            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
-
-        }
-
-
-            //-- 16. sshr_f
-
-                 r_sshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-
-            //version actualisée
-            r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-             //-- 17. ncshr_f
-
-                r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]] / pow(1+0.0,ind_t) );
-
-             //-- 18. ocl_f
-
-                r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_mwh_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                    r_nbh_f[ind_f*dim_nbh_f[0] + 0*dim_nbh_f[1] + 0*dim_nbh_f[2] + ind_t*dim_nbh_f[3]] / pow(1+0.0,ind_t);
-
-             //-- 19. cs_f
-
-                r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-                        //version actualisée
-            r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-             //-- 20. csTot_f
-
-                r_csTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-             //-- 21. gva_f
-
-                r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] +
-                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]] +
-                    r_insp_f[ind_f*dim_insp_f[0] + 0*dim_insp_f[1] + 0*dim_insp_f[2] + ind_t*dim_insp_f[3]] +
-                    r_ownc_f[ind_f*dim_ownc_f[0] + 0*dim_ownc_f[1] + 0*dim_ownc_f[2] + ind_t*dim_ownc_f[3]] +
-                    r_mngc_f[ind_f*dim_mngc_f[0] + 0*dim_mngc_f[1] + 0*dim_mngc_f[2] + ind_t*dim_mngc_f[3]] +
-                    r_licc_f[ind_f*dim_licc_f[0] + 0*dim_licc_f[1] + 0*dim_licc_f[2] + ind_t*dim_licc_f[3]] +
-                    r_comc_f[ind_f*dim_comc_f[0] + 0*dim_comc_f[1] + 0*dim_comc_f[2] + ind_t*dim_comc_f[3]] +
-                    r_onvcr_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) / pow(1+0.0,ind_t) ;
-
-                //version actualisée
-            r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-            //-- 22. ccw_f
-
-                r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 23. ccwCr_f
-
-             r_ccwCr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
-
-
-            //-- 24. wageg_f
-
-             r_wageg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
-
-            //-- 25. wagen_f
-
-             r_wagen_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
-
-
-             //-- 26. gcf_f
-
-                r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-               //version actualisée
-            r_gcfAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-
-             //-- 27. ngcf_f
-
-                r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] / pow(1+0.0,ind_t) );
-
-
-             //-- 28. gp_f
-
-                r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]] / pow(1+0.0,ind_t) );
-
-             //-- 29. ssTot_f
-
-                r_ssTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-             //-- 30. ps_f
-
-                r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-                //version actualisée
-            r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                         r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-             //-- 31. sts_f
-
-                r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                     r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-
-            //version actualisée
-            r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                         r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-             //-- 32. ber_f
-
-                r_ber_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    ((r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] +
-                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]] +
-                    r_insp_f[ind_f*dim_insp_f[0] + 0*dim_insp_f[1] + 0*dim_insp_f[2] + ind_t*dim_insp_f[3]] +
-                    r_ownc_f[ind_f*dim_ownc_f[0] + 0*dim_ownc_f[1] + 0*dim_ownc_f[2] + ind_t*dim_ownc_f[3]] +
-                    r_mngc_f[ind_f*dim_mngc_f[0] + 0*dim_mngc_f[1] + 0*dim_mngc_f[2] + ind_t*dim_mngc_f[3]] +
-                    r_licc_f[ind_f*dim_licc_f[0] + 0*dim_licc_f[1] + 0*dim_licc_f[2] + ind_t*dim_licc_f[3]] +
-                    r_comc_f[ind_f*dim_comc_f[0] + 0*dim_comc_f[1] + 0*dim_comc_f[2] + ind_t*dim_comc_f[3]] +
-                    r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] +
-                    r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]] +
-                    r_onvcr_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) / pow(1+0.0,ind_t)) /
-                    ( r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] -
-                      r_vcst_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]
-                     ) ;
-
-
-             //-- 33. ratio_gva_GVL_f
-
-                r_ratio_gva_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 34. ratio_gcf_GVL_f
-
-                r_ratio_gcf_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 35. ratio_fc_GVL_f
-
-                r_ratio_fc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t)) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 36. ratio_oilc_GVL_f
-
-                r_ratio_oilc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_oilcue_f2[ind_f*dim_oilc_f[0] + 0*dim_oilc_f[1] + 0*dim_oilc_f[2] + ind_t*dim_oilc_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 37. ratio_bc_GVL_f
-
-                r_ratio_bc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_bcue_f2[ind_f*dim_bc_f[0] + 0*dim_bc_f[1] + 0*dim_bc_f[2] + ind_t*dim_bc_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 38. ratio_foc_GVL_f
-
-                r_ratio_foc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_focuecnb_f2[ind_f*dim_foc_f[0] + 0*dim_foc_f[1] + 0*dim_foc_f[2] + ind_t*dim_foc_f[3]] *
-                        r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 39. ratio_icec_GVL_f
-
-                r_ratio_icec_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_icecue_f2[ind_f*dim_icec_f[0] + 0*dim_icec_f[1] + 0*dim_icec_f[2] + ind_t*dim_icec_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 40. ratio_gc_GVL_f
-
-                r_ratio_gc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_gcue_f2[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 41. ratio_vc_GVL_f
-
-                r_ratio_vc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_vc_f[ind_f*dim_vc_f[0] + 0*dim_vc_f[1] + 0*dim_vc_f[2] + ind_t*dim_vc_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 42. ratio_rep_GVL_f
-
-                r_ratio_rep_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 43. ratio_mngc_GVL_f
-
-                r_ratio_mngc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_mngc_f[ind_f*dim_mngc_f[0] + 0*dim_mngc_f[1] + 0*dim_mngc_f[2] + ind_t*dim_mngc_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 44. ratio_licc_GVL_f
-
-                r_ratio_licc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_licc_f[ind_f*dim_licc_f[0] + 0*dim_licc_f[1] + 0*dim_licc_f[2] + ind_t*dim_licc_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 45. ratio_fvol_GVL_f
-
-                r_ratio_fvol_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 46. ratio_fvol_Lbio_f
-
-                r_ratio_fvol_Lbio_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
-                    r_Lbio_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            //-- 47. ratio_fvol_gva_f
-
-                r_ratio_fvol_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            //-- 48. ratio_gcf_gva_f
-
-                r_ratio_gcf_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 49. ratio_K_cnb_f
-
-                r_ratio_K_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]];
-
-            //-- 50. ratio_GVL_K_f
-
-                r_ratio_GVL_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-           //-- 51. ratio_gcf_K_f
-
-                r_ratio_gcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-           //-- 52. ratio_ngcf_K_f
-
-                r_ratio_ngcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-          //-- 53. ratio_gp_K_f
-
-                r_ratio_gp_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-          //-- 54. ratio_GVL_cnb_ue_f
-
-                r_ratio_GVL_cnb_ue_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]);
-
-        }
-//Rprintf("GGG\n");//PrintValue(out_Fbar_et);
-//Rprintf("K15\n");
-if (ind_t==0) UNPROTECT(115);
-//Rprintf("K16\n");
-UNPROTECT(111);
-
-}}
-
-
-
-
-
-
-
-
-
 
 
 
@@ -16191,21 +13552,9 @@ double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation
 
     Marche(listTemp, IND_T);
 
-    if (ecodcf==0) {
+    EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
-        Economic(listTemp,IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                           EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_Eco, 25));
-
-    } else {
-
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
-
-    }
+    gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
     Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
@@ -16510,23 +13859,9 @@ double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexat
 
     Marche(listTemp, IND_T);
 
+    EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
-
-    if (ecodcf==0) {
-
-        Economic(listTemp,IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                           EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_Eco, 25));
-
-    } else {
-
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
-
-    }
+    gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
     Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
@@ -18598,23 +15933,9 @@ double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commen
 
     Marche(listTemp, IND_T);
 
+    EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
-
-    if (ecodcf==0) {
-
-        Economic(listTemp,IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                           EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_Eco, 25));
-
-    } else {
-
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
-
-    }
+    gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
     Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
@@ -18672,23 +15993,9 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
 
     Marche(listTemp, IND_T);
 
+    EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
-
-    if (ecodcf==0) {
-
-        Economic(listTemp,IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                           EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_Eco, 25));
-
-    } else {
-
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
-
-    }
+    gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
     Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
@@ -18748,23 +16055,9 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 
     Marche(listTemp, IND_T);
 
+    EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
-
-    if (ecodcf==0) {
-
-        Economic(listTemp,IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                           EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_Eco, 25));
-
-    } else {
-
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
-
-        gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
-
-    }
+    gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
     Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
@@ -19434,7 +16727,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
 extern "C" {
 
-void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr)
+void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 {
 //Rprintf("Eco 1");
 
@@ -19443,191 +16736,202 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int ue_choice, int oths, i
 
     PROTECT(out_EcoDCF);
 
-//2 protect
     SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets résultats
 
     SEXP eFACTf, eFACTfm, elmt;
 
-    SEXP    Lref_f, GVLref_f, GVLref_f_m, nbv_f, nbv_f_m, lc_f_m, lcd_f_m, nbh_f, ue_f, ue_f_m, fc_f, fc_f_m, vf_f, vf_f_m, ovcDCF_f, ovcDCF_f_m,
-            cnb_f, cshr_f, eec_f, mwh_f, rep_f, dep_f, ic_f, K_f, persc_f, fixc_f, mwhg_f;
+    SEXP    theta_e, pst_e, nbv_f, nbv_f_m, lc_f_m, lcd_f_m, tripLgth_f, tripLgth_f_m, nbTrip_f, nbTrip_f_m, nbds_f, nbds_f_m,
+            effort1_f, effort1_f_m, effort2_f, effort2_f_m, Lref_f_m, cnb_f_m, ovcDCF_f_m, fc_f_m, vf_f_m, cshr_f_m, cshr_f, cnb_f, persc_f,
+            eec_f, mwh_f, rep_f, gc_f, fixc_f, FTE_f, dep_f, ic_f, K_f, inv_f, FTE_f_m, GVLref_f_m, ue_f, ue_f_m;
 
-    SEXP    dc_Lref_f, dc_GVLref_f, dc_GVLref_f_m, dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_nbh_f, dc_ue_f, dc_ue_f_m,
-            dc_fc_f, dc_fc_f_m, dc_vf_f, dc_vf_f_m, dc_ovcDCF_f, dc_ovcDCF_f_m, dc_cnb_f, dc_cshr_f, dc_eec_f, dc_mwh_f, dc_rep_f,
-            dc_dep_f, dc_ic_f, dc_K_f, dc_persc_f, dc_fixc_f, dc_mwhg_f;
+    SEXP    dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_tripLgth_f, dc_tripLgth_f_m, dc_nbTrip_f, dc_nbTrip_f_m, dc_nbds_f, dc_nbds_f_m,
+            dc_effort1_f, dc_effort1_f_m, dc_effort2_f, dc_effort2_f_m, dc_Lref_f_m, dc_cnb_f_m, dc_ovcDCF_f_m, dc_fc_f_m, dc_vf_f_m, dc_cshr_f_m, dc_cshr_f, dc_cnb_f, dc_persc_f,
+            dc_eec_f, dc_mwh_f, dc_rep_f, dc_gc_f, dc_fixc_f, dc_FTE_f, dc_dep_f, dc_ic_f, dc_K_f, dc_inv_f, dc_FTE_f_m, dc_GVLref_f_m, dc_ue_f, dc_ue_f_m;
 
     int *dCF,*dCFM,*dCFini,*dCFMini,*DF,*DFM, *DFMini;
 
-    int     *dim_Lref_f, *dim_GVLref_f, *dim_GVLref_f_m, *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_lcd_f_m, *dim_nbh_f, *dim_ue_f,
-            *dim_ue_f_m, *dim_fc_f, *dim_fc_f_m, *dim_vf_f, *dim_vf_f_m, *dim_ovcDCF_f, *dim_ovcDCF_f_m, *dim_cnb_f, *dim_cshr_f,
-            *dim_eec_f, *dim_mwh_f, *dim_rep_f, *dim_dep_f, *dim_ic_f, *dim_K_f, *dim_persc_f, *dim_fixc_f, *dim_mwhg_f;
+    int     *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_lcd_f_m, *dim_tripLgth_f, *dim_tripLgth_f_m, *dim_nbTrip_f, *dim_nbTrip_f_m, *dim_nbds_f, *dim_nbds_f_m,
+            *dim_effort1_f, *dim_effort1_f_m, *dim_effort2_f, *dim_effort2_f_m, *dim_Lref_f_m, *dim_cnb_f_m, *dim_ovcDCF_f_m, *dim_fc_f_m, *dim_vf_f_m, *dim_cshr_f_m, *dim_cshr_f, *dim_cnb_f, *dim_persc_f,
+            *dim_eec_f, *dim_mwh_f, *dim_rep_f, *dim_gc_f, *dim_fixc_f, *dim_FTE_f, *dim_dep_f, *dim_ic_f, *dim_K_f, *dim_inv_f, *dim_FTE_f_m, *dim_GVLref_f_m, *dim_alpha_f,
+            *dim_ue_f, *dim_ue_f_m;
 
-    double  *r_Lref_f, *r_GVLref_f, *r_GVLref_f_m, *r_nbv_f, *r_nbv_f_m, *r_lc_f_m, *r_lcd_f_m, *r_nbh_f, *r_ue_f, *r_ue_f_m,
-            *r_fc_f, *r_fc_f_m, *r_vf_f, *r_vf_f_m, *r_ovcDCF_f, *r_ovcDCF_f_m, *r_cnb_f, *r_cshr_f, *r_eec_f, *r_mwh_f,
-            *r_rep_f, *r_dep_f, *r_ic_f, *r_K_f, *r_persc_f, *r_fixc_f, *r_mwhg_f;
+    double  *r_theta_e, *r_pst_e, *r_nbv_f, *r_nbv_f_m, *r_lc_f_m, *r_lcd_f_m, *r_tripLgth_f, *r_tripLgth_f_m, *r_nbTrip_f, *r_nbTrip_f_m, *r_nbds_f, *r_nbds_f_m,
+            *r_effort1_f, *r_effort1_f_m, *r_effort2_f, *r_effort2_f_m, *r_Lref_f_m, *r_cnb_f_m, *r_ovcDCF_f_m, *r_fc_f_m, *r_vf_f_m, *r_cshr_f_m, *r_cshr_f, *r_cnb_f, *r_persc_f,
+            *r_eec_f, *r_mwh_f, *r_rep_f, *r_gc_f, *r_fixc_f, *r_FTE_f, *r_dep_f, *r_ic_f, *r_K_f, *r_inv_f, *r_FTE_f_m, *r_GVLref_f_m;
 
-    double  *r_GVLtot_f_m_out, *r_GVLav_f_m_out, *r_GVLtot_f_out, *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out,
-            *r_rtbs_f_out, *r_rtbs_f_m_out, *r_cshrT_f_out, *r_sshr_f_out, *r_ncshr_f_out, *r_oclg_f_out, *r_ocl_f_out,
-            *r_csg_f_out, *r_cs_f_out, *r_gva_f_out, *r_ccw_f_out, *r_ccwCr_f_out,
-            *r_wageg_f_out, *r_wagen_f_out, *r_gcf_f_out, *r_ngcf_f_out, *r_gp_f_out, *r_ps_f_out, *r_sts_f_out, *r_ber_f_out,
-            *r_ratio_gva_GVL_f_out, *r_ratio_gcf_GVL_f_out, *r_ratio_fc_GVL_f_out,
-            *r_ratio_rep_GVL_f_out, *r_ratio_fvol_GVL_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gcf_gva_f_out,
-            *r_ratio_K_cnb_f_out, *r_ratio_GVL_K_f_out, *r_ratio_gcf_K_f_out, *r_ratio_ngcf_K_f_out, *r_ratio_gp_K_f_out,
-            *r_ratio_GVL_cnb_ue_f_out,
-            *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gcfAct_f_out, *r_psAct_f_out, *r_stsAct_f_out,
-            *r_ETini_f_m_out, *r_ETini_f_out, *r_GVLcom_f_m_e_out, *r_GVLst_f_m_e_out, *r_GVLcom_f_m_eStat_out, *r_GVLst_f_m_eStat_out,
-            *r_cnb_f_m_out, *r_cnb_f_out;
+    double  *r_ETini_f_m_out, *r_ETini_f_out, *r_ET_f_m_out,
+            *r_GVLcom_f_m_e_out, *r_GVLcom_f_m_eStat_out, *r_GVLst_f_m_e_out, *r_GVLst_f_m_eStat_out, *r_GVL_f_m_e_out, *r_GVL_f_m_eStat_out, *r_GVLtot_f_m_out, *r_GVLav_f_m_out, *r_GVLtot_f_out,
+            *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out, *r_cnb_f_m_out, *r_cnb_f_out,
+            *r_rtbs_f_m_out, *r_rtbs_f_out, *r_cshrT_f_m_out, *r_cshrT_f_out, *r_ncshr_f_out, *r_ocl_f_out, *r_cs_f_out, *r_csTot_f_out, *r_gva_f_out, *r_gvamargin_f_out,
+            *r_gva_FTE_f_out, *r_ccw_f_out, *r_ccwCr_f_out, *r_wageg_f_out, *r_wagen_f_out, *r_wageg_FTE_f_out, *r_wageg_h_f_out, *r_gp_f_out, *r_gpmargin_f_out,
+            *r_ncf_f_out, *r_np_f_out, *r_npmargin_f_out, *r_prof_f_out, *r_npmargin_trend_f_out, *r_ssTot_f_out, *r_ps_f_out, *r_sts_f_out, *r_BER_f_out, *r_CR_BER_f_out,
+            *r_fuelEff_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gp_gva_f_out, *r_ratio_GVL_K_f_out, *r_ratio_gp_K_f_out, *r_RoFTA_f_out, *r_ROI_f_out,
+            *r_ratio_np_K_f_out, *r_ratio_GVL_cnb_ue_f_out,
+            *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gpAct_f_out, *r_psAct_f_out, *r_stsAct_f_out;
+
 
 //Rprintf("Eco 2");
 //définition des dimensions
-    PROTECT(dimCstF = allocVector(INTSXP, 4));
-    PROTECT(DimF = allocVector(INTSXP, 2));
-    PROTECT(dimnamesF = allocVector(VECSXP,2));
-    PROTECT(dimCstFM = allocVector(INTSXP, 4));
-    PROTECT(DimFM = allocVector(INTSXP, 3));
-    PROTECT(dimnamesFM = allocVector(VECSXP,3));
 
-    PROTECT(dimCstFini = allocVector(INTSXP, 4));
-    PROTECT(dimCstFMini = allocVector(INTSXP, 4));
-    PROTECT(DimFMini = allocVector(INTSXP, 2));
+
+    PROTECT(dimnamesF = allocVector(VECSXP,2));
+    PROTECT(dimnamesFM = allocVector(VECSXP,3));
     PROTECT(dimnamesFMini = allocVector(VECSXP,2));
 
     SET_VECTOR_ELT(dimnamesF, 0, fleetList); SET_VECTOR_ELT(dimnamesF, 1, times);
     SET_VECTOR_ELT(dimnamesFM, 0, fleetList); SET_VECTOR_ELT(dimnamesFM, 1, metierListEco); SET_VECTOR_ELT(dimnamesFM, 2, times);
     SET_VECTOR_ELT(dimnamesFMini, 0, fleetList); SET_VECTOR_ELT(dimnamesFMini, 1, metierListEco);
 
+
+    PROTECT(dimCstF = allocVector(INTSXP, 4));
+    PROTECT(dimCstFini = allocVector(INTSXP, 4));
+    PROTECT(dimCstFM = allocVector(INTSXP, 4));
+    PROTECT(dimCstFMini = allocVector(INTSXP, 4));
+
     dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
     dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
     dCFini = INTEGER(dimCstFini) ; dCFini[0] = nbF; dCFini[1] = 0; dCFini[2] = 0; dCFini[3] = 0;
     dCFMini = INTEGER(dimCstFMini) ; dCFMini[0] = nbF; dCFMini[1] = nbMe; dCFMini[2] = 0; dCFMini[3] = 0;
 
+
+    PROTECT(DimF = allocVector(INTSXP, 2));
+    PROTECT(DimFM = allocVector(INTSXP, 3));
+    PROTECT(DimFMini = allocVector(INTSXP, 2));
+
     DF = INTEGER(DimF) ; DF[0] = nbF; DF[1] = nbT;
     DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
     DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
 
-    //facteurs des indices génériques F/FM
+    // facteurs des indices génériques F/FM
+
     PROTECT(eFACTf = iDim(dCF));
     PROTECT(eFACTfm = iDim(dCFM));
-//Rprintf("Eco 3");
-//12 protect -> 14
+
+    // Rprintf("Eco 3");
+    // protect.root -> 14
+
+// ---> P = 14
 
     int *eF_f = INTEGER(eFACTf);
     int *eF_fm = INTEGER(eFACTfm);
 
-    PROTECT(Lref_f = getListElement(Flist, "Lref_f"));      PROTECT(dc_Lref_f = iDim(INTEGER(getAttrib(Lref_f, install("DimCst")))));
-    PROTECT(GVLref_f = getListElement(Flist, "GVLref_f"));    PROTECT(dc_GVLref_f = iDim(INTEGER(getAttrib(GVLref_f, install("DimCst")))));
-    PROTECT(GVLref_f_m = getListElement(Flist, "GVLref_f_m")); PROTECT(dc_GVLref_f_m = iDim(INTEGER(getAttrib(GVLref_f_m, install("DimCst")))));
-    PROTECT(nbv_f = getListElement(Flist, "nbv_f"));        PROTECT(dc_nbv_f = iDim(INTEGER(getAttrib(nbv_f, install("DimCst")))));
-    PROTECT(nbv_f_m = getListElement(Flist, "nbv_f_m"));    PROTECT(dc_nbv_f_m = iDim(INTEGER(getAttrib(nbv_f_m, install("DimCst")))));
-    PROTECT(lc_f_m = getListElement(Flist, "lc_f_m"));      PROTECT(dc_lc_f_m = iDim(INTEGER(getAttrib(lc_f_m, install("DimCst")))));
-    PROTECT(lcd_f_m = getListElement(Flist, "lcd_f_m"));    PROTECT(dc_lcd_f_m = iDim(INTEGER(getAttrib(lcd_f_m, install("DimCst")))));
-    PROTECT(nbh_f = getListElement(Flist, "nbh_f"));        PROTECT(dc_nbh_f = iDim(INTEGER(getAttrib(nbh_f, install("DimCst")))));
-    PROTECT(fc_f = getListElement(Flist, "fc_f"));          PROTECT(dc_fc_f = iDim(INTEGER(getAttrib(fc_f, install("DimCst")))));
-    PROTECT(fc_f_m = getListElement(Flist, "fc_f_m"));      PROTECT(dc_fc_f_m = iDim(INTEGER(getAttrib(fc_f_m, install("DimCst")))));
-    PROTECT(vf_f = getListElement(Flist, "vf_f"));          PROTECT(dc_vf_f = iDim(INTEGER(getAttrib(vf_f, install("DimCst")))));
-    PROTECT(vf_f_m = getListElement(Flist, "vf_f_m"));      PROTECT(dc_vf_f_m = iDim(INTEGER(getAttrib(vf_f_m, install("DimCst")))));
-    PROTECT(ovcDCF_f = getListElement(Flist, "ovcDCF_f"));  PROTECT(dc_ovcDCF_f = iDim(INTEGER(getAttrib(ovcDCF_f, install("DimCst")))));
-    PROTECT(ovcDCF_f_m = getListElement(Flist, "ovcDCF_f_m")); PROTECT(dc_ovcDCF_f_m = iDim(INTEGER(getAttrib(ovcDCF_f_m, install("DimCst")))));
-    PROTECT(cnb_f = getListElement(Flist, "cnb_f"));        PROTECT(dc_cnb_f = iDim(INTEGER(getAttrib(cnb_f, install("DimCst")))));
-    PROTECT(cshr_f = getListElement(Flist, "cshr_f"));      PROTECT(dc_cshr_f = iDim(INTEGER(getAttrib(cshr_f, install("DimCst")))));
-    PROTECT(eec_f = getListElement(Flist, "eec_f"));        PROTECT(dc_eec_f = iDim(INTEGER(getAttrib(eec_f, install("DimCst")))));
-    PROTECT(mwh_f = getListElement(Flist, "mwh_f"));        PROTECT(dc_mwh_f = iDim(INTEGER(getAttrib(mwh_f, install("DimCst")))));
-    PROTECT(rep_f = getListElement(Flist, "rep_f"));        PROTECT(dc_rep_f = iDim(INTEGER(getAttrib(rep_f, install("DimCst")))));
-    PROTECT(dep_f = getListElement(Flist, "dep_f"));        PROTECT(dc_dep_f = iDim(INTEGER(getAttrib(dep_f, install("DimCst")))));
-    PROTECT(ic_f = getListElement(Flist, "ic_f"));          PROTECT(dc_ic_f = iDim(INTEGER(getAttrib(ic_f, install("DimCst")))));
-    PROTECT(K_f = getListElement(Flist, "K_f"));            PROTECT(dc_K_f = iDim(INTEGER(getAttrib(K_f, install("DimCst")))));
-    PROTECT(persc_f = getListElement(Flist, "persc_f"));    PROTECT(dc_persc_f = iDim(INTEGER(getAttrib(persc_f, install("DimCst")))));
-    PROTECT(fixc_f = getListElement(Flist, "fixc_f"));      PROTECT(dc_fixc_f = iDim(INTEGER(getAttrib(fixc_f, install("DimCst")))));
-    PROTECT(mwhg_f = getListElement(Flist, "mwhg_f"));      PROTECT(dc_mwhg_f = iDim(INTEGER(getAttrib(mwhg_f, install("DimCst")))));
-//48 protect  ->62
+    PROTECT(nbv_f = getListElement(Flist, "nbv_f"));                PROTECT(dc_nbv_f = iDim(INTEGER(getAttrib(nbv_f, install("DimCst")))));
+    PROTECT(nbv_f_m = getListElement(Flist, "nbv_f_m"));            PROTECT(dc_nbv_f_m = iDim(INTEGER(getAttrib(nbv_f_m, install("DimCst")))));
+    PROTECT(lc_f_m = getListElement(Flist, "lc_f_m"));              PROTECT(dc_lc_f_m = iDim(INTEGER(getAttrib(lc_f_m, install("DimCst")))));
+    PROTECT(lcd_f_m = getListElement(Flist, "lcd_f_m"));            PROTECT(dc_lcd_f_m = iDim(INTEGER(getAttrib(lcd_f_m, install("DimCst")))));
+    PROTECT(tripLgth_f = getListElement(Flist, "tripLgth_f"));      PROTECT(dc_tripLgth_f = iDim(INTEGER(getAttrib(tripLgth_f, install("DimCst")))));
+    PROTECT(tripLgth_f_m = getListElement(Flist, "tripLgth_f_m"));  PROTECT(dc_tripLgth_f_m = iDim(INTEGER(getAttrib(tripLgth_f_m, install("DimCst")))));
+    PROTECT(nbTrip_f = getListElement(Flist, "nbTrip_f"));          PROTECT(dc_nbTrip_f = iDim(INTEGER(getAttrib(nbTrip_f, install("DimCst")))));
+    PROTECT(nbTrip_f_m = getListElement(Flist, "nbTrip_f_m"));      PROTECT(dc_nbTrip_f_m = iDim(INTEGER(getAttrib(nbTrip_f_m, install("DimCst")))));
+    PROTECT(nbds_f = getListElement(Flist, "nbds_f"));              PROTECT(dc_nbds_f = iDim(INTEGER(getAttrib(nbds_f, install("DimCst")))));
+    PROTECT(nbds_f_m = getListElement(Flist, "nbds_f_m"));          PROTECT(dc_nbds_f_m = iDim(INTEGER(getAttrib(nbds_f_m, install("DimCst")))));
+    PROTECT(effort1_f = getListElement(Flist, "effort1_f"));        PROTECT(dc_effort1_f = iDim(INTEGER(getAttrib(effort1_f, install("DimCst")))));
+    PROTECT(effort1_f_m = getListElement(Flist, "effort1_f_m"));    PROTECT(dc_effort1_f_m = iDim(INTEGER(getAttrib(effort1_f_m, install("DimCst")))));
+    PROTECT(effort2_f = getListElement(Flist, "effort2_f"));        PROTECT(dc_effort2_f = iDim(INTEGER(getAttrib(effort2_f, install("DimCst")))));
+    PROTECT(effort2_f_m = getListElement(Flist, "effort2_f_m"));    PROTECT(dc_effort2_f_m = iDim(INTEGER(getAttrib(effort2_f_m, install("DimCst")))));
+    PROTECT(Lref_f_m = getListElement(Flist, "Lref_f_m"));          PROTECT(dc_Lref_f_m = iDim(INTEGER(getAttrib(Lref_f_m, install("DimCst")))));
+    PROTECT(cnb_f_m = getListElement(Flist, "cnb_f_m"));            PROTECT(dc_cnb_f_m = iDim(INTEGER(getAttrib(cnb_f_m, install("DimCst")))));
+    PROTECT(ovcDCF_f_m = getListElement(Flist, "ovcDCF_f_m"));      PROTECT(dc_ovcDCF_f_m = iDim(INTEGER(getAttrib(ovcDCF_f_m, install("DimCst")))));
+    PROTECT(fc_f_m = getListElement(Flist, "fc_f_m"));              PROTECT(dc_fc_f_m = iDim(INTEGER(getAttrib(fc_f_m, install("DimCst")))));
+    PROTECT(vf_f_m = getListElement(Flist, "vf_f_m"));              PROTECT(dc_vf_f_m = iDim(INTEGER(getAttrib(vf_f_m, install("DimCst")))));
+    PROTECT(cshr_f_m = getListElement(Flist, "cshr_f_m"));          PROTECT(dc_cshr_f_m = iDim(INTEGER(getAttrib(cshr_f_m, install("DimCst")))));
+    PROTECT(cshr_f = getListElement(Flist, "cshr_f"));              PROTECT(dc_cshr_f = iDim(INTEGER(getAttrib(cshr_f, install("DimCst")))));
+    PROTECT(cnb_f = getListElement(Flist, "cnb_f"));                PROTECT(dc_cnb_f = iDim(INTEGER(getAttrib(cnb_f, install("DimCst")))));
+    PROTECT(persc_f = getListElement(Flist, "persc_f"));            PROTECT(dc_persc_f = iDim(INTEGER(getAttrib(persc_f, install("DimCst")))));
+    PROTECT(eec_f = getListElement(Flist, "eec_f"));                PROTECT(dc_eec_f = iDim(INTEGER(getAttrib(eec_f, install("DimCst")))));
+    PROTECT(mwh_f = getListElement(Flist, "mwh_f"));                PROTECT(dc_mwh_f = iDim(INTEGER(getAttrib(mwh_f, install("DimCst")))));
+    PROTECT(rep_f = getListElement(Flist, "rep_f"));                PROTECT(dc_rep_f = iDim(INTEGER(getAttrib(rep_f, install("DimCst")))));
+    PROTECT(gc_f = getListElement(Flist, "gc_f"));                  PROTECT(dc_gc_f = iDim(INTEGER(getAttrib(gc_f, install("DimCst")))));
+    PROTECT(fixc_f = getListElement(Flist, "fixc_f"));              PROTECT(dc_fixc_f = iDim(INTEGER(getAttrib(fixc_f, install("DimCst")))));
+    PROTECT(FTE_f = getListElement(Flist, "FTE_f"));                PROTECT(dc_FTE_f = iDim(INTEGER(getAttrib(FTE_f, install("DimCst")))));
+    PROTECT(dep_f = getListElement(Flist, "dep_f"));                PROTECT(dc_dep_f = iDim(INTEGER(getAttrib(dep_f, install("DimCst")))));
+    PROTECT(ic_f = getListElement(Flist, "ic_f"));                  PROTECT(dc_ic_f = iDim(INTEGER(getAttrib(ic_f, install("DimCst")))));
+    PROTECT(K_f = getListElement(Flist, "K_f"));                    PROTECT(dc_K_f = iDim(INTEGER(getAttrib(K_f, install("DimCst")))));
+    PROTECT(inv_f = getListElement(Flist, "inv_f"));                PROTECT(dc_inv_f = iDim(INTEGER(getAttrib(inv_f, install("DimCst")))));
+    PROTECT(FTE_f_m = getListElement(Flist, "FTE_f_m"));            PROTECT(dc_FTE_f_m = iDim(INTEGER(getAttrib(FTE_f_m, install("DimCst")))));
+    PROTECT(GVLref_f_m = getListElement(Flist, "GVLref_f_m"));      PROTECT(dc_GVLref_f_m = iDim(INTEGER(getAttrib(GVLref_f_m, install("DimCst")))));
+
+// ---> P = 14 + 35*2 = 84
 //Rprintf("Eco 4");
-if (ue_choice == 1) {
 
-        PROTECT(ue_f = NEW_NUMERIC(nbF));
-        setAttrib(ue_f, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
-        setAttrib(ue_f, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
-        setAttrib(ue_f, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f"), install("DimCst")));
+    PROTECT(ue_f = NEW_NUMERIC(nbF));
+    setAttrib(ue_f, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
+    setAttrib(ue_f, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
+    setAttrib(ue_f, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f"), install("DimCst")));
 
-        PROTECT(ue_f_m = NEW_NUMERIC(nbF*nbMe));
-        setAttrib(ue_f_m, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
-        setAttrib(ue_f_m, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
-        setAttrib(ue_f_m, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")));
+    PROTECT(ue_f_m = NEW_NUMERIC(nbF*nbMe));
+    setAttrib(ue_f_m, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
+    setAttrib(ue_f_m, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
+    setAttrib(ue_f_m, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")));
 
-double *ruef = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *ruefm = REAL(ue_f_m); double *reff1_fm = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2_fm = REAL(getListElement(Flist, "effort2_f_m"));
+    double *r_ue_f = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
+    double *r_ue_f_m = REAL(ue_f_m); double *reff1 = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  ruef[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
-  for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) ruefm[ind_f + nbF*ind_m] = reff1_fm[ind_f + nbF*ind_m]*reff2_fm[ind_f + nbF*ind_m];
-}
-
-} else {
-
-    if (ue_choice == 2) {
-
-        PROTECT(ue_f = getListElement(Flist, "nbh_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbh_f_m"));
-
-    } else {
-
-        PROTECT(ue_f = getListElement(Flist, "nbtrip_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbtrip_f_m"));
-
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        r_ue_f[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
+        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) r_ue_f_m[ind_f + nbF*ind_m] = reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m];
     }
-}
+
 //Rprintf("Eco 5");
     PROTECT(dc_ue_f = iDim(INTEGER(getAttrib(ue_f, install("DimCst")))));
     PROTECT(dc_ue_f_m = iDim(INTEGER(getAttrib(ue_f_m, install("DimCst")))));
-//4 protect -> 66
+    dim_ue_f = INTEGER(dc_ue_f);
+    dim_ue_f_m = INTEGER(dc_ue_f_m);
+// ---> P = 84 + 4 = 88
 
-    dim_Lref_f = INTEGER(dc_Lref_f);                        r_Lref_f = REAL(Lref_f); //Rprintf("Eco 51\n");
-    dim_GVLref_f = INTEGER(dc_GVLref_f);                    r_GVLref_f = REAL(GVLref_f); //Rprintf("Eco 51\n");
-    dim_GVLref_f_m = INTEGER(dc_GVLref_f_m);                r_GVLref_f_m = REAL(GVLref_f_m); //Rprintf("Eco 51\n");
-    dim_nbv_f = INTEGER(dc_nbv_f);                          r_nbv_f = REAL(nbv_f); //Rprintf("Eco 51\n");
-    dim_nbv_f_m = INTEGER(dc_nbv_f_m);                      r_nbv_f_m = REAL(nbv_f_m); //Rprintf("Eco 51\n");
-    dim_lc_f_m = INTEGER(dc_lc_f_m);                        r_lc_f_m = REAL(lc_f_m); //Rprintf("Eco 51\n");
-    dim_lcd_f_m = INTEGER(dc_lcd_f_m);                      r_lcd_f_m = REAL(lcd_f_m); //Rprintf("Eco 51\n");
-    dim_nbh_f = INTEGER(dc_nbh_f);                          r_nbh_f = REAL(nbh_f); //Rprintf("Eco 51\n");
-    dim_ue_f = INTEGER(dc_ue_f);                            r_ue_f = REAL(ue_f); //Rprintf("Eco 51\n");
-    dim_ue_f_m = INTEGER(dc_ue_f_m);                        r_ue_f_m = REAL(ue_f_m); //Rprintf("Eco 51\n");
-    dim_fc_f = INTEGER(dc_fc_f);                            r_fc_f = REAL(fc_f); //Rprintf("Eco 51\n");
-    dim_fc_f_m = INTEGER(dc_fc_f_m);                        r_fc_f_m = REAL(fc_f_m); //Rprintf("Eco 51\n");
-    dim_vf_f = INTEGER(dc_vf_f);                            r_vf_f = REAL(vf_f); //Rprintf("Eco 51\n");
-    dim_vf_f_m = INTEGER(dc_vf_f_m);                        r_vf_f_m = REAL(vf_f_m); //Rprintf("Eco 51\n");
-    dim_ovcDCF_f = INTEGER(dc_ovcDCF_f);                    r_ovcDCF_f = REAL(ovcDCF_f); //Rprintf("Eco 51\n");
-    dim_ovcDCF_f_m = INTEGER(dc_ovcDCF_f_m);                r_ovcDCF_f_m = REAL(ovcDCF_f_m); //Rprintf("Eco 51\n");
-    dim_cnb_f = INTEGER(dc_cnb_f);                          r_cnb_f = REAL(cnb_f); //Rprintf("Eco 51\n");
-    dim_cshr_f = INTEGER(dc_cshr_f);                        r_cshr_f = REAL(cshr_f); //Rprintf("Eco 51\n");
-    dim_eec_f = INTEGER(dc_eec_f);                          r_eec_f = REAL(eec_f); //Rprintf("Eco 51\n");
-    dim_mwh_f = INTEGER(dc_mwh_f);                          r_mwh_f = REAL(mwh_f); //Rprintf("Eco 51\n");
-    dim_rep_f = INTEGER(dc_rep_f);                          r_rep_f = REAL(rep_f); //Rprintf("Eco 51\n");
-    dim_dep_f = INTEGER(dc_dep_f);                          r_dep_f = REAL(dep_f); //Rprintf("Eco 51\n");
-    dim_ic_f = INTEGER(dc_ic_f);                            r_ic_f = REAL(ic_f); //Rprintf("Eco 51\n");
-    dim_K_f = INTEGER(dc_K_f);                              r_K_f = REAL(K_f); //Rprintf("Eco 51\n");
-    dim_persc_f = INTEGER(dc_persc_f);                      r_persc_f = REAL(persc_f); //Rprintf("Eco 51\n");
-    dim_fixc_f = INTEGER(dc_fixc_f);                        r_fixc_f = REAL(fixc_f); //Rprintf("Eco 51\n");
-    dim_mwhg_f = INTEGER(dc_mwhg_f);                        r_mwhg_f = REAL(mwhg_f); //Rprintf("Eco 51\n");
+    dim_nbv_f = INTEGER(dc_nbv_f);                          r_nbv_f = REAL(nbv_f);//Rprintf("Eco 51\n");
+    dim_nbv_f_m = INTEGER(dc_nbv_f_m);                      r_nbv_f_m = REAL(nbv_f_m);//Rprintf("Eco 51\n");
+    dim_lc_f_m = INTEGER(dc_lc_f_m);                        r_lc_f_m = REAL(lc_f_m);//Rprintf("Eco 51\n");
+    dim_lcd_f_m = INTEGER(dc_lcd_f_m);                      r_lcd_f_m = REAL(lcd_f_m);//Rprintf("Eco 51\n");
+    dim_tripLgth_f = INTEGER(dc_tripLgth_f);                r_tripLgth_f = REAL(tripLgth_f);//Rprintf("Eco 51\n");
+    dim_tripLgth_f_m = INTEGER(dc_tripLgth_f_m);            r_tripLgth_f_m = REAL(tripLgth_f_m);//Rprintf("Eco 51\n");
+    dim_nbTrip_f = INTEGER(dc_nbTrip_f);                    r_nbTrip_f = REAL(nbTrip_f);//Rprintf("Eco 51\n");
+    dim_nbTrip_f_m = INTEGER(dc_nbTrip_f_m);                r_nbTrip_f_m = REAL(nbTrip_f_m);//Rprintf("Eco 51\n");
+    dim_nbds_f = INTEGER(dc_nbds_f);                        r_nbds_f = REAL(nbds_f);//Rprintf("Eco 51\n");
+    dim_nbds_f_m = INTEGER(dc_nbds_f_m);                    r_nbds_f_m = REAL(nbds_f_m);//Rprintf("Eco 51\n");
+    dim_effort1_f = INTEGER(dc_effort1_f);                  r_effort1_f = REAL(effort1_f);//Rprintf("Eco 51\n");
+    dim_effort1_f_m = INTEGER(dc_effort1_f_m);              r_effort1_f_m = REAL(effort1_f_m);//Rprintf("Eco 51\n");
+    dim_effort2_f = INTEGER(dc_effort2_f);                  r_effort2_f = REAL(effort2_f);//Rprintf("Eco 51\n");
+    dim_effort2_f_m = INTEGER(dc_effort2_f_m);              r_effort2_f_m = REAL(effort2_f_m);//Rprintf("Eco 51\n");
+    dim_Lref_f_m = INTEGER(dc_Lref_f_m);                    r_Lref_f_m = REAL(Lref_f_m);//Rprintf("Eco 51\n");
+    dim_cnb_f_m = INTEGER(dc_cnb_f_m);                      r_cnb_f_m = REAL(cnb_f_m);//Rprintf("Eco 51\n");
+    dim_ovcDCF_f_m = INTEGER(dc_ovcDCF_f_m);                r_ovcDCF_f_m = REAL(ovcDCF_f_m);//Rprintf("Eco 51\n");
+    dim_fc_f_m = INTEGER(dc_fc_f_m);                        r_fc_f_m = REAL(fc_f_m);//Rprintf("Eco 51\n");
+    dim_vf_f_m = INTEGER(dc_vf_f_m);                        r_vf_f_m = REAL(vf_f_m);//Rprintf("Eco 51\n");
+    dim_cshr_f_m = INTEGER(dc_cshr_f_m);                    r_cshr_f_m = REAL(cshr_f_m);//Rprintf("Eco 51\n");
+    dim_cshr_f = INTEGER(dc_cshr_f);                        r_cshr_f = REAL(cshr_f);//Rprintf("Eco 51\n");
+    dim_cnb_f = INTEGER(dc_cnb_f);                          r_cnb_f = REAL(cnb_f);//Rprintf("Eco 51\n");
+    dim_persc_f = INTEGER(dc_persc_f);                      r_persc_f = REAL(persc_f);//Rprintf("Eco 51\n");
+    dim_eec_f = INTEGER(dc_eec_f);                          r_eec_f = REAL(eec_f);//Rprintf("Eco 51\n");
+    dim_mwh_f = INTEGER(dc_mwh_f);                          r_mwh_f = REAL(mwh_f);//Rprintf("Eco 51\n");
+    dim_rep_f = INTEGER(dc_rep_f);                          r_rep_f = REAL(rep_f);//Rprintf("Eco 51\n");
+    dim_gc_f = INTEGER(dc_gc_f);                            r_gc_f = REAL(gc_f);//Rprintf("Eco 51\n");
+    dim_fixc_f = INTEGER(dc_fixc_f);                        r_fixc_f = REAL(fixc_f);//Rprintf("Eco 51\n");
+    dim_FTE_f = INTEGER(dc_FTE_f);                          r_FTE_f = REAL(FTE_f);//Rprintf("Eco 51\n");
+    dim_dep_f = INTEGER(dc_dep_f);                          r_dep_f = REAL(dep_f);//Rprintf("Eco 51\n");
+    dim_ic_f = INTEGER(dc_ic_f);                            r_ic_f = REAL(ic_f);//Rprintf("Eco 51\n");
+    dim_K_f = INTEGER(dc_K_f);                              r_K_f = REAL(K_f);//Rprintf("Eco 51\n");
+    dim_inv_f = INTEGER(dc_inv_f);                          r_inv_f = REAL(inv_f);//Rprintf("Eco 51\n");
+    dim_FTE_f_m = INTEGER(dc_FTE_f_m);                      r_FTE_f_m = REAL(FTE_f_m);//Rprintf("Eco 51\n");
+    dim_GVLref_f_m = INTEGER(dc_GVLref_f_m);                r_GVLref_f_m = REAL(GVLref_f_m);//Rprintf("Eco 51\n");
+
 
     int nbI=0, nbC=0;
+
 //Rprintf("Eco 6");
+
 if (ind_t==0) {
 
-    SEXP  GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out,
-          rtbs_f_out, rtbs_f_m_out, cshrT_f_out, sshr_f_out, ncshr_f_out, oclg_f_out, ocl_f_out, csg_f_out, cs_f_out,
-          gva_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, gcf_f_out,
-          ngcf_f_out, gp_f_out, ps_f_out, sts_f_out, ber_f_out, ratio_gva_GVL_f_out, ratio_gcf_GVL_f_out, ratio_fc_GVL_f_out,
-          ratio_rep_GVL_f_out, ratio_fvol_GVL_f_out, ratio_fvol_gva_f_out,
-          ratio_gcf_gva_f_out, ratio_K_cnb_f_out, ratio_GVL_K_f_out, ratio_gcf_K_f_out, ratio_ngcf_K_f_out,
-          ratio_gp_K_f_out, ratio_GVL_cnb_ue_f_out,
-          rtbsAct_f_out, csAct_f_out, gvaAct_f_out, gcfAct_f_out, psAct_f_out, stsAct_f_out,
-          GVLcom_f_m_e_out, GVLst_f_m_e_out, GVLcom_f_m_eStat_out, GVLst_f_m_eStat_out, cnb_f_m_out, ETini_f_m_out, ETini_f_out, cnb_f_out;
+    SEXP ETini_f_m, fvolue_f_m, ovcDCFue_f_m, rtbsIni_f, ccwr_f, opersc_f, eco_names,
+         GVLcom_f_m_e_out, GVLcom_f_m_eStat_out, GVLcom_f_m_e, GVLst_f_m_e_out, GVLst_f_m_eStat_out, GVLst_f_m_e, GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_e,
+         GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out, ET_f_m_out,
+         cnb_f_m_out, cnb_f_out, rtbs_f_m_out, rtbs_f_out, rtbsAct_f_out, cshrT_f_m_out, cshrT_f_out, ncshr_f_out, ocl_f_out, cs_f_out, csAct_f_out, csTot_f_out,
+         gva_f_out, gvaAct_f_out, gvamargin_f_out, gva_FTE_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, wageg_FTE_f_out, wageg_h_f_out,
+         gp_f_out, gpAct_f_out, gpmargin_f_out, ncf_f_out, np_f_out, npmargin_f_out, prof_f_out, npmargin_trend_f_out,
+         ssTot_f_out, ps_f_out, psAct_f_out, sts_f_out, stsAct_f_out, BER_f_out, CR_BER_f_out, fuelEff_f_out,
+         ratio_fvol_gva_f_out, ratio_gp_gva_f_out, ratio_GVL_K_f_out, ratio_gp_K_f_out, RoFTA_f_out, ROI_f_out, ratio_np_K_f_out, ratio_GVL_cnb_ue_f_out;
 
-    SEXP  GVLtot_f_m_e, GVLcom_f_m_e, GVLst_f_m_e, GVLreftot_f_m_e, GVLreftot_f_m, GVLoths_f_m, GVLothsref_f_m, GVLothsue_f_m, GVLothsrefue_f_m,
-          GVLtot_f_e, GVLreftot_f, GVLoths_f, GVLothsue_f, GVLothmet_f, GVLothmetue_f,
-          fvolue_f, fvolue_f_m, ovcDCFue_f, ovcDCFue_f_m, GVLav_f, rtbs_f, ccwr_f, opersc_f, eco_names;
-
-    double  *r_GVLreftot_f_m, *r_GVLoths_f_m, *r_GVLothsref_f_m, *r_GVLothsue_f_m,
-            *r_GVLothsrefue_f_m, *r_GVLreftot_f, *r_GVLoths_f, *r_GVLothsue_f, *r_GVLothmet_f,
-            *r_GVLothmetue_f, *r_fvolue_f, *r_fvolue_f_m, *r_ovcDCFue_f, *r_ovcDCFue_f_m, *r_GVLav_f, *r_rtbs_f, *r_ccwr_f, *r_opersc_f;
+    double  *r_ETini_f_m, *r_ET_f_m_out, *r_fvolue_f_m, *r_ovcDCFue_f_m, *r_rtbsIni_f, *r_ccwr_f, *r_opersc_f;
 
 
 
@@ -19635,54 +16939,39 @@ if (ind_t==0) {
 // Stade préliminaire (temps initial)
 //-------------------------
 
-    PROTECT(GVLreftot_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLreftot_f_m = REAL(GVLreftot_f_m);
-    PROTECT(GVLoths_f_m = NEW_NUMERIC(nbF*nbMe));            r_GVLoths_f_m = REAL(GVLoths_f_m);
-    PROTECT(GVLothsref_f_m = NEW_NUMERIC(nbF*nbMe));         r_GVLothsref_f_m = REAL(GVLothsref_f_m);
-    PROTECT(GVLothsue_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLothsue_f_m = REAL(GVLothsue_f_m);
-    PROTECT(GVLothsrefue_f_m = NEW_NUMERIC(nbF*nbMe));       r_GVLothsrefue_f_m = REAL(GVLothsrefue_f_m);
-    PROTECT(GVLreftot_f = NEW_NUMERIC(nbF));                 r_GVLreftot_f = REAL(GVLreftot_f);
-    PROTECT(GVLoths_f = NEW_NUMERIC(nbF));                   r_GVLoths_f = REAL(GVLoths_f);
-    PROTECT(GVLothsue_f = NEW_NUMERIC(nbF));                 r_GVLothsue_f = REAL(GVLothsue_f);
-    PROTECT(GVLothmet_f = NEW_NUMERIC(nbF));                 r_GVLothmet_f = REAL(GVLothmet_f);
-    PROTECT(GVLothmetue_f = NEW_NUMERIC(nbF));               r_GVLothmetue_f = REAL(GVLothmetue_f);
-    PROTECT(fvolue_f = NEW_NUMERIC(nbF));                   r_fvolue_f = REAL(fvolue_f);
-    PROTECT(fvolue_f_m = NEW_NUMERIC(nbF*nbMe));             r_fvolue_f_m = REAL(fvolue_f_m);
-    PROTECT(ovcDCFue_f = NEW_NUMERIC(nbF));                  r_ovcDCFue_f = REAL(ovcDCFue_f);
-    PROTECT(ovcDCFue_f_m = NEW_NUMERIC(nbF*nbMe));           r_ovcDCFue_f_m = REAL(ovcDCFue_f_m);
-    PROTECT(GVLav_f = NEW_NUMERIC(nbF));                     r_GVLav_f = REAL(GVLav_f);
-    PROTECT(rtbs_f = NEW_NUMERIC(nbF));                     r_rtbs_f = REAL(rtbs_f);
-    PROTECT(ccwr_f = NEW_NUMERIC(nbF));                     r_ccwr_f = REAL(ccwr_f);
-    PROTECT(opersc_f = NEW_NUMERIC(nbF));                   r_opersc_f = REAL(opersc_f);
-//18 protect  -> 18 (t0)
+    PROTECT(ETini_f_m = NEW_NUMERIC(nbF*nbMe));                 r_ETini_f_m = REAL(ETini_f_m);
+    PROTECT(fvolue_f_m = NEW_NUMERIC(nbF*nbMe));                r_fvolue_f_m = REAL(fvolue_f_m);
+    PROTECT(ovcDCFue_f_m = NEW_NUMERIC(nbF*nbMe));              r_ovcDCFue_f_m = REAL(ovcDCFue_f_m);
+    PROTECT(rtbsIni_f = NEW_NUMERIC(nbF));                      r_rtbsIni_f = REAL(rtbsIni_f);
+    PROTECT(ccwr_f = NEW_NUMERIC(nbF));                         r_ccwr_f = REAL(ccwr_f);
+    PROTECT(opersc_f = NEW_NUMERIC(nbF));                       r_opersc_f = REAL(opersc_f);
+// ---> P(t0) = 6
 //Rprintf("Eco 7");
-PROTECT(ETini_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-r_ETini_f_m_out = REAL(ETini_f_m_out);
-PROTECT(ETini_f_out = NEW_NUMERIC(nbF*nbT));
-r_ETini_f_out = REAL(ETini_f_out);
 
-// on initialise ETini
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
-double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
+// on crée ETini
+    double *rnbTrip = REAL(getListElement(Flist, "nbTrip_f_m"));
+    double *rtripLgth = REAL(getListElement(Flist, "tripLgth_f_m"));
+    double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
+    double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-r_ETini_f_out[ind_f + nbF*ind_t] = 0.0;
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-  if (ISNA(r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-}}
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
+            r_ETini_f_m[ind_f + nbF*ind_m] =
+               finite(
+               r_Lref_f_m[ind_f*dim_Lref_f_m[0] + ind_m*dim_Lref_f_m[1] + 0*dim_Lref_f_m[2] + ind_t*dim_Lref_f_m[3]] /
+               (r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]] *
+                r_nbTrip_f_m[ind_f*dim_nbTrip_f_m[0] + ind_m*dim_nbTrip_f_m[1] + 0*dim_nbTrip_f_m[2] + ind_t*dim_nbTrip_f_m[3]] *
+                r_tripLgth_f_m[ind_f*dim_tripLgth_f_m[0] + ind_m*dim_tripLgth_f_m[1] + 0*dim_tripLgth_f_m[2] + ind_t*dim_tripLgth_f_m[3]] *
+                r_cnb_f_m[ind_f*dim_cnb_f_m[0] + ind_m*dim_cnb_f_m[1] + 0*dim_cnb_f_m[2] + ind_t*dim_cnb_f_m[3]]));
+            //if (ISNA(r_ETini_f_m[ind_f + nbF*ind_m])) r_ETini_f_m[ind_f + nbF*ind_m] = 0.0;
+        }
+    }
+
 
 
 
 //Rprintf("Eco 8");
-    for (int e = 0 ; e < nbE+nbEstat ; e++) {
+ for (int e = 0 ; e < nbE+nbEstat ; e++) {
 
         if (e<nbE) {
          PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
@@ -19696,16 +16985,10 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
         PROTECT(GVLtot_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
         PROTECT(GVLcom_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
         PROTECT(GVLst_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
-        PROTECT(GVLreftot_f_m_e = NEW_NUMERIC(nbF*nbMe));
-        PROTECT(GVLtot_f_e = NEW_NUMERIC(nbF));
 
         double *r_GVLtot_f_m_e = REAL(GVLtot_f_m_e);
         double *r_GVLcom_f_m_e = REAL(GVLcom_f_m_e);
         double *r_GVLst_f_m_e = REAL(GVLst_f_m_e);
-        double *r_GVLreftot_f_m_e = REAL(GVLreftot_f_m_e);
-        double *r_GVLtot_f_e = REAL(GVLtot_f_e);
-        double *r_GVLref_f_m_e = REAL(getListElement(elmt, "GVLref_f_m_e"));
-        double *r_GVLref_f_e = REAL(getListElement(elmt, "GVLref_f_e"));
 
         double *r_Lbio_f_m_e ,  *r_Lbio_f_sum_e, *r_P_f_m_e, r_Pst_e, *r_LD_efmc, *r_statLDor_efm, *r_statLDst_efm, r_theta_e, *Lref_f_e;
         int *dim_Lbio_e, *dim_P_e;
@@ -19716,7 +16999,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
             r_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-//            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
         } else {
@@ -19726,7 +17008,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_statLDor_efm = REAL(VECTOR_ELT(out_statLDor_efm, e-nbE));
             r_statLDst_efm = REAL(VECTOR_ELT(out_statLDst_efm, e-nbE));
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-//            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Lstat, e-nbE), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
             r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
@@ -19745,11 +17026,11 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
          //-- 3. GVLtot_f_m_e
 
-             double countCom = 0.0;
+    double countCom = 0.0;
 
     if (e<nbE) {
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
              for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
 
@@ -19764,21 +17045,16 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-
-             r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
              }
 
              }
 
-                if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
+             if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
                     r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             //if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
+             if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
 
                   r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                    r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
@@ -19786,15 +17062,11 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                    r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-                  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                    r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-               } else {
+             } else {
 
                   r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
 
-               }
+             }
 
                //if (e==1 & ind_f==0 & ind_m==4) PrintValue(ETini_f_m_out);
 
@@ -19812,10 +17084,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 *
                   finite(r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]) ;
 
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                finite(r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
-
         }
 
         if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
@@ -19825,120 +17093,19 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                   r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
         }
 
     }
-
-            if (!ISNA(r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
 
             r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
             r_GVLtot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
             r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
             r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
 
-
-
-         //-- 4. GVLreftot_f_m_e
-
-                r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m_e[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-
 //Rprintf("Eco 11");
 
-        //-- 5. GVLreftot_f_m
 
-            if (e==0) {
-
-                r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-            }
-
-         //-- 6. GVLoths_f_m
-
-
-        //-- 7. GVLothsref_f_m
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                } else {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-            }
-
-            }
-
-    //-- 10. GVLtot_f_e
-
-
-            r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLref_f_e[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-//Rprintf("Eco 12");
-    //-- 11. GVLreftot_f
-
-    if (e==0) {
-
-            r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLref_f[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-    }
-
-    //-- 14. GVLoths_f
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]])) {
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-                } else {
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]))
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            }
-
-
-
+        }
         }
 
         //on formatte le(s) résultat(s) et on les intègre à 'eVar'
@@ -19959,163 +17126,66 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
         if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 229, GVLst_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 9, GVLst_f_m_e);
 
 //Rprintf("Eco 14");
-        UNPROTECT(6);
+        UNPROTECT(4);
 
 }
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*rcnb_f[ind_f]);
 
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-    r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*rcnb[ind_f + nbF*ind_m]);
+//Rprintf("Eco 8");
 
-}
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-//Rprintf("Eco 15");
-    // à ce stade, plus de considération d'espèce pour les variables à initialiser
+       double countRTBSnum = 0.0;
 
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+       for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
- double countEff = 0.0;
+        countRTBSnum = countRTBSnum + finite(r_GVLref_f_m[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
+                                      r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]] *
+                                      (1 - finite(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))) -
+                                      finite(r_ovcDCF_f_m[ind_f*dim_ovcDCF_f_m[0] + ind_m*dim_ovcDCF_f_m[1] + 0*dim_ovcDCF_f_m[2] + ind_t*dim_ovcDCF_f_m[3]]) -
+                                      finite(r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]]);
 
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
+      //-- 4. fvolue_f_m
 
-           //-- terme : SUM_m (ue_f_m * nbv_f_m)
-
-            countEff = countEff +
-                r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
-
-            }
-
-        //-- 13. GVLothsue_f
-
-                r_GVLothsue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]) );
-
-
-   for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-
-        //-- 9. GVLothsrefue_f_m
-
-                r_GVLothsrefue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    (r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]) );
-
-//Rprintf("Eco 16");
-
-
-      //-- 22. fvolue_f_m
-
-               r_fvolue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+        r_fvolue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     finite( r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]] /
                     (r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]] *
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]]) );
+                    r_ue_f_m[ind_f + ind_m*nbF]) );
 
-      //-- 23. ovcDCFue_f_m
+      //-- 5. ovcDCFue_f_m
 
-                r_ovcDCFue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+        r_ovcDCFue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     finite( r_ovcDCF_f_m[ind_f*dim_ovcDCF_f_m[0] + ind_m*dim_ovcDCF_f_m[1] + 0*dim_ovcDCF_f_m[2] + ind_t*dim_ovcDCF_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
+                    r_ue_f_m[ind_f + ind_m*nbF] );
 
-   }
-
-        //-- 16. fvolue_f
-
-                r_fvolue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] /
-                    (r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]) );
-
-
-        //-- 17. GVLav_f
-
-            r_GVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-
-double totNGVL_f = 0.0;
-//Rprintf("Eco 17");
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-    if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]])) {
-
-            totNGVL_f = totNGVL_f + r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-
-    } else {
-
-            totNGVL_f = totNGVL_f + r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-    }
-}
+        }
 
 //Rprintf("Eco 18");
-        //-- 36. NGVLav_f
 
-//            r_NGVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-//                 totNGVL_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]] ;
-//
+        //-- 6. rtbsIni_f
 
-        //-- 18. rtbs_f
-
-            r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                (totNGVL_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]) -
-                r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] -
-                r_ovcDCF_f[ind_f*dim_ovcDCF_f[0] + 0*dim_ovcDCF_f[1] + 0*dim_ovcDCF_f[2] + ind_t*dim_ovcDCF_f[3]];
+            r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                  countRTBSnum / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-        //-- 19. ccwr_f
+        //-- 7. ccwr_f
 
             r_ccwr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] /
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+                r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-        //-- 20. opersc_f
+        //-- 8. opersc_f
 
             r_opersc_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] -
-                (0.01 * r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
+                (0.01 * r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] * //cshr_f en %
+                r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
 
-        //-- 21. ovcDCFue_f
-
-                r_ovcDCFue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_ovcDCF_f[ind_f*dim_ovcDCF_f[0] + 0*dim_ovcDCF_f[1] + 0*dim_ovcDCF_f[2] + ind_t*dim_ovcDCF_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-
-}
+    }
 
 //Rprintf("Eco 19\n");
 
 //on formatte le(s) résultat(s) et on intègre à fVar
-
-//        SET_VECTOR_ELT(fVar, 1, GVLoths_f_m);
-
-        setAttrib(GVLothsref_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsref_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsref_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 2, GVLothsref_f_m);
-
-//        SET_VECTOR_ELT(fVar, 23, GVLothsue_f_m);
-
-        setAttrib(GVLothsrefue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsrefue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsrefue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 24, GVLothsrefue_f_m);
-
-//        SET_VECTOR_ELT(fVar, 3, GVLothmet_f);
-
-//        SET_VECTOR_ELT(fVar, 25, GVLothmetue_f);
-
-//        SET_VECTOR_ELT(fVar, 26, GVLothsue_f);
 
         setAttrib(fvolue_f_m, R_DimSymbol, DimFMini);
         setAttrib(fvolue_f_m, R_DimNamesSymbol, dimnamesFMini);
@@ -20127,481 +17197,486 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
         setAttrib(ovcDCFue_f_m, install("DimCst"), dimCstFMini);
         SET_VECTOR_ELT(fVar, 10, ovcDCFue_f_m);
 
-        setAttrib(fvolue_f, R_NamesSymbol, fleetList);
-        setAttrib(fvolue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 17, fvolue_f);
-
-        setAttrib(ovcDCFue_f, R_NamesSymbol, fleetList);
-        setAttrib(ovcDCFue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 18, ovcDCFue_f);
-
         setAttrib(ccwr_f, R_NamesSymbol, fleetList);
         setAttrib(ccwr_f, install("DimCst"), dimCstFini);
         SET_VECTOR_ELT(fVar, 27, ccwr_f);
 
-        setAttrib(opersc_f, R_NamesSymbol, fleetList);
+        setAttrib(opersc_f, R_NamesSymbol,  fleetList);
         setAttrib(opersc_f, install("DimCst"), dimCstFini);
         SET_VECTOR_ELT(fVar, 28, opersc_f);
 
-        setAttrib(GVLoths_f, R_NamesSymbol, fleetList);
-        setAttrib(GVLoths_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 29, GVLoths_f);
+        SET_VECTOR_ELT(fVar, 31, rtbsIni_f);
 
-        SET_VECTOR_ELT(fVar, 31, rtbs_f);
+        SET_VECTOR_ELT(fVar, 33, ETini_f_m);
 //Rprintf("Eco 20\n");
 //enfin, on initialise l'output
 
-    PROTECT(GVL_f_m_e_out = allocVector(VECSXP, nbE));
-    setAttrib(GVL_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 0, GVL_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLcom_f_m_e_out = allocVector(VECSXP, nbE));
     setAttrib(GVLcom_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 46, GVLcom_f_m_e_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 0, GVLcom_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLcom_f_m_eStat_out = allocVector(VECSXP, nbEstat));
     setAttrib(GVLcom_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 47, GVLcom_f_m_eStat_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 1, GVLcom_f_m_eStat_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLst_f_m_e_out = allocVector(VECSXP, nbE));
     setAttrib(GVLst_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 48, GVLst_f_m_e_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 2, GVLst_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLst_f_m_eStat_out = allocVector(VECSXP, nbEstat));
     setAttrib(GVLst_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 49, GVLst_f_m_eStat_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 3, GVLst_f_m_eStat_out);//Rprintf("Eco 20\n");
 
+    PROTECT(GVL_f_m_e_out = allocVector(VECSXP, nbE));
+    setAttrib(GVL_f_m_e_out, R_NamesSymbol, sppList);
+    SET_VECTOR_ELT(out_EcoDCF, 4, GVL_f_m_e_out);//Rprintf("Eco 20\n");
+
+    PROTECT(GVL_f_m_eStat_out = allocVector(VECSXP, nbE));
+    setAttrib(GVL_f_m_eStat_out, R_NamesSymbol, sppList);
+    SET_VECTOR_ELT(out_EcoDCF, 5, GVL_f_m_eStat_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLtot_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(GVLtot_f_m_out, R_DimSymbol, DimFM);
     setAttrib(GVLtot_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(GVLtot_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 1, GVLtot_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 6, GVLtot_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(GVLav_f_m_out, R_DimSymbol, DimFM);
     setAttrib(GVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(GVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 2, GVLav_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 7, GVLav_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLtot_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(GVLtot_f_out, R_DimSymbol, DimF);
     setAttrib(GVLtot_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(GVLtot_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 3, GVLtot_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 8, GVLtot_f_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLav_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(GVLav_f_out, R_DimSymbol, DimF);
     setAttrib(GVLav_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(GVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 4, GVLav_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 9, GVLav_f_out);//Rprintf("Eco 20\n");
 
     PROTECT(NGVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(NGVLav_f_m_out, R_DimSymbol, DimFM);
     setAttrib(NGVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(NGVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 5, NGVLav_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 10, NGVLav_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(NGVLav_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(NGVLav_f_out, R_DimSymbol, DimF);
     setAttrib(NGVLav_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(NGVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 6, NGVLav_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 11, NGVLav_f_out);//Rprintf("Eco 20\n");
 
-    PROTECT(rtbs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbs_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 7, rtbs_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(cshrT_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cshrT_f_out, R_DimSymbol, DimF);
-    setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cshrT_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 8, cshrT_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(sshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sshr_f_out, R_DimSymbol, DimF);
-    setAttrib(sshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 9, sshr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ncshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ncshr_f_out, R_DimSymbol, DimF);
-    setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ncshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 10, ncshr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(oclg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(oclg_f_out, R_DimSymbol, DimF);
-    setAttrib(oclg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(oclg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 11, oclg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ocl_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ocl_f_out, R_DimSymbol, DimF);
-    setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ocl_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 12, ocl_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(csg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csg_f_out, R_DimSymbol, DimF);
-    setAttrib(csg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 13, csg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(cs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cs_f_out, R_DimSymbol, DimF);
-    setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 14, cs_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gva_f_out, R_DimSymbol, DimF);
-    setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 15, gva_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ccw_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccw_f_out, R_DimSymbol, DimF);
-    setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccw_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 16, ccw_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ccwCr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
-    setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccwCr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 17, ccwCr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(wageg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wageg_f_out, R_DimSymbol, DimF);
-    setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wageg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 18, wageg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(wagen_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wagen_f_out, R_DimSymbol, DimF);
-    setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wagen_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 19, wagen_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcf_f_out, R_DimSymbol, DimF);
-    setAttrib(gcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 20, gcf_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ngcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ngcf_f_out, R_DimSymbol, DimF);
-    setAttrib(ngcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ngcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 21, ngcf_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gp_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gp_f_out, R_DimSymbol, DimF);
-    setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gp_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 22, gp_f_out);//Rprintf("Eco 20\n");
-//Rprintf("Eco 20.5\n");
-    PROTECT(ps_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ps_f_out, R_DimSymbol, DimF);
-    setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ps_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 23, ps_f_out);
-
-    PROTECT(sts_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sts_f_out, R_DimSymbol, DimF);
-    setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sts_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 24, sts_f_out);
-
-    PROTECT(ratio_gva_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gva_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gva_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gva_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 25, ratio_gva_GVL_f_out);
-
-    PROTECT(ratio_gcf_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 26, ratio_gcf_GVL_f_out);
-
-    PROTECT(ratio_fc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 27, ratio_fc_GVL_f_out);
-
-    PROTECT(ratio_rep_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_rep_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_rep_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_rep_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 28, ratio_rep_GVL_f_out);
-
-    PROTECT(ratio_fvol_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 29, ratio_fvol_GVL_f_out);
-
-    PROTECT(ratio_fvol_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 30, ratio_fvol_gva_f_out);
-
-    PROTECT(ratio_gcf_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 31, ratio_gcf_gva_f_out);
-
-    PROTECT(ratio_K_cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_K_cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_K_cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_K_cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 32, ratio_K_cnb_f_out);
-
-    PROTECT(ratio_GVL_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 33, ratio_GVL_K_f_out);
-
-    PROTECT(ratio_gcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 34, ratio_gcf_K_f_out);
-
-    PROTECT(ratio_ngcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_ngcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_ngcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_ngcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 35, ratio_ngcf_K_f_out);
-
-    PROTECT(ratio_gp_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gp_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 36, ratio_gp_K_f_out);
-
-    PROTECT(ratio_GVL_cnb_ue_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 37, ratio_GVL_cnb_ue_f_out);
-
-
-    PROTECT(rtbsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 38, rtbsAct_f_out);
-//Rprintf("Eco 20.5\n");
-    PROTECT(csAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csAct_f_out, R_DimSymbol, DimF);
-    setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 39, csAct_f_out);
-
-    PROTECT(gvaAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gvaAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 40, gvaAct_f_out);
-
-    PROTECT(gcfAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcfAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gcfAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcfAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 41, gcfAct_f_out);
-
-    PROTECT(psAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(psAct_f_out, R_DimSymbol, DimF);
-    setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(psAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 42, psAct_f_out);
-
-    PROTECT(stsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(stsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(stsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 43, stsAct_f_out);
-
-    PROTECT(rtbs_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(rtbs_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(rtbs_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 44, rtbs_f_m_out);
-
-    PROTECT(GVL_f_m_eStat_out = allocVector(VECSXP, nbEstat));
-    setAttrib(GVL_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 45, GVL_f_m_eStat_out);
-
-    PROTECT(cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 50, cnb_f_out);
+    PROTECT(ET_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(ET_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(ET_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(ET_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 12, ET_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(cnb_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(cnb_f_m_out, R_DimSymbol, DimFM);
     setAttrib(cnb_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(cnb_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 51, cnb_f_m_out);
+    SET_VECTOR_ELT(out_EcoDCF, 13, cnb_f_m_out);//Rprintf("Eco 20\n");
 
-    PROTECT(ber_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ber_f_out, R_DimSymbol, DimF);
-    setAttrib(ber_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ber_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 52, ber_f_out);
+    PROTECT(cnb_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cnb_f_out, R_DimSymbol, DimF);
+    setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cnb_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 14, cnb_f_out);//Rprintf("Eco 20\n");
 
-    setAttrib(ETini_f_out, R_DimSymbol, DimF);
-    setAttrib(ETini_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ETini_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 53, ETini_f_out);
+    PROTECT(rtbs_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(rtbs_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(rtbs_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 15, rtbs_f_m_out);
 
-    setAttrib(ETini_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(ETini_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(ETini_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 54, ETini_f_m_out);
+    PROTECT(rtbs_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(rtbs_f_out, R_DimSymbol, DimF);
+    setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(rtbs_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 16, rtbs_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(rtbsAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
+    setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(rtbsAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 17, rtbsAct_f_out);
+
+    PROTECT(cshrT_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(cshrT_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(cshrT_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(cshrT_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 18, cshrT_f_m_out);
+
+    PROTECT(cshrT_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cshrT_f_out, R_DimSymbol, DimF);
+    setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cshrT_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 19, cshrT_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ncshr_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ncshr_f_out, R_DimSymbol, DimF);
+    setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ncshr_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 20, ncshr_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ocl_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ocl_f_out, R_DimSymbol, DimF);
+    setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ocl_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 21, ocl_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(cs_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cs_f_out, R_DimSymbol, DimF);
+    setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cs_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 22, cs_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(csAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(csAct_f_out, R_DimSymbol, DimF);
+    setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(csAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 23, csAct_f_out);
+
+    PROTECT(csTot_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(csTot_f_out, R_DimSymbol, DimF);
+    setAttrib(csTot_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(csTot_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 24, csTot_f_out);
+
+    PROTECT(gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gva_f_out, R_DimSymbol, DimF);
+    setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 25, gva_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gvaAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
+    setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gvaAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 26, gvaAct_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gvamargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gvamargin_f_out, R_DimSymbol, DimF);
+    setAttrib(gvamargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gvamargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 27, gvamargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gva_FTE_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gva_FTE_f_out, R_DimSymbol, DimF);
+    setAttrib(gva_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gva_FTE_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 28, gva_FTE_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ccw_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ccw_f_out, R_DimSymbol, DimF);
+    setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ccw_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 29, ccw_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ccwCr_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
+    setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ccwCr_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 30, ccwCr_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 31, wageg_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wagen_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wagen_f_out, R_DimSymbol, DimF);
+    setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wagen_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 32, wagen_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_FTE_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_FTE_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_FTE_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 33, wageg_FTE_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_h_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_h_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_h_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_h_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 34, wageg_h_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gp_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gp_f_out, R_DimSymbol, DimF);
+    setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gp_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 35, gp_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gpAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gpAct_f_out, R_DimSymbol, DimF);
+    setAttrib(gpAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gpAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 36, gpAct_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gpmargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gpmargin_f_out, R_DimSymbol, DimF);
+    setAttrib(gpmargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gpmargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 37, gpmargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ncf_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ncf_f_out, R_DimSymbol, DimF);
+    setAttrib(ncf_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ncf_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 38, ncf_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(np_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(np_f_out, R_DimSymbol, DimF);
+    setAttrib(np_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(np_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 39, np_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(npmargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(npmargin_f_out, R_DimSymbol, DimF);
+    setAttrib(npmargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(npmargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 40, npmargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(prof_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(prof_f_out, R_DimSymbol, DimF);
+    setAttrib(prof_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(prof_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 41, prof_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(npmargin_trend_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(npmargin_trend_f_out, R_DimSymbol, DimF);
+    setAttrib(npmargin_trend_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(npmargin_trend_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 42, npmargin_trend_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ssTot_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ssTot_f_out, R_DimSymbol, DimF);
+    setAttrib(ssTot_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ssTot_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 43, ssTot_f_out);
+
+    PROTECT(ps_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ps_f_out, R_DimSymbol, DimF);
+    setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ps_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 44, ps_f_out);
+
+    PROTECT(psAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(psAct_f_out, R_DimSymbol, DimF);
+    setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(psAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 45, psAct_f_out);
+
+    PROTECT(sts_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(sts_f_out, R_DimSymbol, DimF);
+    setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(sts_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 46, sts_f_out);
+
+    PROTECT(stsAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(stsAct_f_out, R_DimSymbol, DimF);
+    setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(stsAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 47, stsAct_f_out);
+
+    PROTECT(BER_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(BER_f_out, R_DimSymbol, DimF);
+    setAttrib(BER_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(BER_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 48, BER_f_out);
+
+    PROTECT(CR_BER_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(CR_BER_f_out, R_DimSymbol, DimF);
+    setAttrib(CR_BER_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(CR_BER_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 49, CR_BER_f_out);
+
+    PROTECT(fuelEff_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(fuelEff_f_out, R_DimSymbol, DimF);
+    setAttrib(fuelEff_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(fuelEff_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 50, fuelEff_f_out);
+
+    PROTECT(ratio_fvol_gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_fvol_gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 51, ratio_fvol_gva_f_out);
+
+    PROTECT(ratio_gp_gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_gp_gva_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_gp_gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_gp_gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 52, ratio_gp_gva_f_out);
+
+    PROTECT(ratio_GVL_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_GVL_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 53, ratio_GVL_K_f_out);
+
+    PROTECT(ratio_gp_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_gp_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 54, ratio_gp_K_f_out);
+
+    PROTECT(RoFTA_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(RoFTA_f_out, R_DimSymbol, DimF);
+    setAttrib(RoFTA_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(RoFTA_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 55, RoFTA_f_out);
+
+    PROTECT(ROI_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ROI_f_out, R_DimSymbol, DimF);
+    setAttrib(ROI_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ROI_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 56, ROI_f_out);
+
+    PROTECT(ratio_np_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_np_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_np_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_np_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 57, ratio_np_K_f_out);
+
+    PROTECT(ratio_GVL_cnb_ue_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_GVL_cnb_ue_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 58, ratio_GVL_cnb_ue_f_out);
+
 //Rprintf("Eco 20.8\n");
     //on nomme les éléments de out_EcoDCF
-    const char *namesEco[55] = {"GVL_f_m_e","GVLtot_f_m","GVLav_f_m","GVLtot_f","GVLav_f","NGVLav_f_m","NGVLav_f",
-                          "rtbs_f","cshrT_f","sshr_f","ncshr_f","oclg_f","ocl_f","csg_f","cs_f",
-                          "gva_f","ccw_f","ccwCr_f","wageg_f","wagen_f","gcf_f","ngcf_f","gp_f",
-                          "ps_f","sts_f","ratio_gva_GVL_f","ratio_gcf_GVL_f","ratio_fc_GVL_f",
-                          "ratio_rep_GVL_f","ratio_fvol_GVL_f","ratio_fvol_gva_f","ratio_gcf_gva_f",
-                          "ratio_K_cnb_f","ratio_GVL_K_f","ratio_gcf_K_f","ratio_ngcf_K_f",
-                          "ratio_gp_K_f","ratio_GVL_cnb_ue_f","rtbsAct_f","csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","rtbs_f_m",
-                          "GVL_f_m_eStat","GVLcom_f_m_e","GVLcom_f_m_eStat","GVLst_f_m_e","GVLst_f_m_eStat","cnb_f","cnb_f_m","ber_f",
-                          "ETini_f","ETini_f_m"};
-//Rprintf("Eco 20.9\n");
-    PROTECT(eco_names = allocVector(STRSXP, 55));
 
-    for(int ct = 0; ct < 55; ct++) SET_STRING_ELT(eco_names, ct, mkChar(namesEco[ct])); //PrintValue(out_EcoDCF);
+
+
+
+    const char *namesEco[59] = {"GVLcom_f_m_e_out","GVLcom_f_m_eStat_out","GVLst_f_m_e_out","GVLst_f_m_eStat_out","GVL_f_m_e_out","GVL_f_m_eStat_out","GVLtot_f_m_out",
+                                "GVLav_f_m_out","GVLtot_f_out","GVLav_f_out","NGVLav_f_m_out","NGVLav_f_out","ET_f_m_out","cnb_f_m_out","cnb_f_out","rtbs_f_m_out","rtbs_f_out",
+                                "rtbsAct_f_out","cshrT_f_m_out","cshrT_f_out","ncshr_f_out","ocl_f_out","cs_f_out","csAct_f_out","csTot_f_out","gva_f_out","gvaAct_f_out",
+                                "gvamargin_f_out","gva_FTE_f_out","ccw_f_out","ccwCr_f_out","wageg_f_out","wagen_f_out","wageg_FTE_f_out","wageg_h_f_out","gp_f_out",
+                                "gpAct_f_out","gpmargin_f_out","ncf_f_out","np_f_out","npmargin_f_out","prof_f_out","npmargin_trend_f_out","ssTot_f_out","ps_f_out",
+                                "psAct_f_out","sts_f_out","stsAct_f_out","BER_f_out","CR_BER_f_out","fuelEff_f_out","ratio_fvol_gva_f_out","ratio_gp_gva_f_out",
+                                "ratio_GVL_K_f_out","ratio_gp_K_f_out","RoFTA_f_out","ROI_f_out","ratio_np_K_f_out","ratio_GVL_cnb_ue_f_out"};
+
+//Rprintf("Eco 20.9\n");
+    PROTECT(eco_names = allocVector(STRSXP, 59));
+
+    for(int ct = 0; ct < 59; ct++) SET_STRING_ELT(eco_names, ct, mkChar(namesEco[ct])); //PrintValue(out_EcoDCF);
 //Rprintf("Eco 20.95\n");
     setAttrib(out_EcoDCF, R_NamesSymbol, eco_names);
 //Rprintf("Eco 21\n");
-//47 protect    --> 65
+
+// ---> P(t0) = 6 + 60 = 66
 }
 
 
 //on importe les outputs afin de les mettre à jour à l'instant ind_t
 
-    r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,1));
-    r_GVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,2));
-    r_GVLtot_f_out = REAL(VECTOR_ELT(out_EcoDCF,3));
-    r_GVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF,4));
-    r_NGVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,5));
-    r_NGVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF,6));
-    r_rtbs_f_out = REAL(VECTOR_ELT(out_EcoDCF,7));
-    r_cshrT_f_out = REAL(VECTOR_ELT(out_EcoDCF,8));
-    r_sshr_f_out = REAL(VECTOR_ELT(out_EcoDCF,9));
-    r_ncshr_f_out = REAL(VECTOR_ELT(out_EcoDCF,10));
-    r_oclg_f_out = REAL(VECTOR_ELT(out_EcoDCF,11));
-    r_ocl_f_out = REAL(VECTOR_ELT(out_EcoDCF,12));
-    r_csg_f_out = REAL(VECTOR_ELT(out_EcoDCF,13));
-    r_cs_f_out = REAL(VECTOR_ELT(out_EcoDCF,14));
-    r_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,15));
-    r_ccw_f_out = REAL(VECTOR_ELT(out_EcoDCF,16));
-    r_ccwCr_f_out = REAL(VECTOR_ELT(out_EcoDCF,17));
-    r_wageg_f_out = REAL(VECTOR_ELT(out_EcoDCF,18));
-    r_wagen_f_out = REAL(VECTOR_ELT(out_EcoDCF,19));
-    r_gcf_f_out = REAL(VECTOR_ELT(out_EcoDCF,20));
-    r_ngcf_f_out = REAL(VECTOR_ELT(out_EcoDCF,21));
-    r_gp_f_out = REAL(VECTOR_ELT(out_EcoDCF,22));
-    r_ps_f_out = REAL(VECTOR_ELT(out_EcoDCF,23));
-    r_sts_f_out = REAL(VECTOR_ELT(out_EcoDCF,24));
-    r_ratio_gva_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,25));
-    r_ratio_gcf_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,26));
-    r_ratio_fc_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,27));
-    r_ratio_rep_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,28));
-    r_ratio_fvol_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,29));
-    r_ratio_fvol_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,30));
-    r_ratio_gcf_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,31));
-    r_ratio_K_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF,32));
-    r_ratio_GVL_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,33));
-    r_ratio_gcf_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,34));
-    r_ratio_ngcf_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,35));
-    r_ratio_gp_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,36));
-    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF,37));
-    r_rtbsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,38));
-    r_csAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,39));
-    r_gvaAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,40));
-    r_gcfAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,41));
-    r_psAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,42));
-    r_stsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,43));
-    r_rtbs_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,44));
-
-    r_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF,50));
-    r_cnb_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,51));
-    r_ber_f_out = REAL(VECTOR_ELT(out_EcoDCF,52));
-    r_ETini_f_out = REAL(VECTOR_ELT(out_EcoDCF,53));
-    r_ETini_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,54));
+    r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 0));//Rprintf("Eco 20\n");
+    r_GVLcom_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 1));//Rprintf("Eco 20\n");
+    r_GVLst_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 2));//Rprintf("Eco 20\n");
+    r_GVLst_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 3));//Rprintf("Eco 20\n");
+    r_GVL_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 4));//Rprintf("Eco 20\n");
+    r_GVL_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 5));//Rprintf("Eco 20\n");
+    r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 6));//Rprintf("Eco 20\n");
+    r_GVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 7));//Rprintf("Eco 20\n");
+    r_GVLtot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 8));//Rprintf("Eco 20\n");
+    r_GVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF, 9));//Rprintf("Eco 20\n");
+    r_NGVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 10));//Rprintf("Eco 20\n");
+    r_NGVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF, 11));//Rprintf("Eco 20\n");
+    r_ET_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 12));//Rprintf("Eco 20\n");
+    r_cnb_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 13));//Rprintf("Eco 20\n");
+    r_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF, 14));//Rprintf("Eco 20\n");
+    r_rtbs_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 15));
+    r_rtbs_f_out = REAL(VECTOR_ELT(out_EcoDCF, 16));//Rprintf("Eco 20\n");
+    r_rtbsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 17));
+    r_cshrT_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 18));
+    r_cshrT_f_out = REAL(VECTOR_ELT(out_EcoDCF, 19));//Rprintf("Eco 20\n");
+    r_ncshr_f_out = REAL(VECTOR_ELT(out_EcoDCF, 20));//Rprintf("Eco 20\n");
+    r_ocl_f_out = REAL(VECTOR_ELT(out_EcoDCF, 21));//Rprintf("Eco 20\n");
+    r_cs_f_out = REAL(VECTOR_ELT(out_EcoDCF, 22));//Rprintf("Eco 20\n");
+    r_csAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 23));
+    r_csTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 24));
+    r_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 25));//Rprintf("Eco 20\n");
+    r_gvaAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 26));//Rprintf("Eco 20\n");
+    r_gvamargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 27));//Rprintf("Eco 20\n");
+    r_gva_FTE_f_out = REAL(VECTOR_ELT(out_EcoDCF, 28));//Rprintf("Eco 20\n");
+    r_ccw_f_out = REAL(VECTOR_ELT(out_EcoDCF, 29));//Rprintf("Eco 20\n");
+    r_ccwCr_f_out = REAL(VECTOR_ELT(out_EcoDCF, 30));//Rprintf("Eco 20\n");
+    r_wageg_f_out = REAL(VECTOR_ELT(out_EcoDCF, 31));//Rprintf("Eco 20\n");
+    r_wagen_f_out = REAL(VECTOR_ELT(out_EcoDCF, 32));//Rprintf("Eco 20\n");
+    r_wageg_FTE_f_out = REAL(VECTOR_ELT(out_EcoDCF, 33));//Rprintf("Eco 20\n");
+    r_wageg_h_f_out = REAL(VECTOR_ELT(out_EcoDCF, 34));//Rprintf("Eco 20\n");
+    r_gp_f_out = REAL(VECTOR_ELT(out_EcoDCF, 35));//Rprintf("Eco 20\n");
+    r_gpAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 36));//Rprintf("Eco 20\n");
+    r_gpmargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 37));//Rprintf("Eco 20\n");
+    r_ncf_f_out = REAL(VECTOR_ELT(out_EcoDCF, 38));//Rprintf("Eco 20\n");
+    r_np_f_out = REAL(VECTOR_ELT(out_EcoDCF, 39));//Rprintf("Eco 20\n");
+    r_npmargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 40));//Rprintf("Eco 20\n");
+    r_prof_f_out = REAL(VECTOR_ELT(out_EcoDCF, 41));//Rprintf("Eco 20\n");
+    r_npmargin_trend_f_out = REAL(VECTOR_ELT(out_EcoDCF, 42));//Rprintf("Eco 20\n");
+    r_ssTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 43));
+    r_ps_f_out = REAL(VECTOR_ELT(out_EcoDCF, 44));
+    r_psAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 45));
+    r_sts_f_out = REAL(VECTOR_ELT(out_EcoDCF, 46));
+    r_stsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 47));
+    r_BER_f_out = REAL(VECTOR_ELT(out_EcoDCF, 48));
+    r_CR_BER_f_out = REAL(VECTOR_ELT(out_EcoDCF, 49));
+    r_fuelEff_f_out = REAL(VECTOR_ELT(out_EcoDCF, 50));
+    r_ratio_fvol_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 51));
+    r_ratio_gp_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 52));
+    r_ratio_GVL_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 53));
+    r_ratio_gp_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 54));
+    r_RoFTA_f_out = REAL(VECTOR_ELT(out_EcoDCF, 55));
+    r_ROI_f_out = REAL(VECTOR_ELT(out_EcoDCF, 56));
+    r_ratio_np_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 57));
+    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF, 58));
 
 //Rprintf("Eco 22\n");
 
-    //double *r_GVLoths_f_m2 = REAL(VECTOR_ELT(fVar,1));
-    double *r_GVLothsref_f_m2 = REAL(VECTOR_ELT(fVar,2));
-    //double *r_GVLothsue_f_m2 = REAL(VECTOR_ELT(fVar,23));
-    double *r_GVLothsrefue_f_m2 = REAL(VECTOR_ELT(fVar,24));
-    //double *r_GVLothmet_f2 = REAL(VECTOR_ELT(fVar,3));
-    //double *r_GVLothmetue_f2 = REAL(VECTOR_ELT(fVar,25));
-    //double *r_GVLothsue_f2 = REAL(VECTOR_ELT(fVar,26));
-    double *r_fvolue_f2 = REAL(VECTOR_ELT(fVar,17));
     double *r_fvolue_f_m2 = REAL(VECTOR_ELT(fVar,4));
-    double *r_ovcDCFue_f2 = REAL(VECTOR_ELT(fVar,18));
     double *r_ovcDCFue_f_m2 = REAL(VECTOR_ELT(fVar,10));
     double *r_ccwr_f2 = REAL(VECTOR_ELT(fVar,27));
-    //double *r_opersc_f2 = REAL(VECTOR_ELT(fVar,28));
-    double *r_GVLoths_f2 = REAL(VECTOR_ELT(fVar,29));
-    double *r_rtbs_f2 = REAL(VECTOR_ELT(fVar,31));
+    double *r_opersc_f2 = REAL(VECTOR_ELT(fVar,28));
 
+    SEXP countLf;
+    PROTECT(countLf = NEW_NUMERIC(nbF)); // --> 67
+    double *r_countLf = REAL(countLf);
+    for (int INd_f = 0 ; INd_f < nbF ; INd_f++) r_countLf[INd_f] = 0.0; // pour le calcul de 'fuelEff'
 
-   SEXP countGVLf;
-   PROTECT(countGVLf = NEW_NUMERIC(nbF)); // --> 67
-   double *r_countGVLf = REAL(countGVLf);
-
-
+// ---> P = 88 + 1 = 89
 
 
 
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
 double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
-int sorting = INTEGER(getListElement(Flist, "sorting"))[0];
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0; else r_cnb_f_out[ind_f + nbF*ind_t] = rcnb_f[ind_f];
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*0];
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-  if (sorting>0.5 & sorting<=(ind_t+1)) {
-    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-    if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
-    r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-  } else r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rcnb[ind_f + nbF*ind_m];
-}
-}
+double *rnbTrip = REAL(getListElement(Flist, "nbTrip_f_m"));
+double *rtripLgth = REAL(getListElement(Flist, "tripLgth_f_m"));
+double *rnbTrip_f = REAL(getListElement(Flist, "nbTrip_f"));
+double *rtripLgth_f = REAL(getListElement(Flist, "tripLgth_f"));
 
 
 //Rprintf("Eco 23\n");
+
+
+// indicateurs espèces ---------------------------------------------------------
+
    for (int e = 0 ; e < nbE+nbEstat ; e++) {
 
         if (e<nbE) {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
+         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e)))); //espèce dynamique
         } else {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE))));
+         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE)))); //espèce statique
         }
 
         if (e<nbE) nbI = length(getListElement(elmt, "modI"));
@@ -20613,11 +17688,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
 
        if (e<nbE) {
-
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 41, GVLtot_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 1, GVLtot_f_m_e);
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 228, GVLcom_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 8, GVLcom_f_m_e);
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 229, GVLst_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 9, GVLst_f_m_e);
-
 
             r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),41));
             r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),228));
@@ -20660,18 +17730,35 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
   for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-        r_countGVLf[ind_f] = 0.0;
-        if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0;
+        r_cnb_f_out[ind_f + nbF*ind_t] = 0.0;
+
+        if (e<nbE) {
+
+          r_countLf[ind_f] = r_countLf[ind_f] + finite(r_Lbio_f_sum_t_e[ind_f]) + finite(r_LD_f_sum_t_e[ind_f]);
+
+        } else {
+
+          r_countLf[ind_f] = r_countLf[ind_f] + finite(r_Lbio_f_sum_t_e[ind_f]) + finite(r_statLDor_f_sum_t_e[ind_f]) + finite(r_statLDst_f_sum_t_e[ind_f]);
+
+        }
 
         for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
         //-- 1. GVL_f_m_e
 
-              double countCom = 0.0;
+        if (ind_t==0) {
+          r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = REAL(VECTOR_ELT(fVar,33))[ind_f + nbF*ind_m];
+        } else {
+          r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*(ind_t-1)];
+        }
+        r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
+        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
+        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
+        double countCom = 0.0;
 
     if (e<nbE) {
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
              for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
 
@@ -20680,14 +17767,13 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
                 if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
 
-                countCom = countCom +
+               countCom = countCom +
                   r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
-                r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
+               r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
                 r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                 finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
@@ -20695,10 +17781,10 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
              }
 
-                if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
+             if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
                         r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
+             if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
 
                   r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                    r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
@@ -20706,27 +17792,26 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                    r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                    finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
+                  r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
                     r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                     finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-               } else {
+             } else {
 
                   r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
 
-               }
+             }
 
     } else {
 
 
        if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
-        if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]]))
+       if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]]))
                         r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
 
-        if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
+       if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
 
             countCom = r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
@@ -20740,13 +17825,11 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
         if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
 
-
             if (ISNA(r_Pst_e)) r_Pst_e = 0.0;
 
             r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                   r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
             r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
                 r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
@@ -20755,138 +17838,77 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
     }
 
-            if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) & (sorting>0.5 & sorting<=(ind_t+1)))
-            r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] /
+        (r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rnbv[ind_f + nbF*ind_m + nbF*nbMe*ind_t] *
+         rnbTrip[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rtripLgth[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
 
-            r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
-            r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-              r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-              r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+    if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+            r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] +
+             r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rnbv[ind_f + nbF*ind_m + nbF*nbMe*ind_t] *
+             rnbTrip[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rtripLgth[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+    r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
+
+    r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] + r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
 
 
+    //-- 2. GVLtot_f_m
 
-        //-- 2. GVLtot_f_m
+
+    r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
+       finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]);
+
+    double LC = 0.0, LCD = 0.0;
+    if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
+       LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
+    if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
+       LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
+
+    r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
+       finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
+       finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
 
 
-            if (e==0) {
-
-                if (othsFM==1) {
-
-                         r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
-
-                        double LC = 0.0, LCD = 0.0;
-                        if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                        if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                          r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) * (1 - 0.01*LC) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-                } else {
-
-                        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
-
-                        double LC = 0.0, LCD = 0.0;
-                        if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                        if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) *
-                               (1 - 0.01*LC) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-                }
-
-            } else {
-
-                r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-                  finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]);
-
-                double LC = 0.0, LCD = 0.0;
-                if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                      LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                      LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                  r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-
-                  finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                   finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-            }
-
-        }
    }
+  }
 
   if (e<nbE) {
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,0), e, VECTOR_ELT(VECTOR_ELT(eVar, e),41));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,46), e, VECTOR_ELT(VECTOR_ELT(eVar, e),228));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,48), e, VECTOR_ELT(VECTOR_ELT(eVar, e),229));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,4), e, VECTOR_ELT(VECTOR_ELT(eVar, e),41));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,0), e, VECTOR_ELT(VECTOR_ELT(eVar, e),228));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,2), e, VECTOR_ELT(VECTOR_ELT(eVar, e),229));
   } else {
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,45), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,47), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),8));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,49), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),9));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,5), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,1), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),8));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,3), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),9));
   }
+
   UNPROTECT(1);
 
 }
 
-            //-- BIS. cnb_f_m
+// --------------------------------------------------------------------------------------
 
-if (sorting>0.5 & sorting<=(ind_t+1)) {
-    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-        r_cnb_f_out[ind_f + nbF*ind_t] =
-        r_cnb_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*r_ETini_f_out[ind_f + nbF*ind_t]);
 
-    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-      r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-        r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
-
-    }
-}
 
 
     // à ce stade, plus de considération d'espèce pour les indicateurs
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-          double NGVLtot_f = 0.0;
+          double NGVLtot_f = 0.0, RTBStot_f = 0.0;
 
             for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
-            //-- 3. GVLav_f_m
+            //-- 5. GVLav_f_m
 
                 r_GVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
                     r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
 
-             //-- 4. GVLtot_f et NGVLtot_f
+             //-- 6. GVLtot_f & NGVLav_f_m
 
                 if (ind_m==0) {
 
@@ -20915,7 +17937,8 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
                     if (!ISNA(r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
 
                         NGVLtot_f = NGVLtot_f +
-                        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+                         r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
+                         r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
 
                     }
 
@@ -20925,7 +17948,7 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
 
 
 
-            //-- 8bis. rtbs_f_m
+            //-- 11. rtbs_f_m
 
                     r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                         r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
@@ -20934,51 +17957,68 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
                         r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]]) *
                         r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] / pow(1+0.0,ind_t));
 
+                   if (!ISNA(r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
 
+                        RTBStot_f = RTBStot_f +
+                         r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
+                         r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
+
+                    }
+
+                   if (perscCalc<2) {
+
+                    r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+                        0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
+                        r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+
+                   } else {
+
+                    r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = NA_REAL;
+
+                   }
 
             } //on sort de la boucle sur les niveaux métiers
 
 
-            //-- 5. GVLav_f
+            //-- 7. GVLav_f
 
                 r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-            //-- 7. NGVLav_f
+            //-- 8.5. NGVLav_f
 
                 r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     NGVLtot_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
+            //-- 10. cnb_f
 
-            //-- 8. rtbs_f
+                r_cnb_f_out[ind_f + nbF*ind_t] =
+                    r_cnb_f_out[ind_f + nbF*ind_t] / (rnbv_f[ind_f] * rtripLgth_f[ind_f] * rnbTrip_f[ind_f]);
 
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                        ((finite(r_ovcDCFue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) +
-                        finite(r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]]) *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t));
+
+            //-- 12. rtbs_f
+
+                r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                        RTBStot_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
 
                 //version actualisée
-            r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
+            //-- 14. cshrT_f
 
 
-            //-- 9. cshrT_f
-
-
-        if (perscCalc==0) {  //salaires par marin fixes
+        if (perscCalc==0) {  //salaires par marin fixés
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] / r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*ind_t] / r_cnb_f_out[ind_f + nbF*0];
 
         }
 
@@ -20990,7 +18030,7 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
 
         }
 
-        if (perscCalc==2) {  //part équipage constante - ccwr
+        if (perscCalc==2) {  //part équipage constante calculée - ccwr
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_ccwr_f2[ind_f] *
@@ -20999,283 +18039,294 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
         }
 
 
-        if (perscCalc==3) {  //salaires marin supplémentaire fixé
+        if (perscCalc==3) {  //part équipage constante + salaire marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
+                    (r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
                     (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*0]);
 
         }
 
 
-        if (perscCalc==4) {  //salaires marin supplémentaire fixé
+        if (perscCalc==4) {  //part équipage constante calculée salaires marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
+                r_ccwr_f2[ind_f] *
+                    (r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
                     (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*0]);
 
         }
 
 
-            //-- 10. sshr_f
-
-
-                 r_sshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 11. ncshr_f
+             //-- 15. ncshr_f
 
                 r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]] / pow(1+0.0,ind_t) );
+                    r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]];
 
-             //-- 12. oclg_f
-
-                r_oclg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_mwhg_f[ind_f*dim_mwhg_f[0] + 0*dim_mwhg_f[1] + 0*dim_mwhg_f[2] + 0*dim_mwhg_f[3]] *
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                    r_nbh_f[ind_f*dim_nbh_f[0] + 0*dim_nbh_f[1] + 0*dim_nbh_f[2] + ind_t*dim_nbh_f[3]] / pow(1+0.0,ind_t);
-
-
-             //-- 13. ocl_f
+             //-- 16. ocl_f
 
                 r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_mwh_f[ind_f*dim_mwh_f[0] + 0*dim_mwh_f[1] + 0*dim_mwh_f[2] + 0*dim_mwh_f[3]] *
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                    r_nbh_f[ind_f*dim_nbh_f[0] + 0*dim_nbh_f[1] + 0*dim_nbh_f[2] + ind_t*dim_nbh_f[3]] / pow(1+0.0,ind_t);
-
-             //-- 14. csg_f
-
-                r_csg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_oclg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] * rtripLgth_f[ind_f] * rnbTrip_f[ind_f];
 
 
-             //-- 15. cs_f
+             //-- 17. cs_f
 
                 r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
                 //version actualisée
-            r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
+            //-- 18. csTot_f
 
-             //-- 16. gva_f
+                r_csTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
+
+
+             //-- 19. gva_f
 
                 r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] +
-                    r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]]) / pow(1+0.0,ind_t) ;
+                    r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
+                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]]) / pow(1+0.0,ind_t) ;
 
 
-            //version actualisée
-            r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                //version actualisée
+                r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
-            //-- 17. ccw_f
+            //-- 20. gvamargin_f
+
+            r_gvamargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+               r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+
+            //-- 21. gva_FTE_f
+
+            r_gva_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+               r_FTE_f[ind_f*dim_FTE_f[0] + 0*dim_FTE_f[1] + 0*dim_FTE_f[2] + ind_t*dim_FTE_f[3]];
+
+
+            //-- 22. ccw_f
 
             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
+            if ( (perscCalc==0) | (perscCalc==1) | (perscCalc==3) ) {
 
-            //-- 18. ccwCr_f
+            r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_opersc_f2[ind_f];
+            }
+
+
+            //-- 23. ccwCr_f
 
              r_ccwCr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
 
 
-            //-- 19. wageg_f
+            //-- 24. wageg_f
 
              r_wageg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
 
-            //-- 20. wagen_f
+
+            //-- 25. wagen_f
 
              r_wagen_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
+
+            //-- 26. wageg_FTE_f
+
+             r_wageg_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_wageg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_FTE_f[ind_f*dim_FTE_f[0] + 0*dim_FTE_f[1] + 0*dim_FTE_f[2] + ind_t*dim_FTE_f[3]];
 
 
-             //-- 21. gcf_f
+            //-- 27. wageg_h_f
 
-                r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+             r_wageg_h_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_wageg_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / (rtripLgth_f[ind_f] * rnbTrip_f[ind_f]);
 
-
-            //version actualisée
-            r_gcfAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                       r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-
-             //-- 22. ngcf_f
-
-                r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] / pow(1+0.0,ind_t) );
-
-
-             //-- 23. gp_f
+            //-- 28. gp_f
 
                 r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]] / pow(1+0.0,ind_t) );
+                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-             //-- 24. ps_f
+
+              //version actualisée
+                r_gpAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                       r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
+
+
+             //-- 29. gpmargin_f
+
+                r_gpmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+             //-- 30. ncf_f
+
+                r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]];
+
+
+             //-- 31. np_f
+
+                r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]];
+
+             //-- 32. npmargin_f
+
+                r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+
+             //-- 33. prof_f
+
+                r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = -1.0;
+                if (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]>=0) r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
+                if (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]>0.1) r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 1.0;
+
+
+             //-- 34. npmargin_trend_f
+
+                r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = -1.0;
+                if (ind_t>=5) {
+                     double devTrend;
+                     devTrend = r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                                (0.2 * (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-5)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-4)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-3)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-2)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-1)*eF_f[3]]));
+                     if (devTrend>(-0.05)) r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
+                     if (devTrend>0.05) r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 1.0;
+                }
+
+             //-- 35. ssTot_f
+
+                r_ssTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
+
+             //-- 36. ps_f
 
                 r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
+                    rnbv_f[ind_f] * (r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
 
-
-            //version actualisée
-            r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+              //version actualisée
+                r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
-             //-- 25. sts_f
+             //-- 37. sts_f
 
-                r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                     r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
+                r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
 
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
-            //version actualisée
-            r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                  r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
+                        (finite(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) *
+                         r_GVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] * rnbv[ind_f + ind_m*nbF]);
+
+                }
+
+               //version actualisée
+                 r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
 
-             //-- BIS. ber_f
+             //-- 38. ber_f
 
-                r_ber_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    ((r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
+                    (r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
                     r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] +
-                    r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]]) / pow(1+0.0,ind_t)) /
-                    ( r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] -
-                      (r_ovcDCFue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] +
-                        r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]]) *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]) ;
+                    r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]]) /
+                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] ;
+
+             //-- 39. CR_BER_f
+
+                r_CR_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    r_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
 
+             //-- 40. fuelEff_f
+                double numFuelEff = 0.0;
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) numFuelEff = numFuelEff + r_fvolue_f_m2[ind_f + ind_m*nbF] * r_ue_f_m[ind_f+ ind_m*nbF] * r_nbv_f_m[ind_f+ ind_m*nbF];
+                r_fuelEff_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = numFuelEff / r_countLf[ind_f];
 
 
+            //-- 41. ratio_fvol_GVA_f
+                double numFvolGVA = 0.0;
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) numFvolGVA = numFvolGVA + r_fvolue_f_m2[ind_f + ind_m*nbF] * r_ue_f_m[ind_f+ ind_m*nbF];
+                r_ratio_fvol_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = numFvolGVA / r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-             //-- 26. ratio_gva_GVL_f
+            //-- 42. ratio_gp_GVA_f
 
-                r_ratio_gva_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 27. ratio_gcf_GVL_f
-
-                r_ratio_gcf_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 28. ratio_fc_GVL_f
-
-                r_ratio_fc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t)) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 29. ratio_rep_GVL_f
-
-                r_ratio_rep_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 30. ratio_fvol_GVL_f
-
-                r_ratio_fvol_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            //-- 31. ratio_fvol_gva_f
-
-                r_ratio_fvol_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
+                r_ratio_gp_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-            //-- 32. ratio_gcf_gva_f
-
-                r_ratio_gcf_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 33. ratio_K_cnb_f
-
-                r_ratio_K_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]];
-
-            //-- 34. ratio_GVL_K_f
+            //-- 43. ratio_GVL_K_f
 
                 r_ratio_GVL_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
 
-           //-- 35. ratio_gcf_K_f
-
-                r_ratio_gcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-           //-- 36. ratio_ngcf_K_f
-
-                r_ratio_ngcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-          //-- 37. ratio_gp_K_f
+            //-- 44. ratio_gp_K_f
 
                 r_ratio_gp_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
 
-          //-- 38. ratio_GVL_cnb_ue_f
+            //-- 45. RoFTA_f
+
+                r_RoFTA_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
+
+            //-- 46. ROI_f
+                r_ROI_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = NA_REAL;
+                if (finite(r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]])>0) {
+                    r_ROI_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                      (r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]]) /
+                      finite(r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]]);
+                }
+
+            //-- 47. ratio_np_K_f
+
+                r_ratio_np_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]];
+
+
+
+            //-- 48. ratio_GVL_cnb_ue_f
 
                 r_ratio_GVL_cnb_ue_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]);
-
+                    (r_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * r_ue_f[ind_f] );
 
 
         }
 
-if (ind_t==0) UNPROTECT(74);
-UNPROTECT(69);
+if (ind_t==0) UNPROTECT(66);
+UNPROTECT(89);
 
 
 
@@ -21317,7 +18368,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBoot,
             SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
             SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP bootVar = R_NilValue)
+            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, SEXP bootVar = R_NilValue)
 {
 //Rprintf("OO");
     if (INTEGER(Bootstrp)[0]==0) {
@@ -21325,11 +18376,11 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                             RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                             GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
 
         SEXP output, out_names, out_Foth;
-        PROTECT(output = allocVector(VECSXP, 101));
+        PROTECT(output = allocVector(VECSXP, 104));
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
         SET_VECTOR_ELT(output, 2, object->out_Fbar_et);
@@ -21442,21 +18493,25 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 98, object->out_statLD_efm);
         SET_VECTOR_ELT(output, 99, object->out_statLDst_efm);
         SET_VECTOR_ELT(output, 100, object->out_statLDor_efm);
+        SET_VECTOR_ELT(output, 101, object->out_oqD_eft);
+        SET_VECTOR_ELT(output, 102, object->out_oqD_et);
+        SET_VECTOR_ELT(output, 103, object->out_oqDstat);
 
 
 
         //----------------------------------------------------------------------------------------------------------
 
         //on nomme les éléments de output
-        const char *namesOut[101] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
+        const char *namesOut[104] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
                                     "F_S1M1","F_S1M2","F_S1M3","F_S1M4","F_S2M1","F_S2M2","F_S2M3","F_S2M4","F_S3M1","F_S3M2","F_S3M3","F_S3M4","F_S4M1","F_S4M2","F_S4M3","F_S4M4",
                                     "Fr_S1M1","Fr_S1M2","Fr_S1M3","Fr_S1M4","Fr_S2M1","Fr_S2M2","Fr_S2M3","Fr_S2M4","Fr_S3M1","Fr_S3M2","Fr_S3M3","Fr_S3M4","Fr_S4M1","Fr_S4M2","Fr_S4M3","Fr_S4M4",
                                     "Z_S1M1","Z_S1M2","Z_S1M3","Z_S1M4","Z_S2M1","Z_S2M2","Z_S2M3","Z_S2M4","Z_S3M1","Z_S3M2","Z_S3M3","Z_S3M4","Z_S4M1","Z_S4M2","Z_S4M3","Z_S4M4",
                                     "N_S1M1","N_S1M2","N_S1M3","N_S1M4","N_S2M1","N_S2M2","N_S2M3","N_S2M4","N_S3M1","N_S3M2","N_S3M3","N_S3M4","N_S4M1","N_S4M2","N_S4M3","N_S4M4",
-                                    "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm"};
-        PROTECT(out_names = allocVector(STRSXP, 101));
+                                    "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm",
+                                    "oqD_ef","oqD_e","oqDstat_ef"};
+        PROTECT(out_names = allocVector(STRSXP, 104));
 
-        for(int ct = 0; ct < 101; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 104; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 
@@ -21486,14 +18541,14 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
 
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
             //objet vide pour garder la structuration malgré la non-sélection de la variable en question
             PROTECT(emptyObj = allocVector(VECSXP, object->nbE));
