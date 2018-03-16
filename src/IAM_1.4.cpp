@@ -49,9 +49,16 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
         out_L_efmit,//débarquements en poids aux âges(t)
         out_L_efmct,//débarquements en poids par catégories(t)
         out_L_eit,//débarquements en poids par catégories(t) pour le codage métier eco
+
+        out_oqD_eft,//rejets over-quotas par flottille (espèces dynamiques)
+        out_oqD_et,//rejets over-quotas total (espèces dynamiques)
+
         out_Ystat,  //captures totales en poids (t) pour les espèces statiques
         out_Lstat,  //débarquements totaux en poids (t) pour les espèces statiques
         out_Dstat,  //rejets totaux en poids (t) pour les espèces statiques
+
+        out_oqDstat, //rejets over-quotas par flottille espèces statiques
+
         out_P_t,    //prix moyen (en euros) (niveau métier éco si dispo)
         out_Pstat,    //prix moyen (en euros) (niveau métier éco si dispo) pour les espèces statiques
         out_CA_eft, //chiffre d'affaires par espèce dynamique (en euros)
@@ -92,13 +99,13 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
 SEXP    FList, sppList, sppListStat, fleetList, metierList, metierListEco, namDC, t_init, times, Q,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables intermédiaires par espèces
-        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat;
+        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f;
 
 
 int     nbT, nbF, nbM, nbMe, nbE, nbEstat, //dimensions
         curQ, spQ, scen, //application du scénario??
         bhv_active /*application du module report d'effort*/, type, boot, nbBoot, ecodcf, typeGest, //special request ICES 2013 : pistage des règles de scénario intégré dans la variable out_typeGest
-        var, trgt, delay, upd, gestInd, gestyp, //Module de gestion
+        var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
         IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'espèces et de flottilles considérés*/, corVarTACnby_CPP, Blim_trigger, maxIter, t_stop,
         *SRInd, *EcoIndCopy, *Qvec, *recType1, *recType2, *recType3; //indicateur conditionnant l'utilisation d'un recrutement aléatoire défini par la méthode implémentée RecAlea
 
@@ -121,7 +128,7 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                 SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-                SEXP tacCTRL, SEXP stochPrice, SEXP updateE);
+                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD);
 
 	//destructeur
     ~BioEcoPar();
@@ -244,10 +251,11 @@ BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                      SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                      SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE)
+                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
 {
 
 PROTECT(listSpec);
+PROTECT(parOQD); //+1
 effortIni = REAL(getListElement(getListElement(listInput, "Fleet"), "nbds_f"));
 effort1Ini = REAL(getListElement(getListElement(listInput, "Fleet"), "effort1_f"));
 PROTECT_INDEX ipx_list;
@@ -268,6 +276,11 @@ PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
 PROTECT_WITH_INDEX(FList = getListElement(list, "Fleet"),&ipx_FList);
 PROTECT_WITH_INDEX(FList_copy = getListElement(list_copy, "Fleet"),&ipx_FList_copy);
 
+
+PROTECT(listQR = getListElement(parOQD, "listQR")); //+1
+PROTECT(listQR_f = getListElement(parOQD, "listQR_f")); //+1
+activeQR = INTEGER(getListElement(parOQD, "activeQR"))[0];
+
 PROTECT(sppList = getListElement(listSpec, "Species"));
 PROTECT(sppListStat = getListElement(listSpec, "StaticSpp"));
 PROTECT(fleetList = getListElement(listSpec, "Fleet"));
@@ -284,6 +297,8 @@ Zoptim = effortIni;
 FOTHoptim = effortIni;
 Zoptim_use = false;
 FOTHoptim_use = false;
+
+
 
 //Rprintf("step0\n");
 
@@ -424,6 +439,10 @@ PROTECT(out_D_efmit = allocVector(VECSXP, nbE));
 PROTECT(out_L_efmit = allocVector(VECSXP, nbE));
 PROTECT(out_L_efmct = allocVector(VECSXP, nbE));
 PROTECT(out_L_eit = allocVector(VECSXP, nbE)); //43
+
+PROTECT(out_oqDstat = allocVector(VECSXP, nbEstat));
+PROTECT(out_oqD_eft = allocVector(VECSXP, nbE));
+PROTECT(out_oqD_et = allocVector(VECSXP, nbE));
 
 PROTECT(intermBIOMspict = allocVector(VECSXP, nbE)); //+1 ajout pour insérer les 16 valeurs de biomasses intermédiaires de chacune des espèces SPiCT lors de l'évaluation des Bt+1 et des captures
 
@@ -1736,7 +1755,7 @@ if (eTemp<nbE) {
 }
 free_vector(Etemp,1,nbF);
 //Rprintf("K2\n");
-UNPROTECT(123+nbE+nbE+32+11+1);
+UNPROTECT(123+nbE+nbE+32+11+1+3+3); //+6 ajoutés après intégration de 'parOQD'
 if (nbEstat>0) UNPROTECT(nbEstat);
 }
 
@@ -8168,22 +8187,25 @@ if (cUpdate) {
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
             intAge, v_F_efmit, v_N_eit, v_Z_eit, v_wL_ei, v_wD_ei, v_d_efmit, v_doth_eit, dimCst2, Dim2,
             cFACT1, cFACT2, cFACT3, cFACT4, cFACT5, cFACT6, cFACT7,
-            dimYtot, dimCstYtot, dimNamYtot;
+            dimYtot, dimCstYtot, dimNamYtot,
+            dimCstOQ_ft, dimCstOQ_t, dimnames_oqD_eft, dimnames_oqD_et;
 
     SEXP ans_C_efmit=R_NilValue, ans_Y_efmit=R_NilValue, ans_D_efmit=R_NilValue, ans_L_efmit=R_NilValue,
          dimnames=R_NilValue, rnames_Esp=R_NilValue, ans_C_eit=R_NilValue, ans_Y_eit=R_NilValue, ans_L_eit=R_NilValue, dimnames2=R_NilValue,
          ans_Ystat=R_NilValue, ans_Lstat=R_NilValue, ans_Dstat=R_NilValue, dimnames_eStat=R_NilValue, rnames_eStat=R_NilValue,
          ans_DD_efmit=R_NilValue, ans_LD_efmit=R_NilValue,
-         ans_statDD=R_NilValue, ans_statLD=R_NilValue, ans_statLDst=R_NilValue, ans_statLDor=R_NilValue;
+         ans_statDD=R_NilValue, ans_statLD=R_NilValue, ans_statLDst=R_NilValue, ans_statLDor=R_NilValue,
+         ans_oqD_eft=R_NilValue, ans_oqD_et=R_NilValue, ans_oqDstat=R_NilValue;
 
     int *dim_F_efmit, *dim_N_eit, *dim_Z_eit, *dim_wL_ei, *dim_wD_ei, *dim_d_efmit, *dimC, *dim, *dim2, *dimcst2,
-            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot;
+            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot, *dimOQ_ft, *dimOQ_t;
     int nbI;
 
     double *rans_C_efmit, *rans_Y_efmit, *rans_D_efmit, *rans_L_efmit, *r_F_efmit, *r_N_eit, *r_Z_eit, *r_wL_ei, *r_wD_ei, *r_d_efmit, *r_B_et,
             *rans_C_eit, *rans_Y_eit, *rans_L_eit, *rans_Ystat, *rans_Lstat, *rans_Dstat,
             *rans_Ytot_fm, *rans_tripLgthIniMax_fm, *rans_DD_efmit,
-            *rans_LD_efmit, *rans_statDD, *rans_statLD, *rans_statLDst, *rans_statLDor, *doth_eit;
+            *rans_LD_efmit, *rans_statDD, *rans_statLD, *rans_statLDst, *rans_statLDor, *doth_eit,
+            *rans_oqD_eft, *rans_oqD_et, *rans_oqDstat;
 
 if (ind_t==0) {
 
@@ -8197,6 +8219,8 @@ if (ind_t==0) {
     setAttrib(out_L_efmit, R_NamesSymbol, rnames_Esp);
     setAttrib(out_DD_efmi, R_NamesSymbol, rnames_Esp);
     setAttrib(out_LD_efmi, R_NamesSymbol, rnames_Esp);
+    setAttrib(out_oqD_eft, R_NamesSymbol, rnames_Esp);
+    setAttrib(out_oqD_et, R_NamesSymbol, rnames_Esp);
 
     PROTECT(rnames_eStat = allocVector(STRSXP, nbEstat)); //+1 t0
     setAttrib(out_Ystat, R_NamesSymbol, rnames_eStat);
@@ -8206,6 +8230,7 @@ if (ind_t==0) {
     setAttrib(out_statLD_efm, R_NamesSymbol, rnames_eStat);
     setAttrib(out_statLDst_efm, R_NamesSymbol, rnames_eStat);
     setAttrib(out_statLDor_efm, R_NamesSymbol, rnames_eStat);
+    setAttrib(out_oqDstat, R_NamesSymbol, rnames_eStat);
 
 }
 
@@ -8765,6 +8790,8 @@ double *r_dd1_efm = REAL(getListElement(elmt, "dd1_f_m_e"));
 double *r_dd2_efm = REAL(getListElement(elmt, "dd2_f_m_e"));
 double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
+
+
                     if (ind_t==0) {
 
                             PROTECT(ans_D_efmit = NEW_NUMERIC(prod));
@@ -8782,11 +8809,52 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
                             rans_DD_efmit = REAL(ans_DD_efmit);  //19/03/15 +2
 
+                       //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) { //over quota discards sera implémenté
+
+                            PROTECT(ans_oqD_eft = NEW_NUMERIC(nbF*nbT));//Rprintf("AA1");
+                            PROTECT(ans_oqD_et = NEW_NUMERIC(nbT));
+
+                            PROTECT(dimCstOQ_ft = allocVector(INTSXP, 2));//Rprintf("AA2");
+                            dimOQ_ft = INTEGER(dimCstOQ_ft);
+                            dimOQ_ft[0] = nbF; dimOQ_ft[1] = nbT;
+
+                            PROTECT(dimCstOQ_t = allocVector(INTSXP, 1));//Rprintf("AA3");
+                            dimOQ_t = INTEGER(dimCstOQ_t);
+                            dimOQ_t[0] = nbT;
+
+                            setAttrib(ans_oqD_eft, R_DimSymbol, dimCstOQ_ft);//Rprintf("AA31");
+                            setAttrib(ans_oqD_et, R_DimSymbol, dimCstOQ_t);//Rprintf("AA32");
+
+                            PROTECT(dimnames_oqD_eft = allocVector(VECSXP,2));//Rprintf("AA4");
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 0, fleetList);
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 1, times);
+
+                            PROTECT(dimnames_oqD_et = allocVector(VECSXP,1));
+                            SET_VECTOR_ELT(dimnames_oqD_et, 0, times);
+
+                            setAttrib(ans_oqD_eft, R_DimNamesSymbol, dimnames_oqD_eft);
+                            setAttrib(ans_oqD_et, R_DimNamesSymbol, dimnames_oqD_et); //Rprintf("AA5");
+
+                            rans_oqD_eft = REAL(ans_oqD_eft);
+                            for (int tt = 0; tt<nbF*nbT; tt++) rans_oqD_eft[tt] = 0.0;
+                            rans_oqD_et = REAL(ans_oqD_et); //Rprintf("BB");
+                            for (int tt = 0; tt<nbT; tt++) rans_oqD_et[tt] = 0.0;
+
+                        //}
+
                     } else {
 
                             rans_D_efmit = REAL(VECTOR_ELT(out_D_efmit,e));
                             rans_DD_efmit = REAL(VECTOR_ELT(out_DD_efmi,e));
                             rans_LD_efmit = REAL(VECTOR_ELT(out_LD_efmi,e));
+
+                        //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) {Rprintf("CC");
+
+                            rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));
+                            rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("DD");
+
+
+                        //}
 
                     }
 
@@ -8803,6 +8871,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
 
                 if (Qvec[e]==0) {
                             //équation : 2 manières de calculer selon la disponibilité de wD_i
+
 
                     if (all_is_na(v_wD_ei)) { //1ère méthode
 
@@ -8844,13 +8913,13 @@ if (nbI>1) {
                             if (r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
 
                                 rans_L_eit[0 + ind_t*1] =
-                                        r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]];
+                                        r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]];
 
 
                             } else { //pas d'OD
 
                                 rans_L_eit[0 + ind_t*1] =
-                                        r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]] * (1-doth_eit[0]);
+                                        r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]] * (1-doth_eit[0]);
 
                             }
 
@@ -8986,6 +9055,9 @@ if (nbI>1) {
 
                             SET_VECTOR_ELT(out_DD_efmi, e, ans_DD_efmit);
 
+                            SET_VECTOR_ELT(out_oqD_eft, e, ans_oqD_eft);
+                            SET_VECTOR_ELT(out_oqD_et, e, ans_oqD_et);
+
                     }
 
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 32, v_wD_ei);
@@ -9043,6 +9115,9 @@ if (nbI>1) {
                             SET_STRING_ELT(rnames_Esp, e, STRING_ELT(sppList,e));
 //Rprintf("K12\n");
                             UNPROTECT(11);
+
+                            /*if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) */UNPROTECT(6); //over quota discards
+
                     }
 
 
@@ -9598,7 +9673,145 @@ if (nbI>1) {
                             }
 
 //Rprintf("K13\n");
-                        UNPROTECT(26+1);
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces dynamiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+
+ // on s'occupe d'abord de la partie "autres"
+
+    if (!isNull(getListElement(listQR, CHAR(STRING_ELT(sppList,e)))) & !isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))))) { //TACs renseignés aux 2 niveaux
+
+        double *QR = REAL(getListElement(listQR, CHAR(STRING_ELT(sppList,e))));
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))));
+
+        double QRoth = QR[ind_t];
+        bool recal = false;
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) QRoth = QRoth - QR_f[ind_f + nbF*ind_t];
+
+            double Ltot_oth = 0.0, Ytot_oth = 0.0; //, Ytot_othini = 0.0;
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                //double Yothini = rans_Y_eit[ind_i + 0*nbI];
+                double Loth = rans_L_eit[ind_i + ind_t*nbI], Yoth = rans_Y_eit[ind_i + ind_t*nbI];
+                for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  Yothini = Yothini - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                if (!ISNA(rans_L_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Loth = Loth - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Yoth = Yoth - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                }
+                Ltot_oth = Ltot_oth + Loth; Ytot_oth = Ytot_oth + Yoth; //Ytot_othini = Ytot_othini + Yothini;
+            }
+
+            rans_oqD_et[ind_t] = 0.0;
+
+            if (Ltot_oth>QRoth) { //on procède à la correction "autres"
+
+                recal = true;
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    double Doth_i_t = rans_Y_eit[ind_i + ind_t*nbI] - rans_L_eit[ind_i + ind_t*nbI],// Yoth_i_0 = rans_Y_eit[ind_i + 0*nbI],
+                           Yoth_i_t = rans_Y_eit[ind_i + ind_t*nbI], Loth_i_t = rans_L_eit[ind_i + ind_t*nbI];
+                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                    if (!ISNA(rans_D_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Doth_i_t = Doth_i_t - rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                    //    Yoth_i_0 = Yoth_i_0 - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                    if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Yoth_i_t = Yoth_i_t - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+                    rans_oqD_et[ind_t] = fmin2((Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t - Doth_i_t); //fmin2((Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t - Doth_i_t);
+                    Doth_i_t = fmin2( Doth_i_t + (Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t ); //fmin2( Doth_i_t + (Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t );
+
+                    if (ISNAN(Doth_i_t)) Doth_i_t = 0.0;
+                    if (ISNAN(rans_oqD_et[ind_t])) rans_oqD_et[ind_t] = 0.0;
+                    rans_L_eit[ind_i + ind_t*nbI] = Yoth_i_t - Doth_i_t; //on incrémentera par la suite avec les L recalculés
+
+                }
+            }
+
+
+
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+
+            double sumL = 0.0; //, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  sumL = sumL + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                //if (!ISNA(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  sumYini = sumYini + rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]];
+            }
+
+            rans_oqD_eft[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    //if (!ISNA(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                    //        rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                    //        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])))
+                    rans_oqD_eft[ind_f + nbF*ind_t] = rans_oqD_eft[ind_f + nbF*ind_t] +
+                      fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                            finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) -
+                            finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       fmin2(
+                        finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) +
+                        (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //(sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                        finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    if (ISNAN(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
+
+
+                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                                rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+
+                    rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                       rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+
+
+                }
+            }
+
+            if (recal) {
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
+                      if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                      rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                      }
+            }
+
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
+
+  UNPROTECT(26+1);
 
          }
 
@@ -9613,7 +9826,7 @@ if (nbEstat>0) {
                             PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 
                             PROTECT(v_LPUE_eStat = getListElement(elmt, "LPUE_f_m_e"));
-                            PROTECT(v_d_eStat = getListElement(elmt, "d_f_m_e"));
+                            PROTECT(v_d_eStat = getListElement(elmt, "d_f_m_e")); //if (e==2) PrintValue(getListElement(elmt, "d_f_m_e"));
 
                             PROTECT(dimCst_LPUE_eStat = getAttrib(v_LPUE_eStat, install("DimCst")));
                             PROTECT(dimCst_d_eStat = getAttrib(v_d_eStat, install("DimCst")));
@@ -9706,6 +9919,30 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                             rans_statLDst = REAL(ans_statLDst);
                             rans_statLDor = REAL(ans_statLDor);
 
+
+                         //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) { //over quota discards sera implémenté
+
+
+                            PROTECT(ans_oqDstat = NEW_NUMERIC(nbF*nbT));
+
+                            PROTECT(dimCstOQ_ft = allocVector(INTSXP, 2));
+                            dimOQ_ft = INTEGER(dimCstOQ_ft);
+                            dimOQ_ft[0] = nbF; dimOQ_ft[1] = nbT;
+
+                            setAttrib(ans_oqDstat, R_DimSymbol, dimCstOQ_ft);
+
+                            PROTECT(dimnames_oqD_eft = allocVector(VECSXP,2));
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 0, fleetList);
+                            SET_VECTOR_ELT(dimnames_oqD_eft, 1, times);
+
+                            setAttrib(ans_oqDstat, R_DimNamesSymbol, dimnames_oqD_eft);//Rprintf("EE");
+
+                            rans_oqDstat = REAL(ans_oqDstat);// Rprintf("FF");
+                            for (int tt=0; tt<(nbF*nbT); tt++) rans_oqDstat[tt] = 0.0;
+
+                        //}
+
+
                     } else {
 //Rprintf("H12\n");
                             rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
@@ -9714,13 +9951,15 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                             rans_statDD = REAL(VECTOR_ELT(out_statDD_efm, e));
                             rans_statLD = REAL(VECTOR_ELT(out_statLD_efm, e));
                             rans_statLDst = REAL(VECTOR_ELT(out_statLDst_efm, e));
-                            rans_statLDor = REAL(VECTOR_ELT(out_statLDor_efm, e));
+                            rans_statLDor = REAL(VECTOR_ELT(out_statLDor_efm, e));//Rprintf("GG");
+
+                            rans_oqDstat = REAL(VECTOR_ELT(out_oqDstat, e));//Rprintf("HH");
 
                     }
 
 
                    double *r_LPUE_eStat = REAL(v_LPUE_eStat);
-                   double *r_d_eStat = REAL(v_d_eStat);
+                   double *r_d_eStat = REAL(v_d_eStat); //if (e==2) PrintValue(v_d_eStat);
 //Rprintf("H13\n");
                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
@@ -9805,7 +10044,55 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                                 rans_statLD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_statLDst[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
 
 
+/* insertion over quota management discards pour corriger D et L -> espèces statiques */
 
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+    if (!isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))))) { //TACs renseignés au niveau flottille
+
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))));
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+                if (!ISNA(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                  sumL = sumL + rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                //if (!ISNA(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0]))
+                //  sumYini = sumYini + rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0];
+            }
+
+            rans_oqDstat[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+
+                    if (!ISNAN(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))))
+                    rans_oqDstat[ind_f + nbF*ind_t] = rans_oqDstat[ind_f + nbF*ind_t] +
+                                fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
+                       fmin2(finite(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) + (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])/sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                             finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    if (ISNAN(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                        rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
+
+                    rans_statDD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                    rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                }
+            }
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
 
 
 
@@ -9849,11 +10136,16 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
 
                             SET_VECTOR_ELT(out_statLDor_efm, e, ans_statLDor);
 
-
+                            SET_VECTOR_ELT(out_oqDstat, e, ans_oqDstat);
 
                     }
 //Rprintf("H14.1\n");
-                    if (ind_t==0) UNPROTECT(9);
+                    if (ind_t==0) {
+
+                      UNPROTECT(9);
+                      /*if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) */UNPROTECT(3);
+
+                    }
 
                     UNPROTECT(6);
 
@@ -9910,7 +10202,9 @@ double Btemp;
                                         *r_wL_ei = REAL(getListElement(elmt, "wL_i")),
                                         *r_wD_ei = REAL(getListElement(elmt, "wD_i")),
                                         *r_d_efmit = REAL(getListElement(elmt, "d_i")),
-                                        *doth_eit = REAL(getListElement(elmt, "doth_i"));
+                                        *doth_eit = REAL(getListElement(elmt, "doth_i")); //Rprintf("II");PrintValue(out_oqD_eft);
+                                       double *rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));//Rprintf("JJ");
+                                       double *rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("KK");
 //Rprintf("H15.1\n");
                                 double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                 double *r_B_et = REAL(VECTOR_ELT(out_B_et,e));
@@ -10201,12 +10495,12 @@ if (nbI>1) {
 
                                 }
 
-                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];
+                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];//if (nbI==1) {Rprintf("Yi");PrintValue(out_Y_eit);}
 
 }
                                //équation n°3
 
-                            if (all_is_na(v_wD_ei)) {
+                            if (all_is_na(v_wD_ei)) { // on peut aussi laisser le test SPiCT à l'intérieur car les deux conditions sont équivalentes
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10244,17 +10538,18 @@ if (nbI>1) {
                                         r_wL_ei[0*fact5_C[0]  + 0*fact5_C[1] + ind_i*fact5_C[2] + ind_t*fact5_C[3]] / 1000;
                             }
 } else {
-
+//Rprintf("LtotAvant4");PrintValue(out_L_eit);
                             if (r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
 
                                 rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]];
 
 
                             } else { //pas d'OD
-
-                                rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]] * (1-doth_eit[0]);
-
+//Rprintf("LtotAvant31");PrintValue(out_L_eit);Rprintf("Foth %f B %f doth %f 1-doth %f",r_Fot_i[0 + ind_t*1],r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]],doth_eit[0],1-doth_eit[0]);
+                                rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]] * (1-doth_eit[0]);
+//Rprintf("LtotAvant32");PrintValue(out_L_eit);
                             }
+                            //Rprintf("LtotAvant3");PrintValue(out_L_eit);
 
 }
 
@@ -10358,6 +10653,7 @@ if (nbI>1) {
                     }
                  }
 
+//if (nbI==1) {Rprintf("LtotAvant2");PrintValue(out_L_eit);}
 
                     for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10374,7 +10670,7 @@ if (nbI>1) {
                     }
 
 
-
+//if (nbI==1) {Rprintf("LtotAvant");PrintValue(out_L_eit);}
                                //équation n°4
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
@@ -10391,6 +10687,7 @@ if (nbI>1) {
                                         rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]; //Ltot constitué
 
                                 }
+//if (nbI==1) {Rprintf("LtotApres");PrintValue(out_L_eit);}
 
                             } else {
 //Rprintf("H4.6\n");
@@ -10949,6 +11246,151 @@ if (nbI>1) {
 
                             }
 
+
+
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces dynamiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+
+ // on s'occupe d'abord de la partie "autres"
+
+    if (!isNull(getListElement(listQR, CHAR(STRING_ELT(sppList,e)))) & !isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))))) { //TACs renseignés aux 2 niveaux
+
+        double *QR = REAL(getListElement(listQR, CHAR(STRING_ELT(sppList,e))));
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppList,e))));
+
+        double QRoth = QR[ind_t];
+        bool recal = false;
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) QRoth = QRoth - QR_f[ind_f + nbF*ind_t];
+
+            double Ltot_oth = 0.0, Ytot_oth = 0.0; //, Ytot_othini = 0.0;
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                //double Yothini = rans_Y_eit[ind_i + 0*nbI];
+                double Loth = rans_L_eit[ind_i + ind_t*nbI], Yoth = rans_Y_eit[ind_i + ind_t*nbI];
+                for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  Yothini = Yothini - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                if (!ISNA(rans_L_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Loth = Loth - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  Yoth = Yoth - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                }
+                Ltot_oth = Ltot_oth + Loth; Ytot_oth = Ytot_oth + Yoth; //Ytot_othini = Ytot_othini + Yothini;
+            }
+            //if (e==1 & ind_t==13) Rprintf("ind_t %i QRoth %f Ltot_oth %f Ytot_oth %f Ytot_othini %f \n",ind_t,QRoth,Ltot_oth,Ytot_oth,Ytot_othini);
+
+            rans_oqD_et[ind_t] = 0.0;
+
+            if (Ltot_oth>QRoth) { //on procède à la correction "autres"
+
+                recal = true;
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    double Doth_i_t = rans_Y_eit[ind_i + ind_t*nbI] - rans_L_eit[ind_i + ind_t*nbI],// Yoth_i_0 = rans_Y_eit[ind_i + 0*nbI],
+                           Yoth_i_t = rans_Y_eit[ind_i + ind_t*nbI], Loth_i_t = rans_L_eit[ind_i + ind_t*nbI];
+                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++){
+                    if (!ISNA(rans_D_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Doth_i_t = Doth_i_t - rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    //if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                    //    Yoth_i_0 = Yoth_i_0 - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + 0*fact1_C[3]];
+                    if (!ISNA(rans_Y_efmit [ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        Yoth_i_t = Yoth_i_t - rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+                    rans_oqD_et[ind_t] = fmin2((Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t - Doth_i_t); //fmin2((Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t - Doth_i_t);
+                    Doth_i_t = fmin2( Doth_i_t + (Ltot_oth-QRoth) * (Yoth_i_t - Doth_i_t) / Ltot_oth, Yoth_i_t ); //fmin2( Doth_i_t + (Ltot_oth-QRoth) * Yoth_i_0 / Ytot_othini, Yoth_i_t );
+
+                    if (ISNAN(Doth_i_t)) Doth_i_t = 0.0;
+                    if (ISNAN(rans_oqD_et[ind_t])) rans_oqD_et[ind_t] = 0.0;
+                    rans_L_eit[ind_i + ind_t*nbI] = Yoth_i_t - Doth_i_t; //on incrémentera par la suite avec les L recalculés
+
+                //if (e==1 & ind_t==13) Rprintf("Yoth_i_t %f Doth_i_t %f rans_L_eit[ind_i + ind_t*nbI] %f \n",Yoth_i_t,Doth_i_t,rans_L_eit[ind_i + ind_t*nbI]);
+                }
+            }
+
+
+
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+            for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+                if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                  sumL = sumL + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                //if (!ISNA(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]]))
+                //  sumYini = sumYini + rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]];
+            }
+
+            rans_oqD_eft[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
+
+                    //if (!ISNA(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                    //        rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                    //        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])))
+                    rans_oqD_eft[ind_f + nbF*ind_t] = rans_oqD_eft[ind_f + nbF*ind_t] +
+                      fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                            finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) -
+                            finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       fmin2(
+                        finite(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) +
+                        (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]) / sumL, //(sumL-QR_f[ind_f + nbF*ind_t]) * rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + 0*fact1_C[3]] / sumYini,
+                        finite(rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]));
+
+                    if (ISNAN(rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
+                        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
+
+                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                                rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+//if (e==1 & ind_t==13) Rprintf("1 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+//if (e==1 & ind_t==13) Rprintf("2 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+                    rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                       rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
+                       rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+//if (e==1 & ind_t==13) Rprintf("3 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+                    if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                        rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+//if (e==1 & ind_t==13) Rprintf("4 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+
+
+                }
+            }
+
+            if (recal) {
+                    //if (e==1 & ind_t==13) Rprintf("recal\n");
+
+                    for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
+                    for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
+                    if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
+                      rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    }
+            }
+
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
                             UNPROTECT(2);
 //Rprintf("H20\n");
     }
@@ -10986,7 +11428,10 @@ if (nbEstat>0) {
 
                     double *rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
                     double *rans_Lstat = REAL(VECTOR_ELT(out_Lstat, e));
-                    double *rans_Dstat = REAL(VECTOR_ELT(out_Dstat, e));
+                    double *rans_Dstat = REAL(VECTOR_ELT(out_Dstat, e));//Rprintf("LL");
+
+                    double *rans_oqDstat = REAL(VECTOR_ELT(out_oqDstat, e));//Rprintf("MM");
+
                     double *rans_statDD = REAL(VECTOR_ELT(out_statDD_efm, e));
                     double *rans_statLD = REAL(VECTOR_ELT(out_statLD_efm, e));
                     double *rans_statLDst = REAL(VECTOR_ELT(out_statLDst_efm, e));
@@ -11074,6 +11519,60 @@ if (nbEstat>0) {
 
                              rans_statLDor[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
                                 rans_statLD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_statLDst[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+
+
+/* insertion over quota management discards pour corriger D et L -> espèces statiques */
+
+if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) { //pas d'OD appliqué, et activation du module demandée
+
+    if (!isNull(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))))) { //TACs renseignés au niveau flottille
+
+        double *QR_f = REAL(getListElement(listQR_f, CHAR(STRING_ELT(sppListStat,e))));
+
+            for (int ind_f = 0 ; ind_f < nbF ; ind_f++)  { //on procède à la correction "flottilles"
+
+            double sumL = 0.0, sumYini = 0.0;
+
+            for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+                if (!ISNA(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                  sumL = sumL + rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                //if (!ISNA(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0]))
+                //  sumYini = sumYini + rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0];
+            }
+
+            rans_oqDstat[ind_f + nbF*ind_t] = 0.0;
+
+            if (sumL>QR_f[ind_f + nbF*ind_t]) { //on procède à la correction sur la flottille detectée
+
+                for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
+
+                    if (!ISNAN(fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))))
+                    rans_oqDstat[ind_f + nbF*ind_t] = rans_oqDstat[ind_f + nbF*ind_t] +
+                                fmin2((sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) / sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                                       finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]-rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
+                       fmin2(finite(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) + (sumL-QR_f[ind_f + nbF*ind_t]) * finite(rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])/sumL, //rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*0] / sumYini,
+                             finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]));
+
+                    if (ISNAN(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
+                        rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
+
+                    rans_statDD[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                    rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] - rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+
+                }
+            }
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+
 
 
                    UNPROTECT(1);
@@ -16935,6 +17434,8 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
     for (int IT = 0 ; IT < ITtot ; IT++){
 
+       Rprintf("iter %i time %i \n",IT,ind_t);
+
        if (goon) {
 
         if ((spp<nbE) & (Qvec[spp]==1)) ZoptSS3 = true;
@@ -16992,7 +17493,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
         int *nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
 
         if (spp<nbE) {
-
+Rprintf("aa");
             double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM)); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
             double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM)); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
             double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimF));
@@ -17008,7 +17509,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
              double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDim));
              double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDim));
 
-
+Rprintf("bb");
 
             for (int ind_f = 0 ; ind_f <= nbFt ; ind_f++){
 
@@ -17086,7 +17587,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
         PROTECT(listTemp = duplicate(list));
         PROTECT(eVarCopy = duplicate(eVar));
-
+Rprintf("cc");
         double *g_effort1FM = REAL(getListElement(getListElement(listTemp, "Fleet"), "effort1_f_m"));
         double *g_effort1FM_copy = REAL(duplicate(getListElement(getListElement(listTemp, "Fleet"), "effort1_f_m")));
         double *g_effort1F = REAL(getListElement(getListElement(listTemp, "Fleet"), "effort1_f"));
@@ -17097,7 +17598,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
         double *g_nbvF = REAL(getListElement(getListElement(listTemp, "Fleet"), "nbv_f"));
         double *g_tripLgthFM = REAL(getListElement(getListElement(listTemp, "Fleet"), "tripLgth_f_m"));
         double *g_tripLgthF = REAL(getListElement(getListElement(listTemp, "Fleet"), "tripLgth_f"));
-
+Rprintf("dd");
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
             if (var==1) {  //effort en nb de marées
@@ -17327,7 +17828,7 @@ int BioEcoPar::GestionF2(int spp, int ind_t)
 
             for (int i = 0 ; i < NBI ; i++) {
 
-                //Rprintf("Z %f Ztmp %f diff ZZ%f\n", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T], Ztemp[i+1], REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
+                Rprintf("Z %f Ztmp %f lambda %f diffZmax %f diff ZZ %f\n", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T], Ztemp[i+1], lambda, diffZmax, REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
                 if (fabs(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
                 Ztemp[i+1] = Ztemp[i+1] + lambda*(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
 
@@ -21317,7 +21818,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBoot,
             SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
             SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
-            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP bootVar = R_NilValue)
+            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, SEXP bootVar = R_NilValue)
 {
 //Rprintf("OO");
     if (INTEGER(Bootstrp)[0]==0) {
@@ -21325,11 +21826,11 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                             RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                             GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                            EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
 
         SEXP output, out_names, out_Foth;
-        PROTECT(output = allocVector(VECSXP, 101));
+        PROTECT(output = allocVector(VECSXP, 104));
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
         SET_VECTOR_ELT(output, 2, object->out_Fbar_et);
@@ -21442,21 +21943,25 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 98, object->out_statLD_efm);
         SET_VECTOR_ELT(output, 99, object->out_statLDst_efm);
         SET_VECTOR_ELT(output, 100, object->out_statLDor_efm);
+        SET_VECTOR_ELT(output, 101, object->out_oqD_eft);
+        SET_VECTOR_ELT(output, 102, object->out_oqD_et);
+        SET_VECTOR_ELT(output, 103, object->out_oqDstat);
 
 
 
         //----------------------------------------------------------------------------------------------------------
 
         //on nomme les éléments de output
-        const char *namesOut[101] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
+        const char *namesOut[104] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
                                     "F_S1M1","F_S1M2","F_S1M3","F_S1M4","F_S2M1","F_S2M2","F_S2M3","F_S2M4","F_S3M1","F_S3M2","F_S3M3","F_S3M4","F_S4M1","F_S4M2","F_S4M3","F_S4M4",
                                     "Fr_S1M1","Fr_S1M2","Fr_S1M3","Fr_S1M4","Fr_S2M1","Fr_S2M2","Fr_S2M3","Fr_S2M4","Fr_S3M1","Fr_S3M2","Fr_S3M3","Fr_S3M4","Fr_S4M1","Fr_S4M2","Fr_S4M3","Fr_S4M4",
                                     "Z_S1M1","Z_S1M2","Z_S1M3","Z_S1M4","Z_S2M1","Z_S2M2","Z_S2M3","Z_S2M4","Z_S3M1","Z_S3M2","Z_S3M3","Z_S3M4","Z_S4M1","Z_S4M2","Z_S4M3","Z_S4M4",
                                     "N_S1M1","N_S1M2","N_S1M3","N_S1M4","N_S2M1","N_S2M2","N_S2M3","N_S2M4","N_S3M1","N_S3M2","N_S3M3","N_S3M4","N_S4M1","N_S4M2","N_S4M3","N_S4M4",
-                                    "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm"};
-        PROTECT(out_names = allocVector(STRSXP, 101));
+                                    "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm",
+                                    "oqD_ef","oqD_e","oqDstat_ef"};
+        PROTECT(out_names = allocVector(STRSXP, 104));
 
-        for(int ct = 0; ct < 101; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 104; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 
@@ -21486,14 +21991,14 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
 
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
             //objet vide pour garder la structuration malgré la non-sélection de la variable en question
             PROTECT(emptyObj = allocVector(VECSXP, object->nbE));
