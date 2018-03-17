@@ -467,10 +467,10 @@ return(DF)
 
 read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input",folderFleet=NULL) {
 
-require(RODBC)             
+require(RODBC)
 require(XLConnect)
 
-conn <- odbcConnectExcel(file)
+conn <- odbcConnectExcel2007(file)
 tbls <- sqlTables(conn)
 tbls <- tbls[tbls$TABLE_TYPE%in%"SYSTEM TABLE",] #on évite les soucis causés par les filtres et autres outils intégrés
 
@@ -498,7 +498,15 @@ modF <- NULL
 modMbio <- NULL
 modMeco <- NULL
 
-wb <- loadWorkbook(file)
+index.openxlsx <- FALSE
+yyy <- try(wb <- loadWorkbook(file))
+if (sum(attributes(yyy)$class%in%"try-error")==1) index.openxlsx <- TRUE      #l'importation en utilisant XLConnect a échoué
+
+if (index.openxlsx) {
+ detach("package:XLConnect", character.only = TRUE)
+ require(openxlsx)  #on travaille désormais avec openxlsx
+}
+
 
 if (length(nam_stock)>0) {
   for (k in 1:length(nam_stock)) {
@@ -506,7 +514,13 @@ if (length(nam_stock)>0) {
   nam <- nam_stock[k]
 
   #result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+if (index.openxlsx){
+  result <- read.xlsx(file,sheet=substring(nam,1,nchar(nam)-1),rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+  result[] <- lapply(result, function(x) gsub(",",".",as.character(x)))
+  result <- as.matrix(rbind2("",result))
+} else {
   result <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character")))
+}
   result[is.na(result)] <- ""
 
   #on commence par analyser les modalités de chaque type de variable
@@ -544,13 +558,27 @@ if (!is.null(folderFleet)) {
   
   if (k==1) { 
   
-    FLEET <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[,1:7] 
+    if (index.openxlsx){
+      FLEET <- read.xlsx(file,sheet=namF[k],rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)[,1:7]
+      FLEET[] <- lapply(FLEET, function(x) gsub(",",".",as.character(x)))
+      FLEET <- as.matrix(FLEET)
+    } else {
+      FLEET <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[,1:7]
+    }
+
     FLEET[is.na(FLEET)] <- ""
     #read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=TRUE)[,1:7]
   
   } else {
-    
-    FLEETtmp <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[-1,1:7] 
+
+    if (index.openxlsx){
+      FLEETtmp <- read.xlsx(file,sheet=namF[k],rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)[-1,1:7]
+      FLEETtmp[] <- lapply(FLEETtmp, function(x) gsub(",",".",as.character(x)))
+      FLEETtmp <- as.matrix(FLEETtmp)
+    } else {
+      FLEETtmp <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = namF[k],startCol=1,header=FALSE,colTypes="character")))[-1,1:7]
+    }
+
     FLEETtmp[is.na(FLEETtmp)] <- ""
   
     FLEET <- rbind2(FLEET,FLEETtmp)#read.xls(file,sheet=namF[k],type="character",rowNames=FALSE,colNames=FALSE)[-1,1:7])
@@ -589,12 +617,21 @@ names(LL$historique) <- names(LL$input) <- c(namList,nam_stock_bis)
 ##Scénarii
 
 #scenar <- read.xls(file,sheet="Scénarii",type="character",rowNames=FALSE,colNames=FALSE)
-scenar <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Scénarii",startCol=1,header=FALSE,colTypes="character")))
+
+
+if (index.openxlsx){
+  scenar <- read.xlsx(file,sheet="Scénarii",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+  scenar[] <- lapply(scenar, function(x) gsub(",",".",as.character(x)))
+  scenar <- as.matrix(rbind2("",scenar))
+} else {
+  scenar <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Scénarii",startCol=1,header=FALSE,colTypes="character")))
+}
+
 scenar[is.na(scenar)] <- ""
 
 #on ne prend pas en compte les 100 premières lignes (Attention : format fixe à respecter)
-
 scenar <- scenar[101:nrow(scenar),]
+
 
 #il faut maintenant tenir compte des scénarios couplés ('... & ...') : on duplique afin de n'avoir qu'un scenario par ligne
 repVec <- apply(scenar,1,function(y) length(gregexpr(" & ",as.character(y[1]))[[1]]))
@@ -619,7 +656,7 @@ invisible(sapply(1:nrow(scenar2),function(x) if (is.finite(indEmpt[x])) {if (ind
 num <- apply(suppressWarnings(apply(scenar2,1,as.numeric)),1,as.character)
 
 #on ajoute les paramètres
-indic <- substring(scenar2,1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")
+indic <- substring(scenar2,1,3)%in%c("v__","t__","i__","f__","m__","l__","e__","c__")          #attention : depuis ajout openxlsx, scenar2 --> as.matrix(scenar2)
 num[indic] <- scenar2[indic] ; num[is.na(num)] <- ""  ; scenar <- cbind(scenar1,num)
 
 
@@ -667,8 +704,17 @@ ListS <- c(tbl1S,tbl2S)
 
 iCATtab <- NULL
 
+
+if (index.openxlsx){
+  Market <- read.xlsx(file,sheet="Marché",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+  Market[] <- lapply(Market, function(x) gsub(",",".",as.character(x)))
+  Market <- as.matrix(rbind2("",Market))
+} else {
+  Market <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Marché",startCol=1,header=FALSE,colTypes="character")))
+}
+
 #Market <- read.xls(file,sheet="Marché",type="character",rowNames=FALSE,colNames=FALSE)
-Market <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Marché",startCol=1,header=FALSE,colTypes="character")))
+
 Market[is.na(Market)] <- ""
 
 
@@ -681,10 +727,16 @@ if (length(nam_stock)>0) {
 
   nam <- nam_stock[k]
 
-  #result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
-  result <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character")))
-  result[is.na(result)] <- ""
+  if (index.openxlsx){
+    result <- read.xlsx(file,sheet=substring(nam,1,nchar(nam)-1),rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    result[] <- lapply(result, function(x) gsub(",",".",as.character(x)))
+    result <- as.matrix(rbind2("",result))
+  } else {
+    result <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = substring(nam,1,nchar(nam)-1),startCol=1,header=FALSE,colTypes="character")))
+  }
 
+  #result <- read.xls(file,sheet=substring(nam,1,nchar(nam)-1),type="character",rowNames=FALSE,colNames=FALSE)
+  result[is.na(result)] <- ""
 
   #on va ajouter la table market
   MarketSp <- Market[Market[,6]%in%paste("e__",namList[k],sep=""),c(1,4:5,7:8),drop=FALSE]
@@ -707,16 +759,39 @@ if (length(nam_stock)>0) {
   #MM <- read.xls(file,sheet="mm_matrix",type="character",rowNames=FALSE,colNames=FALSE)
   #ICAT <- read.xls(file,sheet="icat_matrix",type="character",rowNames=FALSE,colNames=FALSE)
 
-  FM <- suppressWarnings(readWorksheet(wb, sheet = "fm_matrix",startCol=1,header=FALSE,colTypes="character"))
-  FM <- gsub(",",".",as.matrix(FM))
+  if (index.openxlsx){
+    FM <- read.xlsx(file,sheet="fm_matrix",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    FM[] <- lapply(FM, function(x) gsub(",",".",as.character(x)))
+    FM <- as.matrix(rbind2("",FM))
+  } else {
+    FM <- suppressWarnings(readWorksheet(wb, sheet = "fm_matrix",startCol=1,header=FALSE,colTypes="character"))
+    FM <- gsub(",",".",as.matrix(FM))
+  }
+
   FM[is.na(FM)] <- ""
 
-  MM <- suppressWarnings(readWorksheet(wb, sheet = "mm_matrix",startCol=1,header=FALSE,colTypes="character"))
-  MM <- gsub(",",".",as.matrix(MM))
+
+  if (index.openxlsx){
+    MM <- read.xlsx(file,sheet="mm_matrix",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    MM[] <- lapply(MM, function(x) gsub(",",".",as.character(x)))
+    MM <- as.matrix(rbind2("",MM))
+  } else {
+    MM <- suppressWarnings(readWorksheet(wb, sheet = "mm_matrix",startCol=1,header=FALSE,colTypes="character"))
+    MM <- gsub(",",".",as.matrix(MM))
+  }
+
   MM[is.na(MM)] <- ""
 
-  ICAT <- readWorksheet(wb, sheet = "icat_matrix",startCol=1,header=FALSE,colTypes="character")
-  ICAT <- gsub(",",".",as.matrix(ICAT))
+
+  if (index.openxlsx){
+    ICAT <- read.xlsx(file,sheet="icat_matrix",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    ICAT[] <- lapply(ICAT, function(x) gsub(",",".",as.character(x)))
+    ICAT <- as.matrix(rbind2("",ICAT))
+  } else {
+    ICAT <- readWorksheet(wb, sheet = "icat_matrix",startCol=1,header=FALSE,colTypes="character")
+    ICAT <- gsub(",",".",as.matrix(ICAT))
+  }
+
   ICAT[is.na(ICAT)] <- ""
 
 
@@ -1416,7 +1491,15 @@ LL$input <- c(if (length(nam_stock)>0) lapply(LL$input[1:length(nam_stock)],refo
 
 #on remplit la partie "stochastique" avec les variables issues des valeurs historiques de recrutement (seulement ça pour le moment)
 STO <- list()
-stoch <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Stochasticité_Sensibilité",startCol=1,header=FALSE,colTypes="character")))
+
+  if (index.openxlsx){
+    stoch <- read.xlsx(file,sheet="Stochasticité_Sensibilité",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    stoch[] <- lapply(stoch, function(x) gsub(",",".",as.character(x)))
+    stoch <- as.matrix(stoch)
+  } else {
+    stoch <- gsub(",",".",as.matrix(readWorksheet(wb, sheet = "Stochasticité_Sensibilité",startCol=1,header=FALSE,colTypes="character")))
+  }
+
 stoch[is.na(stoch)] <- "" 
 #stoch <- read.xls(file,sheet="Stochasticité_Sensibilité",type="character",rowNames=FALSE,colNames=FALSE)
 
@@ -1524,7 +1607,7 @@ setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
                                                                                #matwt poids moyen pondéré pour calcul de la SSB (morph*age)
 
 
-if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".xls") stop("'fileIN' must be an .xls file!!")
+if (!substring(fileIN,nchar(fileIN)-4,nchar(fileIN))%in%".xlsx") stop("'fileIN' must be an .xlsx file!!")
 
 require(abind)
 
