@@ -465,10 +465,23 @@ return(DF)
 #source("Z:/Projet/Projet SIAD/Param bio_eco/Modele/Input_object.r")
 
 
-read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input",folderFleet=NULL) {
+read.input <- function(file,t_init,nbStep,t_hist_max=t_init,desc="My input",folderFleet=NULL,readXLS="openxlsx") {
+
 
 require(RODBC)
-require(XLConnect)
+
+#if (index.openxlsx) {
+# detach("package:XLConnect", character.only = TRUE)
+# require(openxlsx)  #on travaille désormais avec openxlsx
+#}
+
+index.openxlsx <- readXLS%in%"openxlsx"[1]
+if (index.openxlsx) {
+ require(openxlsx)
+} else {
+ require(XLConnect)
+ wb <- loadWorkbook(file)
+}
 
 conn <- odbcConnectExcel2007(file)
 tbls <- sqlTables(conn)
@@ -498,14 +511,19 @@ modF <- NULL
 modMbio <- NULL
 modMeco <- NULL
 
-index.openxlsx <- FALSE
-yyy <- try(wb <- loadWorkbook(file))
-if (sum(attributes(yyy)$class%in%"try-error")==1) index.openxlsx <- TRUE      #l'importation en utilisant XLConnect a échoué
 
-if (index.openxlsx) {
- detach("package:XLConnect", character.only = TRUE)
- require(openxlsx)  #on travaille désormais avec openxlsx
-}
+#yyy <- try(wb <- loadWorkbook(file))
+#if (sum(attributes(yyy)$class%in%"try-error")==1) {
+# index.openxlsx <- TRUE      #l'importation en utilisant XLConnect a échoué
+# print("'openxlsx' package will be used")
+#} else {
+# print("'XLConnect' package will be used")
+#}
+
+#if (index.openxlsx) {
+# detach("package:XLConnect", character.only = TRUE)
+# require(openxlsx)  #on travaille désormais avec openxlsx
+#}
 
 
 if (length(nam_stock)>0) {
@@ -1594,7 +1612,7 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
   # à partir d'un fichier .xls
 
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
-                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,
+                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,readXLS="openxlsx",
                                     Fq_i=NULL,iniFq_i=NULL,Fq_fmi=NULL,iniFq_fmi=NULL,
                                     FqLwt_i=NULL,iniFqLwt_i=NULL,FqLwt_fmi=NULL,iniFqLwt_fmi=NULL,
                                     FqDwt_i=NULL,iniFqDwt_i=NULL,FqDwt_fmi=NULL,iniFqDwt_fmi=NULL,
@@ -1611,7 +1629,7 @@ if (!substring(fileIN,nchar(fileIN)-4,nchar(fileIN))%in%".xlsx") stop("'fileIN' 
 
 require(abind)
 
-out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet)
+out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet,readXLS=readXLS)
 
 
 
