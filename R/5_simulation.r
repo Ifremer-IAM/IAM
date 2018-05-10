@@ -14,6 +14,7 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 
 
 setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0, updateE=0,
+                  TACbyF=NULL, TACtot=NULL, #sont générés en interne Ztemp, SPPstatOPT, SPPspictOPT et SPPdynOPT, qui sont insérés dans l'export tacCTRL
                   TACbyFoptimCTRL=list(maxIter = as.integer(7), diffZmax = 0.0001, lambda = 0.9, t_stop = 0),
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
                   parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
@@ -24,6 +25,28 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   ...){
 	
 	
+#Ajout 27/03/2018 ----------------
+#TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
+if (length(TACbyF)==0) {
+ TACbyF <- TACtot <- NULL
+ SPPstatOPT <- SPPspictOPT <- SPPdynOPT <- integer(0)
+ SPPdyn <- unlist(lapply(objArgs@specific$Ages,length))
+ Ztemp <- lapply(objArgs@specific$Species,function(x) if (objInput@specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
+ names(Ztemp) <- objArgs@specific$Species
+} else {
+ if (length(TACtot)==0) TACtot <- list()
+ TACtot <- TACtot[names(TACbyF)] ; names(TACtot) <- names(TACbyF)     #TACbyF et TACtot listes de structure similaire
+ SPPstatOPT <- match(names(TACbyF),objArgs@specific$StaticSpp) ; SPPstatOPT <- SPPstatOPT[!is.na(SPPstatOPT)] ; if (length(SPPstatOPT)==0) SPPstatOPT <- integer(0)
+ SPPdyn <- unlist(lapply(objArgs@specific$Ages,length))
+ SPPspictOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn==1])],objArgs@specific$Species) ; SPPspictOPT <- SPPspictOPT[!is.na(SPPspictOPT)]
+ if (length(SPPspictOPT)==0) SPPspictOPT <- integer(0)
+ SPPdynOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn>1])],objArgs@specific$Species) ; SPPdynOPT <- SPPdynOPT[!is.na(SPPdynOPT)]
+ if (length(SPPdynOPT)==0) SPPdynOPT <- integer(0)
+ Ztemp <- lapply(objArgs@specific$Species,function(x) if (objInput@specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
+ names(Ztemp) <- objArgs@specific$Species
+}
+#---------------------------------
+
 #Ajout 19/11/2014 ----------------
 #on garde une trace de l'objet Arguments initial, car il faudra enrichir l'argument envoyé sous C++ des éléments 'Recrutements' se rapportant aux espèces SS3
 objArgsIni <- objArgs
@@ -99,7 +122,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     as.integer(objArgs@arguments$Replicates$nbIter), as.integer(objArgs@arguments$Gestion$active),
                     as.double(mOth),
                     as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
-                    as.double(objArgs@arguments$Gestion$tac),as.double(objArgs@arguments$Gestion$fbar),
+                    TACtot,as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
                     objArgs@arguments$Gestion$othSpSup,as.double(objArgs@arguments$Gestion$effSup),
                     as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(objArgs@specific$Species,objArgs@specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
@@ -121,14 +144,15 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     lapply(objArgs@arguments$Recruitment,function(x) 
                                 as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))),
                     as.double(objArgs@arguments$Gestion$mfm),
-                    as.double(objArgs@arguments$Gestion$TACbyF),
+                    TACbyF, #as.double(objArgs@arguments$Gestion$TACbyF),
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=as.double(parOptQuot$pxQuIni), pxQuMin=as.double(parOptQuot$pxQuMin), 
                           pxQuMax=as.double(parOptQuot$pxQuMax), lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol)),                           #fonctionne en conjugaison avec TACbyF
                     list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
-                          maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda),t_stop=as.integer(TACbyFoptimCTRL$t_stop)),
+                          maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda),t_stop=as.integer(TACbyFoptimCTRL$t_stop),
+                          Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT),
                     newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
                                          #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.integer(updateE),
@@ -211,17 +235,17 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     Li = out$Li,              
                     Lc = out$Lc,              
                     Ltot = out$Ltot,
-                    P = out$P,             
-                    GVL_f_m_e = out$E$GVL_f_m_e,
-                     GVLcom_f_m_e = out$E$GVLcom_f_m_e,
-                     GVLst_f_m_e = out$E$GVLst_f_m_e,
+                    P = out$P,
+                    GVL_f_m_e = out$E$GVL_f_m_e_out,
+                     GVLcom_f_m_e = out$E$GVLcom_f_m_e_out,
+                     GVLst_f_m_e = out$E$GVLst_f_m_e_out,
                     statY = out$Ystat,
                     statL = out$Lstat,
                     statD = out$Dstat,
                     statP = out$Pstat,
-                    statGVL_f_m = out$E$GVL_f_m_eStat,
-                     statGVLcom_f_m = out$E$GVLcom_f_m_eStat,
-                     statGVLst_f_m = out$E$GVLst_f_m_eStat,
+                    statGVL_f_m = out$E$GVL_f_m_eStat_out,
+                     statGVLcom_f_m = out$E$GVLcom_f_m_eStat_out,
+                     statGVLst_f_m = out$E$GVLst_f_m_eStat_out,
                     PQuot = out$PQuot,
                     F_S1M1= out$F_S1M1,F_S1M2= out$F_S1M2,F_S1M3= out$F_S1M3,F_S1M4= out$F_S1M4,
                     F_S2M1= out$F_S2M1,F_S2M2= out$F_S2M2,F_S2M3= out$F_S2M3,F_S2M4= out$F_S2M4,
@@ -258,71 +282,65 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   nbv_f_m = out$Eff$nbv_f_m,          
                   effort1_f_m = out$Eff$effort1_f_m,
                   effort2_f_m = out$Eff$effort2_f_m,
-                  Lbio_f = out$E$Lbio_f,             
-                  GVLtot_f_m = out$E$GVLtot_f_m,            
-                  GVLav_f_m = out$E$GVLav_f_m,          
-                  GVLtot_f = out$E$GVLtot_f,                
-                  GVLav_f = out$E$GVLav_f,          
-                  GVLoths_f = out$GVLoths_f,         
-                  NGVLav_f_m = out$E$NGVLav_f_m,           
-                  NGVLav_f = out$E$NGVLav_f,            
-                  vcst_f_m = out$E$vcst_f_m,         
-                  vcst_f = out$E$vcst_f,             
-                  rtbs_f_m = out$E$rtbs_f_m,      
-                  rtbs_f = out$E$rtbs_f,             
-                  rtbsAct_f = out$E$rtbsAct_f,
-                   ETini_f_m = out$E$ETini_f_m,
-                   ETini_f = out$E$ETini_f,
-                   cnb_f_m = out$E$cnb_f_m,
-                   cnb_f = out$E$cnb_f,
-                  cshrT_f_m = out$E$cshrT_f_m,            
-                  cshrT_f = out$E$cshrT_f,             
-                  sshr_f_m = out$E$sshr_f_m,           
-                  sshr_f = out$E$sshr_f,              
-                  ncshr_f = out$E$ncshr_f,                
-                  ocl_f = out$E$ocl_f,             
-                  cs_f = out$E$cs_f,               
-                  csAct_f = out$E$csAct_f,          
-                  csTot_f = out$E$csTot_f,
-                  gva_f = out$E$gva_f,                
-                  gvaAct_f = out$E$gvaAct_f,           
-                  ccw_f = out$E$ccw_f,        
-                  ccwCr_f = out$E$ccwCr_f,            
-                  wageg_f = out$E$wageg_f,             
-                  wagen_f = out$E$wagen_f,           
-                  gcf_f = out$E$gcf_f,             
-                  gcfAct_f = out$E$gcfAct_f,           
-                  ngcf_f = out$E$ngcf_f,             
-                  gp_f = out$E$gp_f,                   
-                  ssTot_f = out$E$ssTot_f,             
-                  ps_f = out$E$ps_f,              
-                  psAct_f = out$E$psAct_f,               
-                  sts_f = out$E$sts_f,           
-                  stsAct_f = out$E$stsAct_f,              
-                  ber_f = out$E$ber_f,        
-                  ratio_gva_GVL_f = out$E$ratio_gva_GVL_f,        
-                  ratio_gcf_GVL_f = out$E$ratio_gcf_GVL_f,        
-                  ratio_fc_GVL_f = out$E$ratio_fc_GVL_f,      
-                  ratio_oilc_GVL_f = out$E$ratio_oilc_GVL_f,    
-                  ratio_bc_GVL_f = out$E$ratio_bc_GVL_f,      
-                  ratio_foc_GVL_f = out$E$ratio_foc_GVL_f,        
-                  ratio_icec_GVL_f = out$E$ratio_icec_GVL_f,      
-                  ratio_gc_GVL_f = out$E$ratio_gc_GVL_f,        
-                  ratio_vc_GVL_f = out$E$ratio_vc_GVL_f,       
-                  ratio_rep_GVL_f = out$E$ratio_rep_GVL_f,       
-                  ratio_mngc_GVL_f = out$E$ratio_mngc_GVL_f,     
-                  ratio_licc_GVL_f = out$E$ratio_licc_GVL_f,      
-                  ratio_fvol_GVL_f = out$E$ratio_fvol_GVL_f,     
-                  ratio_fvol_Lbio_f = out$E$ratio_fvol_Lbio_f,     
-                  ratio_fvol_gva_f = out$E$ratio_fvol_gva_f,      
-                  ratio_gcf_gva_f = out$E$ratio_gcf_gva_f,       
-                  ratio_K_cnb_f = out$E$ratio_K_cnb_f,         
-                  ratio_GVL_K_f = out$E$ratio_GVL_K_f,      
-                  ratio_gcf_K_f = out$E$ratio_gcf_K_f,        
-                  ratio_ngcf_K_f = out$E$ratio_ngcf_K_f,      
-                  ratio_gp_K_f = out$E$ratio_gp_K_f,           
-                  ratio_GVL_cnb_ue_f = out$E$ratio_GVL_cnb_ue_f,
-                  YTOT_fm= out$YTOT_fm)
+                  #Lbio_f = out$E$Lbio_f,
+                  GVLtot_f_m = out$E$GVLtot_f_m_out,
+                  GVLav_f_m = out$E$GVLav_f_m_out,
+                  GVLtot_f = out$E$GVLtot_f_out,
+                  GVLav_f = out$E$GVLav_f_out,
+                  #GVLoths_f = out$GVLoths_f,
+                  NGVLav_f_m = out$E$NGVLav_f_m_out,
+                  NGVLav_f = out$E$NGVLav_f_out,
+                  ET_f_m = out$E$ET_f_m_out,
+                  cnb_f_m = out$E$cnb_f_m_out,
+                  cnb_f = out$E$cnb_f_out,
+                  #vcst_f_m = out$E$vcst_f_m,
+                  #vcst_f = out$E$vcst_f,
+                  rtbs_f_m = out$E$rtbs_f_m_out,
+                  rtbs_f = out$E$rtbs_f_out,
+                  rtbsAct_f = out$E$rtbsAct_f_out,
+                  cshrT_f_m = out$E$cshrT_f_m_out,
+                  cshrT_f = out$E$cshrT_f_out,
+                  ncshr_f = out$E$ncshr_f_out,
+                  ocl_f = out$E$ocl_f_out,
+                  cs_f = out$E$cs_f_out,
+                  csAct_f = out$E$csAct_f_out,
+                  csTot_f = out$E$csTot_f_out,
+                  gva_f = out$E$gva_f_out,
+                  gvaAct_f = out$E$gvaAct_f_out,
+                  gvamargin_f = out$E$gvamargin_f_out,
+                  gva_FTE_f = out$E$gva_FTE_f_out,
+                  ccw_f = out$E$ccw_f_out,
+                  ccwCr_f = out$E$ccwCr_f_out,
+                  wageg_f = out$E$wageg_f_out,
+                  wagen_f = out$E$wagen_f_out,
+                  wageg_FTE_f = out$E$wageg_FTE_f_out,
+                  wageg_h_f = out$E$wageg_h_f_out,
+                  gp_f = out$E$gp_f_out,
+                  gpAct_f = out$E$gpAct_f_out,
+                  gpmargin_f = out$E$gpmargin_f_out,
+                  ncf_f = out$E$ncf_f_out,
+                  np_f = out$E$np_f_out,
+                  npmargin_f = out$E$npmargin_f_out,
+                  prof_f = out$E$prof_f_out,
+                  npmargin_trend_f = out$E$npmargin_trend_f_out,
+                  ssTot_f = out$E$ssTot_f_out,
+                  ps_f = out$E$ps_f_out,
+                  psAct_f = out$E$psAct_f_out,
+                  sts_f = out$E$sts_f_out,
+                  stsAct_f = out$E$stsAct_f_out,
+                  BER_f = out$E$BER_f_out,
+                  CR_BER_f = out$E$CR_BER_f_out,
+                  fuelEff_f = out$E$fuelEff_f_out,
+                  ratio_fvol_gva_f = out$E$ratio_fvol_gva_f_out,
+                  ratio_gp_gva_f = out$E$ratio_gp_gva_f_out,
+                  ratio_GVL_K_f = out$E$ratio_GVL_K_f_out,
+                  ratio_gp_K_f = out$E$ratio_gp_K_f_out,
+                  RoFTA_f = out$E$RoFTA_f_out,
+                  ROI_f = out$E$ROI_f_out,
+                  ratio_np_K_f = out$E$ratio_np_K_f_out,
+                  ratio_GVL_cnb_ue_f = out$E$ratio_GVL_cnb_ue_f_out,
+                  YTOT_fm = out$YTOT_fm,
+                  reconcilSPP = out$reconcilSPP)
   ))
 }              
                                  

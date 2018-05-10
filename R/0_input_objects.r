@@ -268,6 +268,9 @@ setClass("fleetInput",
       ovcDCF_f = NA,	         #Autres coûts variables DCF par navire d'une flottille
       ovcDCF_f_m = NA,	       #Autres coûts variables DCF par navire d'une flottille - métier
       fixc_f = NA,             #Coûts fixes (DCF)
+      FTE_f = NA,
+      FTE_f_m = NA,
+      inv_f = NA,
       effort_f_tot=NA,
       nbds_f_tot = NA,         #Nombre total de Jours de Mer par navire par an et par flottille
       GVLref_f_tot = NA,       #Valeur totale débarquée par navire par an et par flottille en milliers d'euros (CA nav)

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <vector>
 #include <math.h>
+#include <iostream>
 #include <string>
 #include <fstream>
 #include <R.h>
@@ -99,7 +100,7 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
 SEXP    FList, sppList, sppListStat, fleetList, metierList, metierListEco, namDC, t_init, times, Q,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables intermédiaires par espèces
-        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f;
+        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP;
 
 
 int     nbT, nbF, nbM, nbMe, nbE, nbEstat, //dimensions
@@ -111,8 +112,8 @@ int     nbT, nbF, nbM, nbMe, nbE, nbEstat, //dimensions
 
 
 double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de modèle de prix
-        *TAC_glob, *Fbar_trgt, *TAC_byFleet, diffZmax, lambda,//paramètres de contrôle du TAC pour l'analyse des mesures de gestion pour la requête CIEM 2013 sur la SOLE GG
-        *effortIni, *effort1Ini, *Zoptim, *FOTHoptim, *Ztemp, *Etemp;//Z fixé pour résoudre l'ajustement par flottille (dimension âge)
+        *TAC_byFleet, *TAC_glob, *Fbar_trgt, diffZmax, lambda,//paramètres de contrôle du TAC pour l'analyse des mesures de gestion pour la requête CIEM 2013 sur la SOLE GG
+        *effortIni, *effort1Ini, *Zoptim, *FOTHoptim, *Ztemp, *Etemp, *Einterm_fm, *EffsupTMP_fm, *Einterm_fm_copy, *multFOTHinterm_e;//Z fixé pour résoudre l'ajustement par flottille (dimension âge)
 
 
 bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de données d'effort disponible (calcul capturabilité,...)
@@ -121,13 +122,16 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
 
 
 
+int     *SPPstatOPT, *SPPspictOPT, *SPPdynOPT, N_SPPstatOPT, N_SPPspictOPT, N_SPPdynOPT;
+SEXP    ZtempList;
+
 //    METHODES  ---------------
 
 	//constructeur
     BioEcoPar(SEXP list, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
-                SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
+                SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP parBHV, SEXP parQEX,
                 SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD);
 
 	//destructeur
@@ -175,7 +179,7 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
     void Marche(SEXP list, int ind_t);
 
     // Module 'Economie' DCF
-    void EcoDCF(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr);
+    void EcoDCF(SEXP list, int ind_t,int perscCalc,double dr);
 
     // Module Gestion
     double fxTAC_glob(double mult);
@@ -214,7 +218,7 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
 
     double fxMaxProf_FT_customReport(double *x);
 
-    int GestionF2(int spp, int ind_t);
+    int GestionF2(int ind_t);
 
     double fxTAC_F_customCst2(double *x);
 
@@ -232,6 +236,7 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
 
     void PriceAlea(SEXP list, SEXP stPrice, int ind_t);
 
+
 };
 
 #endif // PARAM_H_INCLUDED
@@ -246,10 +251,13 @@ bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de présence de d
 
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
-                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
-                     SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP parBHV, SEXP parQEX,
+                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
+                     SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP parBHV, SEXP parQEX,
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
 {
+
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\test.txt", ios::out | ios::trunc);
+fichier << "Début " << endl;
 
 PROTECT(listSpec);
 PROTECT(parOQD); //+1
@@ -266,7 +274,7 @@ PROTECT_INDEX ipx_eVar_copy;
 PROTECT_INDEX ipx_eStatVar_copy;
 PROTECT_INDEX ipx_fVar_copy;
 
-//Rprintf("step0\n");
+//Rprintf("step0\n");fichier << "step0" << endl;
 
 PROTECT_WITH_INDEX(list = duplicate(listInput),&ipx_list);
 PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
@@ -297,7 +305,7 @@ FOTHoptim_use = false;
 
 
 
-//Rprintf("step0\n");
+//Rprintf("step0\n");fichier << "step0 " << endl;
 
 nbT = INTEGER(getListElement(listSpec, "NbSteps"))[0];
 nbF = length(fleetList);
@@ -351,9 +359,10 @@ PROTECT(m_oth = duplicate(mOth)); if (length(m_oth)!=nbE) error("Check dimension
 X1 = REAL(bounds)[0];
 X2 = REAL(bounds)[1];
 
-TAC_glob = REAL(TAC);  //à corriger
+//TAC_glob = REAL(TAC);  //à corriger
 Fbar_trgt = REAL(FBAR);  //à corriger
-TAC_byFleet = REAL(TACbyF);  //à corriger
+TACbyF = TACbyFL;  //à corriger
+TAC = TACL;
 maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0];
 diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0];
 lambda = REAL(getListElement(tacCTRL, "lambda"))[0];
@@ -367,17 +376,30 @@ if (ISNA(trgt)) trgt = 999;
 delay = INTEGER(GestParam)[3];//2;
 upd = INTEGER(GestParam)[4];//2;
 
-if (eTemp<nbE) {
-  if (Qvec[eTemp]==0) {
-    Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
-  } else {
-    Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"))*16); //les Z aux âges par morph et saison
-  }
-} else {
-  Ztemp = NRvector(1,2);
-}
+//if (eTemp<nbE) {
+//  if (Qvec[eTemp]==0) {
+//    Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
+//  } else {
+//    Ztemp = NRvector(1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"))*16); //les Z aux âges par morph et saison
+//  }
+//} else {
+//  Ztemp = NRvector(1,2);
+//}
 Etemp = NRvector(1,nbF); //effort moyen par flottille en nombre de marées
 expEff = 1.2; //1;  //facteur d'expansion de l'effort maximal par flottille autorisé dans le cadre de l'optimisation GestionF2 et QuotaExch
+
+Einterm_fm = NRvector(1,nbF*nbMe);
+Einterm_fm_copy = NRvector(1,nbF*nbMe);
+EffsupTMP_fm = NRvector(1,nbF*nbMe);
+multFOTHinterm_e = NRvector(1,nbE);
+PROTECT(reconcilSPP = alloc3DArray(STRSXP,nbF,nbMe,nbT));
+//on l'initialise
+for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
+for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
+for (int ind_t = 0 ; ind_t < nbT ; ind_t++)
+SET_STRING_ELT(reconcilSPP, ind_f + nbF*ind_m + nbF*nbMe*ind_t, NA_STRING); //SET_STRING_ELT(reconcilSPP, ind_f + nbF * ind_m, mkChar(STRING_ELT(sppList,eTemp)));
+
+PROTECT(ZtempList = getListElement(tacCTRL, "Ztemp"));
 
 int DCFok = INTEGER(EcoDcf)[0];
 
@@ -408,12 +430,12 @@ if (nbEstat>0) {
 PROTECT_WITH_INDEX(eStatVar_copy = duplicate(eStatVar),&ipx_eStatVar_copy); //21
 
 
-//Rprintf("step0\n");
+//Rprintf("step0\n");fichier << "step0 " << endl;
 
-PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 33),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m
+PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 34),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m & 33=ETini_f_m
 PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
 
-////Rprintf("A");
+//////Rprintf("A");
 
 PROTECT(out_F_fmi = allocVector(VECSXP, nbE));
 PROTECT(out_Fr_fmi = allocVector(VECSXP, nbE));
@@ -543,7 +565,7 @@ PROTECT(out_N_eit_S4M4 = allocVector(VECSXP, nbE)); //+64 = 107
 PROTECT(out_P_t = allocVector(VECSXP, nbE));
 PROTECT(out_Pstat = allocVector(VECSXP, nbEstat));
 PROTECT(out_Eco = allocVector(VECSXP, 69));
-PROTECT(out_EcoDCF = allocVector(VECSXP, 55));
+PROTECT(out_EcoDCF = allocVector(VECSXP, 59));
 PROTECT(out_effort = allocVector(VECSXP, 6)); //nbv_f, effort1_f, effort2_f, nbv_f_m, effort1_f_m, effort2_f_m
 
 PROTECT(mu_nbds = allocVector(REALSXP, nbT)); //il reste la mise en forme à opérer
@@ -586,6 +608,8 @@ setAttrib(NBVF, R_DimNamesSymbol, dnmsF); setAttrib(NBVFM, R_DimNamesSymbol, dnm
 setAttrib(NBDSF, R_DimNamesSymbol, dnmsF); setAttrib(NBDSFM, R_DimNamesSymbol, dnmsFM);
 setAttrib(EFF2F, R_DimNamesSymbol, dnmsF); setAttrib(EFF2FM, R_DimNamesSymbol, dnmsFM);
 
+setAttrib(reconcilSPP, R_DimNamesSymbol, dnmsFM);
+
 double *NBVf = REAL(NBVF);
 double *NBVfm = REAL(NBVFM);
 double *NBDSf = REAL(NBDSF);
@@ -604,17 +628,17 @@ if (nbE>0) {
  }
 }
 
-//Rprintf("step1\n");
+//Rprintf("step1\n");fichier << "step1" << endl;
 
 ////Rprintf("B");
 for (int it = 0; it < nbT ; it++) {
 
-//Rprintf("ini1");
+//Rprintf("ini1");fichier << "ini1" << endl;
 
-//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 5));//Rprintf("Mort20.2\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));//Rprintf("Mort20.3\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 7));//Rprintf("Mort20.4\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 61));//Rprintf("Mort20.5\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 5));////Rprintf("Mort20.2\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));////Rprintf("Mort20.3\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 7));////Rprintf("Mort20.4\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 61));////Rprintf("Mort20.5\n");
 
 
 //    if (it==0) 	{
@@ -624,7 +648,7 @@ for (int it = 0; it < nbT ; it++) {
 //    }
 
 
-////Rprintf("time %i\n",it);
+//////Rprintf("time %i\n",it);
 if (nbE>0) {
 
     if (it>=1) {
@@ -636,7 +660,7 @@ if (nbE>0) {
         SRmod(list, listSR, it, TypeSR, SRInd); //important : à envoyer avant 'DynamicPop'
 
 }
-//Rprintf("C");
+//Rprintf("C");fichier << "C" << endl;
 if (scen & (it>=1)) Scenario(list, listScen, it); //modif MM 16/01/2012
 
 if (bhv_active & (it>=1)) FleetBehav(list, it, parBHV);
@@ -648,7 +672,7 @@ if (bhv_active & (it>=1)) FleetBehav(list, it, parBHV);
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-//Rprintf("intro0\n");
+//Rprintf("intro0\n");fichier << "intro0" << endl;
  //copie de sauvegarde car il faudra revenir aux valeurs initiales s'il y a une correction des ajustements
 
 REPROTECT(list_copy = duplicate(list),ipx_list_copy);//Rprintf("intro0.1\n");
@@ -657,14 +681,14 @@ REPROTECT(FList_copy = getListElement(list_copy, "Fleet"),ipx_FList_copy); //Rpr
 
 
 
-//Rprintf("ini2");
+////Rprintf("ini2");fichier << "ini2" << endl;
 
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 5));//Rprintf("Mort20.2\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));//Rprintf("Mort20.3\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 7));//Rprintf("Mort20.4\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 61));//Rprintf("Mort20.5\n");
 
-//Rprintf("ini2");
+////Rprintf("ini2");
 
 //PrintValue(VECTOR_ELT(VECTOR_ELT(duplicate(eVar), 0), 5));//Rprintf("Mort20.2\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(duplicate(eVar), 0), 6));//Rprintf("Mort20.3\n");
@@ -675,24 +699,24 @@ REPROTECT(FList_copy = getListElement(list_copy, "Fleet"),ipx_FList_copy); //Rpr
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar,0),0));//Rprintf("a0");
 //PrintValue(VECTOR_ELT(eVar,0));//Rprintf("a1");//if (it>0) error("Unexpectedz scondition occurred");
 
-//Rprintf("AAAAA3\n");
+////Rprintf("AAAAA3\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));
 //SEXP eVarDup;
 //PROTECT(eVarDup = duplicate(eVar));
-//Rprintf("AAAAA31\n");
+////Rprintf("AAAAA31\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVarDup, 0), 6));
 //UNPROTECT(1);
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));
-//Rprintf("AAAAA32\n");
+////Rprintf("AAAAA32\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVarDup, 0), 6));
 
 
-REPROTECT(eVar_copy = duplicate(eVar),ipx_eVar_copy);//Rprintf("intro0.3\n");
+REPROTECT(eVar_copy = duplicate(eVar),ipx_eVar_copy);//Rprintf("intro0.3\n");fichier << "intro0.3" << endl;
 //SEXP jojo = duplicate(eVar);//Rprintf("intro0.2.1\n");
 //REPROTECT(eVar_copy = eVar,ipx_eVar_copy);//Rprintf("intro0.3\n");
 
-//Rprintf("ini3");
+////Rprintf("ini3");
 
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 5));//Rprintf("Mort20.2\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));//Rprintf("Mort20.3\n");
@@ -700,15 +724,16 @@ REPROTECT(eVar_copy = duplicate(eVar),ipx_eVar_copy);//Rprintf("intro0.3\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 61));//Rprintf("Mort20.5\n");
 
 
-REPROTECT(eStatVar_copy = duplicate(eStatVar),ipx_eStatVar_copy);//Rprintf("intro0.4\n");
-REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");
-//Rprintf("intro1\n");
+REPROTECT(eStatVar_copy = duplicate(eStatVar),ipx_eStatVar_copy);//Rprintf("intro0.4\n");fichier << "intro.4" << endl;
+REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");fichier << "intro0.5" << endl;
+//Rprintf("intro1\n");fichier << "intro1" << endl;
 //if (it==3) PrintValue(FList);
 
 
+////Rprintf("intro11\n");
 
-if ((delay<=it) & (gestInd==1) & (it>=1) & all_is_na(TACbyF) & (eTemp<nbE)) { //seulement si espèce dynamique
-////Rprintf("aa");
+if ((delay<=it) & (gestInd==1) & (it>=1) & isNull(TACbyF) & (eTemp<nbE)) { //seulement si espèce dynamique
+//Rprintf("aa");fichier << "aa" << endl;
 //PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
 //PrintValue(getListElement(FList, "nbds_f"));
 //PrintValue(mu_nbds);
@@ -745,7 +770,7 @@ if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort a
 
         }
     }
-    //Rprintf("AA");
+    //Rprintf("AA");fichier << "AA" << endl;
     //PrintValue(getListElement(FList, "effort1_f_m"));
             int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"));
 
@@ -1103,11 +1128,24 @@ Gestion(list, it);
 ////Rprintf("cc");
 ////PrintValue(getListElement(FList, "nbds_f"));
 
-//Rprintf("intro2\n");
-if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activée si au moins un élément de TACbyF est renseigné
+//Rprintf("intro2\n");fichier << "intro2" << endl;
 
+
+//if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activée si au moins un élément de TACbyF est renseigné
+if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & (t_stop==0 | t_stop>it)) {
+
+
+
+//Rprintf("introOPT\n");fichier << "introOPT" << endl;
 
         int DELAY = INTEGER(updateE)[0];
+
+        SPPstatOPT = INTEGER(getListElement(tacCTRL, "SPPstatOPT"));
+        SPPspictOPT = INTEGER(getListElement(tacCTRL, "SPPspictOPT"));
+        SPPdynOPT = INTEGER(getListElement(tacCTRL, "SPPdynOPT"));
+        N_SPPstatOPT = length(getListElement(tacCTRL, "SPPstatOPT"));
+        N_SPPspictOPT = length(getListElement(tacCTRL, "SPPspictOPT"));
+        N_SPPdynOPT = length(getListElement(tacCTRL, "SPPdynOPT"));
 
         if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort au niveau de l'instant initial
 
@@ -1140,51 +1178,66 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !
 //            //Rprintf("AA");
 //            //PrintValue(getListElement(FList, "effort1_f_m"));
 
-        if (eTemp<nbE) { //si espèce dynamique
+        if (N_SPPspictOPT>0) { //si espèce dynamique SPICT
 
-             int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"));
+         for (int i = 0; i < N_SPPspictOPT; i++){
 
-            if (Qvec[eTemp]==0) {
+            int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPspictOPT[i]))), "modI")); //doit normalement être égal à 1
+            double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPspictOPT[i]), 44));
+            for (int ag = 0; ag < nbi; ag++) Fothi2[ag + it*nbi] = Fothi2[ag + (DELAY-1)*nbi];
 
-                    double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 44));
+         }
+
+        }
+
+        if (N_SPPdynOPT>0) { //si espèce dynamique XSA ou SS3
+
+            for (int i = 0; i < N_SPPdynOPT; i++){
+
+            int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[i]))), "modI"));
+            int eTmp = SPPdynOPT[i];
+
+            if (Qvec[eTmp]==0) {
+
+                    double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44));
                     for (int ag = 0; ag < nbi; ag++) Fothi2[ag + it*nbi] = Fothi2[ag + (DELAY-1)*nbi];
 
             } else {
 
-                    double *Fothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 116)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + it*nbi] = Fothi2_S1M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 117)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + it*nbi] = Fothi2_S1M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 118)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M3[ag + it*nbi] = Fothi2_S1M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 119)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M4[ag + it*nbi] = Fothi2_S1M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 120)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M1[ag + it*nbi] = Fothi2_S2M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 121)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M2[ag + it*nbi] = Fothi2_S2M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 122)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M3[ag + it*nbi] = Fothi2_S2M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 123)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M4[ag + it*nbi] = Fothi2_S2M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 124)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M1[ag + it*nbi] = Fothi2_S3M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 125)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M2[ag + it*nbi] = Fothi2_S3M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 126)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M3[ag + it*nbi] = Fothi2_S3M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 127)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M4[ag + it*nbi] = Fothi2_S3M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 128)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M1[ag + it*nbi] = Fothi2_S4M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 129)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M2[ag + it*nbi] = Fothi2_S4M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 130)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M3[ag + it*nbi] = Fothi2_S4M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 131)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M4[ag + it*nbi] = Fothi2_S4M4[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 116)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + it*nbi] = Fothi2_S1M1[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 117)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + it*nbi] = Fothi2_S1M2[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 118)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M3[ag + it*nbi] = Fothi2_S1M3[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 119)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M4[ag + it*nbi] = Fothi2_S1M4[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 120)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M1[ag + it*nbi] = Fothi2_S2M1[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 121)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M2[ag + it*nbi] = Fothi2_S2M2[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 122)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M3[ag + it*nbi] = Fothi2_S2M3[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 123)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M4[ag + it*nbi] = Fothi2_S2M4[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 124)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M1[ag + it*nbi] = Fothi2_S3M1[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 125)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M2[ag + it*nbi] = Fothi2_S3M2[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 126)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M3[ag + it*nbi] = Fothi2_S3M3[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 127)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M4[ag + it*nbi] = Fothi2_S3M4[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 128)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M1[ag + it*nbi] = Fothi2_S4M1[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 129)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M2[ag + it*nbi] = Fothi2_S4M2[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 130)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M3[ag + it*nbi] = Fothi2_S4M3[ag + (DELAY-1)*nbi];
+                    double *Fothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 131)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M4[ag + it*nbi] = Fothi2_S4M4[ag + (DELAY-1)*nbi];
 
 
-                    double *FRWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 176));
-                    double *FRWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 177));
-                    double *FRWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 178));
-                    double *FRWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 179));
-                    double *FRWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 180));
-                    double *FRWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 181));
-                    double *FRWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 182));
-                    double *FRWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 183));
-                    double *FRWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 184));
-                    double *FRWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 185));
-                    double *FRWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 186));
-                    double *FRWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 187));
-                    double *FRWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 188));
-                    double *FRWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 189));
-                    double *FRWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 190));
-                    double *FRWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 191));
+                    double *FRWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 176));
+                    double *FRWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 177));
+                    double *FRWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 178));
+                    double *FRWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 179));
+                    double *FRWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 180));
+                    double *FRWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 181));
+                    double *FRWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 182));
+                    double *FRWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 183));
+                    double *FRWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 184));
+                    double *FRWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 185));
+                    double *FRWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 186));
+                    double *FRWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 187));
+                    double *FRWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 188));
+                    double *FRWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 189));
+                    double *FRWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 190));
+                    double *FRWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 191));
 
                     for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M1[ag + it*nbi] = FRWTothi2_S1M1[ag + (DELAY-1)*nbi];
                     for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M2[ag + it*nbi] = FRWTothi2_S1M2[ag + (DELAY-1)*nbi];
@@ -1203,22 +1256,22 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !
                     for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M3[ag + it*nbi] = FRWTothi2_S4M3[ag + (DELAY-1)*nbi];
                     for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M4[ag + it*nbi] = FRWTothi2_S4M4[ag + (DELAY-1)*nbi];
 
-                    double *FDWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 208));
-                    double *FDWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 209));
-                    double *FDWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 210));
-                    double *FDWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 211));
-                    double *FDWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 212));
-                    double *FDWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 213));
-                    double *FDWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 214));
-                    double *FDWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 215));
-                    double *FDWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 216));
-                    double *FDWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 217));
-                    double *FDWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 218));
-                    double *FDWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 219));
-                    double *FDWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 220));
-                    double *FDWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 221));
-                    double *FDWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 222));
-                    double *FDWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 223));
+                    double *FDWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 208));
+                    double *FDWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 209));
+                    double *FDWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 210));
+                    double *FDWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 211));
+                    double *FDWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 212));
+                    double *FDWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 213));
+                    double *FDWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 214));
+                    double *FDWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 215));
+                    double *FDWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 216));
+                    double *FDWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 217));
+                    double *FDWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 218));
+                    double *FDWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 219));
+                    double *FDWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 220));
+                    double *FDWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 221));
+                    double *FDWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 222));
+                    double *FDWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 223));
 
                     for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M1[ag + it*nbi] = FDWTothi2_S1M1[ag + (DELAY-1)*nbi];
                     for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M2[ag + it*nbi] = FDWTothi2_S1M2[ag + (DELAY-1)*nbi];
@@ -1238,12 +1291,12 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !
                     for (int ag = 0; ag < nbi; ag++) FDWTothi2_S4M4[ag + it*nbi] = FDWTothi2_S4M4[ag + (DELAY-1)*nbi];
 
             }
-        }
+        }}
 
         }
 
 
-     GestionF2(eTemp, it);
+     GestionF2(it);
 
   //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
 
@@ -1265,7 +1318,7 @@ if ((INTEGER(Bootstrp)[0]==0) & (INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (gestInd
 
 }
 
-//Rprintf("intro4\n");
+//Rprintf("intro4\n");fichier << "intro4" << endl;
 
 //if (scen & it>=1) Scenario(list, listScen, it);
 ////Rprintf("E");
@@ -1292,14 +1345,14 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 }
 
 
-//Rprintf("F\n");
+//Rprintf("F\n");fichier << "F" << endl;
 
 //3 modules avec pas de temps différencié au niveau trimestre
 if (nbE>0) {
- Mortalite(list, it, eVar);//Rprintf("\nG");//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
- DynamicPop(list, it, eVar);//Rprintf("\nH");////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
+ Mortalite(list, it, eVar);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
+ DynamicPop(list, it, eVar);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
 }
-CatchDL(list, it, eVar);//Rprintf("\nI");////PrintValue(out_Y_eit);
+CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
 
 
 
@@ -1392,8 +1445,8 @@ REPROTECT(FList = getListElement(list, "Fleet"), ipx_FList);
 REPROTECT(eVar = duplicate(eVar_copy), ipx_eVar);
 REPROTECT(fVar = duplicate(fVar_copy), ipx_fVar);
 
-if ((delay<=it) & (gestInd==1) & (it>=1) & ISNA(TAC_byFleet[0])) {
-//Rprintf("AA");
+if ((delay<=it) & (gestInd==1) & (it>=1) & isNull(TACbyF)) {
+//Rprintf("AA");fichier << "AA" << endl;
 ////PrintValue(getListElement(getListElement(list, "Fleet"), "nbds_f"));
 ////PrintValue(getListElement(FList, "nbds_f"));
 ////PrintValue(mu_nbds);
@@ -1710,20 +1763,19 @@ if (conform==4) trgt=2;
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-//Rprintf("preJ\n");
+//Rprintf("preJ\n");fichier << "preJ" << endl;
 Marche(list, it);
-//Rprintf("J\n");
-    EcoDCF(list, it, INTEGER(EcoInd)[0], INTEGER(EcoInd)[1], INTEGER(EcoInd)[2], INTEGER(EcoInd)[3], INTEGER(EcoInd)[4],
-                     INTEGER(EcoInd)[5], REAL(dr)[0]);
+//Rprintf("J\n");fichier << "J" << endl;
+    EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
 
-//Rprintf("K\n");// if (it>4) error("AAAhh");
+//Rprintf("K\n");fichier << "K" << endl;// if (it>4) error("AAAhh");
 //module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt à 2
 if (eTemp<nbE) {
   if ((delay<=it) & (gestInd==1) & (trgt==3) & (REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it] <= Fbar_trgt[it]))  trgt=2;    //????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 }
 //remise à l'état initial des paramètres du module Gestion si nécessaire (ATTENTION : implique qu'on n'atteint jamais l'effort nul quelle que soit la flottille
 //                                                                                 dans le cas contraire, fixer upd=2)
-//Rprintf("LL\n");
+//Rprintf("LL\n");fichier << "LL" << endl;
 
 
 }
@@ -1736,19 +1788,27 @@ PROTECT(nmsEF = allocVector(STRSXP, 6));
 for(int k = 0; k < 6; k++) SET_STRING_ELT(nmsEF, k, mkChar(nmEf[k]));
 setAttrib(out_effort, R_NamesSymbol, nmsEF);
 ////Rprintf("L");
-if (eTemp<nbE) {
-  if (Qvec[eTemp]==0) {
-    free_vector(Ztemp,1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
-  } else {
-    free_vector(Ztemp,1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"))*16);
-  }
-} else {
-  free_vector(Ztemp,1,2);
-}
+//if (eTemp<nbE) {
+//  if (Qvec[eTemp]==0) {
+//    free_vector(Ztemp,1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI")));
+//  } else {
+//    free_vector(Ztemp,1,length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,eTemp))), "modI"))*16);
+//  }
+//} else {
+//  free_vector(Ztemp,1,2);
+//}
 free_vector(Etemp,1,nbF);
-//Rprintf("K2\n");
-UNPROTECT(123+nbE+nbE+32+11+1+3+3); //+6 ajoutés après intégration de 'parOQD'
+
+
+free_vector(Einterm_fm,1,nbF*nbMe);
+free_vector(Einterm_fm_copy,1,nbF*nbMe);
+free_vector(EffsupTMP_fm,1,nbF*nbMe);
+free_vector(multFOTHinterm_e,1,nbE);
+
+//Rprintf("K2\n");fichier << "K2" << endl;
+UNPROTECT(123+nbE+nbE+32+11+1+3+3+2); //+6 ajoutés après intégration de 'parOQD'
 if (nbEstat>0) UNPROTECT(nbEstat);
+fichier.close();
 }
 
 //------------------------------------------------------------------------------------
@@ -2521,7 +2581,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                     }
 
-//Rprintf("Mort4\n");
+////Rprintf("Mort4\n");
                     //on calcule la mortalité via la capturabilité
                     if (Qvec[e]==1) {
 
@@ -2654,7 +2714,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                             PROTECT(formatEff = aggregObj(effort, dimCstEff));////PrintValue(formatEff);
                             rEff = REAL(formatEff);
-//Rprintf("Mort5\n");
+////Rprintf("Mort5\n");
                         if (Qvec[e]==1) {
 
                          r_F_efmi_S1M1 = REAL(v_F_efmi2_S1M1);
@@ -2768,7 +2828,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                         }
 
-//Rprintf("Mort6\n");
+////Rprintf("Mort6\n");
                         //tests sur les dimensions
                         dim_Sr_e = INTEGER(dimCst_Sr_e);
                         if (((dim_Sr_e[0]!=0) & (dim_Sr_e[0]!=nbF)) | ((dim_Sr_e[1]!=0) & (dim_Sr_e[1]!=nbM)) |
@@ -4441,7 +4501,7 @@ for (int e = 0 ; e < nbE ; e++) {
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 51));//Rprintf("Mort20.7\n");
 //Rprintf("MortZ0\n");
                     int *fFact1 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 4));//Rprintf("MortZ1\n");
-                    int *fFact2 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 5));//Rprintf("MortZ2\n");PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 6));
+                    int *fFact2 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 5));//Rprintf("MortZ2\n");//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 6));
                     int *fFact3 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 6));//Rprintf("MortZ3\n");
                     int *fFact4 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 7));//Rprintf("MortZ4\n");
                     int *fFact6 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 61));//Rprintf("MortZ5\n");
@@ -5162,6 +5222,7 @@ void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR)
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 7));//Rprintf("Mort20.4\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 61));//Rprintf("Mort20.5\n");
 
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testDyn.txt", ios::out | ios::trunc);
 
 if (dUpdate) {
 
@@ -5267,19 +5328,21 @@ if (ind_t==0) {
 }
 
 
-for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
+for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");fichier << "G1one" << endl;
 
-                                    PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));//Rprintf("g1");
-                                    PROTECT(intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e))));//Rprintf("g2");
+                                    double *Ztemp = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,e))));
+fichier << "G2one" << endl;
+                                    PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));//Rprintf("g1");fichier << "g1" << endl;
+                                    PROTECT(intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e))));//Rprintf("g2");fichier << "g2" << endl;
 
-                                    nbI = length(getListElement(elmt, "modI"));//Rprintf("g3");
+                                    nbI = length(getListElement(elmt, "modI"));//Rprintf("g3");fichier << "g3" << endl;
 
-                                    PROTECT(v_M_ei = getListElement(elmt, "M_i"));//Rprintf("g4");
-                                    PROTECT(v_w_ei = getListElement(elmt, "wStock_i"));//Rprintf("g5");
-                                    PROTECT(v_mat_ei = getListElement(elmt, "mat_i"));//Rprintf("g6");
+                                    PROTECT(v_M_ei = getListElement(elmt, "M_i"));//Rprintf("g4");fichier << "g4" << endl;
+                                    PROTECT(v_w_ei = getListElement(elmt, "wStock_i"));//Rprintf("g5");fichier << "g5" << endl;
+                                    PROTECT(v_mat_ei = getListElement(elmt, "mat_i"));//Rprintf("g6");fichier << "g6" << endl;
 
-                                    PROTECT(v_r = getListElement(elmt, "r"));//Rprintf("g4");              //added SPiCT 19/07/2016
-                                    PROTECT(v_K = getListElement(elmt, "K"));//Rprintf("g5");              //
+                                    PROTECT(v_r = getListElement(elmt, "r"));//Rprintf("g4");   fichier << "g4" << endl;           //added SPiCT 19/07/2016
+                                    PROTECT(v_K = getListElement(elmt, "K"));//Rprintf("g5");    fichier << "g5" << endl;          //
                                     PROTECT(v_n = getListElement(elmt, "n"));                              //
                                     PROTECT(v_B = getListElement(elmt, "B_i"));                            //
 
@@ -5288,8 +5351,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(v_Fr_efmit = getListElement(out_Fr_fmi, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
 
-                                    PROTECT(v_Fr_efmit_S1M1 = getListElement(out_Fr_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));//Rprintf("g7");
-                                    PROTECT(v_Fr_efmit_S1M2 = getListElement(out_Fr_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));//Rprintf("g8");
+                                    PROTECT(v_Fr_efmit_S1M1 = getListElement(out_Fr_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));//Rprintf("g7");fichier << "g7" << endl;
+                                    PROTECT(v_Fr_efmit_S1M2 = getListElement(out_Fr_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));//Rprintf("g8");fichier << "g8" << endl;
                                     PROTECT(v_Fr_efmit_S1M3 = getListElement(out_Fr_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_Fr_efmit_S1M4 = getListElement(out_Fr_fmi_S1M4, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_Fr_efmit_S2M1 = getListElement(out_Fr_fmi_S2M1, CHAR(STRING_ELT(sppList,e))));
@@ -5304,7 +5367,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(v_Fr_efmit_S4M2 = getListElement(out_Fr_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_Fr_efmit_S4M3 = getListElement(out_Fr_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_Fr_efmit_S4M4 = getListElement(out_Fr_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("G1.1");
+//Rprintf("G1.1");fichier << "G1.1" << endl;
                                     PROTECT(v_F_efmit_S1M1 = getListElement(out_F_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit_S1M2 = getListElement(out_F_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit_S1M3 = getListElement(out_F_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
@@ -5321,7 +5384,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(v_F_efmit_S4M2 = getListElement(out_F_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit_S4M3 = getListElement(out_F_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit_S4M4 = getListElement(out_F_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("G1.2");
+//Rprintf("G1.2");fichier << "G1.2" << endl;
                                     PROTECT(v_N_ei0_S1M1 = getListElement(elmt, "Nt0_S1M1"));
                                     PROTECT(v_N_ei0_S1M2 = getListElement(elmt, "Nt0_S1M2"));
                                     PROTECT(v_N_ei0_S1M3 = getListElement(elmt, "Nt0_S1M3"));
@@ -5364,7 +5427,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_N_ei0 = getListElement(elmt, "N_it0"));
                                     PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
-//Rprintf("G1.3");
+//Rprintf("G1.3");fichier << "G1.3" << endl;
                                     PROTECT(dimCst_Fr_efmit = getAttrib(v_Fr_efmit, install("DimCst")));
                                     PROTECT(dimCst_N_ei0 = getAttrib(v_N_ei0, install("DimCst")));
                                     PROTECT(dimCst_N_e0t = getAttrib(v_N_e0t, install("DimCst")));
@@ -5376,7 +5439,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(dimCst_w_ei = getAttrib(v_w_ei, install("DimCst")));
                                     PROTECT(dimCst_mat_ei = getAttrib(v_mat_ei, install("DimCst")));
 
-//Rprintf("G1.4");
+//Rprintf("G1.4");fichier << "G1.4" << endl;
                                     dim_M_ei = INTEGER(dimCst_M_ei);
                                     dim_w_ei = INTEGER(dimCst_w_ei);
                                     dim_mat_ei = INTEGER(dimCst_mat_ei);
@@ -5436,7 +5499,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     //---------
                                     // initialisation de out_Z_eit
                                     //---------
-//Rprintf("G1.5");
+//Rprintf("G1.5");fichier << "G1.5" << endl;
                                     //on détermine l'attribut Dimension de Z_eit
                                     PROTECT(dimCst1 = allocVector(INTSXP, 4));
                                     dimC1 = INTEGER(dimCst1);
@@ -5455,7 +5518,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                             prod = prod * dimC1[k];
                                         }
                                     }
-//Rprintf("G1.6");
+//Rprintf("G1.6");fichier << "G1.6" << endl;
                                     PROTECT(Dim1 = allocVector(INTSXP, count));//Rprintf("G1.61");
                                     dim1 = INTEGER(Dim1);//Rprintf("G1.62");
 
@@ -5466,12 +5529,12 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                             count2++;
                                             }
                                     }
-//Rprintf("G1.63");//Rprintf("%i ",prod);
+//Rprintf("G1.63");//Rprintf("%i ",prod);fichier << "G1.63" << endl;
                             if (ind_t==0){
                                     //on crée le tableau résultat pour l'espèce en question
-                                    PROTECT(ans_Z_eit = NEW_NUMERIC(prod));//Rprintf("G1.64");
-                                    setAttrib(ans_Z_eit, R_DimSymbol, Dim1);//Rprintf("G1.65");
-//Rprintf("G1.7");
+                                    PROTECT(ans_Z_eit = NEW_NUMERIC(prod));//Rprintf("G1.64");fichier << "G1.64" << endl;
+                                    setAttrib(ans_Z_eit, R_DimSymbol, Dim1);//Rprintf("G1.65");fichier << "G1.65" << endl;
+//Rprintf("G1.7");fichier << "G1.7" << endl;
                                     if (Qvec[e]==1) {
 
                                     PROTECT(ans_Z_eit_S1M1 = NEW_NUMERIC(prod)); setAttrib(ans_Z_eit_S1M1, R_DimSymbol, Dim1);
@@ -5492,7 +5555,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     PROTECT(ans_Z_eit_S4M4 = NEW_NUMERIC(prod)); setAttrib(ans_Z_eit_S4M4, R_DimSymbol, Dim1);
 
                                     }
-//Rprintf("G1.8");
+//Rprintf("G1.8");fichier << "G1.8" << endl;
                                     PROTECT(dimnames1 = allocVector(VECSXP,count));
                                     if (dimC1[0]>0) {SET_VECTOR_ELT(dimnames1, count3, fleetList) ; count3++;}
                                     if (dimC1[1]>0) {SET_VECTOR_ELT(dimnames1, count3, metierList) ; count3++;}
@@ -5511,7 +5574,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     rans_Z_eit_S3M3 = REAL(ans_Z_eit_S3M3); rans_Z_eit_S3M4 = REAL(ans_Z_eit_S3M4);
                                     rans_Z_eit_S4M1 = REAL(ans_Z_eit_S4M1); rans_Z_eit_S4M2 = REAL(ans_Z_eit_S4M2);
                                     rans_Z_eit_S4M3 = REAL(ans_Z_eit_S4M3); rans_Z_eit_S4M4 = REAL(ans_Z_eit_S4M4);
-//Rprintf("G1.9");
+//Rprintf("G1.9");fichier << "G1.9" << endl;
                                     }
 
                             } else {
@@ -5532,15 +5595,15 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     }
 
                             }
-//Rprintf("G1.10");
+//Rprintf("G1.10");fichier << "G1.10" << endl;
 
     if (Qvec[e]==0) {
-//Rprintf("G1.10.1");
+//Rprintf("G1.10.1");fichier << "G1.10.1" << endl;
                                     r_Fr_efmit = REAL(v_Fr_efmit);
                                     r_F_efmit = REAL(v_F_efmit);
                                     r_M_ei = REAL(v_M_ei);
                                     r_Fbar = REAL(v_Fbar);
-//Rprintf("G1.10.2");
+//Rprintf("G1.10.2");fichier << "G1.10.2" << endl;
                                     //facteurs des indices
                                     PROTECT(dFACT1 = iDim(dimC1));
                                     PROTECT(dFACT2 = iDim(dim_Fr_efmit));
@@ -5549,11 +5612,11 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     int *fact1_D = INTEGER(dFACT1);
                                     int *fact2_D = INTEGER(dFACT2);
                                     int *fact3_D = INTEGER(dFACT3);
-//Rprintf("G1.10.3");
+//Rprintf("G1.10.3");fichier << "G1.10.3" << endl;
                                     double *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
 
                                     fmax = 0.0; sumWt = 0.0;
-//Rprintf("G1.10.4");
+//Rprintf("G1.10.4");fichier << "G1.10.4" << endl;
                                     //équation
                                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -5573,7 +5636,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                      rans_Z_eit[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] =
                                         Zoptim[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
-//Rprintf("G1.11");
+//Rprintf("G1.11");fichier << "G1.11" << endl;
 
                                     } else {
 
@@ -5586,8 +5649,11 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                            //on initialise aussi Ztemp (attention : indexé à partir de 1)
 
-                                           if (e==eTemp) Ztemp[ind_i+1] = rans_Z_eit[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                           //if (e==eTemp) Ztemp[ind_i+1] = rans_Z_eit[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
                                         }
+
+                                        Ztemp[ind_i] = rans_Z_eit[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+
                                     }
 
                                     //on en profite pour calculer Fbar
@@ -5615,7 +5681,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                 SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 14, dFACT3);
                                 SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 59, v_Fbar);
 
-//Rprintf("G1.12");
+//Rprintf("G1.12");fichier << "G1.12" << endl;
 
                                 /////////////////////////////////////////////////////////////////////////////////////////////////
                                 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -5652,7 +5718,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                             }
                                     }
 
-//Rprintf("G1.13");
+//Rprintf("G1.13");fichier << "G1.13" << endl;
                             if (ind_t==0) {
 
                                     //on crée le tableau résultat pour l'espèce en question
@@ -5713,7 +5779,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                                           r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]];
 
                                                     }}
-//Rprintf("G1.14");
+//Rprintf("G1.14");fichier << "G1.14" << endl;
 
                                                 } else {
 
@@ -5778,10 +5844,10 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
     } else {
 
-//Rprintf("G1.14.1");
+//Rprintf("G1.14.1");fichier << "G1.14.1" << endl;
                                     r_Fr_efmit = REAL(v_Fr_efmit);
                                     r_F_efmit = REAL(v_F_efmit);//Rprintf("G1.14.2");
-//Rprintf("G1.15");
+//Rprintf("G1.15");fichier << "G1.15" << endl;
                                     r_Fr_efmit_S1M1 = REAL(v_Fr_efmit_S1M1);  r_Fr_efmit_S1M2 = REAL(v_Fr_efmit_S1M2);
                                     r_Fr_efmit_S1M3 = REAL(v_Fr_efmit_S1M3);  r_Fr_efmit_S1M4 = REAL(v_Fr_efmit_S1M4);
                                     r_Fr_efmit_S2M1 = REAL(v_Fr_efmit_S2M1);  r_Fr_efmit_S2M2 = REAL(v_Fr_efmit_S2M2);
@@ -5790,7 +5856,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     r_Fr_efmit_S3M3 = REAL(v_Fr_efmit_S3M3);  r_Fr_efmit_S3M4 = REAL(v_Fr_efmit_S3M4);
                                     r_Fr_efmit_S4M1 = REAL(v_Fr_efmit_S4M1);  r_Fr_efmit_S4M2 = REAL(v_Fr_efmit_S4M2);
                                     r_Fr_efmit_S4M3 = REAL(v_Fr_efmit_S4M3);  r_Fr_efmit_S4M4 = REAL(v_Fr_efmit_S4M4);
-//Rprintf("G1.16");
+//Rprintf("G1.16");fichier << "G1.16" << endl;
                                     r_F_efmit_S1M1 = REAL(v_F_efmit_S1M1);  r_F_efmit_S1M2 = REAL(v_F_efmit_S1M2);
                                     r_F_efmit_S1M3 = REAL(v_F_efmit_S1M3);  r_F_efmit_S1M4 = REAL(v_F_efmit_S1M4);
                                     r_F_efmit_S2M1 = REAL(v_F_efmit_S2M1);  r_F_efmit_S2M2 = REAL(v_F_efmit_S2M2);
@@ -5799,10 +5865,10 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     r_F_efmit_S3M3 = REAL(v_F_efmit_S3M3);  r_F_efmit_S3M4 = REAL(v_F_efmit_S3M4);
                                     r_F_efmit_S4M1 = REAL(v_F_efmit_S4M1);  r_F_efmit_S4M2 = REAL(v_F_efmit_S4M2);
                                     r_F_efmit_S4M3 = REAL(v_F_efmit_S4M3);  r_F_efmit_S4M4 = REAL(v_F_efmit_S4M4);
-//Rprintf("G1.17");
+//Rprintf("G1.17");fichier << "G1.17" << endl;
                                     r_M_ei = REAL(v_M_ei);
                                     r_Fbar = REAL(v_Fbar);
-//Rprintf("G1.18");
+//Rprintf("G1.18");fichier << "G1.18" << endl;
                                     //facteurs des indices
                                     PROTECT(dFACT1 = iDim(dimC1));
                                     PROTECT(dFACT2 = iDim(dim_Fr_efmit));
@@ -5814,7 +5880,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                     double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                     double *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
-//Rprintf("G1.19");
+//Rprintf("G1.19");fichier << "G1.19" << endl;
                                     double *r_Foth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 116));
                                     double *r_Foth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 117));
                                     double *r_Foth_i_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 118));
@@ -5831,7 +5897,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     double *r_Foth_i_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 129));
                                     double *r_Foth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 130));
                                     double *r_Foth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 131));
-//Rprintf("G1.20");
+//Rprintf("G1.20");fichier << "G1.20" << endl;
                                     double *r_Froth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 132));
                                     double *r_Froth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 133));
                                     double *r_Froth_i_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 134));
@@ -5848,7 +5914,7 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
                                     double *r_Froth_i_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 145));
                                     double *r_Froth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 146));
                                     double *r_Froth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 147));
-//Rprintf("G1.21");
+//Rprintf("G1.21");fichier << "G1.21" << endl;
                                     //équation
                                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -5869,8 +5935,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S1M1 -> 0
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(0*nbI)] = rans_Z_eit_S1M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
-
+                                        //if (e==eTemp) Ztemp[ind_i+1+(0*nbI)] = rans_Z_eit_S1M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(0*nbI)] = rans_Z_eit_S1M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5890,8 +5956,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S1M2 -> 1
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(1*nbI)] = rans_Z_eit_S1M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
-
+                                        //if (e==eTemp) Ztemp[ind_i+1+(1*nbI)] = rans_Z_eit_S1M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(1*nbI)] = rans_Z_eit_S1M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5911,7 +5977,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S1M3 -> 2
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(2*nbI)] = rans_Z_eit_S1M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(2*nbI)] = rans_Z_eit_S1M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(2*nbI)] = rans_Z_eit_S1M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5931,7 +5998,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S1M4 -> 3
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(3*nbI)] = rans_Z_eit_S1M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(3*nbI)] = rans_Z_eit_S1M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(3*nbI)] = rans_Z_eit_S1M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5950,7 +6018,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S2M1 -> 4
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(4*nbI)] = rans_Z_eit_S2M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(4*nbI)] = rans_Z_eit_S2M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(4*nbI)] = rans_Z_eit_S2M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5969,7 +6038,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S2M2 -> 5
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(5*nbI)] = rans_Z_eit_S2M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(5*nbI)] = rans_Z_eit_S2M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(5*nbI)] = rans_Z_eit_S2M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -5989,7 +6059,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S2M3 -> 6
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(6*nbI)] = rans_Z_eit_S2M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(6*nbI)] = rans_Z_eit_S2M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(6*nbI)] = rans_Z_eit_S2M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6009,7 +6080,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S2M4 -> 7
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(7*nbI)] = rans_Z_eit_S2M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(7*nbI)] = rans_Z_eit_S2M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(7*nbI)] = rans_Z_eit_S2M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6028,7 +6100,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S3M1 -> 8
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(8*nbI)] = rans_Z_eit_S3M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(8*nbI)] = rans_Z_eit_S3M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(8*nbI)] = rans_Z_eit_S3M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6047,7 +6120,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S3M2 -> 9
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(9*nbI)] = rans_Z_eit_S3M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(9*nbI)] = rans_Z_eit_S3M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(9*nbI)] = rans_Z_eit_S3M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6066,7 +6140,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S3M3 -> 10
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(10*nbI)] = rans_Z_eit_S3M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(10*nbI)] = rans_Z_eit_S3M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(10*nbI)] = rans_Z_eit_S3M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6086,7 +6161,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S3M4 -> 11
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(11*nbI)] = rans_Z_eit_S3M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(11*nbI)] = rans_Z_eit_S3M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(11*nbI)] = rans_Z_eit_S3M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6105,7 +6181,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S4M1 -> 12
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(12*nbI)] = rans_Z_eit_S4M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(12*nbI)] = rans_Z_eit_S4M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(12*nbI)] = rans_Z_eit_S4M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6124,7 +6201,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S4M2 -> 13
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(13*nbI)] = rans_Z_eit_S4M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(13*nbI)] = rans_Z_eit_S4M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(13*nbI)] = rans_Z_eit_S4M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6143,7 +6221,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S4M3 -> 14
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(14*nbI)] = rans_Z_eit_S4M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(14*nbI)] = rans_Z_eit_S4M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(14*nbI)] = rans_Z_eit_S4M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                         temp = 0.0;
 
@@ -6162,7 +6241,8 @@ for (int e = 0 ; e < nbE ; e++) {//Rprintf("G1one");
 
                                         //on initialise aussi Ztemp (attention : indexé à partir de 1) : S4M4 -> 15
 
-                                        if (e==eTemp) Ztemp[ind_i+1+(15*nbI)] = rans_Z_eit_S4M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        //if (e==eTemp) Ztemp[ind_i+1+(15*nbI)] = rans_Z_eit_S4M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
+                                        Ztemp[ind_i+(15*nbI)] = rans_Z_eit_S4M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]];
 
                                     }
 
@@ -6758,7 +6838,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                     //---------
                                     // calcul de B_et
                                     //---------
-//Rprintf("K700\n");
+//Rprintf("K700\n");fichier << "K700" << endl;
                                     //on détermine l'attribut Dimension de B_et
                                     PROTECT(dimCst3 = allocVector(INTSXP, 4));
                                     dimC3 = INTEGER(dimCst3);
@@ -6785,7 +6865,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                             count2++;
                                             }
                                     }
-//Rprintf("K70\n");
+//Rprintf("K70\n");fichier << "K70" << endl;
                             if (ind_t==0) {
                                     //on crée le tableau résultat pour l'espèce en question
                                     PROTECT(ans_B_et = NEW_NUMERIC(prod));
@@ -6818,7 +6898,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                     r_K = REAL(v_K);
                                     r_n = REAL(v_n);
                                     r_B = REAL(v_B);
-//Rprintf("K71\n");
+//Rprintf("K71\n");fichier << "K71" << endl;
                                     //équation
 
                                     if (nbI>1) {
@@ -6867,7 +6947,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                         UNPROTECT(3);
 
                                     }
-//Rprintf("K72\n");
+//Rprintf("K72\n");fichier << "K72" << endl;
 
                             if(ind_t==0) {
 
@@ -6884,16 +6964,16 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                 SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 20, v_w_ei);
                                 SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 21, dFACT7);
                                 SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 22, dFACT8);
-//Rprintf("K73\n");
+//Rprintf("K73\n");fichier << "K73" << endl;
                                 UNPROTECT(34);
                                 UNPROTECT(4); //SPiCT
-                                //Rprintf("K8\n");
+                                //Rprintf("K8\n");fichier << "K8" << endl;
                                 if (Qvec[e]==1) UNPROTECT(38+20);
 
 }
 //PrintValue(out_Fbar_et);
 dUpdate = false;
-//Rprintf("K9\n");
+//Rprintf("K9\n");fichier << "K9" << endl;
 if (ind_t==0) UNPROTECT(1);
 
 
@@ -6901,7 +6981,7 @@ if (ind_t==0) UNPROTECT(1);
 
 
 for (int e = 0 ; e < nbE ; e++) {
-//Rprintf("G1");
+//Rprintf("G1");fichier << "G1" << endl;
 
                     SEXP elmt;
                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
@@ -6953,7 +7033,7 @@ for (int e = 0 ; e < nbE ; e++) {
                         *fact9_D = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 48)),
                         *fact10_D = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 49));
 
-//Rprintf("G7");
+//Rprintf("G7");fichier << "G7" << endl;
 
     if (Qvec[e]==0) {
 
@@ -7521,36 +7601,38 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                     }
 
-
+fichier << "mm" << endl;
                     if (ZoptSS3) {
+
+                        double *Ztemp = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,e))));
 
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
-                           rans_Z_eit_S1M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(0*nbI)];
-                           rans_Z_eit_S1M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(1*nbI)];
-                           rans_Z_eit_S1M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(2*nbI)];
-                           rans_Z_eit_S1M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(3*nbI)];
+                           rans_Z_eit_S1M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(0*nbI)];
+                           rans_Z_eit_S1M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(1*nbI)];
+                           rans_Z_eit_S1M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(2*nbI)];
+                           rans_Z_eit_S1M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(3*nbI)];
 
-                           rans_Z_eit_S2M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(4*nbI)];
-                           rans_Z_eit_S2M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(5*nbI)];
-                           rans_Z_eit_S2M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(6*nbI)];
-                           rans_Z_eit_S2M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(7*nbI)];
+                           rans_Z_eit_S2M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(4*nbI)];
+                           rans_Z_eit_S2M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(5*nbI)];
+                           rans_Z_eit_S2M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(6*nbI)];
+                           rans_Z_eit_S2M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(7*nbI)];
 
-                           rans_Z_eit_S3M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(8*nbI)];
-                           rans_Z_eit_S3M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(9*nbI)];
-                           rans_Z_eit_S3M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(10*nbI)];
-                           rans_Z_eit_S3M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(11*nbI)];
+                           rans_Z_eit_S3M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(8*nbI)];
+                           rans_Z_eit_S3M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(9*nbI)];
+                           rans_Z_eit_S3M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(10*nbI)];
+                           rans_Z_eit_S3M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(11*nbI)];
 
-                           rans_Z_eit_S4M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(12*nbI)];
-                           rans_Z_eit_S4M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(13*nbI)];
-                           rans_Z_eit_S4M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(14*nbI)];
-                           rans_Z_eit_S4M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+1+(15*nbI)];
+                           rans_Z_eit_S4M1[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(12*nbI)];
+                           rans_Z_eit_S4M2[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(13*nbI)];
+                           rans_Z_eit_S4M3[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(14*nbI)];
+                           rans_Z_eit_S4M4[0*fact1_D[0] + 0*fact1_D[1] + ind_i*fact1_D[2] + ind_t*fact1_D[3]] = Ztemp[ind_i+(15*nbI)];
 
                         }
 
                     }
 
-
+fichier << "mm2" << endl;
 
                                     //---------
                                     // calcul de N_eit
@@ -8133,12 +8215,14 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
 
     }
-//Rprintf("K10\n");
+//Rprintf("K10\n");fichier << "K10" << endl;
                     UNPROTECT(2);//Rprintf("K11\n");
                     if (Qvec[e]==1) UNPROTECT(4+4+4);
 }}
 
-}}
+fichier.close();
+}
+}
 
 
 
@@ -8159,7 +8243,10 @@ extern "C" {
 
 void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR)
 {
-//Rprintf("Capt");
+
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testCatch.txt", ios::out | ios::trunc);
+
+//Rprintf("Capt");fichier << "Capt" << endl;
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 5));//Rprintf("Mort20.2\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 6));//Rprintf("Mort20.3\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 7));//Rprintf("Mort20.4\n");
@@ -8249,10 +8336,10 @@ for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
   rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
 
 if (nbE>0) {
-//Rprintf("H1\n");
+//Rprintf("H1\n");fichier << "H1" << endl;
 
     for (int e = 0 ; e < nbE ; e++) {
-//Rprintf("H2\n");
+//Rprintf("H2\n");fichier << "H2" << endl;
                             PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
                             PROTECT(intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e))));
 
@@ -8274,7 +8361,7 @@ if (nbE>0) {
                             PROTECT(dimCst_F_efmit = getAttrib(v_F_efmit, install("DimCst")));
                             PROTECT(dimCst_N_eit = getAttrib(v_N_eit, install("DimCst")));
                             PROTECT(dimCst_Z_eit = getAttrib(v_Z_eit, install("DimCst")));
-//Rprintf("H3\n");
+//Rprintf("H3\n");fichier << "H3" << endl;
                             //tests sur les dimensions :
                             dim_d_efmit = INTEGER(dimCst_d_efmit);
                             if (((dim_d_efmit[0]!=0) & (dim_d_efmit[0]!=nbF)) | ((dim_d_efmit[1]!=0) & (dim_d_efmit[1]!=nbM)) |
@@ -8358,10 +8445,10 @@ if (nbE>0) {
                             dimcst2 = INTEGER(dimCst2); dimcst2[0] = 0; dimcst2[1] = 0; dimcst2[2] = nbI; dimcst2[3] = nbT;
                             PROTECT(Dim2 = allocVector(INTSXP, 2));
                             dim2 = INTEGER(Dim2); dim2[0] = nbI; dim2[1] = nbT;
-//Rprintf("H4\n");
+//Rprintf("H4\n");fichier << "H4" << endl;
 
                     if (ind_t==0){
-//Rprintf("H4.1\n");
+//Rprintf("H4.1\n");fichier << "H4.1" << endl;
                             //on crée le tableau résultat pour l'espèce en question
                             PROTECT(ans_C_efmit = NEW_NUMERIC(prod));
                             setAttrib(ans_C_efmit, R_DimSymbol, Dim);
@@ -8381,12 +8468,12 @@ if (nbE>0) {
 
                             rans_C_efmit = REAL(ans_C_efmit);
                             rans_C_eit = REAL(ans_C_eit);
-//Rprintf("H4.2\n");
+//Rprintf("H4.2\n");fichier << "H4.2" << endl;
                     } else {
 
                             rans_C_efmit = REAL(VECTOR_ELT(out_C_efmit, e));
                             rans_C_eit = REAL(VECTOR_ELT(out_C_eit, e));
-//Rprintf("H4.3\n");
+//Rprintf("H4.3\n");fichier << "H4.3" << endl;
                     }
 
 
@@ -8394,7 +8481,7 @@ if (nbE>0) {
                             r_N_eit = REAL(v_N_eit);
                             r_Z_eit = REAL(v_Z_eit);
                             r_B_et = REAL(v_B_et);
-//Rprintf("H4.4\n");
+//Rprintf("H4.4\n");fichier << "H4.4" << endl;
                             //facteurs des indices
                             PROTECT(cFACT1 = iDim(dimC));
                             PROTECT(cFACT2 = iDim(dim_F_efmit));
@@ -8407,10 +8494,10 @@ if (nbE>0) {
                             int *fact4_C = INTEGER(cFACT4);
 
                             double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
-//Rprintf("H4.5\n");
+//Rprintf("H4.5\n");fichier << "H4.5" << endl;
                             //équation
                             if (Qvec[e]==1) {
-//Rprintf("H4.6\n");
+//Rprintf("H4.6\n");fichier << "H4.6" << endl;
                                 double *r_F_fmi_S1M1 = REAL(getListElement(out_F_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));
                                 double *r_F_fmi_S1M2 = REAL(getListElement(out_F_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_F_fmi_S1M3 = REAL(getListElement(out_F_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
@@ -8427,7 +8514,7 @@ if (nbE>0) {
                                 double *r_F_fmi_S4M2 = REAL(getListElement(out_F_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_F_fmi_S4M3 = REAL(getListElement(out_F_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                 double *r_F_fmi_S4M4 = REAL(getListElement(out_F_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H4.7\n");//PrintValue(out_Z_eit_S1M1);
+//Rprintf("H4.7\n");fichier << "H4.7" << endl;//PrintValue(out_Z_eit_S1M1);
                                 double *r_Z_eit_S1M1 = REAL(getListElement(out_Z_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.1\n");
                                 double *r_Z_eit_S1M2 = REAL(getListElement(out_Z_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.2\n");
                                 double *r_Z_eit_S1M3 = REAL(getListElement(out_Z_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.3\n");
@@ -8444,7 +8531,7 @@ if (nbE>0) {
                                 double *r_Z_eit_S4M2 = REAL(getListElement(out_Z_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M3 = REAL(getListElement(out_Z_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M4 = REAL(getListElement(out_Z_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H4.8\n");
+//Rprintf("H4.8\n");fichier << "H4.8" << endl;
                                 double *r_N_eit_S1M1 = REAL(getListElement(out_N_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M2 = REAL(getListElement(out_N_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M3 = REAL(getListElement(out_N_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));
@@ -8461,7 +8548,7 @@ if (nbE>0) {
                                 double *r_N_eit_S4M2 = REAL(getListElement(out_N_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M3 = REAL(getListElement(out_N_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M4 = REAL(getListElement(out_N_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5aaa\n");
+//Rprintf("H5aaa\n");fichier << "H5aaa" << endl;
                                 double  *r_M_ei = REAL(getListElement(elmt, "M_i"));//Rprintf("H5.1\n");
                                 int *fact3_D = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 14));
 
@@ -8520,7 +8607,7 @@ if (nbE>0) {
                                       r_N_eit_S4M4[ind_i + ind_t*nbI] * (1-exp(-r_Z_eit_S4M4[ind_i + ind_t*nbI]/4)) *
                                        (r_Z_eit_S4M4[ind_i + ind_t*nbI] - r_M_ei[0*fact3_D[0] + 0*fact3_D[1] + ind_i*fact3_D[2] + ind_t*fact3_D[3]]) /
                                        (r_Z_eit_S4M4[ind_i + ind_t*nbI] + (r_Z_eit_S4M4[ind_i + ind_t*nbI]==0));
-//Rprintf("H6\n");
+//Rprintf("H6\n");fichier << "H6" << endl;
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
@@ -8585,7 +8672,7 @@ if (nbE>0) {
 
 
                             } else {
-//Rprintf("H7\n");
+//Rprintf("H7\n");fichier << "H7" << endl;
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                                 for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
@@ -8840,7 +8927,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
                             rans_DD_efmit = REAL(VECTOR_ELT(out_DD_efmi,e));
                             rans_LD_efmit = REAL(VECTOR_ELT(out_LD_efmi,e));
 
-                        //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) {Rprintf("CC");
+                        //if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) {//Rprintf("CC");
 
                             rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));
                             rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("DD");
@@ -8977,7 +9064,7 @@ if (nbI>1) {
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                            rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                         fmin2( r_dd1_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0) ;
+                                         fmin2( r_dd1_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0) ;
 
                         if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                              rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -8994,7 +9081,7 @@ if (nbI>1) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                               rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * rYsum / rDsum ,  1.0) ;
+                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) ,  1.0) ;
 
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                              rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -9105,7 +9192,7 @@ if (nbI>1) {
 
                             SET_VECTOR_ELT(out_L_efmit, e, ans_L_efmit);
                             SET_STRING_ELT(rnames_Esp, e, STRING_ELT(sppList,e));
-//Rprintf("K12\n");
+//Rprintf("K12\n");fichier << "K12" << endl;
                             UNPROTECT(11);
 
                             /*if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0)) */UNPROTECT(6); //over quota discards
@@ -9117,12 +9204,12 @@ if (nbI>1) {
 
 
                      if (Qvec[e]==1) {
-//Rprintf("H4.6\n");
+//Rprintf("H4.6\n");fichier << "H4.6" << endl;
 
-                                double *r_Z_eit_S1M1 = REAL(getListElement(out_Z_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.1\n");
-                                double *r_Z_eit_S1M2 = REAL(getListElement(out_Z_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.2\n");
-                                double *r_Z_eit_S1M3 = REAL(getListElement(out_Z_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.3\n");
-                                double *r_Z_eit_S1M4 = REAL(getListElement(out_Z_eit_S1M4 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.4\n");
+                                double *r_Z_eit_S1M1 = REAL(getListElement(out_Z_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.1\n");fichier << "H4.7.1" << endl;
+                                double *r_Z_eit_S1M2 = REAL(getListElement(out_Z_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.2\n");fichier << "H4.7.2" << endl;
+                                double *r_Z_eit_S1M3 = REAL(getListElement(out_Z_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.3\n");fichier << "H4.7.3" << endl;
+                                double *r_Z_eit_S1M4 = REAL(getListElement(out_Z_eit_S1M4 , CHAR(STRING_ELT(sppList,e))));//Rprintf("H4.7.4\n");fichier << "H4.7.4" << endl;
                                 double *r_Z_eit_S2M1 = REAL(getListElement(out_Z_eit_S2M1 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S2M2 = REAL(getListElement(out_Z_eit_S2M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S2M3 = REAL(getListElement(out_Z_eit_S2M3 , CHAR(STRING_ELT(sppList,e))));
@@ -9135,7 +9222,7 @@ if (nbI>1) {
                                 double *r_Z_eit_S4M2 = REAL(getListElement(out_Z_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M3 = REAL(getListElement(out_Z_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M4 = REAL(getListElement(out_Z_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H4.8\n");
+//Rprintf("H4.8\n");fichier << "H4.8" << endl;
                                 double *r_N_eit_S1M1 = REAL(getListElement(out_N_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M2 = REAL(getListElement(out_N_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M3 = REAL(getListElement(out_N_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));
@@ -9152,9 +9239,9 @@ if (nbI>1) {
                                 double *r_N_eit_S4M2 = REAL(getListElement(out_N_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M3 = REAL(getListElement(out_N_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M4 = REAL(getListElement(out_N_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5bbb\n");
+//Rprintf("H5bbb\n");fichier << "H5bbb" << endl;
                                 double  *r_M_ei = REAL(getListElement(elmt, "M_i"));
-//Rprintf("H5bbb2\n");PrintValue(out_FRWT_fmi_S1M1);
+//Rprintf("H5bbb2\n");fichier << "H5bbb2" << endl;//PrintValue(out_FRWT_fmi_S1M1);
                                 double *r_FRWT_fmi_S1M1 = REAL(getListElement(out_FRWT_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S1M2 = REAL(getListElement(out_FRWT_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S1M3 = REAL(getListElement(out_FRWT_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
@@ -9171,7 +9258,7 @@ if (nbI>1) {
                                 double *r_FRWT_fmi_S4M2 = REAL(getListElement(out_FRWT_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S4M3 = REAL(getListElement(out_FRWT_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S4M4 = REAL(getListElement(out_FRWT_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H4.7\n");//PrintValue(out_Z_eit_S1M1);
+//Rprintf("H4.7\n");fichier << "H4.7" << endl;//PrintValue(out_Z_eit_S1M1);
                                 double *r_FDWT_fmi_S1M1 = REAL(getListElement(out_FDWT_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S1M2 = REAL(getListElement(out_FDWT_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S1M3 = REAL(getListElement(out_FDWT_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
@@ -9188,7 +9275,7 @@ if (nbI>1) {
                                 double *r_FDWT_fmi_S4M2 = REAL(getListElement(out_FDWT_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S4M3 = REAL(getListElement(out_FDWT_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S4M4 = REAL(getListElement(out_FDWT_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5ccc\n");
+//Rprintf("H5ccc\n");fichier << "H5ccc" << endl;
                                 double *r_FRWToth_it_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 176));
                                 double *r_FRWToth_it_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 177));
                                 double *r_FRWToth_it_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 178));
@@ -9368,7 +9455,7 @@ if (nbI>1) {
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                            rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2 ( r_dd1_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0 );
+                                     fmin2 ( r_dd1_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0 );
                         if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                             rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
 
@@ -9385,7 +9472,7 @@ if (nbI>1) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                               rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                    fmin2 ( r_dd2_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0 ) ;
+                                    fmin2 ( r_dd2_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0 ) ;
 
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                 rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -9664,7 +9751,7 @@ if (nbI>1) {
 
                             }
 
-//Rprintf("K13\n");
+//Rprintf("K13\n");fichier << "K13" << endl;
 
 
 /* insertion over quota management discards pour corriger D et L -> espèces dynamiques */
@@ -9812,9 +9899,9 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
 if (nbEstat>0) {
 
-//Rprintf("H8\n");
+//Rprintf("H8\n");fichier << "H8" << endl;
     for (int e = 0 ; e < nbEstat ; e++) {
-//Rprintf("H9\n");
+//Rprintf("H9\n");fichier << "H9" << endl;
                             PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 
                             PROTECT(v_LPUE_eStat = getListElement(elmt, "LPUE_f_m_e"));
@@ -9838,7 +9925,7 @@ if (nbEstat>0) {
                                 error("Non_homogeneous dimensions in LPUE_f_m_e element. Check .ini biological parameters files !!\n");
                             }
 
-//Rprintf("H10\n");
+//Rprintf("H10\n");fichier << "H10" << endl;
                         /////////////////////////////////////////////////////////////////////////////////////////////////
                         /////////////////////////////////////////////////////////////////////////////////////////////////
                         /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9855,12 +9942,12 @@ if (nbEstat>0) {
 
                             //variables d'effort
 
-                    double *r_nbv_f, *r_nbds_f, *r_nbds2_f;//Rprintf("H10.5\n");
+                    double *r_nbv_f, *r_nbds_f, *r_nbds2_f;//Rprintf("H10.5\n");fichier << "H10.5" << endl;
 
                     r_nbv_f = REAL(getListElement(Flist, "nbv_f_m"));
                     r_nbds_f = REAL(getListElement(Flist, "effort1_f_m"));
                     r_nbds2_f = REAL(getListElement(Flist, "effort2_f_m"));
-//Rprintf("H10.6\n");
+//Rprintf("H10.6\n");fichier << "H10.6" << endl;
 
 //                    int *fFactSup1 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 50)), //ATTENTION : suppose au moins une espèce dynamiquement modélisée
 //                        *fFactSup2 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 51));
@@ -9869,7 +9956,7 @@ if (nbEstat>0) {
                           *fFactSup2 = INTEGER(iDim(INTEGER(getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")))));
 
 
-//Rprintf("H10.7\n");
+//Rprintf("H10.7\n");fichier << "H10.7" << endl;
 double *r_dd1_efm = REAL(getListElement(elmt, "dd1_f_m_e"));
 double *r_dd2_efm = REAL(getListElement(elmt, "dd2_f_m_e"));
 double *r_OD_e = REAL(getListElement(elmt, "OD_e"));
@@ -9879,7 +9966,7 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                     if (ind_t==0){
 
                             //on crée le tableau résultat pour l'espèce en question
-//Rprintf("H11\n");
+//Rprintf("H11\n");fichier << "H11" << endl;
                             PROTECT(Dim = allocVector(INTSXP, 3));
                             dim = INTEGER(Dim); dim[0]=dim_eStat[0]; dim[1]=dim_eStat[1]; dim[2]=dim_eStat[3];
 
@@ -9929,14 +10016,14 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
 
                             setAttrib(ans_oqDstat, R_DimNamesSymbol, dimnames_oqD_eft);//Rprintf("EE");
 
-                            rans_oqDstat = REAL(ans_oqDstat);// Rprintf("FF");
+                            rans_oqDstat = REAL(ans_oqDstat);// //Rprintf("FF");
                             for (int tt=0; tt<(nbF*nbT); tt++) rans_oqDstat[tt] = 0.0;
 
                         //}
 
 
                     } else {
-//Rprintf("H12\n");
+//Rprintf("H12\n");fichier << "H12" << endl;
                             rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
                             rans_Lstat = REAL(VECTOR_ELT(out_Lstat, e));
                             rans_Dstat = REAL(VECTOR_ELT(out_Dstat, e));
@@ -9952,7 +10039,7 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
 
                    double *r_LPUE_eStat = REAL(v_LPUE_eStat);
                    double *r_d_eStat = REAL(v_d_eStat); //if (e==2) PrintValue(v_d_eStat);
-//Rprintf("H13\n");
+//Rprintf("H13\n");fichier << "H13" << endl;
                    for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
@@ -9966,7 +10053,7 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                                   rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
 
                             rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-                               rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] / (1 - r_d_eStat[ind_f + nbF*ind_m + 0*ind_t]);
+                               rans_Lstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] / (1 - finite(r_d_eStat[ind_f + nbF*ind_m + 0*ind_t]));
 
                             if (ISNAN(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
 
@@ -9976,7 +10063,7 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                                         rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
 
                             rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-                               rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * r_d_eStat[ind_f + nbF*ind_m + 0*ind_t];
+                               finite(rans_Ystat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * r_d_eStat[ind_f + nbF*ind_m + 0*ind_t]);
 
                             if (ISNA(rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) rans_Dstat[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
 
@@ -10088,7 +10175,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
 
 
-//Rprintf("H14\n");
+//Rprintf("H14\n");fichier << "H14" << endl;
                    if (ind_t==0){
 
                             setAttrib(ans_Ystat, R_DimNamesSymbol, dimnames_eStat);
@@ -10131,7 +10218,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
                             SET_VECTOR_ELT(out_oqDstat, e, ans_oqDstat);
 
                     }
-//Rprintf("H14.1\n");
+//Rprintf("H14.1\n");fichier << "H14.1" << endl;
                     if (ind_t==0) {
 
                       UNPROTECT(9);
@@ -10169,7 +10256,7 @@ if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
 
-//Rprintf("H15\n");
+//Rprintf("H15\n");fichier << "H15" << endl;
                             int nbI = length(VECTOR_ELT(namDC,e));
 
                             SEXP elmt;
@@ -10194,13 +10281,13 @@ double Btemp;
                                         *r_wL_ei = REAL(getListElement(elmt, "wL_i")),
                                         *r_wD_ei = REAL(getListElement(elmt, "wD_i")),
                                         *r_d_efmit = REAL(getListElement(elmt, "d_i")),
-                                        *doth_eit = REAL(getListElement(elmt, "doth_i")); //Rprintf("II");PrintValue(out_oqD_eft);
+                                        *doth_eit = REAL(getListElement(elmt, "doth_i")); //Rprintf("II");//PrintValue(out_oqD_eft);
                                        double *rans_oqD_eft = REAL(VECTOR_ELT(out_oqD_eft,e));//Rprintf("JJ");
                                        double *rans_oqD_et = REAL(VECTOR_ELT(out_oqD_et,e));//Rprintf("KK");
-//Rprintf("H15.1\n");
+//Rprintf("H15.1\n");fichier << "H15.1" << endl;
                                 double *r_Fot_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                 double *r_B_et = REAL(VECTOR_ELT(out_B_et,e));
-//Rprintf("H15.2\n");
+//Rprintf("H15.2\n");fichier << "H15.2" << endl;
                                 int     *fact1_C = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 26)),
                                         *fact2_C = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 27)),
                                         *fact3_C = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 28)),
@@ -10212,10 +10299,10 @@ double Btemp;
 
 double *r_dd1_efm = REAL(getListElement(elmt, "dd1_f_m_e"));//Rprintf("H15.3\n");
 double *r_dd2_efm = REAL(getListElement(elmt, "dd2_f_m_e"));//Rprintf("H15.4\n");
-double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");
+double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");fichier << "H15.5" << endl;
 
                                 //équation n°1
-//Rprintf("H16\n");
+//Rprintf("H16\n");fichier << "H16" << endl;
 
                             if (Qvec[e]==1) {
 
@@ -10272,7 +10359,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");
 
                                 double  *r_M_ei = REAL(getListElement(elmt, "M_i"));
                                 int *fact3_D = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 14));
-//Rprintf("H17\n");
+//Rprintf("H17\n");fichier << "H17" << endl;
 
                                 for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -10329,7 +10416,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");
                                       r_N_eit_S4M4[ind_i + ind_t*nbI] * (1-exp(-r_Z_eit_S4M4[ind_i + ind_t*nbI]/4)) *
                                        (r_Z_eit_S4M4[ind_i + ind_t*nbI] - r_M_ei[0*fact3_D[0] + 0*fact3_D[1] + ind_i*fact3_D[2] + ind_t*fact3_D[3]]) /
                                        (r_Z_eit_S4M4[ind_i + ind_t*nbI] + (r_Z_eit_S4M4[ind_i + ind_t*nbI]==0));
-//Rprintf("H18\n");
+//Rprintf("H18\n");fichier << "H18" << endl;
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
@@ -10394,7 +10481,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");
 
 
                             } else {
-//Rprintf("H19\n");
+//Rprintf("H19\n");fichier << "H19" << endl;
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                                 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10487,7 +10574,7 @@ if (nbI>1) {
 
                                 }
 
-                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];//if (nbI==1) {Rprintf("Yi");PrintValue(out_Y_eit);}
+                                rans_Y_eit[0 + ind_t*1] = (temp + r_Fot_i[0 + ind_t*1]) * r_B_et[ind_t*fact3_C[3]];//if (nbI==1) {//Rprintf("Yi");PrintValue(out_Y_eit);}
 
 }
                                //équation n°3
@@ -10530,18 +10617,18 @@ if (nbI>1) {
                                         r_wL_ei[0*fact5_C[0]  + 0*fact5_C[1] + ind_i*fact5_C[2] + ind_t*fact5_C[3]] / 1000;
                             }
 } else {
-//Rprintf("LtotAvant4");PrintValue(out_L_eit);
+////Rprintf("LtotAvant4");PrintValue(out_L_eit);
                             if (r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
 
                                 rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]];
 
 
                             } else { //pas d'OD
-//Rprintf("LtotAvant31");PrintValue(out_L_eit);Rprintf("Foth %f B %f doth %f 1-doth %f",r_Fot_i[0 + ind_t*1],r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]],doth_eit[0],1-doth_eit[0]);
+////Rprintf("LtotAvant31");PrintValue(out_L_eit);//Rprintf("Foth %f B %f doth %f 1-doth %f",r_Fot_i[0 + ind_t*1],r_B_et[0*fact5_C[0]  + 0*fact5_C[1] + 0*fact5_C[2] + ind_t*fact5_C[3]],doth_eit[0],1-doth_eit[0]);
                                 rans_L_eit[0 + ind_t*1] = r_Fot_i[0 + ind_t*1] * r_B_et[ind_t*fact3_C[3]] * (1-doth_eit[0]);
-//Rprintf("LtotAvant32");PrintValue(out_L_eit);
+////Rprintf("LtotAvant32");PrintValue(out_L_eit);
                             }
-                            //Rprintf("LtotAvant3");PrintValue(out_L_eit);
+                            ////Rprintf("LtotAvant3");PrintValue(out_L_eit);
 
 }
 
@@ -10611,7 +10698,7 @@ if (nbI>1) {
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                            rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2( r_dd1_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0) ;
+                                     fmin2( r_dd1_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0) ;
 
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                 rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -10628,7 +10715,7 @@ if (nbI>1) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                               rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0) ;
+                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0) ;
 
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                 rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -10645,7 +10732,7 @@ if (nbI>1) {
                     }
                  }
 
-//if (nbI==1) {Rprintf("LtotAvant2");PrintValue(out_L_eit);}
+//if (nbI==1) {//Rprintf("LtotAvant2");PrintValue(out_L_eit);}
 
                     for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
@@ -10662,7 +10749,7 @@ if (nbI>1) {
                     }
 
 
-//if (nbI==1) {Rprintf("LtotAvant");PrintValue(out_L_eit);}
+//if (nbI==1) {//Rprintf("LtotAvant");PrintValue(out_L_eit);}
                                //équation n°4
 
                                 for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
@@ -10672,17 +10759,16 @@ if (nbI>1) {
                                       rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                         rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
                                         rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
-//Rprintf("K13\n");
 
                                       if (!ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                         rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] +
                                         rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]]; //Ltot constitué
 
                                 }
-//if (nbI==1) {Rprintf("LtotApres");PrintValue(out_L_eit);}
+//if (nbI==1) {//Rprintf("LtotApres");PrintValue(out_L_eit);}
 
                             } else {
-//Rprintf("H4.6\n");
+//Rprintf("H4.6\n");fichier << "H4.6" << endl;
 
 
 
@@ -10702,7 +10788,7 @@ if (nbI>1) {
                                 double *r_FRWT_fmi_S4M2 = REAL(getListElement(out_FRWT_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S4M3 = REAL(getListElement(out_FRWT_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FRWT_fmi_S4M4 = REAL(getListElement(out_FRWT_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H4.7\n");//PrintValue(out_Z_eit_S1M1);
+//Rprintf("H4.7\n");fichier << "H4.7" << endl;//PrintValue(out_Z_eit_S1M1);
                                 double *r_FDWT_fmi_S1M1 = REAL(getListElement(out_FDWT_fmi_S1M1, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S1M2 = REAL(getListElement(out_FDWT_fmi_S1M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S1M3 = REAL(getListElement(out_FDWT_fmi_S1M3, CHAR(STRING_ELT(sppList,e))));
@@ -10719,7 +10805,7 @@ if (nbI>1) {
                                 double *r_FDWT_fmi_S4M2 = REAL(getListElement(out_FDWT_fmi_S4M2, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S4M3 = REAL(getListElement(out_FDWT_fmi_S4M3, CHAR(STRING_ELT(sppList,e))));
                                 double *r_FDWT_fmi_S4M4 = REAL(getListElement(out_FDWT_fmi_S4M4, CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5ddd\n");
+//Rprintf("H5ddd\n");fichier << "H5ddd" << endl;
 
                                 double *r_FRWToth_it_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 176));
                                 double *r_FRWToth_it_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 177));
@@ -10737,7 +10823,7 @@ if (nbI>1) {
                                 double *r_FRWToth_it_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 189));
                                 double *r_FRWToth_it_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 190));
                                 double *r_FRWToth_it_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 191));
-//Rprintf("H5.1\n");
+//Rprintf("H5.1\n");fichier << "H5.1" << endl;
                                 double *r_FDWToth_it_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 208));
                                 double *r_FDWToth_it_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 209));
                                 double *r_FDWToth_it_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 210));
@@ -10754,7 +10840,7 @@ if (nbI>1) {
                                 double *r_FDWToth_it_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 221));
                                 double *r_FDWToth_it_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 222));
                                 double *r_FDWToth_it_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 223));
-//Rprintf("H5.2\n");
+//Rprintf("H5.2\n");fichier << "H5.2" << endl;
                                 double *r_Z_eit_S1M1 = REAL(getListElement(out_Z_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S1M2 = REAL(getListElement(out_Z_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S1M3 = REAL(getListElement(out_Z_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));
@@ -10771,7 +10857,7 @@ if (nbI>1) {
                                 double *r_Z_eit_S4M2 = REAL(getListElement(out_Z_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M3 = REAL(getListElement(out_Z_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_Z_eit_S4M4 = REAL(getListElement(out_Z_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5.3\n");
+//Rprintf("H5.3\n");fichier << "H5.3" << endl;
                                 double *r_N_eit_S1M1 = REAL(getListElement(out_N_eit_S1M1 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M2 = REAL(getListElement(out_N_eit_S1M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S1M3 = REAL(getListElement(out_N_eit_S1M3 , CHAR(STRING_ELT(sppList,e))));
@@ -10788,7 +10874,7 @@ if (nbI>1) {
                                 double *r_N_eit_S4M2 = REAL(getListElement(out_N_eit_S4M2 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M3 = REAL(getListElement(out_N_eit_S4M3 , CHAR(STRING_ELT(sppList,e))));
                                 double *r_N_eit_S4M4 = REAL(getListElement(out_N_eit_S4M4 , CHAR(STRING_ELT(sppList,e))));
-//Rprintf("H5.4\n");
+//Rprintf("H5.4\n");fichier << "H5.4" << endl;
 
 
 
@@ -10939,7 +11025,7 @@ if (nbI>1) {
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                            rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2( r_dd1_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0) ;
+                                     fmin2( r_dd1_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0) ;
 
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                 rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
@@ -10956,7 +11042,7 @@ if (nbI>1) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
                               rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] *
-                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * rYsum / rDsum , 1.0) ;
+                                     fmin2( r_dd2_efm[ind_f + nbF*ind_m] * finite(rYsum / rDsum) , 1.0) ;
                             if (ISNAN(rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]))
                                 rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
                         }
@@ -11273,7 +11359,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
                 }
                 Ltot_oth = Ltot_oth + Loth; Ytot_oth = Ytot_oth + Yoth; //Ytot_othini = Ytot_othini + Yothini;
             }
-            //if (e==1 & ind_t==13) Rprintf("ind_t %i QRoth %f Ltot_oth %f Ytot_oth %f Ytot_othini %f \n",ind_t,QRoth,Ltot_oth,Ytot_oth,Ytot_othini);
+            //if (e==1 & ind_t==13) //Rprintf("ind_t %i QRoth %f Ltot_oth %f Ytot_oth %f Ytot_othini %f \n",ind_t,QRoth,Ltot_oth,Ytot_oth,Ytot_othini);
 
             rans_oqD_et[ind_t] = 0.0;
 
@@ -11300,7 +11386,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
                     if (ISNAN(rans_oqD_et[ind_t])) rans_oqD_et[ind_t] = 0.0;
                     rans_L_eit[ind_i + ind_t*nbI] = Yoth_i_t - Doth_i_t; //on incrémentera par la suite avec les L recalculés
 
-                //if (e==1 & ind_t==13) Rprintf("Yoth_i_t %f Doth_i_t %f rans_L_eit[ind_i + ind_t*nbI] %f \n",Yoth_i_t,Doth_i_t,rans_L_eit[ind_i + ind_t*nbI]);
+                //if (e==1 & ind_t==13) //Rprintf("Yoth_i_t %f Doth_i_t %f rans_L_eit[ind_i + ind_t*nbI] %f \n",Yoth_i_t,Doth_i_t,rans_L_eit[ind_i + ind_t*nbI]);
                 }
             }
 
@@ -11346,28 +11432,28 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
                     rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                                 rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
-//if (e==1 & ind_t==13) Rprintf("1 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+//if (e==1 & ind_t==13) //Rprintf("1 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
                     if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
                         rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
                     }
-//if (e==1 & ind_t==13) Rprintf("2 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+//if (e==1 & ind_t==13) //Rprintf("2 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
 
                     rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
                        rans_Y_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] -
                        rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
-//if (e==1 & ind_t==13) Rprintf("3 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+//if (e==1 & ind_t==13) //Rprintf("3 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
 
                     if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
                         rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] + rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
                     }
-//if (e==1 & ind_t==13) Rprintf("4 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
+//if (e==1 & ind_t==13) //Rprintf("4 rans_L_eit %f rans_L_efmit %f rans_D_efmit %f \n",rans_L_eit[ind_i + ind_t*nbI],rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]],rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]]);
 
 
                 }
             }
 
             if (recal) {
-                    //if (e==1 & ind_t==13) Rprintf("recal\n");
+                    //if (e==1 & ind_t==13) //Rprintf("recal\n");
 
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
@@ -11384,7 +11470,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
 
                             UNPROTECT(2);
-//Rprintf("H20\n");
+//Rprintf("H20\n");fichier << "H20" << endl;
     }
 }
 
@@ -11392,12 +11478,12 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
 if (nbEstat>0) {
 
-//Rprintf("H21\n");
+//Rprintf("H21\n");fichier << "H21" << endl;
     for (int e = 0 ; e < nbEstat ; e++) {
 
                     SEXP elmt;
                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
-//Rprintf("H22\n");
+//Rprintf("H22\n");fichier << "H22" << endl;
                     double *r_LPUE_eStat = REAL(getListElement(elmt, "LPUE_f_m_e"));
                     double *r_d_eStat = REAL(getListElement(elmt, "d_f_m_e"));
                     double *r_dd1_efm = REAL(getListElement(elmt, "dd1_f_m_e"));
@@ -11581,6 +11667,7 @@ if (!(r_OD_e[0]>0.5 & r_OD_e[0]<=(ind_t+1)) & (activeQR!=0 & activeQR<=ind_t)) {
 
 UNPROTECT(1);
 
+fichier.close();
 }}
 
 
@@ -11599,6 +11686,7 @@ extern "C" {
 void BioEcoPar::Marche(SEXP list, int ind_t)
 {
 
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testMark.txt", ios::out | ios::trunc);
 
     SEXP    elmt, intC, v_P_fmce, v_icat, v_L_efmit, dimCst_P_fmce, dimCst_L_efmit, dimCst_L_efmct, Dim_L_efmct, Dim_P_fmce,
             ans_L_efmct = R_NilValue, ans_P_fmce = R_NilValue, dimnames_Lc = R_NilValue, dimnames_P = R_NilValue,
@@ -11633,12 +11721,12 @@ void BioEcoPar::Marche(SEXP list, int ind_t)
 
     }
 
-//Rprintf("M1\n");
+//Rprintf("M1\n");fichier << "M1" << endl;
 
 if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
-//Rprintf("M2\n");
+//Rprintf("M2\n");fichier << "M2" << endl;
         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
 
         nbI = length(getListElement(elmt, "modI"));
@@ -11653,7 +11741,7 @@ if (nbE>0) {
 
         PROTECT(dimCst_P_fmce = getAttrib(v_P_fmce, install("DimCst")));
         PROTECT(dimCst_L_efmit = getAttrib(v_L_efmit, install("DimCst")));
-//Rprintf("M3\n");
+//Rprintf("M3\n");fichier << "M3" << endl;
 
         //tests sur les dimensions :
         dim_P_fmce = INTEGER(dimCst_P_fmce);////Rprintf("AAA1");
@@ -11675,7 +11763,7 @@ if (nbE>0) {
         {
             error("Non_homogeneous dimensions in icat element. Check .ini biological parameters files !!\n");
         }
-//Rprintf("M4\n");
+//Rprintf("M4\n");fichier << "M4" << endl;
 
         //---------
         // calcul de L_efmct
@@ -11698,7 +11786,7 @@ if (nbE>0) {
         PROTECT(Dim_L_efmct = allocVector(INTSXP, count));
         dimLc = INTEGER(Dim_L_efmct);
 
-//Rprintf("M5\n");
+//Rprintf("M5\n");fichier << "M5" << endl;
         for (int k = 0 ; k < 4 ; k++) {
 
             if (dim_L_efmct[k]>0) {
@@ -11717,7 +11805,7 @@ if (nbE>0) {
 
 
 if (ind_t==0){
-//Rprintf("M6\n");
+//Rprintf("M6\n");fichier << "M6" << endl;
         //on crée le tableau résultat pour l'espèce en question
         PROTECT(ans_L_efmct = NEW_NUMERIC(prod));
         setAttrib(ans_L_efmct, R_DimSymbol, Dim_L_efmct);
@@ -11749,7 +11837,7 @@ if (ind_t==0){
 
         r_P_fmce = REAL(ans_P_fmce);
 
-//Rprintf("M7\n");
+//Rprintf("M7\n");fichier << "M7" << endl;
 } else {
 
         rans_L_efmct = REAL(VECTOR_ELT(out_L_efmct, e));
@@ -11757,7 +11845,7 @@ if (ind_t==0){
         rans_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
         r_P_fmce = REAL(VECTOR_ELT(out_P_t, e));
 
-//Rprintf("M8\n");
+//Rprintf("M8\n");fichier << "M8" << endl;
 }
 
         r_L_efmit = REAL(v_L_efmit);
@@ -11765,7 +11853,7 @@ if (ind_t==0){
         r_LD_efmit = REAL(v_LD_efmit);
         r_icat = REAL(v_icat);
 
-//Rprintf("M9\n");
+//Rprintf("M9\n");fichier << "M9" << endl;
         //facteurs des indices
         PROTECT(cFACTc = iDim(dim_L_efmct));
         PROTECT(cFACTi = iDim(dim_L_efmit));
@@ -11821,7 +11909,7 @@ if (ind_t==0){
         }
 
 
-//Rprintf("M10\n");
+//Rprintf("M10\n");fichier << "M10" << endl;
 
 if (ind_t==0) {
 
@@ -11849,7 +11937,7 @@ if (ind_t==0) {
 
 }
 
-//Rprintf("M11\n");
+//Rprintf("M11\n");fichier << "M11" << endl;
 if (ind_t==0) UNPROTECT(6);
 UNPROTECT(15);
 
@@ -11858,9 +11946,9 @@ UNPROTECT(15);
 
 
 if (nbEstat>0) {
-//Rprintf("M12\n");
+//Rprintf("M12\n");fichier << "M12" << endl;
     for (int e = 0 ; e < nbEstat ; e++) {
-//Rprintf("M2\n");
+//Rprintf("M2\n");fichier << "M2" << endl;
         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 
         PROTECT(v_P_eStat = getListElement(elmt, "P_fme"));
@@ -11887,7 +11975,7 @@ if (nbEstat>0) {
 
 
 if (ind_t==0){
-//Rprintf("M6\n");
+//Rprintf("M6\n");fichier << "M6" << endl;
 
         PROTECT(ans_P_eStat = NEW_NUMERIC(nbF*nbMe*nbT));
         setAttrib(ans_P_eStat, R_DimSymbol, dimCst_P_eStatR);
@@ -11899,15 +11987,15 @@ if (ind_t==0){
 
         r_Pstat = REAL(ans_P_eStat);
 
-//Rprintf("M7\n");
+//Rprintf("M7\n");fichier << "M7" << endl;
 } else {
 
         r_Pstat = REAL(VECTOR_ELT(out_Pstat, e));
 
-//Rprintf("M8\n");
+//Rprintf("M8\n");fichier << "M8" << endl;
 }
 
-//Rprintf("M9\n");
+//Rprintf("M9\n");fichier << "M9" << endl;
         //facteurs des indices
         PROTECT(cFACTpStat = iDim(dim_P_eStat_t));
         PROTECT(cFACTpStatini = iDim(dim_P_eStat));
@@ -11928,7 +12016,7 @@ if (ind_t==0){
 
         }
 
-//Rprintf("M10\n");
+//Rprintf("M10\n");fichier << "M10" << endl;
 
 if (ind_t==0) {
 
@@ -11939,7 +12027,7 @@ if (ind_t==0) {
 
 }
 
-//Rprintf("M11\n");
+//Rprintf("M11\n");fichier << "M11" << endl;
 if (ind_t==0) UNPROTECT(2);
 UNPROTECT(7);
 
@@ -11948,6 +12036,8 @@ UNPROTECT(7);
 }
 
 if (ind_t==0) UNPROTECT(1);
+
+fichier.close();
 
 }}
 
@@ -13517,7 +13607,7 @@ void BioEcoPar::Gestion(SEXP list, int ind_t) //paramètres en entrée pas forcéme
     for (int i=1;i<=nb;i++) {
         tol=(1.0e-6)*(xb1[i]+xb2[i])/2.0;
         double result=zbrent(p,xb1[i],xb2[i],tol);
-        //Rprintf("result : %f",result);Rprintf("t %i",IND_T);
+        //Rprintf("result : %f",result);//Rprintf("t %i",IND_T);
         mu_[IND_T] = result;
     }
     delete xb1;
@@ -13623,7 +13713,7 @@ double  BioEcoPar::zbrent(BEfn1 fx, double x1, double x2, double tol)
 			b += SIGN(tol1,xm);
 		fb=(this->*fx)(b);
 	}
-Rprintf("Maximum number of iterations exceeded in zbrent \n");
+//Rprintf("Maximum number of iterations exceeded in zbrent \n");
 	return b;//0.0;  //modif 17/05/2013
 }
 
@@ -13651,7 +13741,7 @@ double *BioEcoPar::NRvector(long nl, long nh)
 	double *v;
 
 	v=(double *)malloc((size_t) ((nh-nl+1+NR_END)*sizeof(double)));
-	if (!v) Rprintf("allocation failure in dvector()");
+	if (!v) //Rprintf("allocation failure in dvector()");
 	return v-nl+NR_END;
 }
 
@@ -13663,13 +13753,13 @@ double **BioEcoPar::NRmatrix(long nrl, long nrh, long ncl, long nch)
 
 	/* allocate pointers to rows */
 	m=(double **) malloc((size_t)((nrow+NR_END)*sizeof(double*)));
-	if (!m) Rprintf("allocation failure 1 in matrix()");
+	if (!m) //Rprintf("allocation failure 1 in matrix()");
 	m += NR_END;
 	m -= nrl;
 
 	/* allocate rows and set pointers to them */
 	m[nrl]=(double *) malloc((size_t)((nrow*ncol+NR_END)*sizeof(double)));
-	if (!m[nrl]) Rprintf("allocation failure 2 in matrix()");
+	if (!m[nrl]) //Rprintf("allocation failure 2 in matrix()");
 	m[nrl] += NR_END;
 	m[nrl] -= ncl;
 
@@ -13723,14 +13813,14 @@ void BioEcoPar::amoeba(BEfn1_F funk, double **p, double y[], int ndim, double ft
                 ihi=i;
             } else if ((y[i] > y[inhi]) && (i != ihi)) inhi=i;
         }
-        rtol=2.0*fabs(y[ihi]-y[ilo])/(fabs(y[ihi])+fabs(y[ilo])+TINY);Rprintf("ihi = %i ilo = %i rtol = %f\n",ihi,ilo,rtol);
+        rtol=2.0*fabs(y[ihi]-y[ilo])/(fabs(y[ihi])+fabs(y[ilo])+TINY);//Rprintf("ihi = %i ilo = %i rtol = %f\n",ihi,ilo,rtol);
         //Rprintf("rtol %f \n",rtol);
         if (rtol < ftol) {
             SWAP(y[1],y[ilo])
             for (i=1;i<=ndim;i++) SWAP(p[1][i],p[ilo][i])
             break;
         }
-        if (*nfunk >= NMAX) Rprintf("NMAX exceeded : rtol = %f\n",rtol); //break;}//'Rprintf' remplace 'nrerror'
+        if (*nfunk >= NMAX) //Rprintf("NMAX exceeded : rtol = %f\n",rtol); //break;}//'//Rprintf' remplace 'nrerror'
         *nfunk += 2;
 
         //BEfn1_F FUNK = &BioEcoPar::fxTAC_glob;
@@ -13809,10 +13899,10 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
     IND_T = ind_t;
 
-     Rprintf("BBBB01 351 %f indt %i IND_T %i",TAC_byFleet[351 + nbF*IND_T],ind_t,IND_T);
-     Rprintf("BBBB01 352 %f indt %i IND_T %i",TAC_byFleet[352 + nbF*IND_T],ind_t,IND_T);
-     Rprintf("BBBB01 353 %f indt %i IND_T %i",TAC_byFleet[353 + nbF*IND_T],ind_t,IND_T);
-     Rprintf("BBBB01 354 %f indt %i IND_T %i",TAC_byFleet[354 + nbF*IND_T],ind_t,IND_T);
+     //Rprintf("BBBB01 351 %f indt %i IND_T %i",TAC_byFleet[351 + nbF*IND_T],ind_t,IND_T);
+     //Rprintf("BBBB01 352 %f indt %i IND_T %i",TAC_byFleet[352 + nbF*IND_T],ind_t,IND_T);
+     //Rprintf("BBBB01 353 %f indt %i IND_T %i",TAC_byFleet[353 + nbF*IND_T],ind_t,IND_T);
+     //Rprintf("BBBB01 354 %f indt %i IND_T %i",TAC_byFleet[354 + nbF*IND_T],ind_t,IND_T);
 
 
     PxQ = pxQuIni;
@@ -13822,7 +13912,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 	int ITquotaExch = 20;
 	int ITTOT = 7;
 
-    Rprintf("TIME %i \n",IND_T);
+    //Rprintf("TIME %i \n",IND_T);
 
     double **q = NRmatrix(1,2,1,1);
     double *multF = NRvector(1,nbF+1);
@@ -13845,11 +13935,11 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
         for (int IT2 = 0 ; IT2 < ITTOT ; IT2++){
 
         //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-    Rprintf("IT %i \n",IT);
+    //Rprintf("IT %i \n",IT);
 
         for (int ind_f = 0 ; ind_f <= nbF ; ind_f++){
 
-        Rprintf("T %i F %i \n",ind_t,ind_f);
+        //Rprintf("T %i F %i \n",ind_t,ind_f);
 
         IND_F = ind_f;
 
@@ -13867,13 +13957,13 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
         } else {
 
         x[1]=1.0;
-        z[1]=(this->*foo2)(x);Rprintf("z1 %f \n",z[1]);
+        z[1]=(this->*foo2)(x);//Rprintf("z1 %f \n",z[1]);
         x[1]=350.0;
-        z[2]=(this->*foo2)(x);Rprintf("z2 %f \n",z[2]);
+        z[2]=(this->*foo2)(x);//Rprintf("z2 %f \n",z[2]);
 
         if (z[1]>z[2]) multF[ind_f+1] = 350.0; else multF[ind_f+1] = 0.0;
 
-        //if (IT==0)  Rprintf("Mult %f \n",multF[ind_f+1]);
+        //if (IT==0)  //Rprintf("Mult %f \n",multF[ind_f+1]);
 
         }
         }
@@ -13938,7 +14028,7 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
         for (int i = 0 ; i < NBI ; i++) {
 
-            Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
+            //Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
             Ztemp[i+1] = Ztemp[i+1] + lambda*(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
 
         }
@@ -14033,10 +14123,10 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
 
         DIFF = diffLQ;
 
-//        Rprintf("\n");
-        Rprintf("diffLQ %f \n",diffLQ);
+//        //Rprintf("\n");
+        //Rprintf("diffLQ %f \n",diffLQ);
 //
-        Rprintf("PxQ_1 %f ",PxQ);
+        //Rprintf("PxQ_1 %f ",PxQ);
 
         if (diffLQ<0) {
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmin2(lambda*diffLQ,-0.1),pxQuMax));
@@ -14044,8 +14134,8 @@ int BioEcoPar::QuotaExchV2(double pxQuIni, double pxQuMin, double pxQuMax, doubl
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmax2(lambda*diffLQ,0.1),pxQuMax));
         }
 
-        Rprintf("PxQ_2 %f \n",PxQ);
-        Rprintf("lambda %f \n",lambda);
+        //Rprintf("PxQ_2 %f \n",PxQ);
+        //Rprintf("lambda %f \n",lambda);
         //... et on recommence
 
         UNPROTECT(3);
@@ -14169,12 +14259,12 @@ double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation
 
 
 
-//    Rprintf("O %f \n",x[ind_f+1]);
-//    Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
-//    Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
-//    Rprintf("C %f \n",g_nbdsF[ind_f]);
-//    Rprintf("D %f \n",effortIni[ind_f]);
-//    Rprintf("F %i \n",ind_f);
+//    //Rprintf("O %f \n",x[ind_f+1]);
+//    //Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
+//    //Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
+//    //Rprintf("C %f \n",g_nbdsF[ind_f]);
+//    //Rprintf("D %f \n",effortIni[ind_f]);
+//    //Rprintf("F %i \n",ind_f);
 
     //}
 
@@ -14191,14 +14281,13 @@ double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation
     Marche(listTemp, IND_T);
 
 
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
+        EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
         gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
 
 
-    Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
     //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
@@ -14209,10 +14298,10 @@ double BioEcoPar::fxMaxProf_FT_customCstV2(double *x) //attention : l'indexation
 
     double result = 0.0;
     result = gcfF[IND_F + nbF*IND_T]*g_nbvF[IND_F] - PxQ * (totF[IND_F + nbF*IND_T] - TAC_byFleet[IND_F + nbF*IND_T]); //TAC_byFleet[IND_F + (nbF+1)*IND_T]);
-Rprintf("A %f \n",TAC_byFleet[IND_F + nbF*IND_T]);
-Rprintf("B %f \n",gcfF[IND_F + nbF*IND_T]);
-Rprintf("C %f \n",g_nbvF[IND_F]);
-Rprintf("D %f \n",totF[IND_F + nbF*IND_T]);
+//Rprintf("A %f \n",TAC_byFleet[IND_F + nbF*IND_T]);
+//Rprintf("B %f \n",gcfF[IND_F + nbF*IND_T]);
+//Rprintf("C %f \n",g_nbvF[IND_F]);
+//Rprintf("D %f \n",totF[IND_F + nbF*IND_T]);
 
     UNPROTECT(3);
 
@@ -14240,7 +14329,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 	int ITquotaExch = 20;
 	int ITTOT = 6;
 
-    Rprintf("TIME %i \n",IND_T);
+    //Rprintf("TIME %i \n",IND_T);
 
     double **q = NRmatrix(1,2,1,1);
     double *multF = NRvector(1,nbF+1);
@@ -14260,12 +14349,12 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
         for (int IT2 = 0 ; IT2 < ITTOT ; IT2++){
 
         //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-    Rprintf("IT %i \n",IT);
+    //Rprintf("IT %i \n",IT);
 
 
         for (int ind_f = 0 ; ind_f <= nbF ; ind_f++){
 
-        Rprintf("T %i F %i \n",ind_t,ind_f);
+        //Rprintf("T %i F %i \n",ind_t,ind_f);
 
         IND_F = ind_f;
 
@@ -14283,13 +14372,13 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
         } else {
 
         x[1]=1.0;
-        z[1]=(this->*foo2)(x);Rprintf("z1 %f \n",z[1]);
+        z[1]=(this->*foo2)(x);//Rprintf("z1 %f \n",z[1]);
         x[1]=350.0;
-        z[2]=(this->*foo2)(x);Rprintf("z2 %f \n",z[2]);
+        z[2]=(this->*foo2)(x);//Rprintf("z2 %f \n",z[2]);
 
         if (z[1]>z[2]) multF[ind_f+1] = 350.0; else multF[ind_f+1] = 0.0;
 
-        //if (IT==0)  Rprintf("Mult %f \n",multF[ind_f+1]);
+        //if (IT==0)  //Rprintf("Mult %f \n",multF[ind_f+1]);
 
         }
         }
@@ -14332,7 +14421,7 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
         for (int i = 0 ; i < NBI ; i++) {
 
-            Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
+            //Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
             Ztemp[i+1] = Ztemp[i+1] + lambda*(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
 
         }
@@ -14399,10 +14488,10 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
 
         DIFF = diffLQ;
 
-//        Rprintf("\n");
-        Rprintf("diffLQ %f \n",diffLQ);
+//        //Rprintf("\n");
+        //Rprintf("diffLQ %f \n",diffLQ);
 //
-        Rprintf("PxQ_1 %f ",PxQ);
+        //Rprintf("PxQ_1 %f ",PxQ);
 
         if (diffLQ<0) {
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmin2(lambda*diffLQ,-0.1),pxQuMax));
@@ -14410,8 +14499,8 @@ int BioEcoPar::QuotaExchV2Report(double pxQuIni, double pxQuMin, double pxQuMax,
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmax2(lambda*diffLQ,0.1),pxQuMax));
         }
 
-        Rprintf("PxQ_2 %f \n",PxQ);
-        Rprintf("lambda %f \n",lambda);
+        //Rprintf("PxQ_2 %f \n",PxQ);
+        //Rprintf("lambda %f \n",lambda);
         //... et on recommence
 
         UNPROTECT(3);
@@ -14480,12 +14569,12 @@ double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexat
         }
         if (var==1) g_nbdsF[IND_F] = g_nbdsFM[IND_F+nbF*0] + g_nbdsFM[IND_F+nbF*1];
 
-//    Rprintf("O %f \n",x[ind_f+1]);
-//    Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
-//    Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
-//    Rprintf("C %f \n",g_nbdsF[ind_f]);
-//    Rprintf("D %f \n",effortIni[ind_f]);
-//    Rprintf("F %i \n",ind_f);
+//    //Rprintf("O %f \n",x[ind_f+1]);
+//    //Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
+//    //Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
+//    //Rprintf("C %f \n",g_nbdsF[ind_f]);
+//    //Rprintf("D %f \n",effortIni[ind_f]);
+//    //Rprintf("F %i \n",ind_f);
 
     //}
 
@@ -14502,14 +14591,13 @@ double BioEcoPar::fxMaxProf_FT_customReportV2(double *x) //attention : l'indexat
     Marche(listTemp, IND_T);
 
 
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
+        EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
         gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
 
 
-    Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
     //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
@@ -14886,751 +14974,686 @@ double result = 0.0;
 
 extern "C" {
 
-int BioEcoPar::GestionF2(int spp, int ind_t)
+int BioEcoPar::GestionF2(int ind_t)
 {
+
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testGestion.txt", ios::out | ios::trunc);
+
+fichier << "Début" << endl;
 
     if (ind_t<delay) {
 
     } else {
 
     IND_T = ind_t;
-    spQ = spp;
+//spQ = spp;
 
-	int nfunc, nbFt;
 	int ITtot = maxIter;
-	if (spp>=nbE | length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spQ))), "modI"))==1) ITtot = 1; //si espèce statique ou SPiCT, pas besoin d'itérations successives
-	if (spp>=nbE) nbFt=nbF-1; else nbFt=nbF; //si espèce statique, on s'en tient aux flottilles modélisées
+//if (spp>=nbE | length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spQ))), "modI"))==1) ITtot = 1; //si espèce statique ou SPiCT, pas besoin d'itérations successives
 	// si qqs i, |Z_i - Ztemp_i|<diffZmax, on arrête, sinon on continue sous réserve que IT<ITtot
 	bool goon = true;
 
 	double ftol = 0.00000001;
 
-    double *multF = NRvector(1,nbF+1);
-
     double *g_effSup = REAL(effSupMat);
     double *mpond_fm = REAL(m_fm);
-    double *mpond_oth = REAL(m_oth);
 
     double *totFM, *totFM2, *totF, *totF2, *totFF, *totFF2, *tot, *totMod, *totMod2;
+
+    SEXP listTempP, nDimFM, nDimF, nDim;
+
+    PROTECT(nDimFM = allocVector(INTSXP,4));
+    int *ndFM = INTEGER(nDimFM); ndFM[0] = nbF; ndFM[1] = nbMe; ndFM[2] = 0; ndFM[3] = nbT;
+    PROTECT(nDimF = allocVector(INTSXP,4));
+    int *ndF = INTEGER(nDimF); ndF[0] = nbF; ndF[1] = 0; ndF[2] = 0; ndF[3] = nbT;
+    PROTECT(nDim = allocVector(INTSXP,4));
+    int *nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
+
+    PROTECT(listTempP = duplicate(list));
+    PROTECT(eVarCopy = duplicate(eVar));
+
+    Mortalite(listTempP, IND_T, eVar);
+    DynamicPop(listTempP, IND_T, eVar);
+    CatchDL(listTempP, IND_T, eVar);
+
+    double *g_effort1FM = REAL(getListElement(getListElement(listTempP, "Fleet"), "effort1_f_m"));
+    double *g_effort1FM_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort1_f_m")));
+    double *g_effort1F = REAL(getListElement(getListElement(listTempP, "Fleet"), "effort1_f"));
+    double *g_effort1F_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort1_f")));
+    double *g_nbTripFM = REAL(getListElement(getListElement(listTempP, "Fleet"), "nbTrip_f_m"));
+    double *g_nbTripF = REAL(getListElement(getListElement(listTempP, "Fleet"), "nbTrip_f"));
+    double *g_nbvFM = REAL(getListElement(getListElement(listTempP, "Fleet"), "nbv_f_m"));
+    double *g_nbvF = REAL(getListElement(getListElement(listTempP, "Fleet"), "nbv_f"));
+    double *g_effort2FM = REAL(getListElement(getListElement(listTempP, "Fleet"), "effort2_f_m"));
+    double *g_effort2FM_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort2_f_m")));
+    double *g_effort2F = REAL(getListElement(getListElement(listTempP, "Fleet"), "effort2_f"));
+    double *g_effort2F_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort2_f")));
+
+fichier << "ST1" << endl;
+//on initialise en remplissant Einterm_fm avec les valeurs maximales autorisées (fonction de effSupMat et la pondération multiplicative U (mpond_fm)) : Eq A1
+//on rappelle que tout cela fonctionne uniquement si on est sur une base individuelle (dans le cas contraire, il faudrait descendre au niveau métier et pondérer par les nbv par métier
+
+    for (int indF = 0 ; indF < nbF ; indF++) {
+        if (ISNA(g_effSup[indF + nbF*ind_t])) g_effSup[indF + nbF*ind_t] = 300; //ATTENTION : important à noter, si un navire n'est contraint par rien, c'est direct 300 jours de mer
+        double denom_st1 = 0.0; double alpha_f_st1 = 0.0;
+        for (int indM = 0 ; indM<nbMe ; indM++) denom_st1 = denom_st1 + g_effort1F[indF] * mpond_fm[indF + nbF*indM]; //c'est censé valoir eff_f normalement si la somme des facteurs de pond. vaut 1
+        if (denom_st1>0) alpha_f_st1 = g_effSup[indF + nbF*ind_t] / denom_st1;
+        for (int indM = 0 ; indM<nbMe ; indM++) EffsupTMP_fm[1 + indF + nbF*indM] = alpha_f_st1 * g_effort1F[indF] * g_nbvF[indF] * g_effort2F[indF] * mpond_fm[indF + nbF*indM];
+    }
+fichier << "ST2" << endl;
+    for (int indF = 0 ; indF < nbF ; indF++)
+    for (int indM = 0 ; indM<nbMe ; indM++)
+      Einterm_fm[1 + indF + nbF*indM] = -1.0; //va servir à identifier à la fin les cellules non réconciliées, qui devront être égales à l'effort courant!!!
+
+//à ce stade, on a initialisé Einterm_fm
+fichier << "ST3" << endl;
+//on commence l'ajustement avec les espèces statiques indexées dans SPPstatOPT (s'il y en a)
+if (N_SPPstatOPT>0) {
+
+    for (int ind = 0 ; ind < N_SPPstatOPT ; ind++) { //boucle sur ces espèces statiques
+
+        double *TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppListStat,SPPstatOPT[ind]-1))));
+        double *totFM = REAL(aggregObj(VECTOR_ELT(out_Lstat, SPPstatOPT[ind]-1),nDimFM)); //PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, SPPstatOPT[ind]-1),nDimFM));
+        double *totF = REAL(aggregObj(VECTOR_ELT(out_Lstat, SPPstatOPT[ind]-1),nDimF));
+        double *totF2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, SPPstatOPT[ind]-1),nDimF));
+fichier << "ST4" << endl;
+        for (int ind_f = 0 ; ind_f<nbF ; ind_f++) {
+
+            double denom_st2 = 0.0; double alpha_f_st2 = 0.0;
+            for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+
+              if (g_effort1FM[ind_f + nbF*ind_m]>0)
+                 denom_st2 = denom_st2 + mpond_fm[ind_f + nbF*ind_m] * (totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T]) /
+                                  (g_effort1FM[ind_f + nbF*ind_m] * g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m]);
+                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
+                //totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] / g_effort1FM[ind_f + nbF*ind_m];
+                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
+                //totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] / g_effort1FM[ind_f + nbF*ind_m];
+            }
+
+            if ((denom_st2>0) & (g_effort1F[ind_f]>0))
+                    alpha_f_st2 = finite(TAC_byFleet[ind_f + nbF*IND_T] / (g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * denom_st2));
+
+            //réconciliation
+            for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                double valTest = alpha_f_st2 * g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m];
+                if ((totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T])>0) {
+                    if (Einterm_fm[1 + ind_f + nbF*ind_m]<-0.5) Einterm_fm[1 + ind_f + nbF*ind_m] = EffsupTMP_fm[1 + ind_f + nbF*ind_m]; //on élimine le -1
+                    if (valTest < Einterm_fm[1 + ind_f + nbF*ind_m] ) {//réconciliation seulement si la capture associée est non nulle
+                    Einterm_fm[1 + ind_f + nbF*ind_m] = valTest;
+                    SET_STRING_ELT(reconcilSPP, ind_f + nbF*ind_m + nbF*nbMe*IND_T, STRING_ELT(sppListStat,SPPstatOPT[ind]-1));
+                    }
+                }
+            }
+            //Rprintf("T %i F %i \n",ind_t,ind_f);
+        }
+        }
+}
+
+
+//on poursuit avec l'ajustement des espèces dynamiques sous SPiCT indexées dans SPPspictOPT (s'il y en a)
+if (N_SPPspictOPT>0) {
+
+    for (int ind = 0 ; ind < N_SPPspictOPT ; ind++) { //boucle sur ces espèces Spict
+fichier << "ST5" << endl;
+        TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))));fichier << "ST51" << endl;
+        TAC_glob = REAL(getListElement(TAC, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))));fichier << "ST52" << endl;
+        double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDimFM));fichier << "ST53" << endl; //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDimFM));fichier << "ST54" << endl; //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+        double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDimF));fichier << "ST55" << endl;
+        double *totF2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDimF));fichier << "ST56" << endl;
+        double *tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, SPPspictOPT[ind]-1),nDim));fichier << "ST57" << endl;
+        double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDim));fichier << "ST58" << endl;
+        double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDim));fichier << "ST59" << endl;
+fichier << "ST6" << endl;
+        for (int ind_f = 0 ; ind_f<nbF ; ind_f++) {
+
+            double denom_st3 = 0.0; double alpha_f_st3 = 0.0;
+            for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+
+              if (g_effort1FM[ind_f + nbF*ind_m]>0)
+                 denom_st3 = denom_st3 + mpond_fm[ind_f + nbF*ind_m] * (totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T]) /
+                                 (g_effort1FM[ind_f + nbF*ind_m] * g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m]);
+                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
+                //totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] / g_effort1FM[ind_f + nbF*ind_m];
+                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
+                //totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] / g_effort1FM[ind_f + nbF*ind_m];
+            }
+
+            if ((denom_st3>0) & (g_effort1F[ind_f]>0)) alpha_f_st3 = finite(TAC_byFleet[ind_f + nbF*IND_T] /
+                                                                               (g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * denom_st3)); //Eq: A3
+
+            //réconciliation
+            for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                double valTest = alpha_f_st3 * g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m];
+                if ((totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T])>0){
+                    if (Einterm_fm[1 + ind_f + nbF*ind_m]<-0.5) Einterm_fm[1 + ind_f + nbF*ind_m] = EffsupTMP_fm[1 + ind_f + nbF*ind_m]; //on élimine le -1
+                    if (valTest < Einterm_fm[1 + ind_f + nbF*ind_m] ) {//réconciliation seulement si la capture associée est non nulle
+                    Einterm_fm[1 + ind_f + nbF*ind_m] = valTest;
+                    SET_STRING_ELT(reconcilSPP, ind_f + nbF*ind_m + nbF*nbMe*IND_T, STRING_ELT(sppList,SPPspictOPT[ind]-1));
+                }}
+            }
+            //Rprintf("T %i F %i \n",ind_t,ind_f);
+
+        }
+fichier << "ST7" << endl;
+    double TACoth = TAC_glob[IND_T];
+    for (int ind_ff = 0 ; ind_ff < nbF ; ind_ff++) TACoth = TACoth - TAC_byFleet[ind_ff + nbF*IND_T];
+    //multF[ind_f+1] = finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T]));
+    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPspictOPT[ind]-1), 44));
+    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))), "modI"));
+    for (int ag = 0; ag < ni; ag++) g_Fothi[ag + ni*IND_T] = fmax2(g_Fothi[ag + ni*IND_T]*finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T])),0.0);
+fichier << "ST8" << endl;
+    }
+}
+
+
+
+//à ce stade, on garde la trace de Einterm_fm et listTempP original
+//SEXP EintermTMP, listTempPP;
+//PROTECT(EintermTMP = duplicate(Einterm_fm));
+//PROTECT(listTempPP = duplicate(listTempP));
+
+//on termine avec l'ajustement des espèces dynamiques sous XSA ou SS3 indexées dans SPPdynOPT (s'il y en a)
+
+if (N_SPPdynOPT>0) {
+
+    //on finit d'initialiser Einterm_fm
+     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques restantes pour finaliser l'initialisation de Einterm_fm
+fichier << "ST9" << endl;
+            double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+            double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+
+            for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
+            for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+               if ((totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T])>0){
+                        if (Einterm_fm[1 + ind_f + nbF*ind_m]<-0.5) Einterm_fm[1 + ind_f + nbF*ind_m] = EffsupTMP_fm[1 + ind_f + nbF*ind_m]; //on élimine le -1
+                }
+            }
+     }
+}
+
+ //les -1 restants sont remplacés par les efforts initiaux --> les cellules fm non contraintes ne changent pas d'effort lors de l'ajustement
+for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
+for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+      if (Einterm_fm[1 + ind_f + nbF*ind_m]<-0.5) Einterm_fm[1 + ind_f + nbF*ind_m] = g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m];
+}
+
+fichier << "ST10" << endl;
+
+if (N_SPPdynOPT>0) {
+
+    int NBI = 0;
+
+    ZoptSS3 = false;
+
+    //on crée l'ensemble de matrices Einterm de longueur N_SPPdynOPT
+double *EintermList_fm = NRvector(1,nbF*nbMe*N_SPPdynOPT);
+
+
+for (int indF = 0 ; indF < nbF ; indF++)  //initialisation de la copie de Einterm_fm
+for (int indM = 0 ; indM < nbMe ; indM++) Einterm_fm_copy[1 + indF + nbF*indM] = Einterm_fm[1 + indF + nbF*indM] ;
+
+for (int indF = 0 ; indF < nbF ; indF++)  //initialisation des copies de Einterm_fm qui serviront de base de réconciliation sur le'ensemble des espèces dynamiques (hors Spict)
+for (int indM = 0 ; indM < nbMe ; indM++)
+for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) EintermList_fm[1 + indF + nbF*indM+ nbF*nbMe*ind] = Einterm_fm[1 + indF + nbF*indM] ;
+
+fichier << "ST11" << endl;
+    //avant de passer aux ajustements suivants, on met à jour les efforts flottille-métier et flottille, puis on évalue Z associé
+
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        g_effort1F[ind_f] = 0.0;
+        for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                g_effort1FM[ind_f + nbF*ind_m] = Einterm_fm[1 + ind_f + nbF*ind_m] / (g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m]) ;
+                g_nbTripFM[ind_f + nbF*ind_m] = g_effort1FM[ind_f + nbF*ind_m] ;
+                if (!ISNA(g_effort1FM[ind_f + nbF*ind_m]))
+                     g_effort1F[ind_f] = g_effort1F[ind_f] + g_effort1FM[ind_f + nbF*ind_m] * g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m] ;
+        }
+        g_effort1F[ind_f] = g_effort1F[ind_f] / (g_nbvF[ind_f] * g_effort2F[ind_f]) ;
+        g_nbTripF[ind_f] = g_effort1F[ind_f] ;
+        }
+
+fichier << "ST12" << endl;
+    Mortalite(listTempP, IND_T, eVar) ; //on génère les Z dans out_Z_eit (il faut s'assurer que l'application du Ztemp est bloquée -> utilisation de ZoptSS3)
+
+// on actualise les Ztemp ----
+    for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) { //boucle sur les espèces dynamiques XSA ou SS3 : initialisation des Z temporaires (ZtempList)
+
+        NBI = length(getListElement(getListElement(listTempP, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
+fichier << "ST13" << endl;
+        double *Zt = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1)))) ;
+
+        if (Qvec[SPPdynOPT[ind]-1]==0) {
+
+            for (int i = 0 ; i < NBI ; i++) Zt[i] = REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI*IND_T] ; //XSA
+
+        } else {
+
+            for (int i = 0 ; i < NBI ; i++) { //SS3
+
+                Zt[i+(0*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S1M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(1*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S1M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(2*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S1M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(3*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S1M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(4*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S2M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(5*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S2M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(6*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S2M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(7*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S2M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(8*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S3M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(9*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S3M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(10*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S3M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(11*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S3M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(12*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S4M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(13*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S4M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(14*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S4M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+                Zt[i+(15*NBI)] = REAL(VECTOR_ELT(out_Z_eit_S4M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] ;
+
+            }
+        }
+        fichier << "ST14" << endl;
+    }
+
+
 
 
     for (int IT = 0 ; IT < ITtot ; IT++){
 
        if (goon) {
 
-        if ((spp<nbE) & (Qvec[spp]==1)) ZoptSS3 = true;
+        // on enclenche la boucle d'ajustement croisé selon les phases par espèce successives : fixation du Z, résolution marginale, réconciliation avec Einterm_fm, ajustement des Zfix pour chaque espèce
 
-        SEXP listTempP, nDimFM, nDimF, nDim;
+        for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) { //boucle sur les espèces dynamiques XSA ou SS3
+            if (Qvec[SPPdynOPT[ind]-1]==1) ZoptSS3 = true; //SS3
+        }
 
-        PROTECT(listTempP = duplicate(list));
-        PROTECT(eVarCopy = duplicate(eVar));
 
-        Mortalite(listTempP, IND_T, eVarCopy);
-        DynamicPop(listTempP, IND_T, eVarCopy);
+for (int indF = 0 ; indF < nbF ; indF++)  //réinitialisation de Einterm_fm
+for (int indM = 0 ; indM < nbMe ; indM++) Einterm_fm[1 + indF + nbF*indM] = Einterm_fm_copy[1 + indF + nbF*indM] ;
+
+    // on reboote les efforts flottilles, on en déduit les efforts flottille-métier initiaux en fonction de U
+
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        g_effort1F[ind_f] = g_effort1F_copy[ind_f] ;
+        g_nbTripF[ind_f] = g_effort1F[ind_f] ;
+        for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                    g_effort1FM[ind_f + nbF*ind_m] = g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m] / (g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m] ) ;
+                    g_nbTripFM[ind_f + nbF*ind_m] = g_effort1FM[ind_f + nbF*ind_m] ;
+        }
+    }
+
+fichier << "ST15" << endl;
+        Mortalite(listTempP, IND_T, eVar); //hors boucle espèce à optimiser
+        DynamicPop(listTempP, IND_T, eVar); //hors boucle espèce à optimiser
+
+    for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3
 
         int NBI2 = 0;
 
-        if (spp<nbE) NBI2 = length(getListElement(getListElement(listTempP, CHAR(STRING_ELT(sppList,spQ))), "modI"));
+        NBI2 = length(getListElement(getListElement(listTempP, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
+        double *Zt = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1)))) ;
 
-        if (spp<nbE & NBI2>1) { //pas de dynamique SPiCT
-
-        if (Qvec[eTemp]==0) { //XSA
+fichier << "ST16" << endl;
+        if (Qvec[SPPdynOPT[ind]-1]==0) {    //XSA
           for (int i = 0 ; i < NBI2 ; i++)
-            REAL(VECTOR_ELT(out_Z_eit,eTemp))[i+NBI2*IND_T] = Ztemp[i+1];
-        } else {              //SS3
+            REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i];
+        } else {                            //SS3 : sans doute inutile car boulot déjà fait dans le module Dyn avec ZoptSS3 = true
           for (int i = 0 ; i < NBI2 ; i++)
           {
-            REAL(VECTOR_ELT(out_Z_eit_S1M1,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(0*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S1M2,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(1*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S1M3,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(2*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S1M4,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(3*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S2M1,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(4*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S2M2,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(5*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S2M3,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(6*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S2M4,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(7*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S3M1,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(8*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S3M2,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(9*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S3M3,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(10*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S3M4,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(11*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S4M1,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(12*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S4M2,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(13*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S4M3,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(14*NBI2)];
-            REAL(VECTOR_ELT(out_Z_eit_S4M4,eTemp))[i+NBI2*IND_T] = Ztemp[i+1+(15*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S1M1,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(0*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S1M2,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(1*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S1M3,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(2*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S1M4,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(3*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S2M1,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(4*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S2M2,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(5*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S2M3,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(6*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S2M4,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(7*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S3M1,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(8*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S3M2,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(9*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S3M3,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(10*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S3M4,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(11*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S4M1,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(12*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S4M2,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(13*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S4M3,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(14*NBI2)];
+            REAL(VECTOR_ELT(out_Z_eit_S4M4,SPPdynOPT[ind]-1))[i+NBI2*IND_T] = Zt[i+(15*NBI2)];
           }
         }
+fichier << "ST17" << endl;
+    }
 
-        }
+        CatchDL(listTempP, IND_T, eVar); //hors boucle espèce à optimiser
 
-
-
-        CatchDL(listTempP, IND_T, eVarCopy);
-
-        PROTECT(nDimFM = allocVector(INTSXP,4));
-        int *ndFM = INTEGER(nDimFM); ndFM[0] = nbF; ndFM[1] = nbMe; ndFM[2] = 0; ndFM[3] = nbT;
-        PROTECT(nDimF = allocVector(INTSXP,4));
-        int *ndF = INTEGER(nDimF); ndF[0] = nbF; ndF[1] = 0; ndF[2] = 0; ndF[3] = nbT;
-        PROTECT(nDim = allocVector(INTSXP,4));
-        int *nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
-
-        if (spp<nbE) {
-
-            double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM)); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-            double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM)); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
-            double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimF));
-            double *totF2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimF));
-             for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
-             for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-               totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
-                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-               totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
-            }
-             double *tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, eTemp),nDim));
-             double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDim));
-             double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDim));
+    for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3 : détermination de alpha, effort associé, réconciliation avec Einterm, màj Einterm
+fichier << "ST18" << endl;
+        TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))));
+        TAC_glob = REAL(getListElement(TAC, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))));
+        double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+        double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimF));
+        double *totF2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimF));
+        double *tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, SPPdynOPT[ind]-1),nDim));
+        double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDim));
+        double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDim));
 
 
+fichier << "ST19" << endl;
+        for (int ind_f = 0 ; ind_f <= nbF ; ind_f++){
 
-            for (int ind_f = 0 ; ind_f <= nbFt ; ind_f++){
+                    ////Rprintf("TACf %f totF %f totF2 %f denom %f mult %f\n",TAC_byFleet[ind_f + nbF*IND_T],totF[ind_f + nbF*IND_T],totF2[ind_f + nbF*IND_T],denom,multF[ind_f+1]);
+                    ////Rprintf("ind_f %i multF %f \n",ind_f,multF[ind_f+1]);
+                    //multF[ind_f+1] = 1; }
 
-            //Rprintf("T %i F %i \n",ind_t,ind_f);
+            double alpha_f_st4 = 0.0, alpha_f_st5 = 0.0;
 
-            IND_F = ind_f;
+            if (ind_f<nbF) {
 
-                if (ind_f<nbFt) {  //alpha_f
+                alpha_f_st4 = finite(TAC_byFleet[ind_f + nbF*IND_T] / (totF[ind_f + nbF*IND_T] + totF2[ind_f + nbF*IND_T])); //Eq: A4 ???????????????????
 
-                   double denom = 0.0; //PrintValue(totFM) ; PrintValue(totFM2);
-                   for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) //{Rprintf("totFM %f totFM2 %f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T], totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-                      denom = denom + totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T];//}
-
-                   multF[ind_f+1] = finite((TAC_byFleet[ind_f + nbF*IND_T] - totF[ind_f + nbF*IND_T] - totF2[ind_f + nbF*IND_T]) / denom);
-
-                   //Rprintf("TACf %f totF %f totF2 %f denom %f mult %f\n",TAC_byFleet[ind_f + nbF*IND_T],totF[ind_f + nbF*IND_T],totF2[ind_f + nbF*IND_T],denom,multF[ind_f+1]);
-
-
-                } else {  //alpha_oth
-
-                    double TACoth = TAC_glob[IND_T];
-                    for (int ind_ff = 0 ; ind_ff < nbF ; ind_ff++) TACoth = TACoth - TAC_byFleet[ind_ff + nbF*IND_T];
-                    multF[ind_f+1] = finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T]));
-                    //Rprintf("TACothIni %f TACoth %f tot %f totMod %f totMod2 %f\n",TAC_glob[IND_T],TACoth,tot[IND_T],totMod[IND_T],totMod2[IND_T]);
-
-                }
-
-                //Rprintf("ind_f %i multF %f \n",ind_f,multF[ind_f+1]);
-
-                //multF[ind_f+1] = 1; }
-           }
-
-       } else {  //espèce statique
-
-            double *totFM = REAL(aggregObj(VECTOR_ELT(out_Lstat, eTemp),nDimFM)); //PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-            double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, eTemp),nDimFM));
-            double *totF = REAL(aggregObj(VECTOR_ELT(out_Lstat, eTemp),nDimF));
-            double *totF2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, eTemp),nDimF));
-             for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
-             for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-               totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
-                    //Rprintf("%f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-               totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T] = mpond_fm[ind_f + nbF*ind_m] * totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
-            }
-
-            for (int ind_f = 0 ; ind_f <= nbFt ; ind_f++){
-
-            //Rprintf("T %i F %i \n",ind_t,ind_f);
-
-            IND_F = ind_f;
-
-                if (ind_f<nbFt) {  //alpha_f
-
-                   double denom = 0.0;
-                   for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) // Rprintf("AA %f\n", totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T]);
-                      denom = denom + totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
-
-                   multF[ind_f+1] = finite((TAC_byFleet[ind_f + nbF*IND_T] - totF[ind_f + nbF*IND_T] - totF2[ind_f + nbF*IND_T]) / denom);
-
-                }
-
-           }
-
-       }
-
-       UNPROTECT(5);
-
-        //2ème étape : redéfinition de Ztemp
-
-
-        if (spp<nbE & NBI2>1) {  //espèce dynamique nécessitant un réajustement de Z
-
-        SEXP listTemp;
-
-        PROTECT(listTemp = duplicate(list));
-        PROTECT(eVarCopy = duplicate(eVar));
-
-        double *g_effort1FM = REAL(getListElement(getListElement(listTemp, "Fleet"), "effort1_f_m"));
-        double *g_effort1FM_copy = REAL(duplicate(getListElement(getListElement(listTemp, "Fleet"), "effort1_f_m")));
-        double *g_effort1F = REAL(getListElement(getListElement(listTemp, "Fleet"), "effort1_f"));
-        double *g_effort1F_copy = REAL(duplicate(getListElement(getListElement(listTemp, "Fleet"), "effort1_f")));
-        double *g_nbTripFM = REAL(getListElement(getListElement(listTemp, "Fleet"), "nbTrip_f_m"));
-        double *g_nbTripF = REAL(getListElement(getListElement(listTemp, "Fleet"), "nbTrip_f"));
-        double *g_nbvFM = REAL(getListElement(getListElement(listTemp, "Fleet"), "nbv_f_m"));
-        double *g_nbvF = REAL(getListElement(getListElement(listTemp, "Fleet"), "nbv_f"));
-        double *g_tripLgthFM = REAL(getListElement(getListElement(listTemp, "Fleet"), "tripLgth_f_m"));
-        double *g_tripLgthF = REAL(getListElement(getListElement(listTemp, "Fleet"), "tripLgth_f"));
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
-            if (var==1) {  //effort en nb de marées
-
-                double nbTrip_F = 0.0;
-
+                //réconciliation
                 for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                    if (!ISNA(g_effort1FM[ind_f+nbF*ind_m])) {
-
-                        //if (gestyp==1) g_effort1FM[ind_f+nbF*ind_m] = fmax2(g_effort1FM[ind_f+nbF*ind_m] + multF[ind_f+1]*mpond_fm[ind_f+nbF*ind_m],0.0);
-                        /*if (gestyp==2)*/ g_effort1FM[ind_f+nbF*ind_m] = fmax2(g_effort1FM[ind_f+nbF*ind_m]*(1 + multF[ind_f+1]*mpond_fm[ind_f+nbF*ind_m]),0.0);
-                        /*if (gestyp==0) {
-                            double Ww ;
-                            int countZeroEff = 0; //on doit d'abord compter le nombre de métier de priorité supérieure pour lesquels l'effort est nul
-                            for (int ind_m2 = 0 ; ind_m2<nbMe ; ind_m2++) {
-                                if ((mpond_fm[ind_f+nbF*ind_m2]<mpond_fm[ind_f+nbF*ind_m]) & (fabs(g_effort1FM_copy[ind_f+nbF*ind_m2])<0.00001)) countZeroEff++;
-                            }
-
-                            if ((-1*mpond_fm[ind_f+nbF*ind_m])>=(multF[ind_f+1]-1-countZeroEff)) {
-                                Ww = multF[ind_f+1]+mpond_fm[ind_f+nbF*ind_m]-1.0-countZeroEff;
-                            } else {
-                                if (multF[ind_f+1]>0) {
-                                    Ww = multF[ind_f+1];
-                                } else {
-                                    Ww = 0.0;
-                                }
-                            }
-                            Rprintf("ww %f multF %f effG_1 %f effG_2 %f effG_1_copy %f effG_2_copy %f \n",Ww,multF[ind_f+1],g_effort1FM[ind_f+nbF*0],g_effort1FM[ind_f+nbF*1],g_effort1FM_copy[ind_f+nbF*0],g_effort1FM_copy[ind_f+nbF*1]);
-                            g_effort1FM[ind_f+nbF*ind_m] = fmax2(g_effort1FM[ind_f+nbF*ind_m]*(1 + Ww),0.0); //cf priorité d'impact
-                            Rprintf("ww %f multF %f effG_1 %f effG_2 %f effG_1_copy %f effG_2_copy %f \n",Ww,multF[ind_f+1],g_effort1FM[ind_f+nbF*0],g_effort1FM[ind_f+nbF*1],g_effort1FM_copy[ind_f+nbF*0],g_effort1FM_copy[ind_f+nbF*1]);
-                        }*/
-                        g_nbTripFM[ind_f+nbF*ind_m] = g_effort1FM[ind_f+nbF*ind_m];
-                        nbTrip_F = nbTrip_F + g_nbTripFM[ind_f+nbF*ind_m]*g_nbvFM[ind_f+nbF*ind_m]*g_tripLgthFM[ind_f+nbF*ind_m];
-
-                    }
+                    double valTest = alpha_f_st4 * g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m];
+                    if ( ((totFM[ind_f + nbF*ind_m + nbF*nbMe*IND_T] + totFM2[ind_f + nbF*ind_m + nbF*nbMe*IND_T])>0) & valTest < Einterm_fm[1 + ind_f + nbF*ind_m] ) {//réconciliation seulement si la capture associée est non nulle
+                        Einterm_fm[1 + ind_f + nbF*ind_m] = valTest;
+                        SET_STRING_ELT(reconcilSPP, ind_f + nbF*ind_m + nbF*nbMe*IND_T, STRING_ELT(sppList,SPPdynOPT[ind]-1));
                 }
-
-                g_effort1F[ind_f] = nbTrip_F/(g_nbvF[ind_f]*g_tripLgthF[ind_f]);
-                g_nbTripF[ind_f] = g_effort1F[ind_f];
-
-                //redressement dans le cas où on dépasse la limite imposée dans effSup à l'instant IND_T
-                if (!ISNA(g_effSup[ind_f+nbF*IND_T]) & (g_effSup[ind_f+nbF*IND_T]<g_effort1F[ind_f])) {
-
-                    for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                        //g_effort1FM[ind_f+nbF*ind_m] = g_effort1FM[ind_f+nbF*ind_m]*g_effSup[ind_f+nbF*IND_T]/g_effort1F[ind_f];
-                     g_effort1FM[ind_f+nbF*ind_m] = g_effort1FM_copy[ind_f+nbF*ind_m] +
-                      (g_effort1FM[ind_f+nbF*ind_m] - g_effort1FM_copy[ind_f+nbF*ind_m]) * (g_effSup[ind_f+nbF*IND_T] - g_effort1F_copy[ind_f]) / (g_effort1F[ind_f] - g_effort1F_copy[ind_f]);
-
-                     g_nbTripFM[ind_f+nbF*ind_m] = g_effort1FM[ind_f+nbF*ind_m];
-
-                    }
-
-                    g_effort1F[ind_f] = g_effSup[ind_f+nbF*IND_T];
-                    g_nbTripF[ind_f] = g_effort1F[ind_f];
-
                 }
+                //Rprintf("T %i F %i \n",ind_t,ind_f);
 
-            }
+            } else {  //alpha_oth
 
+                double TACoth = TAC_glob[IND_T];
+                for (int ind_ff = 0 ; ind_ff < nbF ; ind_ff++) TACoth = TACoth - TAC_byFleet[ind_ff + nbF*IND_T];
+                alpha_f_st5 = finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T]));
+                //Rprintf("TACothIni %f TACoth %f tot %f totMod %f totMod2 %f\n",TAC_glob[IND_T],TACoth,tot[IND_T],totMod[IND_T],totMod2[IND_T]);
 
-            if (var==2) {  //nb de navires : impact seul au niveau flottille, et gestyp n'a alors plus de pertinence
+                if (Qvec[SPPdynOPT[ind]-1]==0) {
 
-                for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                    if (!ISNA(g_nbvFM[ind_f+nbF*ind_m])) g_nbvFM[ind_f+nbF*ind_m] = fmax2(g_nbvFM[ind_f+nbF*ind_m]*(1+multF[ind_f+1]),0.0);
-
-                }
-
-                g_nbvF[ind_f] = fmax2(g_nbvF[ind_f]*(1+multF[ind_f+1]),0.0);
-
-                //redressement dans le cas où on dépasse la limite imposée dans effSup à l'instant IND_T
-                if (!ISNA(g_effSup[ind_f+nbF*IND_T]) & (g_effSup[ind_f+nbF*IND_T]<g_nbvF[ind_f])) {
-
-                    for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                        g_nbvFM[ind_f+nbF*ind_m] = g_nbvFM[ind_f+nbF*ind_m]*g_effSup[ind_f+nbF*IND_T]/g_nbvF[ind_f];
-
-                    }
-
-                    g_nbvF[ind_f] = g_effSup[ind_f+nbF*IND_T];
-
-                }
-
-             }
-
-
-
-
-            if ((ind_f==0) & (spp<nbE)) { //seulement si on parle d'espèces dynamiques
-
-                if (Qvec[spp]==0) {
-
-                    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 44));
-                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spp))), "modI"));
-                    for (int ag = 0; ag < ni; ag++) g_Fothi[ag + ni*IND_T] = fmax2(g_Fothi[ag + ni*IND_T]*multF[nbF+1],0.0);
+                    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 44));
+                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
+                    for (int ag = 0; ag < ni; ag++) g_Fothi[ag + ni*IND_T] = g_Fothi[ag + ni*IND_T]*alpha_f_st5;
 
 
                 } else {  //espèce SS3
 
 
-                            double *Fothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 116));
-                            double *Fothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 117));
-                            double *Fothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 118));
-                            double *Fothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 119));
-                            double *Fothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 120));
-                            double *Fothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 121));
-                            double *Fothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 122));
-                            double *Fothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 123));
-                            double *Fothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 124));
-                            double *Fothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 125));
-                            double *Fothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 126));
-                            double *Fothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 127));
-                            double *Fothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 128));
-                            double *Fothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 129));
-                            double *Fothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 130));
-                            double *Fothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 131));
+                            double *Fothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 116));
+                            double *Fothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 117));
+                            double *Fothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 118));
+                            double *Fothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 119));
+                            double *Fothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 120));
+                            double *Fothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 121));
+                            double *Fothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 122));
+                            double *Fothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 123));
+                            double *Fothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 124));
+                            double *Fothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 125));
+                            double *Fothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 126));
+                            double *Fothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 127));
+                            double *Fothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 128));
+                            double *Fothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 129));
+                            double *Fothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 130));
+                            double *Fothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 131));
 
-                            double *FRWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 176));
-                            double *FRWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 177));
-                            double *FRWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 178));
-                            double *FRWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 179));
-                            double *FRWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 180));
-                            double *FRWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 181));
-                            double *FRWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 182));
-                            double *FRWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 183));
-                            double *FRWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 184));
-                            double *FRWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 185));
-                            double *FRWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 186));
-                            double *FRWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 187));
-                            double *FRWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 188));
-                            double *FRWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 189));
-                            double *FRWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 190));
-                            double *FRWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 191));
+                            double *FRWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 176));
+                            double *FRWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 177));
+                            double *FRWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 178));
+                            double *FRWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 179));
+                            double *FRWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 180));
+                            double *FRWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 181));
+                            double *FRWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 182));
+                            double *FRWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 183));
+                            double *FRWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 184));
+                            double *FRWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 185));
+                            double *FRWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 186));
+                            double *FRWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 187));
+                            double *FRWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 188));
+                            double *FRWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 189));
+                            double *FRWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 190));
+                            double *FRWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 191));
 
-                            double *FDWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 208));
-                            double *FDWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 209));
-                            double *FDWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 210));
-                            double *FDWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 211));
-                            double *FDWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 212));
-                            double *FDWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 213));
-                            double *FDWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 214));
-                            double *FDWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 215));
-                            double *FDWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 216));
-                            double *FDWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 217));
-                            double *FDWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 218));
-                            double *FDWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 219));
-                            double *FDWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 220));
-                            double *FDWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 221));
-                            double *FDWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 222));
-                            double *FDWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVarCopy, spp), 223));
+                            double *FDWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 208));
+                            double *FDWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 209));
+                            double *FDWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 210));
+                            double *FDWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 211));
+                            double *FDWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 212));
+                            double *FDWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 213));
+                            double *FDWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 214));
+                            double *FDWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 215));
+                            double *FDWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 216));
+                            double *FDWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 217));
+                            double *FDWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 218));
+                            double *FDWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 219));
+                            double *FDWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 220));
+                            double *FDWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 221));
+                            double *FDWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 222));
+                            double *FDWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 223));
 
-                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spp))), "modI"));
+                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
 
                     for (int ag = 0; ag < ni; ag++) {
 
-                                Fothi_S1M1[ag + IND_T*ni] = fmax2(Fothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M2[ag + IND_T*ni] = fmax2(Fothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M3[ag + IND_T*ni] = fmax2(Fothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M4[ag + IND_T*ni] = fmax2(Fothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M1[ag + IND_T*ni] = fmax2(Fothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M2[ag + IND_T*ni] = fmax2(Fothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M3[ag + IND_T*ni] = fmax2(Fothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M4[ag + IND_T*ni] = fmax2(Fothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M1[ag + IND_T*ni] = fmax2(Fothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M2[ag + IND_T*ni] = fmax2(Fothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M3[ag + IND_T*ni] = fmax2(Fothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M4[ag + IND_T*ni] = fmax2(Fothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M1[ag + IND_T*ni] = fmax2(Fothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M2[ag + IND_T*ni] = fmax2(Fothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M3[ag + IND_T*ni] = fmax2(Fothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M4[ag + IND_T*ni] = fmax2(Fothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
+                                Fothi_S1M1[ag + IND_T*ni] = Fothi_S1M1[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S1M2[ag + IND_T*ni] = Fothi_S1M2[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S1M3[ag + IND_T*ni] = Fothi_S1M3[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S1M4[ag + IND_T*ni] = Fothi_S1M4[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S2M1[ag + IND_T*ni] = Fothi_S2M1[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S2M2[ag + IND_T*ni] = Fothi_S2M2[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S2M3[ag + IND_T*ni] = Fothi_S2M3[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S2M4[ag + IND_T*ni] = Fothi_S2M4[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S3M1[ag + IND_T*ni] = Fothi_S3M1[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S3M2[ag + IND_T*ni] = Fothi_S3M2[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S3M3[ag + IND_T*ni] = Fothi_S3M3[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S3M4[ag + IND_T*ni] = Fothi_S3M4[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S4M1[ag + IND_T*ni] = Fothi_S4M1[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S4M2[ag + IND_T*ni] = Fothi_S4M2[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S4M3[ag + IND_T*ni] = Fothi_S4M3[ag + IND_T*ni]*alpha_f_st5;
+                                Fothi_S4M4[ag + IND_T*ni] = Fothi_S4M4[ag + IND_T*ni]*alpha_f_st5;
 
-                                FRWTothi_S1M1[ag + IND_T*ni] = fmax2(FRWTothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M2[ag + IND_T*ni] = fmax2(FRWTothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M3[ag + IND_T*ni] = fmax2(FRWTothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M4[ag + IND_T*ni] = fmax2(FRWTothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M1[ag + IND_T*ni] = fmax2(FRWTothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M2[ag + IND_T*ni] = fmax2(FRWTothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M3[ag + IND_T*ni] = fmax2(FRWTothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M4[ag + IND_T*ni] = fmax2(FRWTothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M1[ag + IND_T*ni] = fmax2(FRWTothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M2[ag + IND_T*ni] = fmax2(FRWTothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M3[ag + IND_T*ni] = fmax2(FRWTothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M4[ag + IND_T*ni] = fmax2(FRWTothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M1[ag + IND_T*ni] = fmax2(FRWTothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M2[ag + IND_T*ni] = fmax2(FRWTothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M3[ag + IND_T*ni] = fmax2(FRWTothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M4[ag + IND_T*ni] = fmax2(FRWTothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
+                                FRWTothi_S1M1[ag + IND_T*ni] = FRWTothi_S1M1[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S1M2[ag + IND_T*ni] = FRWTothi_S1M2[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S1M3[ag + IND_T*ni] = FRWTothi_S1M3[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S1M4[ag + IND_T*ni] = FRWTothi_S1M4[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S2M1[ag + IND_T*ni] = FRWTothi_S2M1[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S2M2[ag + IND_T*ni] = FRWTothi_S2M2[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S2M3[ag + IND_T*ni] = FRWTothi_S2M3[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S2M4[ag + IND_T*ni] = FRWTothi_S2M4[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S3M1[ag + IND_T*ni] = FRWTothi_S3M1[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S3M2[ag + IND_T*ni] = FRWTothi_S3M2[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S3M3[ag + IND_T*ni] = FRWTothi_S3M3[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S3M4[ag + IND_T*ni] = FRWTothi_S3M4[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S4M1[ag + IND_T*ni] = FRWTothi_S4M1[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S4M2[ag + IND_T*ni] = FRWTothi_S4M2[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S4M3[ag + IND_T*ni] = FRWTothi_S4M3[ag + IND_T*ni]*alpha_f_st5;
+                                FRWTothi_S4M4[ag + IND_T*ni] = FRWTothi_S4M4[ag + IND_T*ni]*alpha_f_st5;
 
-                                FDWTothi_S1M1[ag + IND_T*ni] = fmax2(FDWTothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M2[ag + IND_T*ni] = fmax2(FDWTothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M3[ag + IND_T*ni] = fmax2(FDWTothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M4[ag + IND_T*ni] = fmax2(FDWTothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M1[ag + IND_T*ni] = fmax2(FDWTothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M2[ag + IND_T*ni] = fmax2(FDWTothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M3[ag + IND_T*ni] = fmax2(FDWTothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M4[ag + IND_T*ni] = fmax2(FDWTothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M1[ag + IND_T*ni] = fmax2(FDWTothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M2[ag + IND_T*ni] = fmax2(FDWTothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M3[ag + IND_T*ni] = fmax2(FDWTothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M4[ag + IND_T*ni] = fmax2(FDWTothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M1[ag + IND_T*ni] = fmax2(FDWTothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M2[ag + IND_T*ni] = fmax2(FDWTothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M3[ag + IND_T*ni] = fmax2(FDWTothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M4[ag + IND_T*ni] = fmax2(FDWTothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
+                                FDWTothi_S1M1[ag + IND_T*ni] = FDWTothi_S1M1[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S1M2[ag + IND_T*ni] = FDWTothi_S1M2[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S1M3[ag + IND_T*ni] = FDWTothi_S1M3[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S1M4[ag + IND_T*ni] = FDWTothi_S1M4[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S2M1[ag + IND_T*ni] = FDWTothi_S2M1[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S2M2[ag + IND_T*ni] = FDWTothi_S2M2[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S2M3[ag + IND_T*ni] = FDWTothi_S2M3[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S2M4[ag + IND_T*ni] = FDWTothi_S2M4[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S3M1[ag + IND_T*ni] = FDWTothi_S3M1[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S3M2[ag + IND_T*ni] = FDWTothi_S3M2[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S3M3[ag + IND_T*ni] = FDWTothi_S3M3[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S3M4[ag + IND_T*ni] = FDWTothi_S3M4[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S4M1[ag + IND_T*ni] = FDWTothi_S4M1[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S4M2[ag + IND_T*ni] = FDWTothi_S4M2[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S4M3[ag + IND_T*ni] = FDWTothi_S4M3[ag + IND_T*ni]*alpha_f_st5;
+                                FDWTothi_S4M4[ag + IND_T*ni] = FDWTothi_S4M4[ag + IND_T*ni]*alpha_f_st5;
 
                         }
 
                     }
              }
 
-        }
-
-        int NBI = length(getListElement(getListElement(listTemp, CHAR(STRING_ELT(sppList,spQ))), "modI"));
-
-        ZoptSS3 = false;
-
-        Mortalite(listTemp, IND_T, eVarCopy);
-        DynamicPop(listTemp, IND_T, eVarCopy);
-        CatchDL(listTemp, IND_T, eVarCopy);
-
-	    goon = false;
-
-        if (Qvec[spp]==0) {
-
-            for (int i = 0 ; i < NBI ; i++) {
-
-                //Rprintf("Z %f Ztmp %f diff ZZ%f\n", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T], Ztemp[i+1], REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1] = Ztemp[i+1] + lambda*(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
 
             }
 
-        } else { //SS3
+           }
 
+    ZoptSS3 = false;
+fichier << "ST20" << endl;
+    //on évalue Z par espèce associé à Einterm réconcilié
+
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        g_effort1F[ind_f] = 0.0;
+        for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                g_effort1FM[ind_f + nbF*ind_m] = Einterm_fm[1 + ind_f + nbF*ind_m] / (g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m]) ;
+                g_nbTripFM[ind_f + nbF*ind_m] = g_effort1FM[ind_f + nbF*ind_m] ;
+                if (!ISNA(g_effort1FM[ind_f + nbF*ind_m]))
+                     g_effort1F[ind_f] = g_effort1F[ind_f] + g_effort1FM[ind_f + nbF*ind_m] * g_effort2FM[ind_f + nbF*ind_m] * g_nbvFM[ind_f + nbF*ind_m] ;
+        }
+        g_effort1F[ind_f] = g_effort1F[ind_f] / (g_nbvF[ind_f] * g_effort2F[ind_f]) ;
+        g_nbTripF[ind_f] = g_effort1F[ind_f] ;
+        }
+
+fichier << "ST21" << endl;
+    Mortalite(listTempP, IND_T, eVar) ; //on génère les Z dans out_Z_eit (il faut s'assurer que l'application du Ztemp est bloquée -> utilisation de ZoptSS3)
+    DynamicPop(listTempP, IND_T, eVar);
+
+//il faut maintenant en déduire Z par espèce et modifier Zfix_e en conséquence
+
+	goon = false;
+
+	for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3 : détermination de alpha, effort associé, réconciliation avec Einterm, màj Einterm
+
+      int NBI = length(getListElement(getListElement(listTempP, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
+      double *Ztemp = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1)))) ;
+fichier << "ST22" << endl;
+      if (Qvec[SPPdynOPT[ind]-1]==0) {
+fichier << "ST221" << endl;
             for (int i = 0 ; i < NBI ; i++) {
-
-                //Rprintf("diffZZ S1M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(0*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(0*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(0*NBI)] = Ztemp[i+1+(0*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(0*NBI)]);
-
-                //Rprintf("diffZZ S1M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(1*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(1*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(1*NBI)] = Ztemp[i+1+(1*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(1*NBI)]);
-
-                //Rprintf("diffZZ S1M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(2*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(2*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(2*NBI)] = Ztemp[i+1+(2*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(2*NBI)]);
-
-                //Rprintf("diffZZ S1M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(3*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(3*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(3*NBI)] = Ztemp[i+1+(3*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(3*NBI)]);
-
-                //Rprintf("diffZZ S2M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(4*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(4*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(4*NBI)] = Ztemp[i+1+(4*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(4*NBI)]);
-
-                //Rprintf("diffZZ S2M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(5*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(5*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(5*NBI)] = Ztemp[i+1+(5*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(5*NBI)]);
-
-                //Rprintf("diffZZ S2M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(6*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(6*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(6*NBI)] = Ztemp[i+1+(6*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(6*NBI)]);
-
-                //Rprintf("diffZZ S2M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(7*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(7*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(7*NBI)] = Ztemp[i+1+(7*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(7*NBI)]);
-
-                //Rprintf("diffZZ S3M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(8*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(8*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(8*NBI)] = Ztemp[i+1+(8*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(8*NBI)]);
-
-                //Rprintf("diffZZ S3M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(9*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(9*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(9*NBI)] = Ztemp[i+1+(9*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(9*NBI)]);
-
-                //Rprintf("diffZZ S3M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(10*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(10*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(10*NBI)] = Ztemp[i+1+(10*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(10*NBI)]);
-
-                //Rprintf("diffZZ S3M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(11*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(11*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(11*NBI)] = Ztemp[i+1+(11*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(11*NBI)]);
-
-                //Rprintf("diffZZ S4M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(12*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(12*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(12*NBI)] = Ztemp[i+1+(12*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M1,spQ))[i+NBI*IND_T] - Ztemp[i+1+(12*NBI)]);
-
-                //Rprintf("diffZZ S4M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(13*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(13*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(13*NBI)] = Ztemp[i+1+(13*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M2,spQ))[i+NBI*IND_T] - Ztemp[i+1+(13*NBI)]);
-
-                //Rprintf("diffZZ S4M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(14*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(14*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(14*NBI)] = Ztemp[i+1+(14*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M3,spQ))[i+NBI*IND_T] - Ztemp[i+1+(14*NBI)]);
-
-                //Rprintf("diffZZ S4M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(15*NBI)]);
-                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(15*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
-                Ztemp[i+1+(15*NBI)] = Ztemp[i+1+(15*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M4,spQ))[i+NBI*IND_T] - Ztemp[i+1+(15*NBI)]);
+fichier << "ST222" << endl;
+                Rprintf("IT %i time %i indiv %i\n",IT,IND_T,ind);
+                Rprintf("Z %f Ztmp %f diff ZZ%f\n", REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI*IND_T], Ztemp[i], REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i]);fichier << "ST223" << endl;
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i] = Ztemp[i] + lambda*(REAL(VECTOR_ELT(out_Z_eit,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i]);
 
             }
 
-        }
+       } else { //SS3
+fichier << "ST224" << endl;
+            for (int i = 0 ; i < NBI ; i++) {
+fichier << "ST225" << endl;
+                Rprintf("IT %i time %i indiv %i\n",IT,IND_T,ind);
+                Rprintf("diffZZ S1M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(0*NBI)]);fichier << "ST226" << endl;
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(0*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(0*NBI)] = Ztemp[i+(0*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(0*NBI)]);
 
-        //... et on recommence
+                Rprintf("diffZZ S1M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(1*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(1*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(1*NBI)] = Ztemp[i+(1*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(1*NBI)]);
 
-        UNPROTECT(2);
+                Rprintf("diffZZ S1M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(2*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(2*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(2*NBI)] = Ztemp[i+(2*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(2*NBI)]);
 
-       }
-       }
+                Rprintf("diffZZ S1M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S1M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(3*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S1M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(3*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(3*NBI)] = Ztemp[i+(3*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S1M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(3*NBI)]);
+
+                Rprintf("diffZZ S2M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(4*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(4*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(4*NBI)] = Ztemp[i+(4*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(4*NBI)]);
+
+                Rprintf("diffZZ S2M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(5*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(5*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(5*NBI)] = Ztemp[i+(5*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(5*NBI)]);
+
+                Rprintf("diffZZ S2M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(6*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(6*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(6*NBI)] = Ztemp[i+(6*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(6*NBI)]);
+
+                Rprintf("diffZZ S2M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S2M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(7*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S2M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(7*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(7*NBI)] = Ztemp[i+(7*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S2M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(7*NBI)]);
+
+                Rprintf("diffZZ S3M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(8*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(8*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(8*NBI)] = Ztemp[i+(8*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(8*NBI)]);
+
+                Rprintf("diffZZ S3M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(9*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(9*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(9*NBI)] = Ztemp[i+(9*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(9*NBI)]);
+
+                Rprintf("diffZZ S3M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(10*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(10*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(10*NBI)] = Ztemp[i+(10*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(10*NBI)]);
+
+                Rprintf("diffZZ S3M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S3M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(11*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S3M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(11*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(11*NBI)] = Ztemp[i+(11*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S3M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(11*NBI)]);
+
+                Rprintf("diffZZ S4M1 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(12*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(12*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(12*NBI)] = Ztemp[i+(12*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M1,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(12*NBI)]);
+
+                Rprintf("diffZZ S4M2 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(13*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(13*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(13*NBI)] = Ztemp[i+(13*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M2,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(13*NBI)]);
+
+                Rprintf("diffZZ S4M3 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(14*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(14*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(14*NBI)] = Ztemp[i+(14*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M3,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(14*NBI)]);
+
+                Rprintf("diffZZ S4M4 %f \n", REAL(VECTOR_ELT(out_Z_eit_S4M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(15*NBI)]);
+                if (fabs(REAL(VECTOR_ELT(out_Z_eit_S4M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(15*NBI)]) > diffZmax) goon = true; //on continue si l'une des valeurs est supérieurs à diffZiMax
+                Ztemp[i+(15*NBI)] = Ztemp[i+(15*NBI)] + lambda*(REAL(VECTOR_ELT(out_Z_eit_S4M4,SPPdynOPT[ind]-1))[i+NBI*IND_T] - Ztemp[i+(15*NBI)]);
+
+            }
+
+      }
+	}
     }
 
+}
+}
 
+fichier << "ST23" << endl;
+
+       UNPROTECT(5);
 
         double *g_effort1FM_G = REAL(getListElement(FList, "effort1_f_m"));
-        double *g_effort1FM_Gcopy = REAL(duplicate(getListElement(FList, "effort1_f_m")));
+//        double *g_effort1FM_Gcopy = REAL(duplicate(getListElement(FList, "effort1_f_m")));
         double *g_effort1F_G = REAL(getListElement(FList, "effort1_f"));
-        double *g_effort1F_Gcopy = REAL(duplicate(getListElement(FList, "effort1_f")));
+//        double *g_effort1F_Gcopy = REAL(duplicate(getListElement(FList, "effort1_f")));
         double *g_nbTripFM_G = REAL(getListElement(FList, "nbTrip_f_m"));
         double *g_nbTripF_G = REAL(getListElement(FList, "nbTrip_f"));
         double *g_nbvFM_G = REAL(getListElement(FList, "nbv_f_m"));
         double *g_nbvF_G = REAL(getListElement(FList, "nbv_f"));
-        double *g_tripLgthFM_G = REAL(getListElement(FList, "tripLgth_f_m"));
-        double *g_tripLgthF_G = REAL(getListElement(FList, "tripLgth_f"));
-
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
-            if (var==1) {  //effort en nb de marées
-
-                double nbTrip_F = 0.0;
-
-                for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                    if (!ISNA(g_effort1FM_G[ind_f+nbF*ind_m])) {
-
-                        //if (gestyp==1) g_effort1FM_G[ind_f+nbF*ind_m] = fmax2(g_effort1FM_G[ind_f+nbF*ind_m] + multF[ind_f+1]*mpond_fm[ind_f+nbF*ind_m],0.0);
-                        /*if (gestyp==2)*/ g_effort1FM_G[ind_f+nbF*ind_m] = fmax2(g_effort1FM_G[ind_f+nbF*ind_m]*(1 + multF[ind_f+1]*mpond_fm[ind_f+nbF*ind_m]),0.0);
-                        /*if (gestyp==0) {
-                            double Ww ;
-                            int countZeroEff = 0; //on doit d'abord compter le nombre de métier de priorité supérieure pour lesquels l'effort est nul
-                            for (int ind_m2 = 0 ; ind_m2<nbMe ; ind_m2++) {
-                                if ((mpond_fm[ind_f+nbF*ind_m2]<mpond_fm[ind_f+nbF*ind_m]) & (fabs(g_effort1FM_Gcopy[ind_f+nbF*ind_m2])<0.00001)) countZeroEff++;
-                            }
-
-                            if ((-1*mpond_fm[ind_f+nbF*ind_m])>=(multF[ind_f+1]-1-countZeroEff)) {
-                                Ww = multF[ind_f+1]+mpond_fm[ind_f+nbF*ind_m]-1.0-countZeroEff;
-                            } else {
-                                if (multF[ind_f+1]>0) {
-                                    Ww = multF[ind_f+1];
-                                } else {
-                                    Ww = 0.0;
-                                }
-                            }
-                            g_effort1FM_G[ind_f+nbF*ind_m] = fmax2(g_effort1FM_G[ind_f+nbF*ind_m]*(1 + Ww),0.0); //cf priorité d'impact
-                        }*/
-                        g_nbTripFM_G[ind_f+nbF*ind_m] = g_effort1FM_G[ind_f+nbF*ind_m];
-                        nbTrip_F = nbTrip_F + g_nbTripFM_G[ind_f+nbF*ind_m]*g_nbvFM_G[ind_f+nbF*ind_m]*g_tripLgthFM_G[ind_f+nbF*ind_m];
-
-                    }
-                }
-
-                g_effort1F_G[ind_f] = nbTrip_F/(g_nbvF_G[ind_f]*g_tripLgthF_G[ind_f]);
-                g_nbTripF_G[ind_f] = g_effort1F_G[ind_f];
-
-                //redressement dans le cas où on dépasse la limite imposée dans effSup à l'instant IND_T
-                if (!ISNA(g_effSup[ind_f+nbF*IND_T]) & (g_effSup[ind_f+nbF*IND_T]<g_effort1F_G[ind_f])) {
-
-                    for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                        //g_effort1FM_G[ind_f+nbF*ind_m] = g_effort1FM_G[ind_f+nbF*ind_m]*g_effSup[ind_f+nbF*IND_T]/g_effort1F_G[ind_f];
-                        g_effort1FM_G[ind_f+nbF*ind_m] = g_effort1FM_Gcopy[ind_f+nbF*ind_m] +
-                         (g_effort1FM_G[ind_f+nbF*ind_m] - g_effort1FM_Gcopy[ind_f+nbF*ind_m]) * (g_effSup[ind_f+nbF*IND_T] - g_effort1F_Gcopy[ind_f]) / (g_effort1F_G[ind_f] - g_effort1F_Gcopy[ind_f]);
-
-                        g_nbTripFM_G[ind_f+nbF*ind_m] = g_effort1FM_G[ind_f+nbF*ind_m];
-
-                    }
-
-                    g_effort1F_G[ind_f] = g_effSup[ind_f+nbF*IND_T];
-                    g_nbTripF_G[ind_f] = g_effort1F_G[ind_f];
-
-                }
-
-            }
+        double *g_effort2FM_G = REAL(getListElement(FList, "effort2_f_m"));
+//        double *g_effort1FM_Gcopy = REAL(duplicate(getListElement(FList, "effort1_f_m")));
+        double *g_effort2F_G = REAL(getListElement(FList, "effort2_f"));
 
 
-            if (var==2) {  //nb de navires : impact seul au niveau flottille, et gestyp n'a alors plus de pertinence
-
-                for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                    if (!ISNA(g_nbvFM_G[ind_f+nbF*ind_m])) g_nbvFM_G[ind_f+nbF*ind_m] = fmax2(g_nbvFM_G[ind_f+nbF*ind_m]*(1+multF[ind_f+1]),0.0);
-
-                }
-
-                g_nbvF_G[ind_f] = fmax2(g_nbvF_G[ind_f]*(1+multF[ind_f+1]),0.0);
-
-                //redressement dans le cas où on dépasse la limite imposée dans effSup à l'instant IND_T
-                if (!ISNA(g_effSup[ind_f+nbF*IND_T]) & (g_effSup[ind_f+nbF*IND_T]<g_nbvF_G[ind_f])) {
-
-                    for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-
-                        g_nbvFM_G[ind_f+nbF*ind_m] = g_nbvFM_G[ind_f+nbF*ind_m]*g_effSup[ind_f+nbF*IND_T]/g_nbvF_G[ind_f];
-
-                    }
-
-                    g_nbvF_G[ind_f] = g_effSup[ind_f+nbF*IND_T];
-
-                }
-
-             }
-
-
-
-
-            if ((ind_f==0) & (spp<nbE)) { //seulement si espèce dynamique
-
-                if (Qvec[spp]==0) {
-
-                    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 44));
-                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spp))), "modI"));
-                    for (int ag = 0; ag < ni; ag++) g_Fothi[ag + ni*IND_T] = fmax2(g_Fothi[ag + ni*IND_T]*multF[nbF+1],0.0);
-
-
-                } else {  //espèce SS3
-
-
-                            double *Fothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 116));
-                            double *Fothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 117));
-                            double *Fothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 118));
-                            double *Fothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 119));
-                            double *Fothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 120));
-                            double *Fothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 121));
-                            double *Fothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 122));
-                            double *Fothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 123));
-                            double *Fothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 124));
-                            double *Fothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 125));
-                            double *Fothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 126));
-                            double *Fothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 127));
-                            double *Fothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 128));
-                            double *Fothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 129));
-                            double *Fothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 130));
-                            double *Fothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 131));
-
-                            double *FRWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 176));
-                            double *FRWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 177));
-                            double *FRWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 178));
-                            double *FRWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 179));
-                            double *FRWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 180));
-                            double *FRWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 181));
-                            double *FRWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 182));
-                            double *FRWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 183));
-                            double *FRWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 184));
-                            double *FRWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 185));
-                            double *FRWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 186));
-                            double *FRWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 187));
-                            double *FRWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 188));
-                            double *FRWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 189));
-                            double *FRWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 190));
-                            double *FRWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 191));
-
-                            double *FDWTothi_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 208));
-                            double *FDWTothi_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 209));
-                            double *FDWTothi_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 210));
-                            double *FDWTothi_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 211));
-                            double *FDWTothi_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 212));
-                            double *FDWTothi_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 213));
-                            double *FDWTothi_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 214));
-                            double *FDWTothi_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 215));
-                            double *FDWTothi_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 216));
-                            double *FDWTothi_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 217));
-                            double *FDWTothi_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 218));
-                            double *FDWTothi_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 219));
-                            double *FDWTothi_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 220));
-                            double *FDWTothi_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 221));
-                            double *FDWTothi_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 222));
-                            double *FDWTothi_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, spp), 223));
-
-                    int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,spp))), "modI"));
-
-                    for (int ag = 0; ag < ni; ag++) {
-
-                                Fothi_S1M1[ag + IND_T*ni] = fmax2(Fothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M2[ag + IND_T*ni] = fmax2(Fothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M3[ag + IND_T*ni] = fmax2(Fothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S1M4[ag + IND_T*ni] = fmax2(Fothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M1[ag + IND_T*ni] = fmax2(Fothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M2[ag + IND_T*ni] = fmax2(Fothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M3[ag + IND_T*ni] = fmax2(Fothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S2M4[ag + IND_T*ni] = fmax2(Fothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M1[ag + IND_T*ni] = fmax2(Fothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M2[ag + IND_T*ni] = fmax2(Fothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M3[ag + IND_T*ni] = fmax2(Fothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S3M4[ag + IND_T*ni] = fmax2(Fothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M1[ag + IND_T*ni] = fmax2(Fothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M2[ag + IND_T*ni] = fmax2(Fothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M3[ag + IND_T*ni] = fmax2(Fothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                Fothi_S4M4[ag + IND_T*ni] = fmax2(Fothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-
-                                FRWTothi_S1M1[ag + IND_T*ni] = fmax2(FRWTothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M2[ag + IND_T*ni] = fmax2(FRWTothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M3[ag + IND_T*ni] = fmax2(FRWTothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S1M4[ag + IND_T*ni] = fmax2(FRWTothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M1[ag + IND_T*ni] = fmax2(FRWTothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M2[ag + IND_T*ni] = fmax2(FRWTothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M3[ag + IND_T*ni] = fmax2(FRWTothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S2M4[ag + IND_T*ni] = fmax2(FRWTothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M1[ag + IND_T*ni] = fmax2(FRWTothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M2[ag + IND_T*ni] = fmax2(FRWTothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M3[ag + IND_T*ni] = fmax2(FRWTothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S3M4[ag + IND_T*ni] = fmax2(FRWTothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M1[ag + IND_T*ni] = fmax2(FRWTothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M2[ag + IND_T*ni] = fmax2(FRWTothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M3[ag + IND_T*ni] = fmax2(FRWTothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FRWTothi_S4M4[ag + IND_T*ni] = fmax2(FRWTothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-
-                                FDWTothi_S1M1[ag + IND_T*ni] = fmax2(FDWTothi_S1M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M2[ag + IND_T*ni] = fmax2(FDWTothi_S1M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M3[ag + IND_T*ni] = fmax2(FDWTothi_S1M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S1M4[ag + IND_T*ni] = fmax2(FDWTothi_S1M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M1[ag + IND_T*ni] = fmax2(FDWTothi_S2M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M2[ag + IND_T*ni] = fmax2(FDWTothi_S2M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M3[ag + IND_T*ni] = fmax2(FDWTothi_S2M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S2M4[ag + IND_T*ni] = fmax2(FDWTothi_S2M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M1[ag + IND_T*ni] = fmax2(FDWTothi_S3M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M2[ag + IND_T*ni] = fmax2(FDWTothi_S3M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M3[ag + IND_T*ni] = fmax2(FDWTothi_S3M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S3M4[ag + IND_T*ni] = fmax2(FDWTothi_S3M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M1[ag + IND_T*ni] = fmax2(FDWTothi_S4M1[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M2[ag + IND_T*ni] = fmax2(FDWTothi_S4M2[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M3[ag + IND_T*ni] = fmax2(FDWTothi_S4M3[ag + IND_T*ni]*multF[nbF+1],0.0);
-                                FDWTothi_S4M4[ag + IND_T*ni] = fmax2(FDWTothi_S4M4[ag + IND_T*ni]*multF[nbF+1],0.0);
-
-                        }
-
-                    }
-             }
-
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        g_effort1F_G[ind_f] = 0.0;
+        for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
+                g_effort1FM_G[ind_f + nbF*ind_m] = Einterm_fm[1 + ind_f + nbF*ind_m] / (g_effort2FM_G[ind_f + nbF*ind_m] * g_nbvFM_G[ind_f + nbF*ind_m]) ;
+                g_nbTripFM[ind_f + nbF*ind_m] = g_effort1FM[ind_f + nbF*ind_m] ;
+                if (!ISNA(g_effort1FM_G[ind_f + nbF*ind_m]))
+                     g_effort1F_G[ind_f] = g_effort1F_G[ind_f] + g_effort1FM_G[ind_f + nbF*ind_m] * g_effort2FM_G[ind_f + nbF*ind_m] * g_nbvFM_G[ind_f + nbF*ind_m] ;
         }
+        g_effort1F_G[ind_f] = g_effort1F_G[ind_f] / (g_nbvF_G[ind_f] * g_effort2F_G[ind_f]) ;
+        g_nbTripF_G[ind_f] = g_effort1F_G[ind_f] ;
+        }
+
+
 
 
 //  free_matrix(q,1,2,1,1);
 //	free_vector(z,1,2);
 //	free_vector(x,1,1);
-    free_vector(multF,1,nbF+1);
+//  free_vector(multF,1,nbF+1);
 
 
     }
 
     ZoptSS3 = false;
 	return 0;
+
+	fichier.close();
 }
 
 }
@@ -15702,7 +15725,7 @@ double BioEcoPar::fxTAC_F_customReport2(double *x) //cas métier Sole des flottil
     if (IND_F < nbF) {
             //result = result + fabs(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
             result = (totF[IND_F + nbF*IND_T]-TAC_byFleet[IND_F + (nbF+1)*IND_T])*(totF[IND_F + nbF*IND_T]-TAC_byFleet[IND_F + (nbF+1)*IND_T]);
-            Rprintf("%12.6f ",result);
+            //Rprintf("%12.6f ",result);
     } else {
 
     //result = result + fabs(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
@@ -15711,10 +15734,10 @@ double BioEcoPar::fxTAC_F_customReport2(double *x) //cas métier Sole des flottil
             result = (tot[IND_T] - totMod[IND_T] - TACoth)*(tot[IND_T] - totMod[IND_T] - TACoth);
 
     }
-    Rprintf("ccc");
-    Rprintf("%12.6f \n",result);
-    Rprintf("result %f \n",result);
-    Rprintf("result %f x %f\n",result,x[1]);
+    //Rprintf("ccc");
+    //Rprintf("%12.6f \n",result);
+    //Rprintf("result %f \n",result);
+    //Rprintf("result %f x %f\n",result,x[1]);
 
 
     UNPROTECT(4);
@@ -15743,7 +15766,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 	double lambda = 0.9;
 	double ftol = 0.00000001;
 
-    Rprintf("TIME %i \n",IND_T);
+    //Rprintf("TIME %i \n",IND_T);
 	//on déclare q et z nécessaire à la procédure d'optimisation
 
 	double **q = NRmatrix(1,2,1,1);
@@ -15757,7 +15780,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 
         for (int ind_f = 0 ; ind_f <= nbF ; ind_f++){
 
-        Rprintf("F %i \n",ind_f);
+        //Rprintf("F %i \n",ind_f);
 
         IND_F = ind_f;
 
@@ -15777,7 +15800,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 
         multF[ind_f+1] = q[2][1];
 
-//        Rprintf("Mult %f \n",multF[ind_f+1]);
+//        //Rprintf("Mult %f \n",multF[ind_f+1]);
 
         }
 
@@ -15818,7 +15841,7 @@ int BioEcoPar::GestionF2report(int spp, int ind_t)
 
         for (int i = 0 ; i < NBI ; i++) {
 
-            Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
+            //Rprintf("diffZZ %f ", REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
             Ztemp[i+1] = Ztemp[i+1] + lambda*(REAL(VECTOR_ELT(out_Z_eit,spQ))[i+NBI*IND_T] - Ztemp[i+1]);
 
         }
@@ -15926,12 +15949,12 @@ double BioEcoPar::fxTAC_F(double *x) //attention : l'indexation de x commence à 
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
             //result = result + fabs(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
             result = result + (totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T])*(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
-            Rprintf("%12.6f ",result);
+            //Rprintf("%12.6f ",result);
     }
     //result = result + fabs(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
     result = result + (tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T])*(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
-    Rprintf("result %f \n",result);
-    Rprintf("%12.6f \n",result);
+    //Rprintf("result %f \n",result);
+    //Rprintf("%12.6f \n",result);
 
 
     UNPROTECT(4);
@@ -15994,13 +16017,13 @@ double BioEcoPar::fxTAC_F_customCst(double *x) //cas métier Sole des flottilles 
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
             //result = result + fabs(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
             result = result + (totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T])*(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
-            Rprintf("%12.6f ",result);
+            //Rprintf("%12.6f ",result);
     }
     //result = result + fabs(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
     result = result + (tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T])*(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
-    Rprintf("ccc");
-    Rprintf("%12.6f \n",result);
-    Rprintf("result %f \n",result);
+    //Rprintf("ccc");
+    //Rprintf("%12.6f \n",result);
+    //Rprintf("result %f \n",result);
 
 
     UNPROTECT(4);
@@ -16061,12 +16084,12 @@ double BioEcoPar::fxTAC_F_customReport(double *x) //cas report d'effort
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
             //result = result + fabs(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
             result = result + (totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T])*(totF[ind_f + nbF*IND_T]-TAC_byFleet[ind_f + (nbF+1)*IND_T]);
-            Rprintf("%12.6f ",result);
+            //Rprintf("%12.6f ",result);
     }
     //result = result + fabs(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
     result = result + (tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T])*(tot[IND_T]-TAC_byFleet[nbF + (nbF+1)*IND_T]);
-    Rprintf("ccc");
-    Rprintf("%12.6f \n",result);
+    //Rprintf("ccc");
+    //Rprintf("%12.6f \n",result);
 
 
     UNPROTECT(4);
@@ -16097,17 +16120,17 @@ int BioEcoPar::MinimizeF(double **p, double y[], int ndim, double ftol)
 	}
 
 	amoeba(foo, p,y,ndim,ftol,&nfunc);
-	Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
-	Rprintf("Vertices of final 3-d simplex and\n");
-	Rprintf("function values at the vertices:\n\n");
+	//Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
+	//Rprintf("Vertices of final 3-d simplex and\n");
+	//Rprintf("function values at the vertices:\n\n");
 	Rprintf("%3s %10s %12s %12s %14s\n\n",
 		"i","x[i]","y[i]","z[i]","function");
 	for (i=1;i<=MP;i++) {
-		Rprintf("%3d ",i);
+		//Rprintf("%3d ",i);
 		for (j=1;j<=NP;j++) Rprintf("%12.6f ",p[i][j]);
-		Rprintf("%12.6f\n",y[i]);
+		//Rprintf("%12.6f\n",y[i]);
 	}
-	Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
+	//Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
 	//free_matrix(p,1,MP,1,NP);
 	//free_vector(y,1,MP);
 	free_vector(x,1,NP);
@@ -16144,17 +16167,17 @@ int BioEcoPar::MinimizeF(double **p, double y[], int ndim, double ftol)
 //	}
 //
 //	amoeba(foo, p,y,ndim,ftol,&nfunc);
-//	Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
-//	Rprintf("Vertices of final 3-d simplex and\n");
-//	Rprintf("function values at the vertices:\n\n");
-//	Rprintf("%3s %10s %12s %12s %14s\n\n",
+//	//Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
+//	//Rprintf("Vertices of final 3-d simplex and\n");
+//	//Rprintf("function values at the vertices:\n\n");
+//	//Rprintf("%3s %10s %12s %12s %14s\n\n",
 //	//	"i","x[i]","y[i]","z[i]","function");
 //	//for (i=1;i<=(ndim+1);i++) {
-//	//	Rprintf("%3d ",i);
-//	//	for (j=1;j<=ndim;j++) Rprintf("%12.6f ",p[i][j]);
-//	//	Rprintf("%12.6f\n",y[i]);
+//	//	//Rprintf("%3d ",i);
+//	//	for (j=1;j<=ndim;j++) //Rprintf("%12.6f ",p[i][j]);
+//	//	//Rprintf("%12.6f\n",y[i]);
 //	//}
-//	Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
+//	//Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
 //
 //	free_vector(x,1,ndim);
 //
@@ -16221,19 +16244,19 @@ int BioEcoPar::GestionF(double **p, double y[], int ndim, double ftol, int ind_t
 
 	amoeba(foo, p,y,ndim,ftol,&nfunc);
 
-    //Rprintf("Time %i\n",ind_t);
-	//Rprintf("END--------------------------------\n");
-	//Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
-	//Rprintf("Vertices of final 3-d simplex and\n");
-	//Rprintf("function values at the vertices:\n\n");
-	//Rprintf("%3s %10s %12s %12s %14s\n\n",
+    ////Rprintf("Time %i\n",ind_t);
+	////Rprintf("END--------------------------------\n");
+	////Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
+	////Rprintf("Vertices of final 3-d simplex and\n");
+	////Rprintf("function values at the vertices:\n\n");
+	////Rprintf("%3s %10s %12s %12s %14s\n\n",
 	////	"i","x[i]","y[i]","z[i]","function");
 	////for (i=1;i<=(ndim+1);i++) {
-	////	Rprintf("%3d ",i);
-	////	for (j=1;j<=ndim;j++) Rprintf("%12.6f ",p[i][j]);
-	////	Rprintf("%12.6f\n",y[i]);
+	////	//Rprintf("%3d ",i);
+	////	for (j=1;j<=ndim;j++) //Rprintf("%12.6f ",p[i][j]);
+	////	//Rprintf("%12.6f\n",y[i]);
 	////}
-	//Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
+	////Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
 
 	free_vector(x,1,ndim);
 
@@ -16294,17 +16317,17 @@ int BioEcoPar::GestionF(double **p, double y[], int ndim, double ftol, int ind_t
 //	}
 //
 //	amoeba(foo, p,y,ndim,ftol,&nfunc);
-//	Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
-//	Rprintf("Vertices of final 3-d simplex and\n");
-//	Rprintf("function values at the vertices:\n\n");
-//	Rprintf("%3s %10s %12s %12s %14s\n\n",
+//	//Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
+//	//Rprintf("Vertices of final 3-d simplex and\n");
+//	//Rprintf("function values at the vertices:\n\n");
+//	//Rprintf("%3s %10s %12s %12s %14s\n\n",
 //	//	"i","x[i]","y[i]","z[i]","function");
 //	//for (i=1;i<=(ndim+1);i++) {
-//	//	Rprintf("%3d ",i);
-//	//	for (j=1;j<=ndim;j++) Rprintf("%12.6f ",p[i][j]);
-//	//	Rprintf("%12.6f\n",y[i]);
+//	//	//Rprintf("%3d ",i);
+//	//	for (j=1;j<=ndim;j++) //Rprintf("%12.6f ",p[i][j]);
+//	//	//Rprintf("%12.6f\n",y[i]);
 //	//}
-//	Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
+//	//Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
 //
 //	free_vector(x,1,ndim);
 //
@@ -16580,13 +16603,12 @@ double BioEcoPar::fxMaxProf_FT(double *x) //attention : l'indexation de x commen
     Marche(listTemp, IND_T);
 
 
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
+        EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
         gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
 
-    Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
     //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
@@ -16627,12 +16649,12 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
         if (var==1) g_nbdsFM[IND_F+nbF*0] = fmin2(fmax2(x[1],0.0),effortIni[IND_F]-g_nbdsFM[IND_F+nbF*1]);
         if (var==1) g_nbdsF[IND_F] = g_nbdsFM[IND_F+nbF*0] + g_nbdsFM[IND_F+nbF*1];
 
-//    Rprintf("O %f \n",x[ind_f+1]);
-//    Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
-//    Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
-//    Rprintf("C %f \n",g_nbdsF[ind_f]);
-//    Rprintf("D %f \n",effortIni[ind_f]);
-//    Rprintf("F %i \n",ind_f);
+//    //Rprintf("O %f \n",x[ind_f+1]);
+//    //Rprintf("A %f \n",g_nbdsFM[ind_f+nbF*0]);
+//    //Rprintf("B %f \n",g_nbdsFM[ind_f+nbF*1]);
+//    //Rprintf("C %f \n",g_nbdsF[ind_f]);
+//    //Rprintf("D %f \n",effortIni[ind_f]);
+//    //Rprintf("F %i \n",ind_f);
 
     //}
 
@@ -16643,13 +16665,12 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
     Marche(listTemp, IND_T);
 
 
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
+        EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
         gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
 
-    Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
     //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
@@ -16660,10 +16681,10 @@ double BioEcoPar::fxMaxProf_FT_customCst(double *x) //attention : l'indexation d
 
     double result = 0.0;
     result = gcfF[IND_F + nbF*IND_T]*g_nbvF[IND_F] - PxQ * (totF[IND_F + nbF*IND_T] - TAC_byFleet[IND_F + (nbF+1)*IND_T]);
-    Rprintf("A %f \n",TAC_byFleet[IND_F + (nbF+1)*IND_T]);
-    Rprintf("B %f \n",gcfF[IND_F + nbF*IND_T]);
-    Rprintf("C %f \n",g_nbvF[IND_F]);
-    Rprintf("D %f \n",totF[IND_F + nbF*IND_T]);
+    //Rprintf("A %f \n",TAC_byFleet[IND_F + (nbF+1)*IND_T]);
+    //Rprintf("B %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("C %f \n",g_nbvF[IND_F]);
+    //Rprintf("D %f \n",totF[IND_F + nbF*IND_T]);
 
     UNPROTECT(3);
 
@@ -16708,13 +16729,12 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
     Marche(listTemp, IND_T);
 
 
-        EcoDCF(listTemp, IND_T, EcoIndCopy[0], EcoIndCopy[1], EcoIndCopy[2], EcoIndCopy[3], EcoIndCopy[4],
-                         EcoIndCopy[5], drCopy);
+        EcoDCF(listTemp, IND_T, EcoIndCopy[4], drCopy);
 
         gcfF = REAL(VECTOR_ELT(out_EcoDCF, 20));
 
 
-    Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
+    //Rprintf("GCF %f \n",gcfF[IND_F + nbF*IND_T]);
 
     //calcul de l'indicateur de profit à optimiser
     //OUT@output$gcf_f[indF,indT]-pxQ[indT]*(sum(OUT@outputSp$Li$Sole_commune[indF,,,indT],na.rm=TRUE)-TAC_f_t[indF,1])
@@ -16753,7 +16773,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //	int nfunc;
 //	int ITquotaExch = 20;
 //
-//    Rprintf("TIME %i \n",IND_T);
+//    //Rprintf("TIME %i \n",IND_T);
 //	//on déclare q et z nécessaire à la procédure d'optimisation
 //
 //	double **q = NRmatrix(1,2,1,1);
@@ -16766,7 +16786,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //    for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
 //        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-//    Rprintf("IT %i \n",IT);
+//    //Rprintf("IT %i \n",IT);
 //
 //    if (IT==5) lambda = lambda/6;
 //    if (IT==10) lambda = lambda/6;
@@ -16775,15 +16795,15 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //        IND_F = ind_f;
 //
 ////        x[1]=1;
-////        Rprintf("Val : %f ",(this->*foo2)(x));
+////        //Rprintf("Val : %f ",(this->*foo2)(x));
 ////        x[1]=50;
-////        Rprintf("%f ",(this->*foo2)(x));
+////        //Rprintf("%f ",(this->*foo2)(x));
 ////        x[1]=125;
-////        Rprintf("%f ",(this->*foo2)(x));
+////        //Rprintf("%f ",(this->*foo2)(x));
 ////        x[1]=200;
-////        Rprintf("%f ",(this->*foo2)(x));
+////        //Rprintf("%f ",(this->*foo2)(x));
 ////        x[1]=350;
-////        Rprintf("%f \n",(this->*foo2)(x));
+////        //Rprintf("%f \n",(this->*foo2)(x));
 //
 //        q[1][1]=x[1]=175;
 //        z[1]=(this->*foo2)(x);
@@ -16794,7 +16814,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        multF[ind_f+1] = q[2][1];
 //
-////        Rprintf("Mult %f \n",multF[ind_f+1]);
+////        //Rprintf("Mult %f \n",multF[ind_f+1]);
 //
 //        }
 //
@@ -16851,14 +16871,14 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        }
 //
-////        Rprintf("\n");
-//        Rprintf("diffLQ %f \n",diffLQ);
+////        //Rprintf("\n");
+//        //Rprintf("diffLQ %f \n",diffLQ);
 ////
-//        Rprintf("PxQ_1 %f ",PxQ);
+//        //Rprintf("PxQ_1 %f ",PxQ);
 //
 //        PxQ = fmax2(pxQuMin,fmin2(PxQ + lambda*diffLQ,pxQuMax));
 //
-//        Rprintf("PxQ_2 %f \n",PxQ);
+//        //Rprintf("PxQ_2 %f \n",PxQ);
 //        //... et on recommence
 //
 //        UNPROTECT(3);
@@ -16918,7 +16938,7 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //	int ITquotaExch = 30;
 //
-//    Rprintf("TIME %i \n",IND_T);
+//    //Rprintf("TIME %i \n",IND_T);
 //
 //    double *multF = NRvector(1,nbF);
 //    double *z = NRvector(1,2);
@@ -16936,20 +16956,20 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //    //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
 //        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-//    Rprintf("IT %i \n",IT);
+//    //Rprintf("IT %i \n",IT);
 //
 //        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 //
 //        IND_F = ind_f;
 //
 //        x[1]=1.0;
-//        z[1]=(this->*foo2)(x);Rprintf("z1 %f \n",z[1]);
+//        z[1]=(this->*foo2)(x);//Rprintf("z1 %f \n",z[1]);
 //        x[1]=350.0;
-//        z[2]=(this->*foo2)(x);Rprintf("z2 %f \n",z[2]);
+//        z[2]=(this->*foo2)(x);//Rprintf("z2 %f \n",z[2]);
 //
 //        if (z[1]>z[2]) multF[ind_f+1] = 350.0; else multF[ind_f+1] = 1.0;
 //
-//        //if (IT==0)  Rprintf("Mult %f \n",multF[ind_f+1]);
+//        //if (IT==0)  //Rprintf("Mult %f \n",multF[ind_f+1]);
 //
 //        }
 //
@@ -17014,15 +17034,15 @@ double BioEcoPar::fxMaxProf_FT_customReport(double *x) //attention : l'indexatio
 //
 //        DIFF = diffLQ;
 //
-////        Rprintf("\n");
-//        Rprintf("diffLQ %f \n",diffLQ);
+////        //Rprintf("\n");
+//        //Rprintf("diffLQ %f \n",diffLQ);
 ////
-//        Rprintf("PxQ_1 %f ",PxQ);
+//        //Rprintf("PxQ_1 %f ",PxQ);
 //
 //        PxQ = fmax2(pxQuMin,fmin2(PxQ + lambda*diffLQ,pxQuMax));
 //
-//        Rprintf("PxQ_2 %f \n",PxQ);
-//        Rprintf("lambda %f \n",lambda);
+//        //Rprintf("PxQ_2 %f \n",PxQ);
+//        //Rprintf("lambda %f \n",lambda);
 //        //... et on recommence
 //
 //        UNPROTECT(3);
@@ -17089,7 +17109,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
 	int ITquotaExch = 20;
 
-    Rprintf("TIME %i \n",IND_T);
+    //Rprintf("TIME %i \n",IND_T);
 
     double *multF = NRvector(1,nbF);
     double *z = NRvector(1,2);
@@ -17107,7 +17127,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
     //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 
         //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-    Rprintf("IT %i \n",IT);
+    //Rprintf("IT %i \n",IT);
 
         Zoptim_use = true;
 
@@ -17116,13 +17136,13 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
         IND_F = ind_f;
 
         x[1]=1.0;
-        z[1]=(this->*foo2)(x);Rprintf("z1 %f \n",z[1]);
+        z[1]=(this->*foo2)(x);//Rprintf("z1 %f \n",z[1]);
         x[1]=350.0;
-        z[2]=(this->*foo2)(x);Rprintf("z2 %f \n",z[2]);
+        z[2]=(this->*foo2)(x);//Rprintf("z2 %f \n",z[2]);
 
         if (z[1]>z[2]) multF[ind_f+1] = 350.0; else multF[ind_f+1] = 0.0;
 
-        //if (IT==0)  Rprintf("Mult %f \n",multF[ind_f+1]);
+        //if (IT==0)  //Rprintf("Mult %f \n",multF[ind_f+1]);
 
         }
 
@@ -17168,10 +17188,10 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
         DIFF = diffLQ;
 
-//        Rprintf("\n");
-        Rprintf("diffLQ %f \n",diffLQ);
+//        //Rprintf("\n");
+        //Rprintf("diffLQ %f \n",diffLQ);
 //
-        Rprintf("PxQ_1 %f ",PxQ);
+        //Rprintf("PxQ_1 %f ",PxQ);
 
         if (diffLQ<0) {
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmin2(lambda*diffLQ,-0.1),pxQuMax));
@@ -17179,8 +17199,8 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
         PxQ = fmax2(pxQuMin,fmin2(PxQ + fmax2(lambda*diffLQ,0.1),pxQuMax));
         }
 
-        Rprintf("PxQ_2 %f \n",PxQ);
-        Rprintf("lambda %f \n",lambda);
+        //Rprintf("PxQ_2 %f \n",PxQ);
+        //Rprintf("lambda %f \n",lambda);
         //... et on recommence
 
         UNPROTECT(3);
@@ -17234,7 +17254,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //	int ITquotaExch = 20;
 //
-//    Rprintf("TIME %i \n",IND_T);
+//    //Rprintf("TIME %i \n",IND_T);
 //
 //    double *multF = NRvector(1,nbF);
 //    double *z = NRvector(1,2);
@@ -17252,7 +17272,7 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //    //for (int IT = 0 ; IT < ITquotaExch ; IT++){
 //
 //        //1ère étape : maximisation du profit par l'effort par flottille en fonction de PxQ et spQ
-//    Rprintf("IT %i \n",IT);
+//    //Rprintf("IT %i \n",IT);
 //
 //        Zoptim_use = true;
 //        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -17260,13 +17280,13 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //        IND_F = ind_f;
 //
 //        x[1]=1.0;
-//        z[1]=(this->*foo2)(x);Rprintf("z1 %f \n",z[1]);
+//        z[1]=(this->*foo2)(x);//Rprintf("z1 %f \n",z[1]);
 //        x[1]=350.0;
-//        z[2]=(this->*foo2)(x);Rprintf("z2 %f \n",z[2]);
+//        z[2]=(this->*foo2)(x);//Rprintf("z2 %f \n",z[2]);
 //
 //        if (z[1]>z[2]) multF[ind_f+1] = 350.0; else multF[ind_f+1] = 0.0;
 //
-//        //if (IT==0)  Rprintf("Mult %f \n",multF[ind_f+1]);
+//        //if (IT==0)  //Rprintf("Mult %f \n",multF[ind_f+1]);
 //
 //        }
 //
@@ -17326,10 +17346,10 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 //        DIFF = diffLQ;
 //
-////        Rprintf("\n");
-//        Rprintf("diffLQ %f \n",diffLQ);
+////        //Rprintf("\n");
+//        //Rprintf("diffLQ %f \n",diffLQ);
 ////
-//        Rprintf("PxQ_1 %f ",PxQ);
+//        //Rprintf("PxQ_1 %f ",PxQ);
 //
 //        if (diffLQ<0) {
 //            PxQ = fmax2(pxQuMin,fmin2(PxQ + fmin2(lambda*diffLQ,-0.1),pxQuMax));
@@ -17340,8 +17360,8 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 //
 ////        PxQ = fmax2(pxQuMin,fmin2(PxQ + lambda*diffLQ,pxQuMax));
 //
-//        Rprintf("PxQ_2 %f \n",PxQ);
-//        Rprintf("lambda %f \n",lambda);
+//        //Rprintf("PxQ_2 %f \n",PxQ);
+//        //Rprintf("lambda %f \n",lambda);
 //        //... et on recommence
 //
 //        UNPROTECT(3);
@@ -17382,200 +17402,217 @@ int BioEcoPar::QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double 
 
 extern "C" {
 
-void BioEcoPar::EcoDCF(SEXP list, int ind_t, int adj, int ue_choice, int oths, int othsFM, int perscCalc, int report, double dr)
+void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 {
-//Rprintf("Eco 1");
+
+ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testEco.txt", ios::out | ios::trunc);
+
+//extern "C" {
+//void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
+//{
+//Rprintf("\nJ1\n");fichier << "J1" << endl;
 
     SEXP Flist;
     PROTECT(Flist = getListElement(list, "Fleet"));
 
     PROTECT(out_EcoDCF);
 
-//2 protect
     SEXP dimCstF, DimF, dimnamesF, dimCstFM, dimCstFini, dimCstFMini, DimFM, DimFMini, dimnamesFM, dimnamesFMini; //formatage des objets résultats
 
     SEXP eFACTf, eFACTfm, elmt;
 
-    SEXP    Lref_f, GVLref_f, GVLref_f_m, nbv_f, nbv_f_m, lc_f_m, lcd_f_m, nbh_f, ue_f, ue_f_m, fc_f, fc_f_m, vf_f, vf_f_m, ovcDCF_f, ovcDCF_f_m,
-            cnb_f, cshr_f, eec_f, mwh_f, rep_f, dep_f, ic_f, K_f, persc_f, fixc_f, mwhg_f;
+    SEXP    theta_e, pst_e, nbv_f, nbv_f_m, lc_f_m, lcd_f_m, tripLgth_f, tripLgth_f_m, nbTrip_f, nbTrip_f_m, nbds_f, nbds_f_m,
+            effort1_f, effort1_f_m, effort2_f, effort2_f_m, Lref_f_m, cnb_f_m, ovcDCF_f_m, fc_f_m, vf_f_m, cshr_f_m, cshr_f, cnb_f, persc_f,
+            eec_f, mwh_f, rep_f, gc_f, fixc_f, FTE_f, dep_f, ic_f, K_f, inv_f, FTE_f_m, GVLref_f_m, ue_f, ue_f_m;
 
-    SEXP    dc_Lref_f, dc_GVLref_f, dc_GVLref_f_m, dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_nbh_f, dc_ue_f, dc_ue_f_m,
-            dc_fc_f, dc_fc_f_m, dc_vf_f, dc_vf_f_m, dc_ovcDCF_f, dc_ovcDCF_f_m, dc_cnb_f, dc_cshr_f, dc_eec_f, dc_mwh_f, dc_rep_f,
-            dc_dep_f, dc_ic_f, dc_K_f, dc_persc_f, dc_fixc_f, dc_mwhg_f;
+    SEXP    dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_tripLgth_f, dc_tripLgth_f_m, dc_nbTrip_f, dc_nbTrip_f_m, dc_nbds_f, dc_nbds_f_m,
+            dc_effort1_f, dc_effort1_f_m, dc_effort2_f, dc_effort2_f_m, dc_Lref_f_m, dc_cnb_f_m, dc_ovcDCF_f_m, dc_fc_f_m, dc_vf_f_m, dc_cshr_f_m, dc_cshr_f, dc_cnb_f, dc_persc_f,
+            dc_eec_f, dc_mwh_f, dc_rep_f, dc_gc_f, dc_fixc_f, dc_FTE_f, dc_dep_f, dc_ic_f, dc_K_f, dc_inv_f, dc_FTE_f_m, dc_GVLref_f_m, dc_ue_f, dc_ue_f_m;
 
     int *dCF,*dCFM,*dCFini,*dCFMini,*DF,*DFM, *DFMini;
 
-    int     *dim_Lref_f, *dim_GVLref_f, *dim_GVLref_f_m, *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_lcd_f_m, *dim_nbh_f, *dim_ue_f,
-            *dim_ue_f_m, *dim_fc_f, *dim_fc_f_m, *dim_vf_f, *dim_vf_f_m, *dim_ovcDCF_f, *dim_ovcDCF_f_m, *dim_cnb_f, *dim_cshr_f,
-            *dim_eec_f, *dim_mwh_f, *dim_rep_f, *dim_dep_f, *dim_ic_f, *dim_K_f, *dim_persc_f, *dim_fixc_f, *dim_mwhg_f;
+    int     *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_lcd_f_m, *dim_tripLgth_f, *dim_tripLgth_f_m, *dim_nbTrip_f, *dim_nbTrip_f_m, *dim_nbds_f, *dim_nbds_f_m,
+            *dim_effort1_f, *dim_effort1_f_m, *dim_effort2_f, *dim_effort2_f_m, *dim_Lref_f_m, *dim_cnb_f_m, *dim_ovcDCF_f_m, *dim_fc_f_m, *dim_vf_f_m, *dim_cshr_f_m, *dim_cshr_f, *dim_cnb_f, *dim_persc_f,
+            *dim_eec_f, *dim_mwh_f, *dim_rep_f, *dim_gc_f, *dim_fixc_f, *dim_FTE_f, *dim_dep_f, *dim_ic_f, *dim_K_f, *dim_inv_f, *dim_FTE_f_m, *dim_GVLref_f_m, *dim_alpha_f,
+            *dim_ue_f, *dim_ue_f_m;
 
-    double  *r_Lref_f, *r_GVLref_f, *r_GVLref_f_m, *r_nbv_f, *r_nbv_f_m, *r_lc_f_m, *r_lcd_f_m, *r_nbh_f, *r_ue_f, *r_ue_f_m,
-            *r_fc_f, *r_fc_f_m, *r_vf_f, *r_vf_f_m, *r_ovcDCF_f, *r_ovcDCF_f_m, *r_cnb_f, *r_cshr_f, *r_eec_f, *r_mwh_f,
-            *r_rep_f, *r_dep_f, *r_ic_f, *r_K_f, *r_persc_f, *r_fixc_f, *r_mwhg_f;
+    double  *r_theta_e, *r_pst_e, *r_nbv_f, *r_nbv_f_m, *r_lc_f_m, *r_lcd_f_m, *r_tripLgth_f, *r_tripLgth_f_m, *r_nbTrip_f, *r_nbTrip_f_m, *r_nbds_f, *r_nbds_f_m,
+            *r_effort1_f, *r_effort1_f_m, *r_effort2_f, *r_effort2_f_m, *r_Lref_f_m, *r_cnb_f_m, *r_ovcDCF_f_m, *r_fc_f_m, *r_vf_f_m, *r_cshr_f_m, *r_cshr_f, *r_cnb_f, *r_persc_f,
+            *r_eec_f, *r_mwh_f, *r_rep_f, *r_gc_f, *r_fixc_f, *r_FTE_f, *r_dep_f, *r_ic_f, *r_K_f, *r_inv_f, *r_FTE_f_m, *r_GVLref_f_m;
 
-    double  *r_GVLtot_f_m_out, *r_GVLav_f_m_out, *r_GVLtot_f_out, *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out,
-            *r_rtbs_f_out, *r_rtbs_f_m_out, *r_cshrT_f_out, *r_sshr_f_out, *r_ncshr_f_out, *r_oclg_f_out, *r_ocl_f_out,
-            *r_csg_f_out, *r_cs_f_out, *r_gva_f_out, *r_ccw_f_out, *r_ccwCr_f_out,
-            *r_wageg_f_out, *r_wagen_f_out, *r_gcf_f_out, *r_ngcf_f_out, *r_gp_f_out, *r_ps_f_out, *r_sts_f_out, *r_ber_f_out,
-            *r_ratio_gva_GVL_f_out, *r_ratio_gcf_GVL_f_out, *r_ratio_fc_GVL_f_out,
-            *r_ratio_rep_GVL_f_out, *r_ratio_fvol_GVL_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gcf_gva_f_out,
-            *r_ratio_K_cnb_f_out, *r_ratio_GVL_K_f_out, *r_ratio_gcf_K_f_out, *r_ratio_ngcf_K_f_out, *r_ratio_gp_K_f_out,
-            *r_ratio_GVL_cnb_ue_f_out,
-            *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gcfAct_f_out, *r_psAct_f_out, *r_stsAct_f_out,
-            *r_ETini_f_m_out, *r_ETini_f_out, *r_GVLcom_f_m_e_out, *r_GVLst_f_m_e_out, *r_GVLcom_f_m_eStat_out, *r_GVLst_f_m_eStat_out,
-            *r_cnb_f_m_out, *r_cnb_f_out;
+    double  *r_ETini_f_m_out, *r_ETini_f_out, *r_ET_f_m_out,
+            *r_GVLcom_f_m_e_out, *r_GVLcom_f_m_eStat_out, *r_GVLst_f_m_e_out, *r_GVLst_f_m_eStat_out, *r_GVL_f_m_e_out, *r_GVL_f_m_eStat_out, *r_GVLtot_f_m_out, *r_GVLav_f_m_out, *r_GVLtot_f_out,
+            *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out, *r_cnb_f_m_out, *r_cnb_f_out,
+            *r_rtbs_f_m_out, *r_rtbs_f_out, *r_cshrT_f_m_out, *r_cshrT_f_out, *r_ncshr_f_out, *r_ocl_f_out, *r_cs_f_out, *r_csTot_f_out, *r_gva_f_out, *r_gvamargin_f_out,
+            *r_gva_FTE_f_out, *r_ccw_f_out, *r_ccwCr_f_out, *r_wageg_f_out, *r_wagen_f_out, *r_wageg_FTE_f_out, *r_wageg_h_f_out, *r_gp_f_out, *r_gpmargin_f_out,
+            *r_ncf_f_out, *r_np_f_out, *r_npmargin_f_out, *r_prof_f_out, *r_npmargin_trend_f_out, *r_ssTot_f_out, *r_ps_f_out, *r_sts_f_out, *r_BER_f_out, *r_CR_BER_f_out,
+            *r_fuelEff_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gp_gva_f_out, *r_ratio_GVL_K_f_out, *r_ratio_gp_K_f_out, *r_RoFTA_f_out, *r_ROI_f_out,
+            *r_ratio_np_K_f_out, *r_ratio_GVL_cnb_ue_f_out,
+            *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gpAct_f_out, *r_psAct_f_out, *r_stsAct_f_out;
 
-//Rprintf("Eco 2");
+
+//Rprintf("Eco 2");fichier << "Eco2" << endl;
 //définition des dimensions
-    PROTECT(dimCstF = allocVector(INTSXP, 4));
-    PROTECT(DimF = allocVector(INTSXP, 2));
-    PROTECT(dimnamesF = allocVector(VECSXP,2));
-    PROTECT(dimCstFM = allocVector(INTSXP, 4));
-    PROTECT(DimFM = allocVector(INTSXP, 3));
-    PROTECT(dimnamesFM = allocVector(VECSXP,3));
 
-    PROTECT(dimCstFini = allocVector(INTSXP, 4));
-    PROTECT(dimCstFMini = allocVector(INTSXP, 4));
-    PROTECT(DimFMini = allocVector(INTSXP, 2));
+
+    PROTECT(dimnamesF = allocVector(VECSXP,2));
+    PROTECT(dimnamesFM = allocVector(VECSXP,3));
     PROTECT(dimnamesFMini = allocVector(VECSXP,2));
 
     SET_VECTOR_ELT(dimnamesF, 0, fleetList); SET_VECTOR_ELT(dimnamesF, 1, times);
     SET_VECTOR_ELT(dimnamesFM, 0, fleetList); SET_VECTOR_ELT(dimnamesFM, 1, metierListEco); SET_VECTOR_ELT(dimnamesFM, 2, times);
     SET_VECTOR_ELT(dimnamesFMini, 0, fleetList); SET_VECTOR_ELT(dimnamesFMini, 1, metierListEco);
 
+
+    PROTECT(dimCstF = allocVector(INTSXP, 4));
+    PROTECT(dimCstFini = allocVector(INTSXP, 4));
+    PROTECT(dimCstFM = allocVector(INTSXP, 4));
+    PROTECT(dimCstFMini = allocVector(INTSXP, 4));
+
     dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
     dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
     dCFini = INTEGER(dimCstFini) ; dCFini[0] = nbF; dCFini[1] = 0; dCFini[2] = 0; dCFini[3] = 0;
     dCFMini = INTEGER(dimCstFMini) ; dCFMini[0] = nbF; dCFMini[1] = nbMe; dCFMini[2] = 0; dCFMini[3] = 0;
 
+
+    PROTECT(DimF = allocVector(INTSXP, 2));
+    PROTECT(DimFM = allocVector(INTSXP, 3));
+    PROTECT(DimFMini = allocVector(INTSXP, 2));
+
     DF = INTEGER(DimF) ; DF[0] = nbF; DF[1] = nbT;
     DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
     DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
 
-    //facteurs des indices génériques F/FM
+    // facteurs des indices génériques F/FM
+
     PROTECT(eFACTf = iDim(dCF));
     PROTECT(eFACTfm = iDim(dCFM));
-//Rprintf("Eco 3");
-//12 protect -> 14
+
+    //Rprintf("Eco 3");fichier << "Eco3" << endl;
+    // protect.root -> 14
+
+// ---> P = 14
 
     int *eF_f = INTEGER(eFACTf);
     int *eF_fm = INTEGER(eFACTfm);
 
-    PROTECT(Lref_f = getListElement(Flist, "Lref_f"));      PROTECT(dc_Lref_f = iDim(INTEGER(getAttrib(Lref_f, install("DimCst")))));
-    PROTECT(GVLref_f = getListElement(Flist, "GVLref_f"));    PROTECT(dc_GVLref_f = iDim(INTEGER(getAttrib(GVLref_f, install("DimCst")))));
-    PROTECT(GVLref_f_m = getListElement(Flist, "GVLref_f_m")); PROTECT(dc_GVLref_f_m = iDim(INTEGER(getAttrib(GVLref_f_m, install("DimCst")))));
-    PROTECT(nbv_f = getListElement(Flist, "nbv_f"));        PROTECT(dc_nbv_f = iDim(INTEGER(getAttrib(nbv_f, install("DimCst")))));
-    PROTECT(nbv_f_m = getListElement(Flist, "nbv_f_m"));    PROTECT(dc_nbv_f_m = iDim(INTEGER(getAttrib(nbv_f_m, install("DimCst")))));
-    PROTECT(lc_f_m = getListElement(Flist, "lc_f_m"));      PROTECT(dc_lc_f_m = iDim(INTEGER(getAttrib(lc_f_m, install("DimCst")))));
-    PROTECT(lcd_f_m = getListElement(Flist, "lcd_f_m"));    PROTECT(dc_lcd_f_m = iDim(INTEGER(getAttrib(lcd_f_m, install("DimCst")))));
-    PROTECT(nbh_f = getListElement(Flist, "nbh_f"));        PROTECT(dc_nbh_f = iDim(INTEGER(getAttrib(nbh_f, install("DimCst")))));
-    PROTECT(fc_f = getListElement(Flist, "fc_f"));          PROTECT(dc_fc_f = iDim(INTEGER(getAttrib(fc_f, install("DimCst")))));
-    PROTECT(fc_f_m = getListElement(Flist, "fc_f_m"));      PROTECT(dc_fc_f_m = iDim(INTEGER(getAttrib(fc_f_m, install("DimCst")))));
-    PROTECT(vf_f = getListElement(Flist, "vf_f"));          PROTECT(dc_vf_f = iDim(INTEGER(getAttrib(vf_f, install("DimCst")))));
-    PROTECT(vf_f_m = getListElement(Flist, "vf_f_m"));      PROTECT(dc_vf_f_m = iDim(INTEGER(getAttrib(vf_f_m, install("DimCst")))));
-    PROTECT(ovcDCF_f = getListElement(Flist, "ovcDCF_f"));  PROTECT(dc_ovcDCF_f = iDim(INTEGER(getAttrib(ovcDCF_f, install("DimCst")))));
-    PROTECT(ovcDCF_f_m = getListElement(Flist, "ovcDCF_f_m")); PROTECT(dc_ovcDCF_f_m = iDim(INTEGER(getAttrib(ovcDCF_f_m, install("DimCst")))));
-    PROTECT(cnb_f = getListElement(Flist, "cnb_f"));        PROTECT(dc_cnb_f = iDim(INTEGER(getAttrib(cnb_f, install("DimCst")))));
-    PROTECT(cshr_f = getListElement(Flist, "cshr_f"));      PROTECT(dc_cshr_f = iDim(INTEGER(getAttrib(cshr_f, install("DimCst")))));
-    PROTECT(eec_f = getListElement(Flist, "eec_f"));        PROTECT(dc_eec_f = iDim(INTEGER(getAttrib(eec_f, install("DimCst")))));
-    PROTECT(mwh_f = getListElement(Flist, "mwh_f"));        PROTECT(dc_mwh_f = iDim(INTEGER(getAttrib(mwh_f, install("DimCst")))));
-    PROTECT(rep_f = getListElement(Flist, "rep_f"));        PROTECT(dc_rep_f = iDim(INTEGER(getAttrib(rep_f, install("DimCst")))));
-    PROTECT(dep_f = getListElement(Flist, "dep_f"));        PROTECT(dc_dep_f = iDim(INTEGER(getAttrib(dep_f, install("DimCst")))));
-    PROTECT(ic_f = getListElement(Flist, "ic_f"));          PROTECT(dc_ic_f = iDim(INTEGER(getAttrib(ic_f, install("DimCst")))));
-    PROTECT(K_f = getListElement(Flist, "K_f"));            PROTECT(dc_K_f = iDim(INTEGER(getAttrib(K_f, install("DimCst")))));
-    PROTECT(persc_f = getListElement(Flist, "persc_f"));    PROTECT(dc_persc_f = iDim(INTEGER(getAttrib(persc_f, install("DimCst")))));
-    PROTECT(fixc_f = getListElement(Flist, "fixc_f"));      PROTECT(dc_fixc_f = iDim(INTEGER(getAttrib(fixc_f, install("DimCst")))));
-    PROTECT(mwhg_f = getListElement(Flist, "mwhg_f"));      PROTECT(dc_mwhg_f = iDim(INTEGER(getAttrib(mwhg_f, install("DimCst")))));
-//48 protect  ->62
-//Rprintf("Eco 4");
-if (ue_choice == 1) {
+    PROTECT(nbv_f = getListElement(Flist, "nbv_f"));                PROTECT(dc_nbv_f = iDim(INTEGER(getAttrib(nbv_f, install("DimCst"))))); //Rprintf("Eco 31");
+    PROTECT(nbv_f_m = getListElement(Flist, "nbv_f_m"));            PROTECT(dc_nbv_f_m = iDim(INTEGER(getAttrib(nbv_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(lc_f_m = getListElement(Flist, "lc_f_m"));              PROTECT(dc_lc_f_m = iDim(INTEGER(getAttrib(lc_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(lcd_f_m = getListElement(Flist, "lcd_f_m"));            PROTECT(dc_lcd_f_m = iDim(INTEGER(getAttrib(lcd_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(tripLgth_f = getListElement(Flist, "tripLgth_f"));      PROTECT(dc_tripLgth_f = iDim(INTEGER(getAttrib(tripLgth_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(tripLgth_f_m = getListElement(Flist, "tripLgth_f_m"));  PROTECT(dc_tripLgth_f_m = iDim(INTEGER(getAttrib(tripLgth_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(nbTrip_f = getListElement(Flist, "nbTrip_f"));          PROTECT(dc_nbTrip_f = iDim(INTEGER(getAttrib(nbTrip_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(nbTrip_f_m = getListElement(Flist, "nbTrip_f_m"));      PROTECT(dc_nbTrip_f_m = iDim(INTEGER(getAttrib(nbTrip_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(nbds_f = getListElement(Flist, "nbds_f"));              PROTECT(dc_nbds_f = iDim(INTEGER(getAttrib(nbds_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(nbds_f_m = getListElement(Flist, "nbds_f_m"));          PROTECT(dc_nbds_f_m = iDim(INTEGER(getAttrib(nbds_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(effort1_f = getListElement(Flist, "effort1_f"));        PROTECT(dc_effort1_f = iDim(INTEGER(getAttrib(effort1_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(effort1_f_m = getListElement(Flist, "effort1_f_m"));    PROTECT(dc_effort1_f_m = iDim(INTEGER(getAttrib(effort1_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(effort2_f = getListElement(Flist, "effort2_f"));        PROTECT(dc_effort2_f = iDim(INTEGER(getAttrib(effort2_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(effort2_f_m = getListElement(Flist, "effort2_f_m"));    PROTECT(dc_effort2_f_m = iDim(INTEGER(getAttrib(effort2_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(Lref_f_m = getListElement(Flist, "Lref_f_m"));          PROTECT(dc_Lref_f_m = iDim(INTEGER(getAttrib(Lref_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(cnb_f_m = getListElement(Flist, "cnb_f_m"));            PROTECT(dc_cnb_f_m = iDim(INTEGER(getAttrib(cnb_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(ovcDCF_f_m = getListElement(Flist, "ovcDCF_f_m"));      PROTECT(dc_ovcDCF_f_m = iDim(INTEGER(getAttrib(ovcDCF_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(fc_f_m = getListElement(Flist, "fc_f_m"));              PROTECT(dc_fc_f_m = iDim(INTEGER(getAttrib(fc_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(vf_f_m = getListElement(Flist, "vf_f_m"));              PROTECT(dc_vf_f_m = iDim(INTEGER(getAttrib(vf_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(cshr_f_m = getListElement(Flist, "cshr_f_m"));          PROTECT(dc_cshr_f_m = iDim(INTEGER(getAttrib(cshr_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(cshr_f = getListElement(Flist, "cshr_f"));              PROTECT(dc_cshr_f = iDim(INTEGER(getAttrib(cshr_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(cnb_f = getListElement(Flist, "cnb_f"));                PROTECT(dc_cnb_f = iDim(INTEGER(getAttrib(cnb_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(persc_f = getListElement(Flist, "persc_f"));            PROTECT(dc_persc_f = iDim(INTEGER(getAttrib(persc_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(eec_f = getListElement(Flist, "eec_f"));                PROTECT(dc_eec_f = iDim(INTEGER(getAttrib(eec_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(mwh_f = getListElement(Flist, "mwh_f"));                PROTECT(dc_mwh_f = iDim(INTEGER(getAttrib(mwh_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(rep_f = getListElement(Flist, "rep_f"));                PROTECT(dc_rep_f = iDim(INTEGER(getAttrib(rep_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(gc_f = getListElement(Flist, "gc_f"));                  PROTECT(dc_gc_f = iDim(INTEGER(getAttrib(gc_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(fixc_f = getListElement(Flist, "fixc_f"));              PROTECT(dc_fixc_f = iDim(INTEGER(getAttrib(fixc_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(FTE_f = getListElement(Flist, "FTE_f"));                PROTECT(dc_FTE_f = iDim(INTEGER(getAttrib(FTE_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(dep_f = getListElement(Flist, "dep_f"));                PROTECT(dc_dep_f = iDim(INTEGER(getAttrib(dep_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(ic_f = getListElement(Flist, "ic_f"));                  PROTECT(dc_ic_f = iDim(INTEGER(getAttrib(ic_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(K_f = getListElement(Flist, "K_f"));                    PROTECT(dc_K_f = iDim(INTEGER(getAttrib(K_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(inv_f = getListElement(Flist, "inv_f"));                PROTECT(dc_inv_f = iDim(INTEGER(getAttrib(inv_f, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(FTE_f_m = getListElement(Flist, "FTE_f_m"));            PROTECT(dc_FTE_f_m = iDim(INTEGER(getAttrib(FTE_f_m, install("DimCst")))));//Rprintf("Eco 31");
+    PROTECT(GVLref_f_m = getListElement(Flist, "GVLref_f_m"));      PROTECT(dc_GVLref_f_m = iDim(INTEGER(getAttrib(GVLref_f_m, install("DimCst")))));//Rprintf("Eco 31");
 
-        PROTECT(ue_f = NEW_NUMERIC(nbF));
-        setAttrib(ue_f, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
-        setAttrib(ue_f, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
-        setAttrib(ue_f, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f"), install("DimCst")));
+// ---> P = 14 + 35*2 = 84
+//Rprintf("Eco 4");fichier << "Eco4" << endl;
 
-        PROTECT(ue_f_m = NEW_NUMERIC(nbF*nbMe));
-        setAttrib(ue_f_m, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
-        setAttrib(ue_f_m, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
-        setAttrib(ue_f_m, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")));
+    PROTECT(ue_f = NEW_NUMERIC(nbF));
+    setAttrib(ue_f, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
+    setAttrib(ue_f, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
+    setAttrib(ue_f, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f"), install("DimCst")));
 
-double *ruef = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *ruefm = REAL(ue_f_m); double *reff1_fm = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2_fm = REAL(getListElement(Flist, "effort2_f_m"));
+    PROTECT(ue_f_m = NEW_NUMERIC(nbF*nbMe));
+    setAttrib(ue_f_m, R_DimSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
+    setAttrib(ue_f_m, R_DimNamesSymbol, getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
+    setAttrib(ue_f_m, install("DimCst"), getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")));
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  ruef[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
-  for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) ruefm[ind_f + nbF*ind_m] = reff1_fm[ind_f + nbF*ind_m]*reff2_fm[ind_f + nbF*ind_m];
-}
+    double *r_ue_f = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
+    double *r_ue_f_m = REAL(ue_f_m); double *reff1 = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 
-} else {
-
-    if (ue_choice == 2) {
-
-        PROTECT(ue_f = getListElement(Flist, "nbh_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbh_f_m"));
-
-    } else {
-
-        PROTECT(ue_f = getListElement(Flist, "nbtrip_f"));
-        PROTECT(ue_f_m = getListElement(Flist, "nbtrip_f_m"));
-
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        r_ue_f[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
+        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) r_ue_f_m[ind_f + nbF*ind_m] = reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m];
     }
-}
-//Rprintf("Eco 5");
+
+//Rprintf("Eco 5");fichier << "Eco5" << endl;
     PROTECT(dc_ue_f = iDim(INTEGER(getAttrib(ue_f, install("DimCst")))));
     PROTECT(dc_ue_f_m = iDim(INTEGER(getAttrib(ue_f_m, install("DimCst")))));
-//4 protect -> 66
+    dim_ue_f = INTEGER(dc_ue_f);
+    dim_ue_f_m = INTEGER(dc_ue_f_m);
+// ---> P = 84 + 4 = 88
 
-    dim_Lref_f = INTEGER(dc_Lref_f);                        r_Lref_f = REAL(Lref_f); //Rprintf("Eco 51\n");
-    dim_GVLref_f = INTEGER(dc_GVLref_f);                    r_GVLref_f = REAL(GVLref_f); //Rprintf("Eco 51\n");
-    dim_GVLref_f_m = INTEGER(dc_GVLref_f_m);                r_GVLref_f_m = REAL(GVLref_f_m); //Rprintf("Eco 51\n");
-    dim_nbv_f = INTEGER(dc_nbv_f);                          r_nbv_f = REAL(nbv_f); //Rprintf("Eco 51\n");
-    dim_nbv_f_m = INTEGER(dc_nbv_f_m);                      r_nbv_f_m = REAL(nbv_f_m); //Rprintf("Eco 51\n");
-    dim_lc_f_m = INTEGER(dc_lc_f_m);                        r_lc_f_m = REAL(lc_f_m); //Rprintf("Eco 51\n");
-    dim_lcd_f_m = INTEGER(dc_lcd_f_m);                      r_lcd_f_m = REAL(lcd_f_m); //Rprintf("Eco 51\n");
-    dim_nbh_f = INTEGER(dc_nbh_f);                          r_nbh_f = REAL(nbh_f); //Rprintf("Eco 51\n");
-    dim_ue_f = INTEGER(dc_ue_f);                            r_ue_f = REAL(ue_f); //Rprintf("Eco 51\n");
-    dim_ue_f_m = INTEGER(dc_ue_f_m);                        r_ue_f_m = REAL(ue_f_m); //Rprintf("Eco 51\n");
-    dim_fc_f = INTEGER(dc_fc_f);                            r_fc_f = REAL(fc_f); //Rprintf("Eco 51\n");
-    dim_fc_f_m = INTEGER(dc_fc_f_m);                        r_fc_f_m = REAL(fc_f_m); //Rprintf("Eco 51\n");
-    dim_vf_f = INTEGER(dc_vf_f);                            r_vf_f = REAL(vf_f); //Rprintf("Eco 51\n");
-    dim_vf_f_m = INTEGER(dc_vf_f_m);                        r_vf_f_m = REAL(vf_f_m); //Rprintf("Eco 51\n");
-    dim_ovcDCF_f = INTEGER(dc_ovcDCF_f);                    r_ovcDCF_f = REAL(ovcDCF_f); //Rprintf("Eco 51\n");
-    dim_ovcDCF_f_m = INTEGER(dc_ovcDCF_f_m);                r_ovcDCF_f_m = REAL(ovcDCF_f_m); //Rprintf("Eco 51\n");
-    dim_cnb_f = INTEGER(dc_cnb_f);                          r_cnb_f = REAL(cnb_f); //Rprintf("Eco 51\n");
-    dim_cshr_f = INTEGER(dc_cshr_f);                        r_cshr_f = REAL(cshr_f); //Rprintf("Eco 51\n");
-    dim_eec_f = INTEGER(dc_eec_f);                          r_eec_f = REAL(eec_f); //Rprintf("Eco 51\n");
-    dim_mwh_f = INTEGER(dc_mwh_f);                          r_mwh_f = REAL(mwh_f); //Rprintf("Eco 51\n");
-    dim_rep_f = INTEGER(dc_rep_f);                          r_rep_f = REAL(rep_f); //Rprintf("Eco 51\n");
-    dim_dep_f = INTEGER(dc_dep_f);                          r_dep_f = REAL(dep_f); //Rprintf("Eco 51\n");
-    dim_ic_f = INTEGER(dc_ic_f);                            r_ic_f = REAL(ic_f); //Rprintf("Eco 51\n");
-    dim_K_f = INTEGER(dc_K_f);                              r_K_f = REAL(K_f); //Rprintf("Eco 51\n");
-    dim_persc_f = INTEGER(dc_persc_f);                      r_persc_f = REAL(persc_f); //Rprintf("Eco 51\n");
-    dim_fixc_f = INTEGER(dc_fixc_f);                        r_fixc_f = REAL(fixc_f); //Rprintf("Eco 51\n");
-    dim_mwhg_f = INTEGER(dc_mwhg_f);                        r_mwhg_f = REAL(mwhg_f); //Rprintf("Eco 51\n");
+    dim_nbv_f = INTEGER(dc_nbv_f);                          r_nbv_f = REAL(nbv_f);//Rprintf("Eco 51\n");
+    dim_nbv_f_m = INTEGER(dc_nbv_f_m);                      r_nbv_f_m = REAL(nbv_f_m);//Rprintf("Eco 51\n");
+    dim_lc_f_m = INTEGER(dc_lc_f_m);                        r_lc_f_m = REAL(lc_f_m);//Rprintf("Eco 51\n");
+    dim_lcd_f_m = INTEGER(dc_lcd_f_m);                      r_lcd_f_m = REAL(lcd_f_m);//Rprintf("Eco 51\n");
+    dim_tripLgth_f = INTEGER(dc_tripLgth_f);                r_tripLgth_f = REAL(tripLgth_f);//Rprintf("Eco 51\n");
+    dim_tripLgth_f_m = INTEGER(dc_tripLgth_f_m);            r_tripLgth_f_m = REAL(tripLgth_f_m);//Rprintf("Eco 51\n");
+    dim_nbTrip_f = INTEGER(dc_nbTrip_f);                    r_nbTrip_f = REAL(nbTrip_f);//Rprintf("Eco 51\n");
+    dim_nbTrip_f_m = INTEGER(dc_nbTrip_f_m);                r_nbTrip_f_m = REAL(nbTrip_f_m);//Rprintf("Eco 51\n");
+    dim_nbds_f = INTEGER(dc_nbds_f);                        r_nbds_f = REAL(nbds_f);//Rprintf("Eco 51\n");
+    dim_nbds_f_m = INTEGER(dc_nbds_f_m);                    r_nbds_f_m = REAL(nbds_f_m);//Rprintf("Eco 51\n");
+    dim_effort1_f = INTEGER(dc_effort1_f);                  r_effort1_f = REAL(effort1_f);//Rprintf("Eco 51\n");
+    dim_effort1_f_m = INTEGER(dc_effort1_f_m);              r_effort1_f_m = REAL(effort1_f_m);//Rprintf("Eco 51\n");
+    dim_effort2_f = INTEGER(dc_effort2_f);                  r_effort2_f = REAL(effort2_f);//Rprintf("Eco 51\n");
+    dim_effort2_f_m = INTEGER(dc_effort2_f_m);              r_effort2_f_m = REAL(effort2_f_m);//Rprintf("Eco 51\n");
+    dim_Lref_f_m = INTEGER(dc_Lref_f_m);                    r_Lref_f_m = REAL(Lref_f_m);//Rprintf("Eco 51\n");
+    dim_cnb_f_m = INTEGER(dc_cnb_f_m);                      r_cnb_f_m = REAL(cnb_f_m);//Rprintf("Eco 51\n");
+    dim_ovcDCF_f_m = INTEGER(dc_ovcDCF_f_m);                r_ovcDCF_f_m = REAL(ovcDCF_f_m);//Rprintf("Eco 51\n");
+    dim_fc_f_m = INTEGER(dc_fc_f_m);                        r_fc_f_m = REAL(fc_f_m);//Rprintf("Eco 51\n");
+    dim_vf_f_m = INTEGER(dc_vf_f_m);                        r_vf_f_m = REAL(vf_f_m);//Rprintf("Eco 51\n");
+    dim_cshr_f_m = INTEGER(dc_cshr_f_m);                    r_cshr_f_m = REAL(cshr_f_m);//Rprintf("Eco 51\n");
+    dim_cshr_f = INTEGER(dc_cshr_f);                        r_cshr_f = REAL(cshr_f);//Rprintf("Eco 51\n");
+    dim_cnb_f = INTEGER(dc_cnb_f);                          r_cnb_f = REAL(cnb_f);//Rprintf("Eco 51\n");
+    dim_persc_f = INTEGER(dc_persc_f);                      r_persc_f = REAL(persc_f);//Rprintf("Eco 51\n");
+    dim_eec_f = INTEGER(dc_eec_f);                          r_eec_f = REAL(eec_f);//Rprintf("Eco 51\n");
+    dim_mwh_f = INTEGER(dc_mwh_f);                          r_mwh_f = REAL(mwh_f);//Rprintf("Eco 51\n");
+    dim_rep_f = INTEGER(dc_rep_f);                          r_rep_f = REAL(rep_f);//Rprintf("Eco 51\n");
+    dim_gc_f = INTEGER(dc_gc_f);                            r_gc_f = REAL(gc_f);//Rprintf("Eco 51\n");
+    dim_fixc_f = INTEGER(dc_fixc_f);                        r_fixc_f = REAL(fixc_f);//Rprintf("Eco 51\n");
+    dim_FTE_f = INTEGER(dc_FTE_f);                          r_FTE_f = REAL(FTE_f);//Rprintf("Eco 51\n");
+    dim_dep_f = INTEGER(dc_dep_f);                          r_dep_f = REAL(dep_f);//Rprintf("Eco 51\n");
+    dim_ic_f = INTEGER(dc_ic_f);                            r_ic_f = REAL(ic_f);//Rprintf("Eco 51\n");
+    dim_K_f = INTEGER(dc_K_f);                              r_K_f = REAL(K_f);//Rprintf("Eco 51\n");
+    dim_inv_f = INTEGER(dc_inv_f);                          r_inv_f = REAL(inv_f);//Rprintf("Eco 51\n");
+    dim_FTE_f_m = INTEGER(dc_FTE_f_m);                      r_FTE_f_m = REAL(FTE_f_m);//Rprintf("Eco 51\n");
+    dim_GVLref_f_m = INTEGER(dc_GVLref_f_m);                r_GVLref_f_m = REAL(GVLref_f_m);//Rprintf("Eco 51\n");
+
 
     int nbI=0, nbC=0;
-//Rprintf("Eco 6");
+
+//Rprintf("Eco 6");fichier << "Eco6" << endl;
+
 if (ind_t==0) {
 
-    SEXP  GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out,
-          rtbs_f_out, rtbs_f_m_out, cshrT_f_out, sshr_f_out, ncshr_f_out, oclg_f_out, ocl_f_out, csg_f_out, cs_f_out,
-          gva_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, gcf_f_out,
-          ngcf_f_out, gp_f_out, ps_f_out, sts_f_out, ber_f_out, ratio_gva_GVL_f_out, ratio_gcf_GVL_f_out, ratio_fc_GVL_f_out,
-          ratio_rep_GVL_f_out, ratio_fvol_GVL_f_out, ratio_fvol_gva_f_out,
-          ratio_gcf_gva_f_out, ratio_K_cnb_f_out, ratio_GVL_K_f_out, ratio_gcf_K_f_out, ratio_ngcf_K_f_out,
-          ratio_gp_K_f_out, ratio_GVL_cnb_ue_f_out,
-          rtbsAct_f_out, csAct_f_out, gvaAct_f_out, gcfAct_f_out, psAct_f_out, stsAct_f_out,
-          GVLcom_f_m_e_out, GVLst_f_m_e_out, GVLcom_f_m_eStat_out, GVLst_f_m_eStat_out, cnb_f_m_out, ETini_f_m_out, ETini_f_out, cnb_f_out;
+    SEXP ETini_f_m, fvolue_f_m, ovcDCFue_f_m, rtbsIni_f, ccwr_f, opersc_f, eco_names,
+         GVLcom_f_m_e_out, GVLcom_f_m_eStat_out, GVLcom_f_m_e, GVLst_f_m_e_out, GVLst_f_m_eStat_out, GVLst_f_m_e, GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_e,
+         GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out, ET_f_m_out,
+         cnb_f_m_out, cnb_f_out, rtbs_f_m_out, rtbs_f_out, rtbsAct_f_out, cshrT_f_m_out, cshrT_f_out, ncshr_f_out, ocl_f_out, cs_f_out, csAct_f_out, csTot_f_out,
+         gva_f_out, gvaAct_f_out, gvamargin_f_out, gva_FTE_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, wageg_FTE_f_out, wageg_h_f_out,
+         gp_f_out, gpAct_f_out, gpmargin_f_out, ncf_f_out, np_f_out, npmargin_f_out, prof_f_out, npmargin_trend_f_out,
+         ssTot_f_out, ps_f_out, psAct_f_out, sts_f_out, stsAct_f_out, BER_f_out, CR_BER_f_out, fuelEff_f_out,
+         ratio_fvol_gva_f_out, ratio_gp_gva_f_out, ratio_GVL_K_f_out, ratio_gp_K_f_out, RoFTA_f_out, ROI_f_out, ratio_np_K_f_out, ratio_GVL_cnb_ue_f_out;
 
-    SEXP  GVLtot_f_m_e, GVLcom_f_m_e, GVLst_f_m_e, GVLreftot_f_m_e, GVLreftot_f_m, GVLoths_f_m, GVLothsref_f_m, GVLothsue_f_m, GVLothsrefue_f_m,
-          GVLtot_f_e, GVLreftot_f, GVLoths_f, GVLothsue_f, GVLothmet_f, GVLothmetue_f,
-          fvolue_f, fvolue_f_m, ovcDCFue_f, ovcDCFue_f_m, GVLav_f, rtbs_f, ccwr_f, opersc_f, eco_names;
-
-    double  *r_GVLreftot_f_m, *r_GVLoths_f_m, *r_GVLothsref_f_m, *r_GVLothsue_f_m,
-            *r_GVLothsrefue_f_m, *r_GVLreftot_f, *r_GVLoths_f, *r_GVLothsue_f, *r_GVLothmet_f,
-            *r_GVLothmetue_f, *r_fvolue_f, *r_fvolue_f_m, *r_ovcDCFue_f, *r_ovcDCFue_f_m, *r_GVLav_f, *r_rtbs_f, *r_ccwr_f, *r_opersc_f;
+    double  *r_ETini_f_m, *r_ET_f_m_out, *r_fvolue_f_m, *r_ovcDCFue_f_m, *r_rtbsIni_f, *r_ccwr_f, *r_opersc_f;
 
 
 
@@ -17583,54 +17620,39 @@ if (ind_t==0) {
 // Stade préliminaire (temps initial)
 //-------------------------
 
-    PROTECT(GVLreftot_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLreftot_f_m = REAL(GVLreftot_f_m);
-    PROTECT(GVLoths_f_m = NEW_NUMERIC(nbF*nbMe));            r_GVLoths_f_m = REAL(GVLoths_f_m);
-    PROTECT(GVLothsref_f_m = NEW_NUMERIC(nbF*nbMe));         r_GVLothsref_f_m = REAL(GVLothsref_f_m);
-    PROTECT(GVLothsue_f_m = NEW_NUMERIC(nbF*nbMe));          r_GVLothsue_f_m = REAL(GVLothsue_f_m);
-    PROTECT(GVLothsrefue_f_m = NEW_NUMERIC(nbF*nbMe));       r_GVLothsrefue_f_m = REAL(GVLothsrefue_f_m);
-    PROTECT(GVLreftot_f = NEW_NUMERIC(nbF));                 r_GVLreftot_f = REAL(GVLreftot_f);
-    PROTECT(GVLoths_f = NEW_NUMERIC(nbF));                   r_GVLoths_f = REAL(GVLoths_f);
-    PROTECT(GVLothsue_f = NEW_NUMERIC(nbF));                 r_GVLothsue_f = REAL(GVLothsue_f);
-    PROTECT(GVLothmet_f = NEW_NUMERIC(nbF));                 r_GVLothmet_f = REAL(GVLothmet_f);
-    PROTECT(GVLothmetue_f = NEW_NUMERIC(nbF));               r_GVLothmetue_f = REAL(GVLothmetue_f);
-    PROTECT(fvolue_f = NEW_NUMERIC(nbF));                   r_fvolue_f = REAL(fvolue_f);
-    PROTECT(fvolue_f_m = NEW_NUMERIC(nbF*nbMe));             r_fvolue_f_m = REAL(fvolue_f_m);
-    PROTECT(ovcDCFue_f = NEW_NUMERIC(nbF));                  r_ovcDCFue_f = REAL(ovcDCFue_f);
-    PROTECT(ovcDCFue_f_m = NEW_NUMERIC(nbF*nbMe));           r_ovcDCFue_f_m = REAL(ovcDCFue_f_m);
-    PROTECT(GVLav_f = NEW_NUMERIC(nbF));                     r_GVLav_f = REAL(GVLav_f);
-    PROTECT(rtbs_f = NEW_NUMERIC(nbF));                     r_rtbs_f = REAL(rtbs_f);
-    PROTECT(ccwr_f = NEW_NUMERIC(nbF));                     r_ccwr_f = REAL(ccwr_f);
-    PROTECT(opersc_f = NEW_NUMERIC(nbF));                   r_opersc_f = REAL(opersc_f);
-//18 protect  -> 18 (t0)
-//Rprintf("Eco 7");
-PROTECT(ETini_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-r_ETini_f_m_out = REAL(ETini_f_m_out);
-PROTECT(ETini_f_out = NEW_NUMERIC(nbF*nbT));
-r_ETini_f_out = REAL(ETini_f_out);
+    PROTECT(ETini_f_m = NEW_NUMERIC(nbF*nbMe));                 r_ETini_f_m = REAL(ETini_f_m);
+    PROTECT(fvolue_f_m = NEW_NUMERIC(nbF*nbMe));                r_fvolue_f_m = REAL(fvolue_f_m);
+    PROTECT(ovcDCFue_f_m = NEW_NUMERIC(nbF*nbMe));              r_ovcDCFue_f_m = REAL(ovcDCFue_f_m);
+    PROTECT(rtbsIni_f = NEW_NUMERIC(nbF));                      r_rtbsIni_f = REAL(rtbsIni_f);
+    PROTECT(ccwr_f = NEW_NUMERIC(nbF));                         r_ccwr_f = REAL(ccwr_f);
+    PROTECT(opersc_f = NEW_NUMERIC(nbF));                       r_opersc_f = REAL(opersc_f);
+// ---> P(t0) = 6
+//Rprintf("Eco 7");fichier << "Eco7" << endl;
 
-// on initialise ETini
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
-double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
-double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
+// on crée ETini
+    double *rnbTrip = REAL(getListElement(Flist, "nbTrip_f_m"));
+    double *rtripLgth = REAL(getListElement(Flist, "tripLgth_f_m"));
+    double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
+    double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-r_ETini_f_out[ind_f + nbF*ind_t] = 0.0;
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-  if (ISNA(r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-}}
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
+        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
+            r_ETini_f_m[ind_f + nbF*ind_m] =
+               finite(
+               r_Lref_f_m[ind_f*dim_Lref_f_m[0] + ind_m*dim_Lref_f_m[1] + 0*dim_Lref_f_m[2] + ind_t*dim_Lref_f_m[3]] /
+               (r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]] *
+                r_nbTrip_f_m[ind_f*dim_nbTrip_f_m[0] + ind_m*dim_nbTrip_f_m[1] + 0*dim_nbTrip_f_m[2] + ind_t*dim_nbTrip_f_m[3]] *
+                r_tripLgth_f_m[ind_f*dim_tripLgth_f_m[0] + ind_m*dim_tripLgth_f_m[1] + 0*dim_tripLgth_f_m[2] + ind_t*dim_tripLgth_f_m[3]] *
+                r_cnb_f_m[ind_f*dim_cnb_f_m[0] + ind_m*dim_cnb_f_m[1] + 0*dim_cnb_f_m[2] + ind_t*dim_cnb_f_m[3]]));
+            //if (ISNA(r_ETini_f_m[ind_f + nbF*ind_m])) r_ETini_f_m[ind_f + nbF*ind_m] = 0.0;
+        }
+    }
 
 
 
-//Rprintf("Eco 8");
-    for (int e = 0 ; e < nbE+nbEstat ; e++) {
+
+//Rprintf("Eco 8");fichier << "Eco8" << endl;
+ for (int e = 0 ; e < nbE+nbEstat ; e++) {
 
         if (e<nbE) {
          PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
@@ -17644,27 +17666,20 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
         PROTECT(GVLtot_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
         PROTECT(GVLcom_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
         PROTECT(GVLst_f_m_e = NEW_NUMERIC(nbF*nbMe*nbT));
-        PROTECT(GVLreftot_f_m_e = NEW_NUMERIC(nbF*nbMe));
-        PROTECT(GVLtot_f_e = NEW_NUMERIC(nbF));
 
         double *r_GVLtot_f_m_e = REAL(GVLtot_f_m_e);
         double *r_GVLcom_f_m_e = REAL(GVLcom_f_m_e);
         double *r_GVLst_f_m_e = REAL(GVLst_f_m_e);
-        double *r_GVLreftot_f_m_e = REAL(GVLreftot_f_m_e);
-        double *r_GVLtot_f_e = REAL(GVLtot_f_e);
-        double *r_GVLref_f_m_e = REAL(getListElement(elmt, "GVLref_f_m_e"));
-        double *r_GVLref_f_e = REAL(getListElement(elmt, "GVLref_f_e"));
 
         double *r_Lbio_f_m_e ,  *r_Lbio_f_sum_e, *r_P_f_m_e, r_Pst_e, *r_LD_efmc, *r_statLDor_efm, *r_statLDst_efm, r_theta_e, *Lref_f_e;
         int *dim_Lbio_e, *dim_P_e;
-//Rprintf("Eco 9");
+//Rprintf("Eco 9");fichier << "Eco9" << endl;
         if (e<nbE) {
             r_Lbio_f_m_e = REAL(VECTOR_ELT(out_L_efmct, e));
             r_Lbio_f_sum_e = REAL(aggregObj(VECTOR_ELT(out_L_efmct, e),dimCstF));
             r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
             r_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-//            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
         } else {
@@ -17674,7 +17689,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_statLDor_efm = REAL(VECTOR_ELT(out_statLDor_efm, e-nbE));
             r_statLDst_efm = REAL(VECTOR_ELT(out_statLDst_efm, e-nbE));
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
-//            r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Lstat, e-nbE), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
             r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
@@ -17683,7 +17697,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
         //------------------------------
         //équations de la table "p"
         //------------------------------
-//Rprintf("Eco 10");
+//Rprintf("Eco 10");fichier << "Eco10" << endl;
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){   //on rappelle ici que ind_t est en fait égal à 0
 
@@ -17693,11 +17707,11 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
          //-- 3. GVLtot_f_m_e
 
-             double countCom = 0.0;
+    double countCom = 0.0;
 
     if (e<nbE) {
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
              for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
 
@@ -17712,21 +17726,16 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-
-             r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
              }
 
              }
 
-                if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
+             if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
                     r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             //if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
+             if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
 
                   r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                    r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
@@ -17734,15 +17743,11 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                    r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-                  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                    r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                    r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
-               } else {
+             } else {
 
                   r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
 
-               }
+             }
 
                //if (e==1 & ind_f==0 & ind_m==4) PrintValue(ETini_f_m_out);
 
@@ -17760,10 +17765,6 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 *
                   finite(r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]) ;
 
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
-                finite(r_statLDor_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
-
         }
 
         if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
@@ -17773,124 +17774,23 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                   r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
 
-            r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
-
         }
 
     }
-
-            if (!ISNA(r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t] + r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
 
             r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
             r_GVLtot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
             r_GVLcom_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
             r_GVLst_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
 
-
-
-         //-- 4. GVLreftot_f_m_e
-
-                r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m_e[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-
-//Rprintf("Eco 11");
-
-        //-- 5. GVLreftot_f_m
-
-            if (e==0) {
-
-                r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLref_f_m[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
-                  r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]; //rappel : ind_t = 0 ici
-
-            }
-
-         //-- 6. GVLoths_f_m
-
-
-        //-- 7. GVLothsref_f_m
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                } else {
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]))
-
-                r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
-                    r_GVLreftot_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-            }
-
-            }
-
-    //-- 10. GVLtot_f_e
-
-
-            r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLref_f_e[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-//Rprintf("Eco 12");
-    //-- 11. GVLreftot_f
-
-    if (e==0) {
-
-            r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLref_f[ind_f*dim_GVLref_f[0] + 0*dim_GVLref_f[1] + 0*dim_GVLref_f[2] + ind_t*dim_GVLref_f[3]] *
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
-
-    }
-
-    //-- 14. GVLoths_f
-
-            if (e==0) {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]])) {
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-                } else {
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-                }
-
-            } else {
-
-                if (!ISNA(r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]))
-
-                r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_GVLtot_f_e[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            }
-
+//Rprintf("Eco 11");fichier << "Eco11" << endl;
 
 
         }
+        }
 
         //on formatte le(s) résultat(s) et on les intègre à 'eVar'
-//Rprintf("Eco 13");
+//Rprintf("Eco 13");fichier << "Eco13" << endl;
         setAttrib(GVLtot_f_m_e, R_DimSymbol, DimFM);
         setAttrib(GVLtot_f_m_e, R_DimNamesSymbol, dimnamesFM);
         setAttrib(GVLtot_f_m_e, install("DimCst"), dimCstFM);
@@ -17906,164 +17806,67 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
         setAttrib(GVLst_f_m_e, install("DimCst"), dimCstFM);
         if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 229, GVLst_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 9, GVLst_f_m_e);
 
-//Rprintf("Eco 14");
-        UNPROTECT(6);
+//Rprintf("Eco 14");fichier << "Eco14" << endl;
+        UNPROTECT(4);
 
 }
 
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*rcnb_f[ind_f]);
 
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-    r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*rcnb[ind_f + nbF*ind_m]);
+//Rprintf("Eco 8");fichier << "Eco8" << endl;
 
-}
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-//Rprintf("Eco 15");
-    // à ce stade, plus de considération d'espèce pour les variables à initialiser
+       double countRTBSnum = 0.0;
 
-        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+       for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
- double countEff = 0.0;
+        countRTBSnum = countRTBSnum + finite(r_GVLref_f_m[ind_f*dim_GVLref_f_m[0] + ind_m*dim_GVLref_f_m[1] + 0*dim_GVLref_f_m[2] + ind_t*dim_GVLref_f_m[3]] *
+                                      r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]] *
+                                      (1 - finite(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))) -
+                                      finite(r_ovcDCF_f_m[ind_f*dim_ovcDCF_f_m[0] + ind_m*dim_ovcDCF_f_m[1] + 0*dim_ovcDCF_f_m[2] + ind_t*dim_ovcDCF_f_m[3]]) -
+                                      finite(r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]]);
 
-            for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
+      //-- 4. fvolue_f_m
 
-           //-- terme : SUM_m (ue_f_m * nbv_f_m)
-
-            countEff = countEff +
-                r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
-
-            }
-
-        //-- 13. GVLothsue_f
-
-                r_GVLothsue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_GVLoths_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]) );
-
-
-   for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-
-        //-- 9. GVLothsrefue_f_m
-
-                r_GVLothsrefue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                    finite( r_GVLothsref_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
-                    (r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                    r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]) );
-
-//Rprintf("Eco 16");
-
-
-      //-- 22. fvolue_f_m
-
-               r_fvolue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+        r_fvolue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     finite( r_fc_f_m[ind_f*dim_fc_f_m[0] + ind_m*dim_fc_f_m[1] + 0*dim_fc_f_m[2] + ind_t*dim_fc_f_m[3]] /
                     (r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]] *
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]]) );
+                    r_ue_f_m[ind_f + ind_m*nbF]) );
 
-      //-- 23. ovcDCFue_f_m
+      //-- 5. ovcDCFue_f_m
 
-                r_ovcDCFue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+        r_ovcDCFue_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     finite( r_ovcDCF_f_m[ind_f*dim_ovcDCF_f_m[0] + ind_m*dim_ovcDCF_f_m[1] + 0*dim_ovcDCF_f_m[2] + ind_t*dim_ovcDCF_f_m[3]] /
-                    r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] );
+                    r_ue_f_m[ind_f + ind_m*nbF] );
 
-   }
+        }
 
-        //-- 16. fvolue_f
+//Rprintf("Eco 18");fichier << "Eco18" << endl;
 
-                r_fvolue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] /
-                    (r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]) );
+        //-- 6. rtbsIni_f
 
-
-        //-- 17. GVLav_f
-
-            r_GVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                r_GVLreftot_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
+            r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                  countRTBSnum / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-double totNGVL_f = 0.0;
-//Rprintf("Eco 17");
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
-
-    if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]])) {
-
-            totNGVL_f = totNGVL_f + r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
-                (1 - 0.01*r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]);
-
-    } else {
-
-            totNGVL_f = totNGVL_f + r_GVLreftot_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-    }
-}
-
-//Rprintf("Eco 18");
-        //-- 36. NGVLav_f
-
-//            r_NGVLav_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-//                 totNGVL_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]] ;
-//
-
-        //-- 18. rtbs_f
-
-            r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                (totNGVL_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]]) -
-                r_fc_f[ind_f*dim_fc_f[0] + 0*dim_fc_f[1] + 0*dim_fc_f[2] + ind_t*dim_fc_f[3]] -
-                r_ovcDCF_f[ind_f*dim_ovcDCF_f[0] + 0*dim_ovcDCF_f[1] + 0*dim_ovcDCF_f[2] + ind_t*dim_ovcDCF_f[3]];
-
-
-        //-- 19. ccwr_f
+        //-- 7. ccwr_f
 
             r_ccwr_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] /
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+                r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-        //-- 20. opersc_f
+        //-- 8. opersc_f
 
             r_opersc_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_persc_f[ind_f*dim_persc_f[0] + 0*dim_persc_f[1] + 0*dim_persc_f[2] + ind_t*dim_persc_f[3]] -
-                (0.01 * r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                r_rtbs_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
+                (0.01 * r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] * //cshr_f en %
+                r_rtbsIni_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
 
-        //-- 21. ovcDCFue_f
+    }
 
-                r_ovcDCFue_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    finite( r_ovcDCF_f[ind_f*dim_ovcDCF_f[0] + 0*dim_ovcDCF_f[1] + 0*dim_ovcDCF_f[2] + ind_t*dim_ovcDCF_f[3]] /
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] );
-
-
-}
-
-//Rprintf("Eco 19\n");
+//Rprintf("Eco 19\n");fichier << "Eco19" << endl;
 
 //on formatte le(s) résultat(s) et on intègre à fVar
-
-//        SET_VECTOR_ELT(fVar, 1, GVLoths_f_m);
-
-        setAttrib(GVLothsref_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsref_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsref_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 2, GVLothsref_f_m);
-
-//        SET_VECTOR_ELT(fVar, 23, GVLothsue_f_m);
-
-        setAttrib(GVLothsrefue_f_m, R_DimSymbol, DimFMini);
-        setAttrib(GVLothsrefue_f_m, R_DimNamesSymbol, dimnamesFMini);
-        setAttrib(GVLothsrefue_f_m, install("DimCst"), dimCstFMini);
-        SET_VECTOR_ELT(fVar, 24, GVLothsrefue_f_m);
-
-//        SET_VECTOR_ELT(fVar, 3, GVLothmet_f);
-
-//        SET_VECTOR_ELT(fVar, 25, GVLothmetue_f);
-
-//        SET_VECTOR_ELT(fVar, 26, GVLothsue_f);
 
         setAttrib(fvolue_f_m, R_DimSymbol, DimFMini);
         setAttrib(fvolue_f_m, R_DimNamesSymbol, dimnamesFMini);
@@ -18075,483 +17878,515 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
         setAttrib(ovcDCFue_f_m, install("DimCst"), dimCstFMini);
         SET_VECTOR_ELT(fVar, 10, ovcDCFue_f_m);
 
-        setAttrib(fvolue_f, R_NamesSymbol, fleetList);
-        setAttrib(fvolue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 17, fvolue_f);
-
-        setAttrib(ovcDCFue_f, R_NamesSymbol, fleetList);
-        setAttrib(ovcDCFue_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 18, ovcDCFue_f);
-
         setAttrib(ccwr_f, R_NamesSymbol, fleetList);
         setAttrib(ccwr_f, install("DimCst"), dimCstFini);
         SET_VECTOR_ELT(fVar, 27, ccwr_f);
 
-        setAttrib(opersc_f, R_NamesSymbol, fleetList);
+        setAttrib(opersc_f, R_NamesSymbol,  fleetList);
         setAttrib(opersc_f, install("DimCst"), dimCstFini);
         SET_VECTOR_ELT(fVar, 28, opersc_f);
 
-        setAttrib(GVLoths_f, R_NamesSymbol, fleetList);
-        setAttrib(GVLoths_f, install("DimCst"), dimCstFini);
-        SET_VECTOR_ELT(fVar, 29, GVLoths_f);
+        SET_VECTOR_ELT(fVar, 31, rtbsIni_f);
 
-        SET_VECTOR_ELT(fVar, 31, rtbs_f);
-//Rprintf("Eco 20\n");
+        SET_VECTOR_ELT(fVar, 33, ETini_f_m);
+//Rprintf("Eco 20\n");fichier << "Eco20" << endl;
 //enfin, on initialise l'output
 
-    PROTECT(GVL_f_m_e_out = allocVector(VECSXP, nbE));
-    setAttrib(GVL_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 0, GVL_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLcom_f_m_e_out = allocVector(VECSXP, nbE));
     setAttrib(GVLcom_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 46, GVLcom_f_m_e_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 0, GVLcom_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLcom_f_m_eStat_out = allocVector(VECSXP, nbEstat));
     setAttrib(GVLcom_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 47, GVLcom_f_m_eStat_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 1, GVLcom_f_m_eStat_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLst_f_m_e_out = allocVector(VECSXP, nbE));
     setAttrib(GVLst_f_m_e_out, R_NamesSymbol, sppList);
-    SET_VECTOR_ELT(out_EcoDCF, 48, GVLst_f_m_e_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 2, GVLst_f_m_e_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLst_f_m_eStat_out = allocVector(VECSXP, nbEstat));
     setAttrib(GVLst_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 49, GVLst_f_m_eStat_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 3, GVLst_f_m_eStat_out);//Rprintf("Eco 20\n");
 
+    PROTECT(GVL_f_m_e_out = allocVector(VECSXP, nbE));
+    setAttrib(GVL_f_m_e_out, R_NamesSymbol, sppList);
+    SET_VECTOR_ELT(out_EcoDCF, 4, GVL_f_m_e_out);//Rprintf("Eco 20\n");
+
+    PROTECT(GVL_f_m_eStat_out = allocVector(VECSXP, nbEstat));
+    setAttrib(GVL_f_m_eStat_out, R_NamesSymbol, sppList);
+    SET_VECTOR_ELT(out_EcoDCF, 5, GVL_f_m_eStat_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLtot_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(GVLtot_f_m_out, R_DimSymbol, DimFM);
     setAttrib(GVLtot_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(GVLtot_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 1, GVLtot_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 6, GVLtot_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(GVLav_f_m_out, R_DimSymbol, DimFM);
     setAttrib(GVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(GVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 2, GVLav_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 7, GVLav_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLtot_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(GVLtot_f_out, R_DimSymbol, DimF);
     setAttrib(GVLtot_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(GVLtot_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 3, GVLtot_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 8, GVLtot_f_out);//Rprintf("Eco 20\n");
 
     PROTECT(GVLav_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(GVLav_f_out, R_DimSymbol, DimF);
     setAttrib(GVLav_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(GVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 4, GVLav_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 9, GVLav_f_out);//Rprintf("Eco 20\n");
 
     PROTECT(NGVLav_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(NGVLav_f_m_out, R_DimSymbol, DimFM);
     setAttrib(NGVLav_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(NGVLav_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 5, NGVLav_f_m_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 10, NGVLav_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(NGVLav_f_out = NEW_NUMERIC(nbF*nbT));
     setAttrib(NGVLav_f_out, R_DimSymbol, DimF);
     setAttrib(NGVLav_f_out, R_DimNamesSymbol, dimnamesF);
     setAttrib(NGVLav_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 6, NGVLav_f_out);//Rprintf("Eco 20\n");
+    SET_VECTOR_ELT(out_EcoDCF, 11, NGVLav_f_out);//Rprintf("Eco 20\n");
 
-    PROTECT(rtbs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbs_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 7, rtbs_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(cshrT_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cshrT_f_out, R_DimSymbol, DimF);
-    setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cshrT_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 8, cshrT_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(sshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sshr_f_out, R_DimSymbol, DimF);
-    setAttrib(sshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 9, sshr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ncshr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ncshr_f_out, R_DimSymbol, DimF);
-    setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ncshr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 10, ncshr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(oclg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(oclg_f_out, R_DimSymbol, DimF);
-    setAttrib(oclg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(oclg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 11, oclg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ocl_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ocl_f_out, R_DimSymbol, DimF);
-    setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ocl_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 12, ocl_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(csg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csg_f_out, R_DimSymbol, DimF);
-    setAttrib(csg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 13, csg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(cs_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cs_f_out, R_DimSymbol, DimF);
-    setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cs_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 14, cs_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gva_f_out, R_DimSymbol, DimF);
-    setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 15, gva_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ccw_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccw_f_out, R_DimSymbol, DimF);
-    setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccw_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 16, ccw_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ccwCr_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
-    setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ccwCr_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 17, ccwCr_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(wageg_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wageg_f_out, R_DimSymbol, DimF);
-    setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wageg_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 18, wageg_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(wagen_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(wagen_f_out, R_DimSymbol, DimF);
-    setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(wagen_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 19, wagen_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcf_f_out, R_DimSymbol, DimF);
-    setAttrib(gcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 20, gcf_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(ngcf_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ngcf_f_out, R_DimSymbol, DimF);
-    setAttrib(ngcf_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ngcf_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 21, ngcf_f_out);//Rprintf("Eco 20\n");
-
-    PROTECT(gp_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gp_f_out, R_DimSymbol, DimF);
-    setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gp_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 22, gp_f_out);//Rprintf("Eco 20\n");
-//Rprintf("Eco 20.5\n");
-    PROTECT(ps_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ps_f_out, R_DimSymbol, DimF);
-    setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ps_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 23, ps_f_out);
-
-    PROTECT(sts_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(sts_f_out, R_DimSymbol, DimF);
-    setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(sts_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 24, sts_f_out);
-
-    PROTECT(ratio_gva_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gva_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gva_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gva_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 25, ratio_gva_GVL_f_out);
-
-    PROTECT(ratio_gcf_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 26, ratio_gcf_GVL_f_out);
-
-    PROTECT(ratio_fc_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fc_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fc_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fc_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 27, ratio_fc_GVL_f_out);
-
-    PROTECT(ratio_rep_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_rep_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_rep_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_rep_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 28, ratio_rep_GVL_f_out);
-
-    PROTECT(ratio_fvol_GVL_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_GVL_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_GVL_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_GVL_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 29, ratio_fvol_GVL_f_out);
-
-    PROTECT(ratio_fvol_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_fvol_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 30, ratio_fvol_gva_f_out);
-
-    PROTECT(ratio_gcf_gva_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_gva_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_gva_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_gva_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 31, ratio_gcf_gva_f_out);
-
-    PROTECT(ratio_K_cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_K_cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_K_cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_K_cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 32, ratio_K_cnb_f_out);
-
-    PROTECT(ratio_GVL_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 33, ratio_GVL_K_f_out);
-
-    PROTECT(ratio_gcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 34, ratio_gcf_K_f_out);
-
-    PROTECT(ratio_ngcf_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_ngcf_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_ngcf_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_ngcf_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 35, ratio_ngcf_K_f_out);
-
-    PROTECT(ratio_gp_K_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_gp_K_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 36, ratio_gp_K_f_out);
-
-    PROTECT(ratio_GVL_cnb_ue_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ratio_GVL_cnb_ue_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 37, ratio_GVL_cnb_ue_f_out);
-
-
-    PROTECT(rtbsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(rtbsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 38, rtbsAct_f_out);
-//Rprintf("Eco 20.5\n");
-    PROTECT(csAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(csAct_f_out, R_DimSymbol, DimF);
-    setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(csAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 39, csAct_f_out);
-
-    PROTECT(gvaAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gvaAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 40, gvaAct_f_out);
-
-    PROTECT(gcfAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(gcfAct_f_out, R_DimSymbol, DimF);
-    setAttrib(gcfAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(gcfAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 41, gcfAct_f_out);
-
-    PROTECT(psAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(psAct_f_out, R_DimSymbol, DimF);
-    setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(psAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 42, psAct_f_out);
-
-    PROTECT(stsAct_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(stsAct_f_out, R_DimSymbol, DimF);
-    setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(stsAct_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 43, stsAct_f_out);
-
-    PROTECT(rtbs_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
-    setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(rtbs_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(rtbs_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 44, rtbs_f_m_out);
-
-    PROTECT(GVL_f_m_eStat_out = allocVector(VECSXP, nbEstat));
-    setAttrib(GVL_f_m_eStat_out, R_NamesSymbol, sppListStat);
-    SET_VECTOR_ELT(out_EcoDCF, 45, GVL_f_m_eStat_out);
-
-    PROTECT(cnb_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(cnb_f_out, R_DimSymbol, DimF);
-    setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(cnb_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 50, cnb_f_out);
+    PROTECT(ET_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(ET_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(ET_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(ET_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 12, ET_f_m_out);//Rprintf("Eco 20\n");
 
     PROTECT(cnb_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
     setAttrib(cnb_f_m_out, R_DimSymbol, DimFM);
     setAttrib(cnb_f_m_out, R_DimNamesSymbol, dimnamesFM);
     setAttrib(cnb_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 51, cnb_f_m_out);
+    SET_VECTOR_ELT(out_EcoDCF, 13, cnb_f_m_out);//Rprintf("Eco 20\n");
 
-    PROTECT(ber_f_out = NEW_NUMERIC(nbF*nbT));
-    setAttrib(ber_f_out, R_DimSymbol, DimF);
-    setAttrib(ber_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ber_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 52, ber_f_out);
+    PROTECT(cnb_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cnb_f_out, R_DimSymbol, DimF);
+    setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cnb_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 14, cnb_f_out);//Rprintf("Eco 20\n");
 
-    setAttrib(ETini_f_out, R_DimSymbol, DimF);
-    setAttrib(ETini_f_out, R_DimNamesSymbol, dimnamesF);
-    setAttrib(ETini_f_out, install("DimCst"), dimCstF);
-    SET_VECTOR_ELT(out_EcoDCF, 53, ETini_f_out);
+    PROTECT(rtbs_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(rtbs_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(rtbs_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 15, rtbs_f_m_out);
 
-    setAttrib(ETini_f_m_out, R_DimSymbol, DimFM);
-    setAttrib(ETini_f_m_out, R_DimNamesSymbol, dimnamesFM);
-    setAttrib(ETini_f_m_out, install("DimCst"), dimCstFM);
-    SET_VECTOR_ELT(out_EcoDCF, 54, ETini_f_m_out);
-//Rprintf("Eco 20.8\n");
+    PROTECT(rtbs_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(rtbs_f_out, R_DimSymbol, DimF);
+    setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(rtbs_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 16, rtbs_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(rtbsAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
+    setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(rtbsAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 17, rtbsAct_f_out);
+
+    PROTECT(cshrT_f_m_out = NEW_NUMERIC(nbF*nbMe*nbT));
+    setAttrib(cshrT_f_m_out, R_DimSymbol, DimFM);
+    setAttrib(cshrT_f_m_out, R_DimNamesSymbol, dimnamesFM);
+    setAttrib(cshrT_f_m_out, install("DimCst"), dimCstFM);
+    SET_VECTOR_ELT(out_EcoDCF, 18, cshrT_f_m_out);
+
+    PROTECT(cshrT_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cshrT_f_out, R_DimSymbol, DimF);
+    setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cshrT_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 19, cshrT_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ncshr_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ncshr_f_out, R_DimSymbol, DimF);
+    setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ncshr_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 20, ncshr_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ocl_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ocl_f_out, R_DimSymbol, DimF);
+    setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ocl_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 21, ocl_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(cs_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(cs_f_out, R_DimSymbol, DimF);
+    setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(cs_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 22, cs_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(csAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(csAct_f_out, R_DimSymbol, DimF);
+    setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(csAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 23, csAct_f_out);
+
+    PROTECT(csTot_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(csTot_f_out, R_DimSymbol, DimF);
+    setAttrib(csTot_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(csTot_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 24, csTot_f_out);
+
+    PROTECT(gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gva_f_out, R_DimSymbol, DimF);
+    setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 25, gva_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gvaAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
+    setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gvaAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 26, gvaAct_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gvamargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gvamargin_f_out, R_DimSymbol, DimF);
+    setAttrib(gvamargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gvamargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 27, gvamargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gva_FTE_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gva_FTE_f_out, R_DimSymbol, DimF);
+    setAttrib(gva_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gva_FTE_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 28, gva_FTE_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ccw_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ccw_f_out, R_DimSymbol, DimF);
+    setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ccw_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 29, ccw_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ccwCr_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
+    setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ccwCr_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 30, ccwCr_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 31, wageg_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wagen_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wagen_f_out, R_DimSymbol, DimF);
+    setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wagen_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 32, wagen_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_FTE_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_FTE_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_FTE_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 33, wageg_FTE_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(wageg_h_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(wageg_h_f_out, R_DimSymbol, DimF);
+    setAttrib(wageg_h_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(wageg_h_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 34, wageg_h_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gp_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gp_f_out, R_DimSymbol, DimF);
+    setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gp_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 35, gp_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gpAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gpAct_f_out, R_DimSymbol, DimF);
+    setAttrib(gpAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gpAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 36, gpAct_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(gpmargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(gpmargin_f_out, R_DimSymbol, DimF);
+    setAttrib(gpmargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(gpmargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 37, gpmargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ncf_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ncf_f_out, R_DimSymbol, DimF);
+    setAttrib(ncf_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ncf_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 38, ncf_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(np_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(np_f_out, R_DimSymbol, DimF);
+    setAttrib(np_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(np_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 39, np_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(npmargin_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(npmargin_f_out, R_DimSymbol, DimF);
+    setAttrib(npmargin_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(npmargin_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 40, npmargin_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(prof_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(prof_f_out, R_DimSymbol, DimF);
+    setAttrib(prof_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(prof_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 41, prof_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(npmargin_trend_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(npmargin_trend_f_out, R_DimSymbol, DimF);
+    setAttrib(npmargin_trend_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(npmargin_trend_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 42, npmargin_trend_f_out);//Rprintf("Eco 20\n");
+
+    PROTECT(ssTot_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ssTot_f_out, R_DimSymbol, DimF);
+    setAttrib(ssTot_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ssTot_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 43, ssTot_f_out);
+
+    PROTECT(ps_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ps_f_out, R_DimSymbol, DimF);
+    setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ps_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 44, ps_f_out);
+
+    PROTECT(psAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(psAct_f_out, R_DimSymbol, DimF);
+    setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(psAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 45, psAct_f_out);
+
+    PROTECT(sts_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(sts_f_out, R_DimSymbol, DimF);
+    setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(sts_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 46, sts_f_out);
+
+    PROTECT(stsAct_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(stsAct_f_out, R_DimSymbol, DimF);
+    setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(stsAct_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 47, stsAct_f_out);
+
+    PROTECT(BER_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(BER_f_out, R_DimSymbol, DimF);
+    setAttrib(BER_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(BER_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 48, BER_f_out);
+
+    PROTECT(CR_BER_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(CR_BER_f_out, R_DimSymbol, DimF);
+    setAttrib(CR_BER_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(CR_BER_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 49, CR_BER_f_out);
+
+    PROTECT(fuelEff_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(fuelEff_f_out, R_DimSymbol, DimF);
+    setAttrib(fuelEff_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(fuelEff_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 50, fuelEff_f_out);
+
+    PROTECT(ratio_fvol_gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_fvol_gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 51, ratio_fvol_gva_f_out);
+
+    PROTECT(ratio_gp_gva_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_gp_gva_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_gp_gva_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_gp_gva_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 52, ratio_gp_gva_f_out);
+
+    PROTECT(ratio_GVL_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_GVL_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 53, ratio_GVL_K_f_out);
+
+    PROTECT(ratio_gp_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_gp_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 54, ratio_gp_K_f_out);
+
+    PROTECT(RoFTA_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(RoFTA_f_out, R_DimSymbol, DimF);
+    setAttrib(RoFTA_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(RoFTA_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 55, RoFTA_f_out);
+
+    PROTECT(ROI_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ROI_f_out, R_DimSymbol, DimF);
+    setAttrib(ROI_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ROI_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 56, ROI_f_out);
+
+    PROTECT(ratio_np_K_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_np_K_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_np_K_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_np_K_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 57, ratio_np_K_f_out);
+
+    PROTECT(ratio_GVL_cnb_ue_f_out = NEW_NUMERIC(nbF*nbT));
+    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
+    setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
+    setAttrib(ratio_GVL_cnb_ue_f_out, install("DimCst"), dimCstF);
+    SET_VECTOR_ELT(out_EcoDCF, 58, ratio_GVL_cnb_ue_f_out);
+
+//Rprintf("Eco 20.8\n");fichier << "Eco 20.8" << endl;
     //on nomme les éléments de out_EcoDCF
-    const char *namesEco[55] = {"GVL_f_m_e","GVLtot_f_m","GVLav_f_m","GVLtot_f","GVLav_f","NGVLav_f_m","NGVLav_f",
-                          "rtbs_f","cshrT_f","sshr_f","ncshr_f","oclg_f","ocl_f","csg_f","cs_f",
-                          "gva_f","ccw_f","ccwCr_f","wageg_f","wagen_f","gcf_f","ngcf_f","gp_f",
-                          "ps_f","sts_f","ratio_gva_GVL_f","ratio_gcf_GVL_f","ratio_fc_GVL_f",
-                          "ratio_rep_GVL_f","ratio_fvol_GVL_f","ratio_fvol_gva_f","ratio_gcf_gva_f",
-                          "ratio_K_cnb_f","ratio_GVL_K_f","ratio_gcf_K_f","ratio_ngcf_K_f",
-                          "ratio_gp_K_f","ratio_GVL_cnb_ue_f","rtbsAct_f","csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","rtbs_f_m",
-                          "GVL_f_m_eStat","GVLcom_f_m_e","GVLcom_f_m_eStat","GVLst_f_m_e","GVLst_f_m_eStat","cnb_f","cnb_f_m","ber_f",
-                          "ETini_f","ETini_f_m"};
-//Rprintf("Eco 20.9\n");
-    PROTECT(eco_names = allocVector(STRSXP, 55));
 
-    for(int ct = 0; ct < 55; ct++) SET_STRING_ELT(eco_names, ct, mkChar(namesEco[ct])); //PrintValue(out_EcoDCF);
-//Rprintf("Eco 20.95\n");
+
+
+
+    const char *namesEco[59] = {"GVLcom_f_m_e_out","GVLcom_f_m_eStat_out","GVLst_f_m_e_out","GVLst_f_m_eStat_out","GVL_f_m_e_out","GVL_f_m_eStat_out","GVLtot_f_m_out",
+                                "GVLav_f_m_out","GVLtot_f_out","GVLav_f_out","NGVLav_f_m_out","NGVLav_f_out","ET_f_m_out","cnb_f_m_out","cnb_f_out","rtbs_f_m_out","rtbs_f_out",
+                                "rtbsAct_f_out","cshrT_f_m_out","cshrT_f_out","ncshr_f_out","ocl_f_out","cs_f_out","csAct_f_out","csTot_f_out","gva_f_out","gvaAct_f_out",
+                                "gvamargin_f_out","gva_FTE_f_out","ccw_f_out","ccwCr_f_out","wageg_f_out","wagen_f_out","wageg_FTE_f_out","wageg_h_f_out","gp_f_out",
+                                "gpAct_f_out","gpmargin_f_out","ncf_f_out","np_f_out","npmargin_f_out","prof_f_out","npmargin_trend_f_out","ssTot_f_out","ps_f_out",
+                                "psAct_f_out","sts_f_out","stsAct_f_out","BER_f_out","CR_BER_f_out","fuelEff_f_out","ratio_fvol_gva_f_out","ratio_gp_gva_f_out",
+                                "ratio_GVL_K_f_out","ratio_gp_K_f_out","RoFTA_f_out","ROI_f_out","ratio_np_K_f_out","ratio_GVL_cnb_ue_f_out"};
+
+//Rprintf("Eco 20.9\n");fichier << "Eco 20.9" << endl;
+    PROTECT(eco_names = allocVector(STRSXP, 59));
+
+    for(int ct = 0; ct < 59; ct++) SET_STRING_ELT(eco_names, ct, mkChar(namesEco[ct])); //PrintValue(out_EcoDCF);
+//Rprintf("Eco 20.95\n");fichier << "Eco20.95" << endl;
     setAttrib(out_EcoDCF, R_NamesSymbol, eco_names);
-//Rprintf("Eco 21\n");
-//47 protect    --> 65
+//Rprintf("Eco 21\n");fichier << "Eco21" << endl;
+
+// ---> P(t0) = 6 + 60 = 66
 }
 
 
 //on importe les outputs afin de les mettre à jour à l'instant ind_t
 
-    r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,1));
-    r_GVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,2));
-    r_GVLtot_f_out = REAL(VECTOR_ELT(out_EcoDCF,3));
-    r_GVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF,4));
-    r_NGVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,5));
-    r_NGVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF,6));
-    r_rtbs_f_out = REAL(VECTOR_ELT(out_EcoDCF,7));
-    r_cshrT_f_out = REAL(VECTOR_ELT(out_EcoDCF,8));
-    r_sshr_f_out = REAL(VECTOR_ELT(out_EcoDCF,9));
-    r_ncshr_f_out = REAL(VECTOR_ELT(out_EcoDCF,10));
-    r_oclg_f_out = REAL(VECTOR_ELT(out_EcoDCF,11));
-    r_ocl_f_out = REAL(VECTOR_ELT(out_EcoDCF,12));
-    r_csg_f_out = REAL(VECTOR_ELT(out_EcoDCF,13));
-    r_cs_f_out = REAL(VECTOR_ELT(out_EcoDCF,14));
-    r_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,15));
-    r_ccw_f_out = REAL(VECTOR_ELT(out_EcoDCF,16));
-    r_ccwCr_f_out = REAL(VECTOR_ELT(out_EcoDCF,17));
-    r_wageg_f_out = REAL(VECTOR_ELT(out_EcoDCF,18));
-    r_wagen_f_out = REAL(VECTOR_ELT(out_EcoDCF,19));
-    r_gcf_f_out = REAL(VECTOR_ELT(out_EcoDCF,20));
-    r_ngcf_f_out = REAL(VECTOR_ELT(out_EcoDCF,21));
-    r_gp_f_out = REAL(VECTOR_ELT(out_EcoDCF,22));
-    r_ps_f_out = REAL(VECTOR_ELT(out_EcoDCF,23));
-    r_sts_f_out = REAL(VECTOR_ELT(out_EcoDCF,24));
-    r_ratio_gva_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,25));
-    r_ratio_gcf_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,26));
-    r_ratio_fc_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,27));
-    r_ratio_rep_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,28));
-    r_ratio_fvol_GVL_f_out = REAL(VECTOR_ELT(out_EcoDCF,29));
-    r_ratio_fvol_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,30));
-    r_ratio_gcf_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF,31));
-    r_ratio_K_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF,32));
-    r_ratio_GVL_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,33));
-    r_ratio_gcf_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,34));
-    r_ratio_ngcf_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,35));
-    r_ratio_gp_K_f_out = REAL(VECTOR_ELT(out_EcoDCF,36));
-    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF,37));
-    r_rtbsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,38));
-    r_csAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,39));
-    r_gvaAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,40));
-    r_gcfAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,41));
-    r_psAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,42));
-    r_stsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF,43));
-    r_rtbs_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,44));
+//    r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 0));//Rprintf("Eco 20\n");
+//    r_GVLcom_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 1));//Rprintf("Eco 20\n");
+//    r_GVLst_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 2));//Rprintf("Eco 20\n");
+//    r_GVLst_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 3));//Rprintf("Eco 20\n");
+//    r_GVL_f_m_e_out = REAL(VECTOR_ELT(out_EcoDCF, 4));//Rprintf("Eco 20\n");
+//    r_GVL_f_m_eStat_out = REAL(VECTOR_ELT(out_EcoDCF, 5));//Rprintf("Eco 20\n");
+    r_GVLtot_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 6));//Rprintf("Eco 20\n");
+    r_GVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 7));//Rprintf("Eco 20\n");
+    r_GVLtot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 8));//Rprintf("Eco 20\n");
+    r_GVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF, 9));//Rprintf("Eco 20\n");
+    r_NGVLav_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 10));//Rprintf("Eco 20\n");
+    r_NGVLav_f_out = REAL(VECTOR_ELT(out_EcoDCF, 11));//Rprintf("Eco 20\n");
+    r_ET_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 12));//Rprintf("Eco 20\n");
+    r_cnb_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 13));//Rprintf("Eco 20\n");
+    r_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF, 14));//Rprintf("Eco 20\n");
+    r_rtbs_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 15));
+    r_rtbs_f_out = REAL(VECTOR_ELT(out_EcoDCF, 16));//Rprintf("Eco 20\n");
+    r_rtbsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 17));
+    r_cshrT_f_m_out = REAL(VECTOR_ELT(out_EcoDCF, 18));
+    r_cshrT_f_out = REAL(VECTOR_ELT(out_EcoDCF, 19));//Rprintf("Eco 20\n");
+    r_ncshr_f_out = REAL(VECTOR_ELT(out_EcoDCF, 20));//Rprintf("Eco 20\n");
+    r_ocl_f_out = REAL(VECTOR_ELT(out_EcoDCF, 21));//Rprintf("Eco 20\n");
+    r_cs_f_out = REAL(VECTOR_ELT(out_EcoDCF, 22));//Rprintf("Eco 20\n");
+    r_csAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 23));
+    r_csTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 24));
+    r_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 25));//Rprintf("Eco 20\n");
+    r_gvaAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 26));//Rprintf("Eco 20\n");
+    r_gvamargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 27));//Rprintf("Eco 20\n");
+    r_gva_FTE_f_out = REAL(VECTOR_ELT(out_EcoDCF, 28));//Rprintf("Eco 20\n");
+    r_ccw_f_out = REAL(VECTOR_ELT(out_EcoDCF, 29));//Rprintf("Eco 20\n");
+    r_ccwCr_f_out = REAL(VECTOR_ELT(out_EcoDCF, 30));//Rprintf("Eco 20\n");
+    r_wageg_f_out = REAL(VECTOR_ELT(out_EcoDCF, 31));//Rprintf("Eco 20\n");
+    r_wagen_f_out = REAL(VECTOR_ELT(out_EcoDCF, 32));//Rprintf("Eco 20\n");
+    r_wageg_FTE_f_out = REAL(VECTOR_ELT(out_EcoDCF, 33));//Rprintf("Eco 20\n");
+    r_wageg_h_f_out = REAL(VECTOR_ELT(out_EcoDCF, 34));//Rprintf("Eco 20\n");
+    r_gp_f_out = REAL(VECTOR_ELT(out_EcoDCF, 35));//Rprintf("Eco 20\n");
+    r_gpAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 36));//Rprintf("Eco 20\n");
+    r_gpmargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 37));//Rprintf("Eco 20\n");
+    r_ncf_f_out = REAL(VECTOR_ELT(out_EcoDCF, 38));//Rprintf("Eco 20\n");
+    r_np_f_out = REAL(VECTOR_ELT(out_EcoDCF, 39));//Rprintf("Eco 20\n");
+    r_npmargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 40));//Rprintf("Eco 20\n");
+    r_prof_f_out = REAL(VECTOR_ELT(out_EcoDCF, 41));//Rprintf("Eco 20\n");
+    r_npmargin_trend_f_out = REAL(VECTOR_ELT(out_EcoDCF, 42));//Rprintf("Eco 20\n");
+    r_ssTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 43));
+    r_ps_f_out = REAL(VECTOR_ELT(out_EcoDCF, 44));
+    r_psAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 45));
+    r_sts_f_out = REAL(VECTOR_ELT(out_EcoDCF, 46));
+    r_stsAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 47));
+    r_BER_f_out = REAL(VECTOR_ELT(out_EcoDCF, 48));
+    r_CR_BER_f_out = REAL(VECTOR_ELT(out_EcoDCF, 49));
+    r_fuelEff_f_out = REAL(VECTOR_ELT(out_EcoDCF, 50));
+    r_ratio_fvol_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 51));
+    r_ratio_gp_gva_f_out = REAL(VECTOR_ELT(out_EcoDCF, 52));
+    r_ratio_GVL_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 53));
+    r_ratio_gp_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 54));
+    r_RoFTA_f_out = REAL(VECTOR_ELT(out_EcoDCF, 55));
+    r_ROI_f_out = REAL(VECTOR_ELT(out_EcoDCF, 56));
+    r_ratio_np_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 57));
+    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF, 58));
 
-    r_cnb_f_out = REAL(VECTOR_ELT(out_EcoDCF,50));
-    r_cnb_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,51));
-    r_ber_f_out = REAL(VECTOR_ELT(out_EcoDCF,52));
-    r_ETini_f_out = REAL(VECTOR_ELT(out_EcoDCF,53));
-    r_ETini_f_m_out = REAL(VECTOR_ELT(out_EcoDCF,54));
+//Rprintf("Eco 22\n");fichier << "Eco22" << endl;
 
-//Rprintf("Eco 22\n");
-
-    //double *r_GVLoths_f_m2 = REAL(VECTOR_ELT(fVar,1));
-    double *r_GVLothsref_f_m2 = REAL(VECTOR_ELT(fVar,2));
-    //double *r_GVLothsue_f_m2 = REAL(VECTOR_ELT(fVar,23));
-    double *r_GVLothsrefue_f_m2 = REAL(VECTOR_ELT(fVar,24));
-    //double *r_GVLothmet_f2 = REAL(VECTOR_ELT(fVar,3));
-    //double *r_GVLothmetue_f2 = REAL(VECTOR_ELT(fVar,25));
-    //double *r_GVLothsue_f2 = REAL(VECTOR_ELT(fVar,26));
-    double *r_fvolue_f2 = REAL(VECTOR_ELT(fVar,17));
     double *r_fvolue_f_m2 = REAL(VECTOR_ELT(fVar,4));
-    double *r_ovcDCFue_f2 = REAL(VECTOR_ELT(fVar,18));
     double *r_ovcDCFue_f_m2 = REAL(VECTOR_ELT(fVar,10));
     double *r_ccwr_f2 = REAL(VECTOR_ELT(fVar,27));
-    //double *r_opersc_f2 = REAL(VECTOR_ELT(fVar,28));
-    double *r_GVLoths_f2 = REAL(VECTOR_ELT(fVar,29));
-    double *r_rtbs_f2 = REAL(VECTOR_ELT(fVar,31));
+    double *r_opersc_f2 = REAL(VECTOR_ELT(fVar,28));
 
+    SEXP countLf;
+    PROTECT(countLf = NEW_NUMERIC(nbF)); // --> 67
+    double *r_countLf = REAL(countLf);
+    for (int INd_f = 0 ; INd_f < nbF ; INd_f++) r_countLf[INd_f] = 0.0; // pour le calcul de 'fuelEff'
 
-   SEXP countGVLf;
-   PROTECT(countGVLf = NEW_NUMERIC(nbF)); // --> 67
-   double *r_countGVLf = REAL(countGVLf);
-
-
+// ---> P = 88 + 1 = 89
 
 
 
-double *rans_Yothsue_fm = REAL(getListElement(Flist, "Yothsue_f_m"));
-double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
-double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
-double *reff1_f = REAL(getListElement(Flist, "effort1_f"));
-double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
 double *rnbv_f = REAL(getListElement(Flist, "nbv_f"));
-double *rcnb = REAL(getListElement(Flist, "cnb_f_m"));
-double *rcnb_f = REAL(getListElement(Flist, "cnb_f"));
-int sorting = INTEGER(getListElement(Flist, "sorting"))[0];
-
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-  if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0; else r_cnb_f_out[ind_f + nbF*ind_t] = rcnb_f[ind_f];
-  r_ETini_f_out[ind_f + nbF*ind_t] = r_ETini_f_out[ind_f + nbF*0];
-for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
-  r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*0];
-  if (sorting>0.5 & sorting<=(ind_t+1)) {
-    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
-    if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]))
-    r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
-  } else r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = rcnb[ind_f + nbF*ind_m];
-}
-}
+double *rnbTrip = REAL(getListElement(Flist, "nbTrip_f_m"));
+double *rtripLgth = REAL(getListElement(Flist, "tripLgth_f_m"));
+double *rnbTrip_f = REAL(getListElement(Flist, "nbTrip_f"));
+double *rtripLgth_f = REAL(getListElement(Flist, "tripLgth_f"));
 
 
-//Rprintf("Eco 23\n");
-   for (int e = 0 ; e < nbE+nbEstat ; e++) {
+//Rprintf("Eco 23\n");fichier << "Eco23" << endl;
+
+
+//initialisation de cnb, GVLtot et NGVLav, et remplissage de ET
+
+
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+        r_cnb_f_out[ind_f + nbF*ind_t] = 0.0;
+
+        for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
+
+            if (ind_t==0) {
+              r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = REAL(VECTOR_ELT(fVar,33))[ind_f + nbF*ind_m];
+            } else {
+              r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*(ind_t-1)];
+            }
+
+            r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.001;
+
+            r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
+
+            r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
+        }
+    }
+
+
+
+
+
+// indicateurs espèces ---------------------------------------------------------
+
+for (int e = 0 ; e < nbE+nbEstat ; e++) {
 
         if (e<nbE) {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
+         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e)))); //espèce dynamique
         } else {
-         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE))));
+         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e-nbE)))); //espèce statique
         }
-
+//Rprintf("Eco X10\n");fichier << "EcoX10" << endl;
         if (e<nbE) nbI = length(getListElement(elmt, "modI"));
         if (e<nbE) nbC = length(getListElement(elmt, "modC"));
 
@@ -18559,13 +18394,8 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
                *r_statLDst_efm, r_Pst_e, *r_LD_f_sum_t_e, *r_statLDor_f_sum_t_e, *r_statLDst_f_sum_t_e;
         int *dim_Lbio_e, *dim_P_e;
 
-
+//Rprintf("Eco X11\n");fichier << "EcoX11" << endl;
        if (e<nbE) {
-
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 41, GVLtot_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 1, GVLtot_f_m_e);
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 228, GVLcom_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 8, GVLcom_f_m_e);
-        //if (e<nbE) SET_VECTOR_ELT(VECTOR_ELT(eVar, e), 229, GVLst_f_m_e); else SET_VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE), 9, GVLst_f_m_e);
-
 
             r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),41));
             r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),228));
@@ -18579,7 +18409,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
-
+//Rprintf("Eco X12\n");fichier << "EcoX12" << endl;
         } else {
 
             r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
@@ -18597,7 +18427,7 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Lstat, e-nbE), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
             r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
-
+//Rprintf("Eco X13\n");fichier << "EcoX13" << endl;
         }
 
 
@@ -18608,18 +18438,26 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
   for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-        r_countGVLf[ind_f] = 0.0;
-        if (sorting>0.5 & sorting<=(ind_t+1)) r_cnb_f_out[ind_f + nbF*ind_t] = 0.0;
+        if (e<nbE) {
 
+          r_countLf[ind_f] = r_countLf[ind_f] + finite(r_Lbio_f_sum_t_e[ind_f]) + finite(r_LD_f_sum_t_e[ind_f]);
+
+        } else {
+
+          r_countLf[ind_f] = r_countLf[ind_f] + finite(r_Lbio_f_sum_t_e[ind_f]) + finite(r_statLDor_f_sum_t_e[ind_f]) + finite(r_statLDst_f_sum_t_e[ind_f]);
+
+        }
+////Rprintf("Eco X131\n");fichier << "EcoX131" << endl;
         for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
         //-- 1. GVL_f_m_e
 
-              double countCom = 0.0;
+        double countCom = 0.0;
+////Rprintf("Eco X132\n");fichier << "EcoX132" << endl;
 
     if (e<nbE) {
 
-                if (ISNA(r_theta_e)) r_theta_e = 1.0;
+             if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
              for (int ind_c = 0 ; ind_c < (nbC-1) ; ind_c++){ //sur les classes non sous-tailles
 
@@ -18628,53 +18466,54 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
                 if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
 
-                countCom = countCom +
+               countCom = countCom +
                   r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                   r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + ind_c*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
-                r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
+               r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
                 r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                 finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + ind_c*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-             }
+                }
 
              }
 
-                if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
+////Rprintf("Eco X133\n");fichier << "EcoX133" << endl;
+             if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]]))
                         r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
-               if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
-
+////Rprintf("Eco X1331\n");fichier << "EcoX1331" << endl;
+             if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])) {
+////Rprintf("Eco X1332\n");fichier << "EcoX1332" << endl;
                   r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                    r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                    r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                    r_theta_e * r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + (nbC-1)*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                    finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
-                    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
+                  r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
                     r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
                     finite(r_LD_efmc[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + (nbC-1)*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
-
-               } else {
-
+////Rprintf("Eco X1333\n");fichier << "EcoX1333" << endl;
+             } else {
+////Rprintf("Eco X1334\n");fichier << "EcoX1334" << endl;
                   r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = 0.0;
-
-               }
+////Rprintf("Eco X1335\n");fichier << "EcoX1335" << endl;
+             }
 
     } else {
 
+////Rprintf("Eco X134\n");fichier << "EcoX134" << endl;
 
        if (ISNA(r_theta_e)) r_theta_e = 1.0;
 
-        if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]]))
+       if (ISNA(r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]]))
                         r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] = 0.0;
 
 
-        if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
+       if (!ISNA(r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
 
             countCom = r_P_f_m_e[ind_f*dim_P_e[0] + ind_m*dim_P_e[1] + 0*dim_P_e[2] + ind_t*dim_P_e[3]] * 1000 * //prix au kg
                   r_Lbio_f_m_e[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]] +
@@ -18688,153 +18527,124 @@ for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) {
 
         if (!ISNA(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]])){
 
-
             if (ISNA(r_Pst_e)) r_Pst_e = 0.0;
 
             r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_Pst_e * 1000 * r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
+                  r_Pst_e * 1000 * finite(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
-        if (sorting>0.5 & sorting<=(ind_t+1))
             r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] +
-                r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]];
+                finite(r_statLDst_efm[ind_f*dim_Lbio_e[0] + ind_m*dim_Lbio_e[1] + 0*dim_Lbio_e[2] + ind_t*dim_Lbio_e[3]]);
 
         }
-
+////Rprintf("Eco X135\n");fichier << "EcoX135" << endl;
 
     }
 
-            if (!ISNA(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]) & (sorting>0.5 & sorting<=(ind_t+1)))
-            r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] + r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+////Rprintf("Eco X1338\n");fichier << "EcoX1338" << endl;
+    r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
+////Rprintf("Eco X1339\n");fichier << "EcoX1339" << endl;
+    r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] + r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+////Rprintf("Eco X136\n");fichier << "EcoX136" << endl;
 
-            r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = countCom;
-            r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-              r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-              r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
-
-
-
-        //-- 2. GVLtot_f_m
+    //-- 2. GVLtot_f_m
 
 
-            if (e==0) {
+    r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
+       finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]);
 
-                if (othsFM==1) {
+    double LC = 0.0, LCD = 0.0;
+    if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
+       LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
+    if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
+       LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
+////Rprintf("Eco X137\n");fichier << "EcoX137" << endl;
+    r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+       r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
+       finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
+       finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
 
-                         r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
 
-                        double LC = 0.0, LCD = 0.0;
-                        if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                        if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                          r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite(r_GVLothsrefue_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] *
-                            r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] *
-                            r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]]
-                             / pow(1+0.0,ind_t)) * (1 - 0.01*LC) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-                } else {
-
-                        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) +
-                            finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) ;
-
-                        double LC = 0.0, LCD = 0.0;
-                        if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                        if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                             LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                            finite( r_GVLothsref_f_m2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] / pow(1+0.0,ind_t) ) *
-                               (1 - 0.01*LC) +
-
-                            finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                            finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-                }
-
-            } else {
-
-                r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-                  r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-                  finite(r_GVLtot_f_m_e2[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]);
-
-                double LC = 0.0, LCD = 0.0;
-                if (!ISNA(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                      LC = r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-                if (!ISNA(r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]))
-                      LCD = r_lcd_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]];
-
-                r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
-
-                  r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] +
-
-                  finite(r_GVLcom_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LC) +
-
-                   finite(r_GVLst_f_m_e_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]]) * (1 - 0.01*LCD);
-
-            }
-
-        }
    }
+  }
+  ////Rprintf("Eco X14\n");fichier << "EcoX14" << endl;
+
+////Rprintf("aa1"); fichier << "aa1" << endl;
+//if (ind_t==4 & e==26) PrintValue(VECTOR_ELT(out_EcoDCF, 13));
+////Rprintf("aa1");
+
 
   if (e<nbE) {
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,0), e, VECTOR_ELT(VECTOR_ELT(eVar, e),41));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,46), e, VECTOR_ELT(VECTOR_ELT(eVar, e),228));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,48), e, VECTOR_ELT(VECTOR_ELT(eVar, e),229));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,4), e, VECTOR_ELT(VECTOR_ELT(eVar, e),41));//Rprintf("Eco X1\n");
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,0), e, VECTOR_ELT(VECTOR_ELT(eVar, e),228));//Rprintf("Eco X2\n");
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,2), e, VECTOR_ELT(VECTOR_ELT(eVar, e),229));//Rprintf("Eco X3\n");
   } else {
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,45), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,47), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),8));
-    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,49), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),9));
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,5), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));//Rprintf("Eco X4\n");
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,1), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),8));//Rprintf("Eco X5\n");
+    SET_VECTOR_ELT(VECTOR_ELT(out_EcoDCF,3), e-nbE, VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),9));//Rprintf("Eco X6\n");
   }
+
   UNPROTECT(1);
 
+  //Rprintf("\nJ3\n");fichier << "J3" << endl;
+
+////Rprintf("aa1"); fichier << "aa1" << endl;
+//if (ind_t==4 & e==26) PrintValue(VECTOR_ELT(out_EcoDCF, 13));
+////Rprintf("aa1");
+//if (ind_t==4) PrintValue(VECTOR_ELT(out_EcoDCF, 13));
+
+
 }
 
-            //-- BIS. cnb_f_m
 
-if (sorting>0.5 & sorting<=(ind_t+1)) {
-    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-        r_cnb_f_out[ind_f + nbF*ind_t] =
-        r_cnb_f_out[ind_f + nbF*ind_t]/(reff1_f[ind_f]*reff2_f[ind_f]*rnbv_f[ind_f]*r_ETini_f_out[ind_f + nbF*ind_t]);
+//Rprintf("aa");
+//if (ind_t==4) PrintValue(VECTOR_ELT(out_EcoDCF, 13));
+//Rprintf("bb");//Rprintf("%f\n",r_cnb_f_m_out[0 + nbF*7 + nbF*nbMe*4]);//Rprintf("%f\n",r_ET_f_m_out[0 + nbF*7 + nbF*nbMe*4]);
+////Rprintf("%f\n",rnbv[0 + nbF*7]);//Rprintf("%f\n",rnbTrip[0 + nbF*7]);//Rprintf("%f\n",rtripLgth[0 + nbF*7]);
+//if (ind_t==1) PrintValue(VECTOR_ELT(out_EcoDCF, 12));
+//Rprintf("cc");
 
-    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++)
-      r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] =
-        r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]/(reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m]*r_ETini_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
+for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-    }
-}
+    for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
+
+////Rprintf("Eco X1336\n");fichier << "EcoX1336" << endl; //à ce moment, cnb contient les débarquements totaux par flottille et métier
+    r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = finite(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] /
+        (r_ET_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rnbv[ind_f + nbF*ind_m] *
+         rnbTrip[ind_f + nbF*ind_m] * rtripLgth[ind_f + nbF*ind_m]));
+
+////Rprintf("Eco X1337\n");fichier << "EcoX1337" << endl;//calcul du numérateur de cnb_f
+
+    r_cnb_f_out[ind_f + nbF*ind_t] = r_cnb_f_out[ind_f + nbF*ind_t] +
+             finite(r_cnb_f_m_out[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * rnbv[ind_f + nbF*ind_m] *
+             rnbTrip[ind_f + nbF*ind_m] * rtripLgth[ind_f + nbF*ind_m]);
+
+
+}}
+
+//if (ind_t==1) PrintValue(VECTOR_ELT(out_EcoDCF, 13));
+
+// --------------------------------------------------------------------------------------
+
+
 
 
     // à ce stade, plus de considération d'espèce pour les indicateurs
 
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
-          double NGVLtot_f = 0.0;
+          double NGVLtot_f = 0.0, RTBStot_f = 0.0;
 
             for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
-            //-- 3. GVLav_f_m
+            //-- 5. GVLav_f_m
 
                 r_GVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] /
                     r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
 
-             //-- 4. GVLtot_f et NGVLtot_f
+             //-- 6. GVLtot_f & NGVLav_f_m
 
                 if (ind_m==0) {
 
@@ -18863,7 +18673,8 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
                     if (!ISNA(r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
 
                         NGVLtot_f = NGVLtot_f +
-                        r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+                         r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
+                         r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
 
                     }
 
@@ -18873,7 +18684,7 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
 
 
 
-            //-- 8bis. rtbs_f_m
+            //-- 11. rtbs_f_m
 
                     r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                         r_NGVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] -
@@ -18882,51 +18693,68 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
                         r_vf_f_m[ind_f*dim_vf_f_m[0] + ind_m*dim_vf_f_m[1] + 0*dim_vf_f_m[2] + ind_t*dim_vf_f_m[3]]) *
                         r_ue_f_m[ind_f*dim_ue_f_m[0] + ind_m*dim_ue_f_m[1] + 0*dim_ue_f_m[2] + ind_t*dim_ue_f_m[3]] / pow(1+0.0,ind_t));
 
+                   if (!ISNA(r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]])) {
 
+                        RTBStot_f = RTBStot_f +
+                         r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] *
+                         r_nbv_f_m[ind_f*dim_nbv_f_m[0] + ind_m*dim_nbv_f_m[1] + 0*dim_nbv_f_m[2] + ind_t*dim_nbv_f_m[3]];
+
+                    }
+
+                   if (perscCalc<2) {
+
+                    r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+                        0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
+                        r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+
+                   } else {
+
+                    r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = NA_REAL;
+
+                   }
 
             } //on sort de la boucle sur les niveaux métiers
 
 
-            //-- 5. GVLav_f
+            //-- 7. GVLav_f
 
                 r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
-            //-- 7. NGVLav_f
+            //-- 8.5. NGVLav_f
 
                 r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     NGVLtot_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
+            //-- 10. cnb_f
 
-            //-- 8. rtbs_f
+                r_cnb_f_out[ind_f + nbF*ind_t] =
+                    finite(r_cnb_f_out[ind_f + nbF*ind_t] / (rnbv_f[ind_f] * rtripLgth_f[ind_f] * rnbTrip_f[ind_f]));
 
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                        r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                        ((finite(r_ovcDCFue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) +
-                        finite(r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]]) *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t));
+
+            //-- 12. rtbs_f
+
+                r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                        RTBStot_f / r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
 
 
 
                 //version actualisée
-            r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_rtbsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
+            //-- 14. cshrT_f
 
 
-            //-- 9. cshrT_f
-
-
-        if (perscCalc==0) {  //salaires par marin fixes
+        if (perscCalc==0) {  //salaires par marin fixés
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] / r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*ind_t] / r_cnb_f_out[ind_f + nbF*0];
 
         }
 
@@ -18938,7 +18766,7 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
 
         }
 
-        if (perscCalc==2) {  //part équipage constante - ccwr
+        if (perscCalc==2) {  //part équipage constante calculée - ccwr
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_ccwr_f2[ind_f] *
@@ -18947,285 +18775,296 @@ if (sorting>0.5 & sorting<=(ind_t+1)) {
         }
 
 
-        if (perscCalc==3) {  //salaires marin supplémentaire fixé
+        if (perscCalc==3) {  //part équipage constante + salaire marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
+                    (r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
                     (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*0]);
 
         }
 
 
-        if (perscCalc==4) {  //salaires marin supplémentaire fixé
+        if (perscCalc==4) {  //part équipage constante calculée salaires marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                0.01*r_ccwr_f2[ind_f] *
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
+                r_ccwr_f2[ind_f] *
+                    (r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
                     (r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] - r_cnb_f_out[ind_f + nbF*0 + nbF*0]) /
-                    r_cnb_f_out[ind_f + nbF*0 + nbF*0];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*0]);
 
         }
 
 
-            //-- 10. sshr_f
-
-
-                 r_sshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 11. ncshr_f
+             //-- 15. ncshr_f
 
                 r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]] / pow(1+0.0,ind_t) );
+                    r_eec_f[ind_f*dim_eec_f[0] + 0*dim_eec_f[1] + 0*dim_eec_f[2] + ind_t*dim_eec_f[3]];
 
-             //-- 12. oclg_f
-
-                r_oclg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_mwhg_f[ind_f*dim_mwhg_f[0] + 0*dim_mwhg_f[1] + 0*dim_mwhg_f[2] + 0*dim_mwhg_f[3]] *
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                    r_nbh_f[ind_f*dim_nbh_f[0] + 0*dim_nbh_f[1] + 0*dim_nbh_f[2] + ind_t*dim_nbh_f[3]] / pow(1+0.0,ind_t);
-
-
-             //-- 13. ocl_f
+             //-- 16. ocl_f
 
                 r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_mwh_f[ind_f*dim_mwh_f[0] + 0*dim_mwh_f[1] + 0*dim_mwh_f[2] + 0*dim_mwh_f[3]] *
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                    r_nbh_f[ind_f*dim_nbh_f[0] + 0*dim_nbh_f[1] + 0*dim_nbh_f[2] + ind_t*dim_nbh_f[3]] / pow(1+0.0,ind_t);
-
-             //-- 14. csg_f
-
-                r_csg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_oclg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+                    r_cnb_f_out[ind_f + nbF*0 + nbF*ind_t] * rtripLgth_f[ind_f] * rnbTrip_f[ind_f];
 
 
-             //-- 15. cs_f
+             //-- 17. cs_f
 
                 r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     r_ocl_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
                 //version actualisée
-            r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_csAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
+            //-- 18. csTot_f
 
-             //-- 16. gva_f
+                r_csTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
+
+
+             //-- 19. gva_f
 
                 r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] +
-                    r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]]) / pow(1+0.0,ind_t) ;
+                    r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
+                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]]) / pow(1+0.0,ind_t) ;
 
 
-            //version actualisée
-            r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                //version actualisée
+                r_gvaAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
-            //-- 17. ccw_f
+            //-- 20. gvamargin_f
+
+            r_gvamargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+               r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+
+            //-- 21. gva_FTE_f
+
+            r_gva_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+               r_FTE_f[ind_f*dim_FTE_f[0] + 0*dim_FTE_f[1] + 0*dim_FTE_f[2] + ind_t*dim_FTE_f[3]];
+
+
+            //-- 22. ccw_f
 
             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
+            if ( (perscCalc==0) | (perscCalc==1) | (perscCalc==3) ) {
 
-            //-- 18. ccwCr_f
+            r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_opersc_f2[ind_f];
+            }
+
+
+            //-- 23. ccwCr_f
 
              r_ccwCr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
 
 
-            //-- 19. wageg_f
+            //-- 24. wageg_f
 
              r_wageg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
 
-            //-- 20. wagen_f
+
+            //-- 25. wagen_f
 
              r_wagen_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-             r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-             r_cnb_f[ind_f* dim_cnb_f[0] + 0* dim_cnb_f[1] + 0* dim_cnb_f[2] + ind_t* dim_cnb_f[3]];
+               r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_cnb_f_out[ind_f + nbF*ind_t];
+
+            //-- 26. wageg_FTE_f
+
+             r_wageg_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_wageg_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_FTE_f[ind_f*dim_FTE_f[0] + 0*dim_FTE_f[1] + 0*dim_FTE_f[2] + ind_t*dim_FTE_f[3]];
 
 
-             //-- 21. gcf_f
+            //-- 27. wageg_h_f
 
-                r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+             r_wageg_h_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+               r_wageg_FTE_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / (rtripLgth_f[ind_f] * rnbTrip_f[ind_f]);
 
-
-            //version actualisée
-            r_gcfAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                       r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
-
-
-
-             //-- 22. ngcf_f
-
-                r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] / pow(1+0.0,ind_t) );
-
-
-             //-- 23. gp_f
+            //-- 28. gp_f
 
                 r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                    (r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]] / pow(1+0.0,ind_t) );
+                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-             //-- 24. ps_f
+
+              //version actualisée
+                r_gpAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                       r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
+
+
+             //-- 29. gpmargin_f
+
+                r_gpmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+             //-- 30. ncf_f
+
+                r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]];
+
+
+             //-- 31. np_f
+
+                r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]];
+
+             //-- 32. npmargin_f
+
+                r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
+
+
+             //-- 33. prof_f
+
+                r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = -1.0;
+                if (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]>=0) r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
+                if (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]>0.1) r_prof_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 1.0;
+
+
+             //-- 34. npmargin_trend_f
+
+                r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = -1.0;
+                if (ind_t>=5) {
+                     double devTrend;
+                     devTrend = r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                                (0.2 * (r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-5)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-4)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-3)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-2)*eF_f[3]] +
+                                        r_npmargin_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + (ind_t-1)*eF_f[3]]));
+                     if (devTrend>(-0.05)) r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
+                     if (devTrend>0.05) r_npmargin_trend_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 1.0;
+                }
+
+             //-- 35. ssTot_f
+
+                r_ssTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
+
+             //-- 36. ps_f
 
                 r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
+                    rnbv_f[ind_f] * (r_cs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]);
 
-
-            //version actualisée
-            r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+              //version actualisée
+                r_psAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_ps_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
-             //-- 25. sts_f
+             //-- 37. sts_f
 
-                r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                     r_NGVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) *
-                    r_nbv_f[ind_f*dim_nbv_f[0] + 0*dim_nbv_f[1] + 0*dim_nbv_f[2] + ind_t*dim_nbv_f[3]];
+                r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
 
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++){
 
-            //version actualisée
-            r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                  r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
+                        (finite(r_lc_f_m[ind_f*dim_lc_f_m[0] + ind_m*dim_lc_f_m[1] + 0*dim_lc_f_m[2] + ind_t*dim_lc_f_m[3]]) *
+                         r_GVLav_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] * rnbv[ind_f + ind_m*nbF]);
+
+                }
+
+               //version actualisée
+                 r_stsAct_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                        r_sts_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+dr,ind_t);
 
 
 
-             //-- BIS. ber_f
+             //-- 38. ber_f
 
-                r_ber_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                r_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] *
-                    ((r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
+                    (r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
                     r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t*dim_dep_f[3]] +
-                    r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]]) / pow(1+0.0,ind_t)) /
-                    ( r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
-                      r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] -
-                      (r_ovcDCFue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] +
-                        r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]]) *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]) ;
+                    r_ic_f[ind_f*dim_ic_f[0] + 0*dim_ic_f[1] + 0*dim_ic_f[2] + ind_t*dim_ic_f[3]]) /
+                    r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] ;
+
+             //-- 39. CR_BER_f
+
+                r_CR_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    r_BER_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
 
+             //-- 40. fuelEff_f
+                double numFuelEff = 0.0;
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) numFuelEff = numFuelEff + r_fvolue_f_m2[ind_f + ind_m*nbF] * r_ue_f_m[ind_f+ ind_m*nbF] * r_nbv_f_m[ind_f+ ind_m*nbF];
+                r_fuelEff_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = numFuelEff / r_countLf[ind_f];
 
 
+            //-- 41. ratio_fvol_GVA_f
+                double numFvolGVA = 0.0;
+                for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) numFvolGVA = numFvolGVA + r_fvolue_f_m2[ind_f + ind_m*nbF] * r_ue_f_m[ind_f+ ind_m*nbF];
+                r_ratio_fvol_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = numFvolGVA / r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-             //-- 26. ratio_gva_GVL_f
+            //-- 42. ratio_gp_GVA_f
 
-                r_ratio_gva_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 27. ratio_gcf_GVL_f
-
-                r_ratio_gcf_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 28. ratio_fc_GVL_f
-
-                r_ratio_fc_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                        r_vf_f[ind_f*dim_vf_f[0] + 0*dim_vf_f[1] + 0*dim_vf_f[2] + ind_t*dim_vf_f[3]] *
-                        r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] / pow(1+0.0,ind_t)) /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 29. ratio_rep_GVL_f
-
-                r_ratio_rep_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] / pow(1+0.0,ind_t) )/
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-
-             //-- 30. ratio_fvol_GVL_f
-
-                r_ratio_fvol_GVL_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
-                    r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-            //-- 31. ratio_fvol_gva_f
-
-                r_ratio_fvol_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_fvolue_f2[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]] *
-                    r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]] /
+                r_ratio_gp_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-            //-- 32. ratio_gcf_gva_f
-
-                r_ratio_gcf_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    r_gva_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
-
-             //-- 33. ratio_K_cnb_f
-
-                r_ratio_K_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) ) /
-                    r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]];
-
-            //-- 34. ratio_GVL_K_f
+            //-- 43. ratio_GVL_K_f
 
                 r_ratio_GVL_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
 
-           //-- 35. ratio_gcf_K_f
-
-                r_ratio_gcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_gcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-           //-- 36. ratio_ngcf_K_f
-
-                r_ratio_ngcf_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-                    r_ngcf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
-
-          //-- 37. ratio_gp_K_f
+            //-- 44. ratio_gp_K_f
 
                 r_ratio_gp_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
                     (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
 
-          //-- 38. ratio_GVL_cnb_ue_f
+            //-- 45. RoFTA_f
+
+                r_RoFTA_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_ncf_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    (r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]] / pow(1+0.0,ind_t) );
+
+            //-- 46. ROI_f
+                r_ROI_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = NA_REAL;
+                if (finite(r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]])>0) {
+                    r_ROI_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                      (r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] - r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]]) /
+                      finite(r_inv_f[ind_f*dim_inv_f[0] + 0*dim_inv_f[1] + 0*dim_inv_f[2] + ind_t*dim_inv_f[3]]);
+                }
+
+            //-- 47. ratio_np_K_f
+
+                r_ratio_np_K_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                    r_np_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+                    r_K_f[ind_f*dim_K_f[0] + 0*dim_K_f[1] + 0*dim_K_f[2] + ind_t*dim_K_f[3]];
+
+
+
+            //-- 48. ratio_GVL_cnb_ue_f
 
                 r_ratio_GVL_cnb_ue_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-                    (r_cnb_f[ind_f*dim_cnb_f[0] + 0*dim_cnb_f[1] + 0*dim_cnb_f[2] + ind_t*dim_cnb_f[3]] *
-                     r_ue_f[ind_f*dim_ue_f[0] + 0*dim_ue_f[1] + 0*dim_ue_f[2] + ind_t*dim_ue_f[3]]);
-
+                    (r_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * r_ue_f[ind_f] );
 
 
         }
 
-if (ind_t==0) UNPROTECT(74);
-UNPROTECT(69);
+if (ind_t==0) UNPROTECT(66);
+UNPROTECT(89);
 
-
+//Rprintf("\nJ2\n");fichier << "J2" << endl;
 
 //if (ind_t>10) //PrintValue(VECTOR_ELT(out_EcoDCF, 44));
 //if (ind_t>10) //PrintValue(VECTOR_ELT(out_EcoDCF, 2));
@@ -19235,7 +19074,10 @@ UNPROTECT(69);
 //if (ind_t>10) //PrintValue(ue_f_m);
 //if (ind_t==(nbT-1)) {//PrintValue(VECTOR_ELT(fVar,4));//PrintValue(VECTOR_ELT(fVar,10));}
 
+fichier.close();
+
 }}
+
 
 
 //détection d'un caractère donné dans un objet SEXP de type SXPSTR
@@ -19277,7 +19119,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
 
         SEXP output, out_names, out_Foth;
-        PROTECT(output = allocVector(VECSXP, 104));
+        PROTECT(output = allocVector(VECSXP, 105)); //11/04/18 rajout de l'élément reconcilSPP
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
         SET_VECTOR_ELT(output, 2, object->out_Fbar_et);
@@ -19293,7 +19135,8 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 12, object->out_L_efmct);
         SET_VECTOR_ELT(output, 13, object->out_L_eit);
         SET_VECTOR_ELT(output, 14, object->out_P_t);
-        if (INTEGER(EcoDcf)[0]==0) SET_VECTOR_ELT(output, 15, object->out_Eco); else SET_VECTOR_ELT(output, 15, object->out_EcoDCF);
+        //if (INTEGER(EcoDcf)[0]==0) SET_VECTOR_ELT(output, 15, object->out_Eco); else SET_VECTOR_ELT(output, 15, object->out_EcoDCF);
+        SET_VECTOR_ELT(output, 15, object->out_EcoDCF);
         PROTECT(out_Foth = allocVector(VECSXP, object->nbE));
         setAttrib(out_Foth, R_NamesSymbol, object->sppList);
         if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 44));}
@@ -19393,22 +19236,23 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 101, object->out_oqD_eft);
         SET_VECTOR_ELT(output, 102, object->out_oqD_et);
         SET_VECTOR_ELT(output, 103, object->out_oqDstat);
+        SET_VECTOR_ELT(output, 104, object->reconcilSPP);
 
 
-
+//PrintValue(object->reconcilSPP);
         //----------------------------------------------------------------------------------------------------------
 
         //on nomme les éléments de output
-        const char *namesOut[104] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
+        const char *namesOut[105] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
                                     "F_S1M1","F_S1M2","F_S1M3","F_S1M4","F_S2M1","F_S2M2","F_S2M3","F_S2M4","F_S3M1","F_S3M2","F_S3M3","F_S3M4","F_S4M1","F_S4M2","F_S4M3","F_S4M4",
                                     "Fr_S1M1","Fr_S1M2","Fr_S1M3","Fr_S1M4","Fr_S2M1","Fr_S2M2","Fr_S2M3","Fr_S2M4","Fr_S3M1","Fr_S3M2","Fr_S3M3","Fr_S3M4","Fr_S4M1","Fr_S4M2","Fr_S4M3","Fr_S4M4",
                                     "Z_S1M1","Z_S1M2","Z_S1M3","Z_S1M4","Z_S2M1","Z_S2M2","Z_S2M3","Z_S2M4","Z_S3M1","Z_S3M2","Z_S3M3","Z_S3M4","Z_S4M1","Z_S4M2","Z_S4M3","Z_S4M4",
                                     "N_S1M1","N_S1M2","N_S1M3","N_S1M4","N_S2M1","N_S2M2","N_S2M3","N_S2M4","N_S3M1","N_S3M2","N_S3M3","N_S3M4","N_S4M1","N_S4M2","N_S4M3","N_S4M4",
                                     "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm",
-                                    "oqD_ef","oqD_e","oqDstat_ef"};
-        PROTECT(out_names = allocVector(STRSXP, 104));
+                                    "oqD_ef","oqD_e","oqDstat_ef","reconcilSPP"};
+        PROTECT(out_names = allocVector(STRSXP, 105));
 
-        for(int ct = 0; ct < 104; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 105; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 

@@ -10,7 +10,6 @@ exportClasses(
 )
 
 exportMethods(
-	"IAM.input",
 	"IAM.args",
 	"IAM.export",
 	"IAM.model",
