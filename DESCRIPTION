@@ -1,13 +1,13 @@
 Package: IAM
 Title: BioEconomic model for fisheries
-Version: 1.6.2
+Version: 1.6.3
 Date: 2018
 Author: AMURE
 Description: ToDo.
-Depends: R(>= 3.4.2), methods, lattice, tcltk, abind, tcltk2, XLConnect, MASS, RODBC, openxlsx
-Suggests: FLCore
+Depends: R(>= 3.3.2), methods, lattice, stats, grDevices, abind, MASS, openxlsx
+Imports: tcltk, tcltk2
 Maintainer: Nobody <no@body.com>
 License: GPL (>= 2)
-Collate: 0_input_objects.r 1_input_integration.r 2_args_integration.r 3_args_input_txtExport.r 4_output_objects.r 5_simulation.r 6_utils.r 7_plotting.r 8_iamToFLRmethod.r
+Collate: 0_input_objects.r 1_input_integration.r 2_args_integration.r 3_args_input_txtExport.r 4_output_objects.r 5_simulation.r 6_utils.r 7_plotting.r
 LazyLoad: Yes
 ZipData: no

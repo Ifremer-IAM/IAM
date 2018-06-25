@@ -3,8 +3,8 @@
 GUIiam <- function(INPUT,classInp="args",desc=as.character(NA)) {     #or classInp="param"
 
 
-require(tcltk)
-require(tcltk2)
+requireNamespace("tcltk")
+requireNamespace("tcltk2")
 e1 <- new.env()
 
 ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Ystat","Lstat","Dstat","Eff",

@@ -16,6 +16,7 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0, updateE=0,
                   TACbyF=NULL, TACtot=NULL, #sont générés en interne Ztemp, SPPstatOPT, SPPspictOPT et SPPdynOPT, qui sont insérés dans l'export tacCTRL
                   TACbyFoptimCTRL=list(maxIter = as.integer(7), diffZmax = 0.0001, lambda = 0.9, t_stop = 0),
+                  recList=list(), recParamList=list(), #new 24/04/2018  31/05/2018
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
                   parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
@@ -65,6 +66,54 @@ if (any(objArgs@specific$Q%in%1)) {
 
 nT <- objInput@specific$NbSteps
 nF <- length(objInput@specific$Fleet)
+
+#on vérifie le formatage des éléments de recList
+if (length(recList)>0) {
+ devRecL <- recList[objInput@specific$Species]   #devRecL -> liste de taille nbE et avec NULL si pas d'info dans recList
+ for (elem in 1:length(devRecL)) {
+    if (!is.null(devRecL[[elem]])) {
+        if (objInput@specific$Q[elem]==0) {#vecteur recrutements
+         devRecL[[elem]] <- rep(as.numeric(as.character(c(devRecL[[elem]],rep(rev(devRecL[[elem]])[1],100)))),length=nT)
+        } else {    #matrice recrutements
+         if (!is.matrix(devRecL[[elem]])) {
+          devRecL[[elem]] <- matrix(rep(devRecL[[elem]],length=nT*4),ncol=nT)    #vecteur à répliquer dans une matrice au format convenable
+         } else {
+          matTMP <- matrix(as.numeric(0),ncol=nT,nrow=4)           #matrice à intégrer dans une matrice au format convenable
+          matTMP[1:min(4,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))] <- as.numeric(devRecL[[elem]][1:min(4,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))])
+          devRecL[[elem]] <- matTMP
+         }
+        }
+    }
+ }
+recList <- devRecL #on remplace l'argument initial par l'argument formaté
+}
+
+
+#on vérifie le formatage des éléments de recParamList
+if (length(recParamList)>0) {
+ devRecParamL <- recParamList[objInput@specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
+ for (elem in 1:length(devRecParamL)) {
+    if (!is.null(devRecParamL[[elem]])) {
+        if (objInput@specific$Q[elem]==0 & length(objInput@specific$Ages[[elem]])>1) {#XSA
+         del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
+         devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,1:3],delay=del)
+         devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
+        } else {
+         if (objInput@specific$Q[elem]==1) { #SS3
+            Nze <- c(objInput@input[[elem]]$Ni0_S1M1,objInput@input[[elem]]$Ni0_S2M2,objInput@input[[elem]]$Ni0_S3M3,objInput@input[[elem]]$Ni0_S4M4)
+            del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
+            devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,1:3],delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))))
+            devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
+         } else {
+           devRecParamL[elem] <- list(NULL)
+         }
+        }
+    }
+ }
+ names(devRecParamL) <- objInput@specific$Species
+ recParamList <- devRecParamL
+}
+
 
 #on étend les listes 'parOQD' à l'ensemble des espèces modélisées                                          #10/07/17
 allSpp <- c(objArgs@specific$Species,objArgs@specific$StaticSpp)                                           #10/07/17
@@ -152,7 +201,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
                           maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda),t_stop=as.integer(TACbyFoptimCTRL$t_stop),
-                          Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT),
+                          Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT, recList=recList, recParamList=recParamList), #forçage recrutements inséré
                     newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
                                          #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.integer(updateE),

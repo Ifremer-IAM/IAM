@@ -39,7 +39,7 @@ boxplot.stats.custom <-function (x,coef = 1.5, do.conf=TRUE, do.out=TRUE) {
 
 IAM.bwplot <- function(formula, data, ...) {
 
-require(lattice)
+#require(lattice)
 
 #paramètres graphiques par défaut
   default.args <- list( 
@@ -188,7 +188,7 @@ require(lattice)
  
 IAM.zone <- function(formula, data,...) {
 
-require(lattice)
+#require(lattice)
 
 #paramètres graphiques par défaut
   default.args <- list( 

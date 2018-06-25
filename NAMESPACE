@@ -1,4 +1,4 @@
-import("methods", "utils", "lattice")
+import("methods", "utils", "stats", "grDevices", "lattice", "tcltk", "tcltk2", "abind", "MASS", "openxlsx")
 
 useDynLib(IAM)
 
@@ -10,12 +10,12 @@ exportClasses(
 )
 
 exportMethods(
+  "IAM.input",
 	"IAM.args",
 	"IAM.export",
 	"IAM.model",
 	"IAM.format",
-	"IAM.unite",
-	"iamToFLR"
+	"IAM.unite"
 )
 	
 export(
