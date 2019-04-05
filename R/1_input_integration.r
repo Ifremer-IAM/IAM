@@ -1,6 +1,6 @@
 #fonction de conversion des inputs au niveau métier Eco (inclus implémentation de l'allocation de mortalité par pêche
 
-convertInput <- function(inp,Fq_fmi=NULL) {
+convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
 
         namF <- inp@specific$Fleet ; nF <- length(namF) 
         namM <- inp@specific$Metier ; nM <- length(namM)
@@ -11,7 +11,7 @@ convertInput <- function(inp,Fq_fmi=NULL) {
         #-------------------------------------------------------------------------------
             
             for (i in inp@specific$Species) {
-            if (inp@specific$Q[i]==0) {
+            if (inp@specific$Q[i]==0 & inp@specific$S[i]==0) {
 
             namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
             
@@ -103,10 +103,11 @@ convertInput <- function(inp,Fq_fmi=NULL) {
               
             llF[[i]] <- Ffmi  
               
-            } else {
-
-            llF[[i]] <- adrop(Fq_fmi[[i]][1,1,,,,drop=FALSE],1:2)
-
+            } else { if (inp@specific$Q[i]==1 & inp@specific$Q[i]==0){
+              llF[[i]] <- adrop(Fq_fmi[[i]][1,1,,,,drop=FALSE],1:2)
+            } else if (inp@specific$Q[i]==0 & inp@specific$S[i]==1){
+                llF[[i]] <- adrop(Fg_fmi[[i]][1,,,,drop=FALSE],1)
+              }
             }
             }
          
@@ -152,32 +153,79 @@ convertInput <- function(inp,Fq_fmi=NULL) {
         inp@input[[i]]$F_fmi <- FF
          
         #conversion des variables ratios --> on applique les mêmes valeurs pour tous les métiers correspondants (on les suppose définie aux âges)  
-          
-        di <- inp@input[[i]]$d_i 
-        if (attributes(di)$DimCst[2]>0) {
-          if (attributes(di)$DimCst[1]==0) {
-            vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
-            vec_di[] <- rep(di,each=nF)
-          } else {
-            vec_di <- di
+        if(inp@specific$Q[i]==0 & inp@specific$S[i]==0) { 
+            di <- inp@input[[i]]$d_i 
+            if (attributes(di)$DimCst[2]>0) {
+              if (attributes(di)$DimCst[1]==0) {
+                vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
+                vec_di[] <- rep(di,each=nF)
+              } else {
+                vec_di <- di
+              }
+              
+              tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
+              tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
+              if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
+              TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+              TABD$f <- factor(as.character(TABD$f),levels=namF)
+              TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
+              TABD$a <- factor(as.character(TABD$a),levels=namI)
+              FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
+              attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))  
+              
+              inp@input[[i]]$d_i <- FD
+            }
+        } else if(FALSE){
+            di_G1 <- inp@input[[i]]$d_i_G1 #G1
+            if (attributes(di_G1)$DimCst[2]>0) {
+              if (attributes(di_G1)$DimCst[1]==0) {
+                vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
+                vec_di[] <- rep(di_G1,each=nF)
+              } else {
+                vec_di <- di_G1
+              }
+              
+              tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
+              tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
+              if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
+              TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+              TABD$f <- factor(as.character(TABD$f),levels=namF)
+              TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
+              TABD$a <- factor(as.character(TABD$a),levels=namI)
+              FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
+              attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))  
+              
+              inp@input[[i]]$d_i_G1 <- FD
+            }
+              
+              di_G2 <- inp@input[[i]]$d_i_G2 #G2
+              if (attributes(di_G2)$DimCst[2]>0) {
+                if (attributes(di_G2)$DimCst[1]==0) {
+                  vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
+                  vec_di[] <- rep(di_G2,each=nF)
+                } else {
+                  vec_di <- di_G2
+                }
+                
+                tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
+                tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
+                if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
+                TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+                TABD$f <- factor(as.character(TABD$f),levels=namF)
+                TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
+                TABD$a <- factor(as.character(TABD$a),levels=namI)
+                FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
+                attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))  
+                
+                inp@input[[i]]$d_i_G2 <- FD
+                }
           }
-          
-          tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
-          tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
-          if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
-          TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
-          TABD$f <- factor(as.character(TABD$f),levels=namF)
-          TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
-          TABD$a <- factor(as.character(TABD$a),levels=namI)
-          FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
-          attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))  
-          
-          inp@input[[i]]$d_i <- FD
         }
-        }  
+          
   
   return(inp)
-}  
+             
+}
   
 
 
@@ -776,7 +824,7 @@ if (length(nam_stock)>0) {
 
   #on commence par extraire le tableau de codage des variables
   indEmpt <- suppressWarnings(apply(result,1,function(x) min(unlist(sapply(c("v__","t__","i__","f__","m__","l__","e__","c__"),grep,x)))))
-  recode <- result[5:33,1:4] #recode <- result[5:(match(TRUE,is.finite(indEmpt))-1),1:4]
+  recode <- result[5:39,1:4] #recode <- result[5:(match(TRUE,is.finite(indEmpt))-1),1:4]
   #on complète les recodages non spécifiés
   recode[recode[,2]%in%c("","NA"),2] <- recode[recode[,2]%in%c("","NA"),1]
   recode[is.na(recode[,2]),2] <- recode[is.na(recode[,2]),1]
@@ -987,14 +1035,28 @@ if (length(nam_stock)>0) {
                                               }
                                               })
 
-  #on recode les noms de variables conformément à 'rec' (on ajoute les variables SS3 pilotables par le module scenario)
+  #on recode les noms de variables conformément à 'rec' (on ajoute les variables SS3 et Sex-based pilotables par le module scenario)
   SS3nam_N <- paste("Ni0_S",1:4,sep="")
   SS3nam_F <- paste("Ffmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
   SS3nam_Flanwt <- paste("FLWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
   SS3nam_Fdiswt <- paste("FDWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
-
-  renam <- c(as.character(rec$Variable),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt) ;
-  names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt)
+  
+  Sexnam_F <- paste("F_i_G",1:2,sep="")
+  Sexnam_Nt0 <- paste("N_it0_G",1:2,sep="")
+  Sexnam_Ni0 <- paste("N_i0t_G",1:2,sep="")
+  Sexnam_mat <- paste("mat_i_G",1:2,sep="")
+  Sexnam_M <- paste("M_i_G",1:2,sep="")
+  Sexnam_wS <- paste("wStock_i_G",1:2,sep="")
+  Sexnam_wL <- paste("wL_i_G",1:2,sep="")
+  Sexnam_wD <- paste("wD_i_G",1:2,sep="")
+  Sexnam_C <- paste("C_i_G",1:2,sep="")
+  Sexnam_doth <- paste("doth_i_G",1:2,sep="")
+  Sexnam_d <- paste("d_i_G",1:2,sep="")
+  
+  renam <- c(as.character(rec$Variable),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
+             Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d) ;
+  names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
+                    Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d)
   renam <- renam[!duplicated(names(renam))]
   names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)]
   #et on applique le multiplicateur à chaque variable dans les deux listes
@@ -1098,6 +1160,24 @@ if (length(nam_stock)>0) {
       listInput$Y_mi <- listInput$Y_mi*rep(listInput$wL_i,each=prod(indProd))/1000
   }
   }
+  
+  if (length(listInput$Y_mi_G1)==0) {
+    if (length(listInput$C_mi_G1)!=0) {
+      listInput$Y_mi_G1 <- listInput$C_mi_G1
+      indProd <- attributes(listInput$C_mi_G1)$DimCst[1:2]
+      indProd[indProd==0] <- 1
+      listInput$Y_mi_G1 <- listInput$Y_mi_G1*rep(listInput$wL_i_G1,each=prod(indProd))/1000
+    }
+  }
+  
+  if (length(listInput$Y_mi_G2)==0) {
+    if (length(listInput$C_mi_G2)!=0) {
+      listInput$Y_mi_G2 <- listInput$C_mi_G2
+      indProd <- attributes(listInput$C_mi_G2)$DimCst[1:2]
+      indProd[indProd==0] <- 1
+      listInput$Y_mi_G2 <- listInput$Y_mi_G2*rep(listInput$wL_i_G2,each=prod(indProd))/1000
+    }
+  }
 
   if (length(listInput$Y_i)==0) {
     if (length(listInput$C_i)!=0) {
@@ -1107,7 +1187,24 @@ if (length(nam_stock)>0) {
       listInput$Y_i <- listInput$Y_i*rep(listInput$wL_i,each=prod(indProd))/1000
     }
   }
-
+  if (length(listInput$Y_i_G1)==0) {
+    if (length(listInput$C_i_G1)!=0) {
+      listInput$Y_i_G1 <- listInput$C_i_G1
+      indProd <- attributes(listInput$C_i_G1)$DimCst[1:2]
+      indProd[indProd==0] <- 1
+      listInput$Y_i_G1 <- listInput$Y_i_G1*rep(listInput$wL_i_G1,each=prod(indProd))/1000
+    }
+  }
+  
+  if (length(listInput$Y_i_G2)==0) {
+    if (length(listInput$C_i_G2)!=0) {
+      listInput$Y_i_G2 <- listInput$C_i_G2
+      indProd <- attributes(listInput$C_i_G2)$DimCst[1:2]
+      indProd[indProd==0] <- 1
+      listInput$Y_i_G2 <- listInput$Y_i_G2*rep(listInput$wL_i_G2,each=prod(indProd))/1000
+    }
+  }
+  
   listInput[is.na(names(listInput))] <- NULL
 
   LL$historique[[k]] <- listHisto ; LL$input[[k]] <- listInput ; LL$scenario <- c(LL$scenario,listScenar)
@@ -1521,13 +1618,15 @@ if (indDYN) {
   }
 }
 Qvec <- as.integer(rep(0,length(namList))) ; names(Qvec) <- as.character(namList)
+Svec <- as.integer(rep(0,length(namList))) ; names(Svec) <- as.character(namList)
 
 return(new("iamInput",desc=desc,specific=list(Species=if (indDYN) as.character(namList) else character(0),StaticSpp=as.character(nam_stock_bis),
                                               Fleet=modF,Metier=modMbio,MetierEco=modMeco,
                                               Ages=if (indDYN) lapply(LL$input,function(x) x$modI)[namList] else list(),
                                               Cat=if (indDYN) lapply(LL$input,function(x) x$modC)[namList] else list(),t_init=t_init,
                                               NbSteps=as.integer(nbStep),times=as.integer(as.character(seq(t_init,by=1,length=nbStep))),
-                                              Q=if(indDYN) Qvec else integer()), #initialise Q
+                                              Q=if(indDYN) Qvec else integer(),#initialise Q
+                                              S=if(indDYN) Svec else integer()),#initialise S
             historical=LL$historique,input=LL$input,scenario=LL$scenario,stochastic=STO))
 
 }
@@ -1552,7 +1651,8 @@ setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
                                     Fq_i=NULL,iniFq_i=NULL,Fq_fmi=NULL,iniFq_fmi=NULL,
                                     FqLwt_i=NULL,iniFqLwt_i=NULL,FqLwt_fmi=NULL,iniFqLwt_fmi=NULL,
                                     FqDwt_i=NULL,iniFqDwt_i=NULL,FqDwt_fmi=NULL,iniFqDwt_fmi=NULL,
-                                    Nt0s1q=NULL,Ni0q=NULL,iniNt0q=NULL,matwt=NULL,...) {
+                                    Nt0s1q=NULL,Ni0q=NULL,iniNt0q=NULL,matwt=NULL,
+                                    Fg_fmi=NULL,  dg_fmi=NULL,...) {
                                                                                #Fq_i matrice season*morph*age
                                                                                #Fq_fmi matrice season*morph*flottille*metier*age
                                                                                #Nt0s1q matrice morph*age  (Effectifs initiaux de projection (saison 1 de t=1) par cohorte)
@@ -1578,7 +1678,10 @@ nmQ <- names(iniFqDwt_i)[names(iniFqDwt_i)%in%nmQ] ; nmQ <- names(iniFqDwt_fmi)[
 nmQ <- names(iniNt0q)[names(iniNt0q)%in%nmQ] ; nmQ <- names(matwt)[names(matwt)%in%nmQ]
 out@specific$Q[out@specific$Species%in%nmQ] <- as.integer(1)
 
-if (all(is.na(out@specific$Species))) OUT <- out else OUT <- convertInput(out,Fq_fmi=Fq_fmi)
+nmS <- names(Fg_fmi) ; nmS <- names(dg_fmi)[names(dg_fmi)%in%nmS]
+out@specific$S[out@specific$Species%in%nmS] <- as.integer(1)
+
+if (all(is.na(out@specific$Species))) OUT <- out else OUT <- convertInput(out,Fq_fmi=Fq_fmi, Fg_fmi=Fg_fmi)
 
 #sorting
 ODpar_list <- unlist(lapply(OUT@input,function(x) x$OD_e))
@@ -1680,6 +1783,28 @@ if (length(nmQ)>0) {
       OUT@input[[i]]$F_i <- as.double(NA) ; attributes(OUT@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,0,0))
       OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
     }
+}
+
+if (length(nmS)>0) {
+  for (i in nmS) {
+    lFg_fmi <- ldg_fmi <- list()
+    AG <- OUT@specific$Ages[[i]]
+    
+    for (gender in as.character(1:2)) {
+      temp <- adrop(Fg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+      lFg_fmi[[paste("F_fmi_G",gender,sep="")]] <- temp
+      
+      temp <- adrop(dg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+      ldg_fmi[[paste("d_i_G",gender,sep="")]] <- temp
+    }
+    OUT@input[[i]] <- c(OUT@input[[i]],lFg_fmi)
+    OUT@input[[i]]$d_i_G1 <- ldg_fmi$d_i_G1
+    OUT@input[[i]]$d_i_G2 <- ldg_fmi$d_i_G2
+    OUT@input[[i]]$N_it0 <- as.double(NA) ; attributes(OUT@input[[i]]$N_it0)$DimCst <- as.integer(c(0,0,0,0))
+    OUT@input[[i]]$N_i0t <- as.double(NA) ; attributes(OUT@input[[i]]$N_i0t)$DimCst <- as.integer(c(0,0,0,0))
+    OUT@input[[i]]$F_i <- as.double(NA) ; attributes(OUT@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,0,0))
+    OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
+  }
 }
 
 return(OUT)

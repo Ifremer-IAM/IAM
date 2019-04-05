@@ -34,7 +34,8 @@ setClass("iamInput",
                     t_init=double(),
                     NbSteps=integer(),
                    	times=integer(),
-                    Q=integer()),
+                    Q=integer(),
+		                S =integer()),
 		historical=list(),
 		input=list(),
 		scenario=list(),
@@ -58,78 +59,112 @@ val.stockInput <- function(object){
 
 }
 
-setClass("stockInput",
-	representation(
-		stock="character",
-		input="list"
-	),
-	prototype(
-		stock="My stock",
-		input=list(
-		  #modalités
-		  modI = NA,
-		  modL = NA,
-		  modC = NA,
-		  #BIO
-		  icat	= NA,     #Clé Catégories commerciales/âges	
-      alk	= NA,       #Clé tailles-âges (non temporelle pour le moment, et non spatialisée)	
-      fm = NA,        #proportion par métier des valeurs de ventilation pour chaque flottille (par espèce)
-      mm = NA,        #matrice de redéfinition du niveau métier entre le module bio/marché et le module éco (f_m.bio_e -> m.éco) 
-      M_i	= NA,	      #Mortalité naturelle
-      mat_i = NA,     #Ogive de maturité	
-      wStock_i	= NA, #Poids individuels moyens dans le stock (kg)
-      wL_i	= NA,     #Poids individuels moyens dans les débarquements (kg)	
-      wD_i	= NA,     #Poids individuels moyens dans les rejets (kg)	
-      N_it0	= NA,     #Effectifs population aux âges à l'instant initial 	
-      N_i0t	= NA,     #Effectifs population à l'âge 0
-      #Ni0_S1	= NA, Ni0_S2	= NA, Ni0_S3	= NA, Ni0_S4	= NA,   #effectifs population à l'âge 0 pour chaque morph (ie saison)
-      F_i = NA,	      #Mortalité par pêche aux âges
-      F_fmi	= NA,	    #Mortalité par pêche aux âges ventilée
-       #mortalité par pêche aux âges pour chaque saison et chaque morph
-      #Fi_S1M1 = NA, Fi_S1M2 = NA, Fi_S1M3 = NA, Fi_S1M4 = NA, Fi_S2M1 = NA, Fi_S2M2 = NA, Fi_S2M3 = NA, Fi_S2M4 = NA,
-      #Fi_S3M1 = NA, Fi_S3M2 = NA, Fi_S3M3 = NA, Fi_S3M4 = NA, Fi_S4M1 = NA, Fi_S4M2 = NA, Fi_S4M3 = NA, Fi_S4M4 = NA,
-       #mortalité par pêche flottille-métier-âges pour chaque saison et chaque morph
-      #Ffmi_S1M1 = NA, Ffmi_S1M2 = NA, Ffmi_S1M3 = NA, Ffmi_S1M4 = NA, Ffmi_S2M1 = NA, Ffmi_S2M2 = NA, Ffmi_S2M3 = NA, Ffmi_S2M4 = NA,
-      #Ffmi_S3M1 = NA, Ffmi_S3M2 = NA, Ffmi_S3M3 = NA, Ffmi_S3M4 = NA, Ffmi_S4M1 = NA, Ffmi_S4M2 = NA, Ffmi_S4M3 = NA, Ffmi_S4M4 = NA,
-       #mortalité par pêche "autres" aux âges pour chaque saison et chaque morph
-      #Fothi_S1M1 = NA, Fothi_S1M2 = NA, Fothi_S1M3 = NA, Fothi_S1M4 = NA, Fothi_S2M1 = NA, Fothi_S2M2 = NA, Fothi_S2M3 = NA, Fothi_S2M4 = NA,
-      #Fothi_S3M1 = NA, Fothi_S3M2 = NA, Fothi_S3M3 = NA, Fothi_S3M4 = NA, Fothi_S4M1 = NA, Fothi_S4M2 = NA, Fothi_S4M3 = NA, Fothi_S4M4 = NA,
-      B_i	= NA,       #Biomasse aux âges (t)	
-      Y_mi = NA,      #Capture totale par métier et par a/l en poids pour ventilation de la mortalité par pêche	(t)
-      C_mi = NA,      #Capture totale par métier et par a/l en nombres pour ventilation de la mortalité par pêche	
-      Y_i = NA,       #Capture totale par a/l en poids pour ventilation de la mortalité par pêche	(t)
-      C_i = NA,       #Capture totale par a/l en nombres pour ventilation de la mortalité par pêche	
-      d_i= NA,        #Proportion des captures totales rejetées "flottilles modélisées"
-      doth_i= NA,     #Proportion des captures totales rejetées "autres flottilles"
-      dd1_f_m_e = NA, #taux de rejets exemption en % de la capture totale de l'espèce
-      dd2_f_m_e = NA, #taux de rejets exemption en % de la capture totale
-      sr = NA,        #Taux de survie des rejets
-#      SelRef = NA,	  #Facteur de sélectivité de référence (PSo)
-      r = NA,         #SPiCT : Intrinsic growth rate : growth, recruitment, natural mortality
-      K = NA,         #SPiCT : Carrying capacity (or equilibrium biomass or virgin stock biomass)
-      n = NA,         #SPiCT : Parameter determining the shape of the production curve
-      sigmaF = NA,    #SPiCT : Standard deviation of F
-      sigmaB = NA,    #SPiCT : Standard deviation of B
-      P_fmce = NA,    #Prix moyen par catégorie (euros)
-      Pst_e = NA,     #Prix farine
-      OD_e = NA,      #obligation de débarquement ? (oui(1)/non(0))
-      theta_e = NA,   #multiplicateur de prix pour les rejets débarqués (0<=...<=1)
-      alpha_fmce = NA,     #Coefficient modèle de prix	
-      beta_fmce = NA,      #Coefficient modèle de prix	
-      gamma_fmce = NA,     #Coefficient modèle de prix
-      TAC = NA,
-      Fbar = NA,
-      FmaxTarget = NA,
-      #ACTIVITE
-      Lref_f_e = NA,  #Quantité moyenne débarquée par navire d'une flottille par an en tonnes par espèce
-      Lref_f_m_e = NA,#Quantité moyenne débarquée par navire d'une flottille-métier par an en tonnes par espèce
-      GVLref_f_e = NA,	  #Valeur moyenne débarquée par navire d'une flottille par an en milliers d'euro par espèce
-      GVLref_f_m_e = NA 	#Valeur moyenne débarquée par navire d'une flottille-métier par an en milliers d'euro par espèce
-    )
-  ),
-	validity=val.stockInput
-)
 
+setClass("stockInput",
+         representation(
+           stock="character",
+           input="list"
+         ),
+         prototype(
+           stock="My stock",
+           input=list(
+             #modalités
+             modI = NA,
+             modL = NA,
+             modC = NA,
+             #BIO
+             icat	= NA,     #Clé Catégories commerciales/âges	
+             alk	= NA,       #Clé tailles-âges (non temporelle pour le moment, et non spatialisée)	
+             fm = NA,        #proportion par métier des valeurs de ventilation pour chaque flottille (par espèce)
+             mm = NA,        #matrice de redéfinition du niveau métier entre le module bio/marché et le module éco (f_m.bio_e -> m.éco) 
+             M_i	= NA,
+             M_i_G1	= NA,
+             M_i_G2	= NA,#Mortalité naturelle
+             mat_i = NA,
+             mat_i_G1 = NA,
+             mat_i_G2 = NA,#Ogive de maturité	
+             wStock_i	= NA, 
+             wStock_i_G1	= NA, 
+             wStock_i_G2	= NA,#Poids individuels moyens dans le stock (kg)
+             wL_i	= NA,
+             wL_i_G1	= NA,
+             wL_i_G2	= NA,#Poids individuels moyens dans les débarquements (kg)	
+             wD_i	= NA, 
+             wD_i_G1	= NA, 
+             wD_i_G2	= NA,#Poids individuels moyens dans les rejets (kg)	
+             N_it0	= NA,
+             N_it0_G1	= NA,
+             N_it0_G2	= NA,#Effectifs population aux âges à l'instant initial 	
+             N_i0t	= NA,
+             N_i0t_G1	= NA,
+             N_i0t_G2	= NA,#Effectifs population à l'âge 0
+             #Ni0_S1	= NA, Ni0_S2	= NA, Ni0_S3	= NA, Ni0_S4	= NA,   #effectifs population à l'âge 0 pour chaque morph (ie saison)
+             F_i = NA,	  
+             F_i_G1 = NA,	  
+             F_i_G2 = NA,#Mortalité par pêche aux âges
+             F_fmi	= NA,
+             #F_fmi_G1	= NA,
+             #F_fmi_G2	= NA,#Mortalité par pêche aux âges ventilée
+             #mortalité par pêche aux âges pour chaque saison et chaque morph
+             #Fi_S1M1 = NA, Fi_S1M2 = NA, Fi_S1M3 = NA, Fi_S1M4 = NA, Fi_S2M1 = NA, Fi_S2M2 = NA, Fi_S2M3 = NA, Fi_S2M4 = NA,
+             #Fi_S3M1 = NA, Fi_S3M2 = NA, Fi_S3M3 = NA, Fi_S3M4 = NA, Fi_S4M1 = NA, Fi_S4M2 = NA, Fi_S4M3 = NA, Fi_S4M4 = NA,
+             #mortalité par pêche flottille-métier-âges pour chaque saison et chaque morph
+             #Ffmi_S1M1 = NA, Ffmi_S1M2 = NA, Ffmi_S1M3 = NA, Ffmi_S1M4 = NA, Ffmi_S2M1 = NA, Ffmi_S2M2 = NA, Ffmi_S2M3 = NA, Ffmi_S2M4 = NA,
+             #Ffmi_S3M1 = NA, Ffmi_S3M2 = NA, Ffmi_S3M3 = NA, Ffmi_S3M4 = NA, Ffmi_S4M1 = NA, Ffmi_S4M2 = NA, Ffmi_S4M3 = NA, Ffmi_S4M4 = NA,
+             #mortalité par pêche "autres" aux âges pour chaque saison et chaque morph
+             #Fothi_S1M1 = NA, Fothi_S1M2 = NA, Fothi_S1M3 = NA, Fothi_S1M4 = NA, Fothi_S2M1 = NA, Fothi_S2M2 = NA, Fothi_S2M3 = NA, Fothi_S2M4 = NA,
+             #Fothi_S3M1 = NA, Fothi_S3M2 = NA, Fothi_S3M3 = NA, Fothi_S3M4 = NA, Fothi_S4M1 = NA, Fothi_S4M2 = NA, Fothi_S4M3 = NA, Fothi_S4M4 = NA,
+             B_i	= NA, 
+             B_i_G1	= NA, 
+             B_i_G2	= NA, #Biomasse aux âges (t)	
+             Y_mi = NA,
+             Y_mi_G1 = NA,
+             Y_mi_G2 = NA,#Capture totale par métier et par a/l en poids pour ventilation de la mortalité par pêche	(t)
+             C_mi = NA,
+             C_mi_G1 = NA,
+             C_mi_G2 = NA,#Capture totale par métier et par a/l en nombres pour ventilation de la mortalité par pêche	
+             Y_i = NA,
+             Y_i_G1 = NA,
+             Y_i_G2 = NA,#Capture totale par a/l en poids pour ventilation de la mortalité par pêche	(t)
+             C_i = NA, 
+             C_i_G1 = NA, 
+             C_i_G2 = NA,#Capture totale par a/l en nombres pour ventilation de la mortalité par pêche	
+             d_i= NA,        #Proportion des captures totales rejetées "flottilles modélisées"
+             d_i_G1=NA,
+             d_i_G2=NA,
+             doth_i= NA,     #Proportion des captures totales rejetées "autres flottilles"
+             doth_i_G1= NA,
+             doth_i_G2= NA,
+             #d_fmi_G1 = NA,
+             #d_fmi_G2 = NA,
+             dd1_f_m_e = NA, #taux de rejets exemption en % de la capture totale de l'espèce
+             dd2_f_m_e = NA, #taux de rejets exemption en % de la capture totale
+             sr = NA,        #Taux de survie des rejets
+             #      SelRef = NA,	  #Facteur de sélectivité de référence (PSo)
+             r = NA,         #SPiCT : Intrinsic growth rate : growth, recruitment, natural mortality
+             K = NA,         #SPiCT : Carrying capacity (or equilibrium biomass or virgin stock biomass)
+             n = NA,         #SPiCT : Parameter determining the shape of the production curve
+             sigmaF = NA,    #SPiCT : Standard deviation of F
+             sigmaB = NA,    #SPiCT : Standard deviation of B
+             P_fmce = NA,    #Prix moyen par catégorie (euros)
+             Pst_e = NA,     #Prix farine
+             OD_e = NA,      #obligation de débarquement ? (oui(1)/non(0))
+             theta_e = NA,   #multiplicateur de prix pour les rejets débarqués (0<=...<=1)
+             alpha_fmce = NA,     #Coefficient modèle de prix	
+             beta_fmce = NA,      #Coefficient modèle de prix	
+             gamma_fmce = NA,     #Coefficient modèle de prix
+             TAC = NA,
+             Fbar = NA,
+             FmaxTarget = NA,
+             #ACTIVITE
+             Lref_f_e = NA,  #Quantité moyenne débarquée par navire d'une flottille par an en tonnes par espèce
+             Lref_f_m_e = NA,#Quantité moyenne débarquée par navire d'une flottille-métier par an en tonnes par espèce
+             GVLref_f_e = NA,	  #Valeur moyenne débarquée par navire d'une flottille par an en milliers d'euro par espèce
+             GVLref_f_m_e = NA 	#Valeur moyenne débarquée par navire d'une flottille-métier par an en milliers d'euro par espèce
+           )
+         ),
+         validity=val.stockInput
+)
 
 #====================================================================
 # Définition de l'objet StaticStockInput et test de validité (paramètres requis renseignés,...)

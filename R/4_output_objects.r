@@ -84,6 +84,24 @@ setClass("iamOutput",
                     N_S2M1= list(),N_S2M2= list(),N_S2M3= list(),N_S2M4= list(),
                     N_S3M1= list(),N_S3M2= list(),N_S3M3= list(),N_S3M4= list(),
                     N_S4M1= list(),N_S4M2= list(),N_S4M3= list(),N_S4M4= list(),
+		                F_G1 = list(), 
+		                F_G2 = list(),#mortalité par pêche non corrigée (-> captures)
+		                Fr_G1 = list(), 
+		                Fr_G2 = list(),#mortalité par pêche corrigée (-> morts)
+		                Fothi_G1 = list(),
+		                Fothi_G2 = list(),#mortalité "autres flottilles, autres métiers"
+		                Z_G1 = list(),   
+		                Z_G2 = list(), #mortalité totale (F+M)
+		                N_G1 = list(),   
+		                N_G2 = list(),#effectifs totaux en nombre
+		                B_G1 = list(), 
+		                B_G2 = list(), #biomasse
+		                Y_G1 = list(),
+		                Y_G2 = list(),#captures totales en poids pour les flottilles et métiers modélisés (composante âge)
+		                D_G1 = list(), 
+		                D_G2 = list(),#rejets totaux en poids pour les flottilles et métiers modélisés (composante âge)
+		                Li_G1 = list(),
+		                Li_G2 = list(),#débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés  (composante âge)
                     DD_efmi= list(),
                     DD_efmc= list(),
                     LD_efmi= list(),
@@ -94,7 +112,9 @@ setClass("iamOutput",
                     statLDor_efm= list(),
                     oqD_ef= list(),
                     oqD_e= list(),
-                    oqDstat_ef= list()),
+                    oqDstat_ef= list(),
+                    TACtot = list(),
+                    TACbyF = list()),
     output = list(typeGest = integer(),                #type de scénario de gestion appliqué
                   nbv_f = numeric(),                   #Nb de navires par flottille
                   effort1_f = numeric(),               #1ère composante d'effort moyen par an et par flottille

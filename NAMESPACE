@@ -1,6 +1,6 @@
 import("methods", "utils", "stats", "grDevices", "lattice", "tcltk", "tcltk2", "abind", "MASS", "openxlsx")
 
-useDynLib(IAM)
+useDynLib(IAM65)
 
 exportClasses(
 	"iamInput",
