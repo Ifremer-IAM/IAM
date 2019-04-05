@@ -56,6 +56,15 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
         out_L_efmct,//débarquements en poids par catégories(t)
         out_L_eit,//débarquements en poids par catégories(t) pour le codage métier eco
 
+        out_F_fmi_G1,  //mortalité "captures" par pêche (par espèce)
+        out_F_fmi_G2,
+        out_Fr_fmi_G1,  //mortalité totale (corrigée de la survie) par pêche (par espèce)
+        out_Fr_fmi_G2,
+        out_Z_eit_G1,  //coefficient de mortalité totale
+        out_Z_eit_G2,
+        out_N_eit_G1,  //effectifs en nombre
+        out_N_eit_G2,
+
         out_oqD_eft,//rejets over-quotas par flottille (espèces dynamiques)
         out_oqD_et,//rejets over-quotas total (espèces dynamiques)
 
@@ -102,7 +111,7 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
 //    VARIABLES  ---------------
 
 //parties des inputs
-SEXP    FList, sppList, sppListStat, fleetList, metierList, metierListEco, namDC, t_init, times, Q,
+SEXP    FList, sppList, sppListStat, fleetList, metierList, metierListEco, namDC, t_init, times, Q, S,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables intermédiaires par espèces
         fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList;
@@ -114,7 +123,7 @@ int     nbT, nbF, nbM, nbMe, nbE, nbEstat, //dimensions
         bhv_active /*application du module report d'effort*/, type, boot, nbBoot, ecodcf, typeGest, //special request ICES 2013 : pistage des règles de scénario intégré dans la variable out_typeGest
         var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
         IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'espèces et de flottilles considérés*/, corVarTACnby_CPP, Blim_trigger, maxIter, t_stop,
-        *SRInd, *EcoIndCopy, *Qvec, *recType1, *recType2, *recType3; //indicateur conditionnant l'utilisation d'un recrutement aléatoire défini par la méthode implémentée RecAlea
+        *SRInd, *EcoIndCopy, *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement aléatoire défini par la méthode implémentée RecAlea
 
 
 double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de modèle de prix
@@ -308,9 +317,11 @@ PROTECT(metierListEco = getListElement(listSpec, "MetierEco"));
 PROTECT(namDC = getListElement(listSpec, "Ages"));
 PROTECT(t_init = getListElement(listSpec, "t_init"));
 PROTECT(times = getListElement(listSpec, "times"));
-PROTECT(Q = getListElement(listSpec, "Q")); //24
+PROTECT(Q = getListElement(listSpec, "Q"));
+PROTECT(S = getListElement(listSpec, "S")); //25
 
 Qvec = INTEGER(Q);
+Svec = INTEGER(S);
 
 Zoptim = effortIni;
 FOTHoptim = effortIni;
@@ -465,6 +476,12 @@ PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
 PROTECT(out_F_fmi = allocVector(VECSXP, nbE));
 PROTECT(out_Fr_fmi = allocVector(VECSXP, nbE));
 PROTECT(out_Z_eit = allocVector(VECSXP, nbE));
+PROTECT(out_F_fmi_G1 = allocVector(VECSXP, nbE));
+PROTECT(out_F_fmi_G2 = allocVector(VECSXP, nbE));
+PROTECT(out_Fr_fmi_G1 = allocVector(VECSXP, nbE));
+PROTECT(out_Fr_fmi_G2 = allocVector(VECSXP, nbE));
+PROTECT(out_Z_eit_G1 = allocVector(VECSXP, nbE));
+PROTECT(out_Z_eit_G2 = allocVector(VECSXP, nbE));
 PROTECT(out_SRmod = allocVector(VECSXP, nbE));
 PROTECT(out_Ystat = allocVector(VECSXP, nbEstat));//PROTECT(out_N_eitQ = allocVector(VECSXP, nbE));
 PROTECT(out_Lstat = allocVector(VECSXP, nbEstat));//PROTECT(out_F_itQ = allocVector(VECSXP, nbE));
@@ -473,6 +490,8 @@ PROTECT(out_PQuot_et = allocVector(VECSXP, nbE));
 
 PROTECT(out_Fbar_et = allocVector(VECSXP, nbE));
 PROTECT(out_N_eit = allocVector(VECSXP, nbE));
+PROTECT(out_N_eit_G1 = allocVector(VECSXP, nbE));
+PROTECT(out_N_eit_G2 = allocVector(VECSXP, nbE));
 PROTECT(out_B_et = allocVector(VECSXP, nbE));
 PROTECT(out_SSB_et = allocVector(VECSXP, nbE));
 PROTECT(out_C_efmit = allocVector(VECSXP, nbE));
@@ -15995,25 +16014,42 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 105, object->TAC);
         SET_VECTOR_ELT(output, 106, object->TACbyF);
 
+        //Ajout indicateurs sex-based
+        PROTECT(out_Foth_G1 = allocVector(VECSXP, object->nbE));
+        setAttrib(out_Foth_G1, R_NamesSymbol, object->sppList);
+        if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G1, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 224));}
+        SET_VECTOR_ELT(output, 107, out_Foth_G1);
+        PROTECT(out_Foth_G2 = allocVector(VECSXP, object->nbE));
+        setAttrib(out_Foth_G2, R_NamesSymbol, object->sppList);
+        if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G2, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 225));}
+        SET_VECTOR_ELT(output, 108, out_Foth_G2);
+        SET_VECTOR_ELT(output, 109, object->out_F_fmi_G1);
+        SET_VECTOR_ELT(output, 110, object->out_F_fmi_G1);
+        SET_VECTOR_ELT(output, 111, object->out_Z_eit_G1);
+        SET_VECTOR_ELT(output, 112, object->out_Z_eit_G2);
+        SET_VECTOR_ELT(output, 113, object->out_N_eit_G1);
+        SET_VECTOR_ELT(output, 114, object->out_N_eit_G2);
+        SET_VECTOR_ELT(output, 115, object->out_Fr_fmi_G1);
+        SET_VECTOR_ELT(output, 116, object->out_Fr_fmi_G2);
 
 //PrintValue(object->reconcilSPP);
         //----------------------------------------------------------------------------------------------------------
 
         //on nomme les éléments de output
-        const char *namesOut[107] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
+        const char *namesOut[117] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
                                     "F_S1M1","F_S1M2","F_S1M3","F_S1M4","F_S2M1","F_S2M2","F_S2M3","F_S2M4","F_S3M1","F_S3M2","F_S3M3","F_S3M4","F_S4M1","F_S4M2","F_S4M3","F_S4M4",
                                     "Fr_S1M1","Fr_S1M2","Fr_S1M3","Fr_S1M4","Fr_S2M1","Fr_S2M2","Fr_S2M3","Fr_S2M4","Fr_S3M1","Fr_S3M2","Fr_S3M3","Fr_S3M4","Fr_S4M1","Fr_S4M2","Fr_S4M3","Fr_S4M4",
                                     "Z_S1M1","Z_S1M2","Z_S1M3","Z_S1M4","Z_S2M1","Z_S2M2","Z_S2M3","Z_S2M4","Z_S3M1","Z_S3M2","Z_S3M3","Z_S3M4","Z_S4M1","Z_S4M2","Z_S4M3","Z_S4M4",
                                     "N_S1M1","N_S1M2","N_S1M3","N_S1M4","N_S2M1","N_S2M2","N_S2M3","N_S2M4","N_S3M1","N_S3M2","N_S3M3","N_S3M4","N_S4M1","N_S4M2","N_S4M3","N_S4M4",
                                     "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm",
-                                    "oqD_ef","oqD_e","oqDstat_ef","reconcilSPP","TACtot","TACbyF"};
-        PROTECT(out_names = allocVector(STRSXP, 107));
+                                    "oqD_ef","oqD_e","oqDstat_ef","reconcilSPP","TACtot","TACbyF","Fothi_G1","Fothi_G2","F_G1","F_G2","Z_G1","Z_G2","N_G1","N_G2","Fr_G1","Fr_G2"};
+        PROTECT(out_names = allocVector(STRSXP, 117));
 
-        for(int ct = 0; ct < 107; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 117; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 
-        UNPROTECT(3);
+        UNPROTECT(5);
         return(output);
         delete object;
 

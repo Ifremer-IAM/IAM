@@ -94,14 +94,6 @@ setClass("iamOutput",
 		                Z_G2 = list(), #mortalité totale (F+M)
 		                N_G1 = list(),   
 		                N_G2 = list(),#effectifs totaux en nombre
-		                B_G1 = list(), 
-		                B_G2 = list(), #biomasse
-		                Y_G1 = list(),
-		                Y_G2 = list(),#captures totales en poids pour les flottilles et métiers modélisés (composante âge)
-		                D_G1 = list(), 
-		                D_G2 = list(),#rejets totaux en poids pour les flottilles et métiers modélisés (composante âge)
-		                Li_G1 = list(),
-		                Li_G2 = list(),#débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés  (composante âge)
                     DD_efmi= list(),
                     DD_efmc= list(),
                     LD_efmi= list(),
