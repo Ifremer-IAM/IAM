@@ -12524,11 +12524,11 @@ int nbEtarg = length(getAttrib(inpFtarg, R_NamesSymbol));
 
 int denom=0, denom2=0;
 
-double *r_N_eit_S1M1=&NA_REAL, *r_N_eit_S2M2=&NA_REAL, *r_N_eit_S3M3=&NA_REAL, *r_N_eit_S4M4=&NA_REAL, *r_N_e0t=&NA_REAL, *rans_N_eit=&NA_REAL,
-       *r_N_e0t_S1M1=&NA_REAL, *r_N_e0t_S2M2=&NA_REAL, *r_N_e0t_S3M3=&NA_REAL, *r_N_e0t_S4M4=&NA_REAL, *recValues=&NA_REAL, *LTOT=&NA_REAL,
+double *r_N_eit_S1M1=&NA_REAL, *r_N_eit_S2M2=&NA_REAL, *r_N_eit_S3M3=&NA_REAL, *r_N_eit_S4M4=&NA_REAL, *rans_N_eit=&NA_REAL, *r_N_eit_G1=&NA_REAL, *r_N_eit_G2=&NA_REAL,
+       *r_N_e0t_S1M1=&NA_REAL, *r_N_e0t_S2M2=&NA_REAL, *r_N_e0t_S3M3=&NA_REAL, *r_N_e0t_S4M4=&NA_REAL, *r_N_e0t=&NA_REAL, *r_N_e0t_G1=&NA_REAL, *r_N_e0t_G2=&NA_REAL, *recValues=&NA_REAL, *LTOT=&NA_REAL,
        *TAC_byFleet=&NA_REAL, *TAC_glob=&NA_REAL, *r_W_Ftarg=&NA_REAL;
 
-double *Fothi2=&NA_REAL;
+double *Fothi2=&NA_REAL, *Fothi2_G1=&NA_REAL, *Fothi2_G2=&NA_REAL;
 
 double *Fothi2_S1M1=&NA_REAL,*Fothi2_S1M2=&NA_REAL,*Fothi2_S1M3=&NA_REAL,*Fothi2_S1M4=&NA_REAL,
        *Fothi2_S2M1=&NA_REAL,*Fothi2_S2M2=&NA_REAL,*Fothi2_S2M3=&NA_REAL,*Fothi2_S2M4=&NA_REAL,
@@ -12543,13 +12543,13 @@ double *Fothi2_S1M1=&NA_REAL,*Fothi2_S1M2=&NA_REAL,*Fothi2_S1M3=&NA_REAL,*Fothi2
        *FDWTothi2_S3M1=&NA_REAL,*FDWTothi2_S3M2=&NA_REAL,*FDWTothi2_S3M3=&NA_REAL,*FDWTothi2_S3M4=&NA_REAL,
        *FDWTothi2_S4M1=&NA_REAL,*FDWTothi2_S4M2=&NA_REAL,*FDWTothi2_S4M3=&NA_REAL,*FDWTothi2_S4M4=&NA_REAL;
 
-double newRec=0.0, newRec_Q1=0.0, newRec_Q2=0.0, newRec_Q3=0.0, newRec_Q4=0.0;
+double newRec=0.0, newRec_Q1=0.0, newRec_Q2=0.0, newRec_Q3=0.0, newRec_Q4=0.0, newRec_G1=0.0, newRec_G2=0.0;
 //Rprintf("%i",nbEtarg);
 
 
 for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 //Rprintf("A3\n");
-    SEXP namVarTarg, elmt, v_N_e0t, v_N_e0t_S1M1, v_N_e0t_S2M2, v_N_e0t_S3M3, v_N_e0t_S4M4, v_MeanRec_Ftarg, v_W_Ftarg, v_out_L_eit;
+    SEXP namVarTarg, elmt, v_N_e0t, v_N_e0t_S1M1, v_N_e0t_S2M2, v_N_e0t_S3M3, v_N_e0t_S4M4, v_N_e0t_G1, v_N_e0t_G2, v_MeanRec_Ftarg, v_W_Ftarg, v_out_L_eit;
     PROTECT(namVarTarg=STRING_ELT(getAttrib(inpFtarg, R_NamesSymbol),intEspTarg));
 
     //calcul du ratio Ftarg/Fbar
@@ -12586,7 +12586,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
             int nbi = length(getListElement(getListElement(list, CHAR(namVarTarg)), "modI"));
 
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) {
+            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
 
                     Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
                     for (int ag = 0; ag < nbi; ag++) {
@@ -12595,7 +12595,17 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
                             fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
                     }
 
-            } else {
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1) {//Age and sex-based
+
+                    Fothi2_G1 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 224));
+                    Fothi2_G2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 225));
+                    for (int ag = 0; ag < nbi; ag++) {
+                            fichier << "Avant T" << ind_t << "; Fothi_G1 age " << ag <<"=" << Fothi2_G1[ag + IND_T*nbi] << "/ Fothi_G2 age " << ag <<"=" << Fothi2_G2[ag + IND_T*nbi] << endl;
+                            Fothi2_G1[ag + IND_T*nbi] = Fothi2_G1[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
+                            Fothi2_G2[ag + IND_T*nbi] = Fothi2_G2[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
+                            fichier << "Apres T" << ind_t << "; Fothi_G1 age" << ag << "=" << Fothi2_G1[ag + IND_T*nbi] << "/ Fothi_G2 age " << ag <<"=" << Fothi2_G2[ag + IND_T*nbi] << endl;
+                    }
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
 
                     Fothi2_S1M1 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 116));
                     Fothi2_S1M2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 117));
@@ -12713,7 +12723,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
         denom2 = denom;
 
         if (!ISNA(denom)){
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) {
+            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
 //Rprintf("A6\n");
               newRec = 0.0;
               rans_N_eit = REAL(getListElement(out_N_eit,CHAR(namVarTarg)));
@@ -12729,9 +12739,33 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
               rans_N_eit[IND_T*nbI] = newRec;
               UNPROTECT(1);
 //Rprintf("A7\n");
-Rprintf("MeanRec %f \n",rans_N_eit[IND_T*nbI]);
-fichier << "MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
-            } else {
+fichier << "Type 1 (moyenne) MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1) {//Ageand sex-based
+                r_N_eit_G1 = REAL(getListElement(out_N_eit_G1,CHAR(namVarTarg)));
+                r_N_eit_G2 = REAL(getListElement(out_N_eit_G2,CHAR(namVarTarg)));
+                newRec_G1 = 0.0; newRec_G2 = 0.0;
+
+                for (int index=1; index<=denom; index++) {if ((IND_T-index)<0) {
+                                                           denom2 = denom2 - 1 ;
+                                                         } else {
+                                                           newRec_G1 = newRec_G1 + r_N_eit_G1[(IND_T-index)*nbI] ;
+                                                           newRec_G2 = newRec_G2 + r_N_eit_G2[(IND_T-index)*nbI] ;
+                                                         }}
+                newRec_G1 = newRec_G1 / denom2 ;
+                newRec_G2 = newRec_G2 / denom2 ;
+
+                PROTECT(v_N_e0t_G1 = getListElement(elmt, "Ni0t_G1"));
+                PROTECT(v_N_e0t_G2 = getListElement(elmt, "Ni0t_G2"));
+
+                r_N_e0t_G1 = REAL(v_N_e0t_G1);
+                r_N_e0t_G2 = REAL(v_N_e0t_G2);
+
+                r_N_e0t_G1[0] = newRec_G1;
+                r_N_e0t_G2[0] = newRec_G2;
+
+                UNPROTECT(2);
+fichier << "Type 1 (moyenne) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: " << r_N_e0t_G2[0]<< endl;
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
 //Rprintf("A8\n");
               //Quarter 1
                 r_N_eit_S1M1 = REAL(getListElement(out_N_eit_S1M1,CHAR(namVarTarg)));
@@ -12780,14 +12814,31 @@ fichier << "MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
 //Rprintf("A11\n");
         recValues = REAL(v_MeanRec_Ftarg);
 //Rprintf("A110\n");
-        if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) {
+        if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
 //Rprintf("A12\n");
               PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
               r_N_e0t = REAL(v_N_e0t);
               r_N_e0t[IND_T] = recValues[IND_T];
               UNPROTECT(1);
 //Rprintf("A13\n");
-        } else {
+fichier << "Type 2 (historique) MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
+
+        } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1){//age and sex-based
+//Rprintf("A14\n");
+                PROTECT(v_N_e0t_G1 = getListElement(elmt, "Ni0t_G1"));
+                PROTECT(v_N_e0t_G2 = getListElement(elmt, "Ni0t_G2"));
+
+                r_N_e0t_G1 = REAL(v_N_e0t_G1);
+                r_N_e0t_G2 = REAL(v_N_e0t_G2);
+
+                r_N_e0t_G1[0] = recValues[IND_T];
+                r_N_e0t_G2[0] = recValues[IND_T];
+//Rprintf("A15\n");
+fichier << "Type 2 (historique) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: " << r_N_e0t_G2[0]<< endl;
+
+               UNPROTECT(2);
+
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
 //Rprintf("A14\n");
                 PROTECT(v_N_e0t_S1M1 = getListElement(elmt, "Ni0_S1M1"));
                 PROTECT(v_N_e0t_S2M2 = getListElement(elmt, "Ni0_S2M2"));
@@ -12859,11 +12910,17 @@ fichier << "MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
 
         //et re-correction des mortalités autres pour les espèces dynamiques XSA, Spict et SS3
 
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) {
+            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {
 
                     for (int ag = 0; ag < nbi; ag++) Fothi2[ag + IND_T*nbi] = Fothi2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
 
-            } else {
+            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1){
+                for (int ag = 0; ag < nbi; ag++) {
+                        Fothi2_G1[ag + IND_T*nbi] = Fothi2_G1[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
+                        Fothi2_G2[ag + IND_T*nbi] = Fothi2_G2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
+                }
+
+                } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){
 
                     for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + IND_T*nbi] = Fothi2_S1M1[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
                     for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + IND_T*nbi] = Fothi2_S1M2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
@@ -15892,7 +15949,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                                             parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
 
 
-        SEXP output, out_names, out_Foth;
+        SEXP output, out_names, out_Foth, out_Foth_G1,out_Foth_G2;
         PROTECT(output = allocVector(VECSXP, 107)); //11/04/18 rajout de l'élément reconcilSPP
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
