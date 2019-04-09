@@ -343,7 +343,7 @@ ecodcf = INTEGER(EcoDcf)[0];
 EcoIndCopy = INTEGER(EcoInd);
 drCopy = REAL(dr)[0];
 
-int conform = 0;
+//int conform = 0;
 typeGest = 0;
 SEXP FList_copy, list_copy, eVar_copy, eStatVar_copy, fVar_copy;
 
@@ -441,7 +441,7 @@ PROTECT(ZtempList = getListElement(tacCTRL, "Ztemp"));
 
 SRInd = INTEGER(SRind);
 
-bool door = true;
+//bool door = true;
 
 //il faut initialiser 'eVar' dans lequel on intègrera toutes les variables intermédiaires à décliner par espèce
 SEXP eltE;
@@ -628,12 +628,12 @@ PROTECT(out_statLDst_efm = allocVector(VECSXP, nbEstat));
 PROTECT(out_statLDor_efm = allocVector(VECSXP, nbEstat));
 
 
-int *typegest = INTEGER(out_typeGest);
+//int *typegest = INTEGER(out_typeGest);
 double *mu_nbds_t = REAL(mu_nbds); for (int i=0; i<nbT; i++) mu_nbds_t[i] = 0.0; //initialisation
 double *mu_nbv_t = REAL(mu_nbv); for (int i=0; i<nbT; i++) mu_nbv_t[i] = 0.0;    //
 
-double *mpond_fm = REAL(m_fm);
-double *mpond_oth = REAL(m_oth);
+//double *mpond_fm = REAL(m_fm);
+//double *mpond_oth = REAL(m_oth);
 
 //on n'oublie pas de composer l'objet de sortie décrivant les variables 'nbv' et 'nbds'
 //SEXP NBVF, NBVFM, NBDSF, NBDSFM, dnmsF, dnmsFM, nmsEF;
@@ -1414,9 +1414,9 @@ PROTECT(Flist = getListElement(list, "Fleet"));
 if (fUpdate) {
 
 SEXP    elmt, dimEff,
-        dimCst, Dim, dimCst_Sr_e, dimCst_d_efi, dimCst_doth_ei, dimCst_F_efmi, intAge, //dimCst_Capt_emi, dimCst_Capt_ei,
-        v_Sr_e, v_d_efi, v_doth_ei, v_F_efmi = R_NilValue, v_F_efmi2 = R_NilValue, formatEff, dimCstEff, //rDim, v_Capt_emi, v_Capt_ei,
-        v_d_efi_G1, v_d_efi_G2, v_doth_ei_G1, v_doth_ei_G2,
+        dimCst, Dim, dimCst_Sr_e= R_NilValue, dimCst_d_efi= R_NilValue, dimCst_doth_ei= R_NilValue, dimCst_F_efmi= R_NilValue, intAge, //dimCst_Capt_emi, dimCst_Capt_ei,
+        v_Sr_e= R_NilValue, v_d_efi= R_NilValue, v_doth_ei= R_NilValue, v_F_efmi = R_NilValue, v_F_efmi2 = R_NilValue, formatEff, dimCstEff, //rDim, v_Capt_emi, v_Capt_ei,
+        v_d_efi_G1= R_NilValue, v_d_efi_G2= R_NilValue, v_doth_ei_G1= R_NilValue, v_doth_ei_G2= R_NilValue,
         v_F_efmi_G1 = R_NilValue, v_F_efmi_G2 = R_NilValue, v_F_efmi2_G1 = R_NilValue, v_F_efmi2_G2 = R_NilValue,
 
         v_F_efmi_S1M1 = R_NilValue, v_F_efmi_S1M2 = R_NilValue, v_F_efmi_S1M3 = R_NilValue, v_F_efmi_S1M4 = R_NilValue,
@@ -1538,8 +1538,11 @@ SEXP    elmt, dimEff,
 //        iniFDWTroth_i_S3M1 = R_NilValue, iniFDWTroth_i_S3M2 = R_NilValue, iniFDWTroth_i_S3M3 = R_NilValue, iniFDWTroth_i_S3M4 = R_NilValue,
 //        iniFDWTroth_i_S4M1 = R_NilValue, iniFDWTroth_i_S4M2 = R_NilValue, iniFDWTroth_i_S4M3 = R_NilValue, iniFDWTroth_i_S4M4 = R_NilValue,
 
-        v_nbNav_f, v_nbds_f, dim_nbNavCst, dim_nbdsCst, dim_Finput,// v_Finput, v_fm, v_ventilMoy_f, dim_fmCst, dim_ventilMoyCst,
-        fFACT1, fFACT2, fFACT3, fFACT4, fFACT5, fFACT6, Foth_i, Foth_i_G1, Foth_i_G2, Froth_i, Froth_i_G1, Froth_i_G2, dimI, dimIT, DimIT, fFACTsup1, fFACTsup2; //v_ventil2,
+        v_nbNav_f, v_nbds_f, dim_nbNavCst, dim_nbdsCst, dim_Finput = R_NilValue,// v_Finput, v_fm, v_ventilMoy_f, dim_fmCst, dim_ventilMoyCst,
+        fFACT1, fFACT2, fFACT3, fFACT4, fFACT5, fFACT6,
+        Foth_i = R_NilValue, Foth_i_G1 = R_NilValue, Foth_i_G2 = R_NilValue,
+        Froth_i = R_NilValue, Froth_i_G1 = R_NilValue, Froth_i_G2 = R_NilValue,
+        dimI, dimIT, DimIT, fFACTsup1, fFACTsup2; //v_ventil2,
 
 SEXP ans_11 = R_NilValue, ans_11l = R_NilValue, dimnames= R_NilValue, dimnamesIT= R_NilValue, rnames= R_NilValue,
      ans_11_G1 = R_NilValue,ans_11_G2 = R_NilValue, ans_11l_G1 = R_NilValue, ans_11l_G2 = R_NilValue;
@@ -1573,8 +1576,7 @@ PROTECT(effort = getListElement(Flist, "effort_f_m_tot"));
 PROTECT(dimEff = getAttrib(effort, install("DimCst")));
 
 int *dim_Sr_e, *dim_d_efi, *dim_doth_ei, *dim_F_efmi, *dimC, *dimE, *dimM, *dimEffort, *dimF, //*dim_Capt_emi, *dim_Capt_ei
-    *dimNav, *dimNbds,
-    *dim_d_efi_G1, *dim_d_efi_G2, *dim_doth_ei_G1, *dim_doth_ei_G2, *dim_F_efmi_G1, *dim_F_efmi_G2; //, *dim_fm, *dim_vMoy,*rdim;
+    *dimNav, *dimNbds; //, *dim_fm, *dim_vMoy,*rdim;
 int nbI;
 
 double *rans_11=&NA_REAL, *rans_11l=&NA_REAL, *r_Sr_e=&NA_REAL, *r_d_efi=&NA_REAL, *r_doth_ei=&NA_REAL, *r_F_efmi=&NA_REAL, *rEff=&NA_REAL, //*r_nbNav_f,  //*r_fm, *r_ventilMoy_f,
@@ -1646,7 +1648,7 @@ double *rans_11=&NA_REAL, *rans_11l=&NA_REAL, *r_Sr_e=&NA_REAL, *r_d_efi=&NA_REA
         *rans_FDWT_S3M1=&NA_REAL, *rans_FDWT_S3M2=&NA_REAL, *rans_FDWT_S3M3=&NA_REAL, *rans_FDWT_S3M4=&NA_REAL,
         *rans_FDWT_S4M1=&NA_REAL, *rans_FDWT_S4M2=&NA_REAL, *rans_FDWT_S4M3=&NA_REAL, *rans_FDWT_S4M4=&NA_REAL,
 
-        *r_nbds_f, *r_Foth_i, *r_Froth_i, *r_Foth_i_G1, *r_Foth_i_G2, *r_Froth_i_G1, *r_Froth_i_G2;
+        *r_nbds_f, *r_Foth_i=&NA_REAL, *r_Froth_i=&NA_REAL, *r_Foth_i_G1=&NA_REAL, *r_Foth_i_G2=&NA_REAL, *r_Froth_i_G1=&NA_REAL, *r_Froth_i_G2=&NA_REAL;
 
 //préparation de l'output
 if (ind_t==0) { Rprintf("Mort1\n");
@@ -1747,10 +1749,10 @@ Rprintf("Mort2\n");
 
                         PROTECT(dimCst_Sr_e = getAttrib(v_Sr_e, install("DimCst")));
 
-                        if(Qvec[e]==0 & Svec[e]==0){
+                        if((Qvec[e]==0) & (Svec[e]==0)){
                             PROTECT(dimCst_d_efi = getAttrib(v_d_efi, install("DimCst")));
                             PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
-                        } else if (Qvec[e]==0 & Svec[e]==1){
+                        } else if ((Qvec[e]==0) & (Svec[e]==1)){
                             PROTECT(dimCst_d_efi = getAttrib(v_d_efi_G1, install("DimCst")));
                             PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei_G1, install("DimCst")));
                         }
@@ -1760,7 +1762,7 @@ Rprintf("Mort2\n");
                     // 1ère étape : on ventile la mortalité par les captures si possible
                     //---------------------------------------------------------------------
 
-                    if (Qvec[e]==1 & Svec[e]==0) {
+                    if ((Qvec[e]==1) & (Svec[e]==0)) {
 Rprintf("Mort3.1\n");
                      PROTECT(v_F_efmi_S1M1 = getListElement(elmt, "Ffmi_S1M1"));
 
@@ -1876,12 +1878,12 @@ Rprintf("Mort3.1\n");
 
                      PROTECT(dim_Finput = getAttrib(v_F_efmi_S1M1, install("DimCst")));
 
-                    } else if (Qvec[e]==0 & Svec[e]==0){
+                    } else if ((Qvec[e]==0) & (Svec[e]==0)){
 Rprintf("Mort3.2\n");
                      PROTECT(v_F_efmi = getListElement(elmt, "F_fmi"));
                      PROTECT(dim_Finput = getAttrib(v_F_efmi, install("DimCst")));
 
-                    } else if (Qvec[e]==0 & Svec[e]==1){
+                    } else if ((Qvec[e]==0) & (Svec[e]==1)){
 Rprintf("Mort3.3\n");
                      PROTECT(v_F_efmi_G1 = getListElement(elmt, "F_fmi_G1"));
                      PROTECT(v_F_efmi_G2 = getListElement(elmt, "F_fmi_G2"));
@@ -1914,7 +1916,7 @@ Rprintf("Mort4\n");
 //Rprintf("Qvec[e] %i\n",Qvec[e]);
 
                     //on calcule la mortalité via la capturabilité
-                    if (Qvec[e]==1 & Svec[e]==0) {
+                    if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                     PROTECT(v_F_efmi2_S1M1 = calcCapturabilite(v_F_efmi_S1M1 , effort));
 
@@ -2114,11 +2116,11 @@ Rprintf("Mort4\n");
                      PROTECT(v_iniFDWT_efmi2_S4M3 = calcCapturabilite(v_iniFDWT_efmi_S4M3 , effort));
                      PROTECT(v_iniFDWT_efmi2_S4M4 = calcCapturabilite(v_iniFDWT_efmi_S4M4 , effort));    //### +48
 
-                    } else if(Qvec[e]==0 & Svec[e]==0){
+                    } else if((Qvec[e]==0) & (Svec[e]==0)){
 
                      PROTECT(v_F_efmi2 = calcCapturabilite(v_F_efmi , effort)); //PrintValue(v_F_efmi2);
 
-                    } else if(Qvec[e]==0 & Svec[e]==1){
+                    } else if((Qvec[e]==0) & (Svec[e]==1)){
 
                      PROTECT(v_F_efmi2_G1 = calcCapturabilite(v_F_efmi_G1 , effort));
                      PROTECT(v_F_efmi2_G2 = calcCapturabilite(v_F_efmi_G2 , effort));
@@ -2130,7 +2132,7 @@ Rprintf("Mort4\n");
 
                         dimE = INTEGER(dimEff);
 
-                        if (Qvec[e]==1) {
+                        if ((Qvec[e]==1) & (Svec[e]==0)) {
                             dimM = INTEGER(getAttrib(v_F_efmi2_S1M1, install("DimCst")));
                         } else {
                             dimM = INTEGER(getAttrib(v_F_efmi2, install("DimCst")));
@@ -2147,7 +2149,7 @@ Rprintf("Mort4\n");
                             PROTECT(formatEff = aggregObj(effort, dimCstEff));////PrintValue(formatEff);
                             rEff = REAL(formatEff);
 Rprintf("Mort5\n");
-                        if (Qvec[e]==1 & Svec[e]==0) {
+                        if ((Qvec[e]==1) & (Svec[e]==0)) {
 
 //                         r_F_efmi_S1M1 = REAL(v_F_efmi2_S1M1);
 //                         r_F_efmi_S1M2 = REAL(v_F_efmi2_S1M2);
@@ -2253,12 +2255,12 @@ Rprintf("Mort5\n");
 
                          PROTECT(dimCst_F_efmi = getAttrib(v_F_efmi2_S1M1, install("DimCst")));
 
-                        } else if (Qvec[e]==0 & Svec[e]==0){
+                        } else if ((Qvec[e]==0) & (Svec[e]==0)){
 
                          r_F_efmi = REAL(v_F_efmi2);
                          PROTECT(dimCst_F_efmi = getAttrib(v_F_efmi2, install("DimCst")));
 
-                        } else if (Qvec[e]==0 & Svec[e]==1){
+                        } else if ((Qvec[e]==0) & (Svec[e]==1)){
 
                          r_F_efmi_G1 = REAL(v_F_efmi2_G1);
                          r_F_efmi_G2 = REAL(v_F_efmi2_G2);
@@ -2325,7 +2327,7 @@ Rprintf("Mort7\n");
 Rprintf("Mort8\n");
                     if (ind_t==0) {
 
-                      if (Qvec[e]==1 & Svec[e]==0) {
+                      if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                         PROTECT(ans_11_S1M1 = NEW_NUMERIC(prod));
                         PROTECT(ans_11_S1M2 = NEW_NUMERIC(prod));
@@ -2531,7 +2533,7 @@ Rprintf("Mort8\n");
                         rans_FRWT_S4M3 = REAL(ans_FRWT_S4M3);
                         rans_FRWT_S4M4 = REAL(ans_FRWT_S4M4);
 
-                      } else if (Qvec[e]==0 & Svec[e]==0) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==0)) {
                         PROTECT(ans_11l = NEW_NUMERIC(prod));
                         PROTECT(ans_11 = NEW_NUMERIC(prod));
 
@@ -2542,7 +2544,7 @@ Rprintf("Mort8\n");
                         rans_11 = REAL(ans_11);
                         rans_11l = REAL(ans_11l);
 
-                      } else if (Qvec[e]==0 & Svec[e]==1) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)) {
                         PROTECT(ans_11l_G1 = NEW_NUMERIC(prod));
                         PROTECT(ans_11_G1 = NEW_NUMERIC(prod));
                         PROTECT(ans_11l_G2 = NEW_NUMERIC(prod));
@@ -2573,7 +2575,7 @@ Rprintf("Mort9\n");
 
                     } else {
 
-                      if (Qvec[e]==1 & Svec[e]==0) {
+                      if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                         rans_11_S1M1 = REAL(VECTOR_ELT(out_F_fmi_S1M1, e));
                         rans_11_S1M2 = REAL(VECTOR_ELT(out_F_fmi_S1M2, e));
@@ -2643,12 +2645,12 @@ Rprintf("Mort9\n");
                         rans_FDWT_S4M3 = REAL(VECTOR_ELT(out_FDWT_fmi_S4M3, e));
                         rans_FDWT_S4M4 = REAL(VECTOR_ELT(out_FDWT_fmi_S4M4, e));
 
-                      } else if (Qvec[e]==0 & Svec[e]==0) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==0)) {
 
                         rans_11 = REAL(VECTOR_ELT(out_F_fmi, e));
                         rans_11l = REAL(VECTOR_ELT(out_Fr_fmi, e));
 
-                      } else if (Qvec[e]==0 & Svec[e]==1) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)) {
 
                         rans_11_G1 = REAL(VECTOR_ELT(out_F_fmi_G1, e));
                         rans_11l_G1 = REAL(VECTOR_ELT(out_Fr_fmi_G1, e));
@@ -2693,7 +2695,7 @@ Rprintf("Mort11\n");
                         for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                         for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
-                        if (Qvec[e]==1 & Svec[e]==0) {
+                        if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                            rans_11_S1M1[ind_f*fFact1[0] + ind_m*fFact1[1] + ind_i*fFact1[2] + ind_t*fFact1[3]] =
                             r_iniF_efmi_S1M1[ind_f*fFact4[0] + ind_m*fFact4[1] + ind_i*fFact4[2] + ind_t*fFact4[3]] *
@@ -3013,7 +3015,7 @@ Rprintf("Mort11\n");
                             rEff[ind_f*fFact5[0] + ind_m*fFact5[1] + ind_i*fFact5[2] + ind_t*fFact5[3]];
 
 
-                        } else if (Qvec[e]==0 & Svec[e]==0) {
+                        } else if ((Qvec[e]==0) & (Svec[e]==0)) {
 
 
                         rans_11[ind_f*fFact1[0] + ind_m*fFact1[1] + ind_i*fFact1[2] + ind_t*fFact1[3]] =
@@ -3026,7 +3028,7 @@ Rprintf("Mort11\n");
                             (1 - r_Sr_e[ind_f*fFact3[0] + ind_m*fFact3[1] + ind_i*fFact3[2] + ind_t*fFact3[3]] *
                               r_d_efi[ind_f*fFact2[0] + ind_m*fFact2[1] + ind_i*fFact2[2] + ind_t*fFact2[3]]);
 
-                        } else if (Qvec[e]==0 & Svec[e]==1) {
+                        } else if ((Qvec[e]==0) & (Svec[e]==1)) {
 
 
                         rans_11_G1[ind_f*fFact1[0] + ind_m*fFact1[1] + ind_i*fFact1[2] + ind_t*fFact1[3]] =
@@ -3053,7 +3055,7 @@ Rprintf("Mort11\n");
 
                     if (ind_t==0) {
 
-                      if (Qvec[e]==1 & Svec[e]==0) {
+                      if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                         setAttrib(ans_11_S1M1, R_DimNamesSymbol, dimnames); setAttrib(ans_11l_S1M1, R_DimNamesSymbol, dimnames);
                         setAttrib(ans_11_S1M1, install("DimCst"), dimCst); setAttrib(ans_11l_S1M1, install("DimCst"), dimCst);
@@ -3185,14 +3187,14 @@ Rprintf("Mort11\n");
                         setAttrib(ans_FRWT_S4M4, install("DimCst"), dimCst); setAttrib(ans_FDWT_S4M4, install("DimCst"), dimCst);
                         SET_VECTOR_ELT(out_FRWT_fmi_S4M4, e, ans_FRWT_S4M4); SET_VECTOR_ELT(out_FDWT_fmi_S4M4, e, ans_FDWT_S4M4);
 
-                      } else if (Qvec[e]==0 & Svec[e]==0) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==0)) {
 
                         setAttrib(ans_11, R_DimNamesSymbol, dimnames); setAttrib(ans_11l, R_DimNamesSymbol, dimnames);
                         setAttrib(ans_11, install("DimCst"), dimCst); setAttrib(ans_11l, install("DimCst"), dimCst);
                         SET_VECTOR_ELT(out_F_fmi, e, ans_11); SET_VECTOR_ELT(out_Fr_fmi, e, ans_11l);
                         SET_STRING_ELT(rnames, e, STRING_ELT(sppList,e));
 
-                      } else if (Qvec[e]==0 & Svec[e]==1) {
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)) {
 
                         setAttrib(ans_11_G1, R_DimNamesSymbol, dimnames); setAttrib(ans_11l_G1, R_DimNamesSymbol, dimnames);
                         setAttrib(ans_11_G1, install("DimCst"), dimCst); setAttrib(ans_11l_G1, install("DimCst"), dimCst);
@@ -3205,8 +3207,8 @@ Rprintf("Mort11\n");
                       }
                        SET_STRING_ELT(rnames, e, STRING_ELT(sppList,e));
                         UNPROTECT(3);
-                        if (Qvec[e]==1) UNPROTECT(32);
-                        if (Qvec[e]==1) UNPROTECT(32);
+                        if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
+                        if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
 
                     }
 
@@ -3228,7 +3230,7 @@ Rprintf("Mort11\n");
 
 
 
-                      if (Qvec[e]==1 & Svec[e]==0) {
+                      if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                         PROTECT(Foth_i_S1M1 = NEW_NUMERIC(nbI*nbT));
                         PROTECT(Froth_i_S1M1 = NEW_NUMERIC(nbI*nbT));
@@ -3553,7 +3555,7 @@ Rprintf("Mort11\n");
                         r_FDWToth_i_S4M4 = REAL(FDWToth_i_S4M4);
 
 
-                      } else if (Qvec[e]==0 & Svec[e]==0){
+                      } else if ((Qvec[e]==0) & (Svec[e]==0)){
                         PROTECT(Foth_i = NEW_NUMERIC(nbI*nbT)); //attention, on considère la mortalité initiale comme étant définie sans dimension temporelle --> à revoir
                         PROTECT(Froth_i = NEW_NUMERIC(nbI*nbT));
                         setAttrib(Foth_i, R_DimSymbol, DimIT); setAttrib(Froth_i, R_DimSymbol, DimIT);
@@ -3562,7 +3564,7 @@ Rprintf("Mort11\n");
                         r_Foth_i = REAL(Foth_i);
                         r_Froth_i = REAL(Froth_i);
 
-                      } else if (Qvec[e]==0 & Svec[e]==1){
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)){
                         PROTECT(Foth_i_G1 = NEW_NUMERIC(nbI*nbT)); //attention, on considère la mortalité initiale comme étant définie sans dimension temporelle --> à revoir
                         PROTECT(Froth_i_G1 = NEW_NUMERIC(nbI*nbT));
                         setAttrib(Foth_i_G1, R_DimSymbol, DimIT); setAttrib(Froth_i_G1, R_DimSymbol, DimIT);
@@ -3580,7 +3582,7 @@ Rprintf("Mort11\n");
                         r_Froth_i_G2 = REAL(Froth_i_G2);
                       }
 
-                      if (Qvec[e]==1 & Svec[e]==0) {
+                      if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                        double *fothi = REAL(getListElement(elmt, "iniFothi_S1M1")) ; double *fothi2 = REAL(getListElement(elmt, "Fothi_S1M1"));
                        if (ind_t==0) for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_Foth_i_S1M1[ind_i+ind_t*nbI] = fothi[ind_i];
@@ -3800,7 +3802,7 @@ Rprintf("Mort11\n");
                        if (ind_t==0) for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_FDWToth_i_S4M4[ind_i+ind_t*nbI] = fothi[ind_i];
                        if (ind_t<(nbT-1)) for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_FDWToth_i_S4M4[ind_i+(ind_t+1)*nbI] = fothi2[ind_i];
 
-                      } else if (Qvec[e]==0 & Svec[e]==1){
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)){
                     //if (ind_t==0) {//PrintValue(v_F_efmi); //PrintValue(aggregObj(v_F_efmi, dimI)); }
 
                         double *sumFtot = REAL(getListElement(elmt, "F_i"));
@@ -3839,7 +3841,7 @@ Rprintf("Mort11\n");
                                     (1 - r_Sr_e[0*fFact3[0] + 0*fFact3[1] + ind_i*fFact3[2] + ind_t*fFact3[3]] *
                                     r_doth_ei[0*fFact6[0] + 0*fFact6[1] + ind_i*fFact6[2] + ind_t*fFact6[3]]);
 
-                      } else if (Qvec[e]==0 & Svec[e]==1){
+                      } else if ((Qvec[e]==0) & (Svec[e]==1)){
 
                         double *sumFtot_G1 = REAL(getListElement(elmt, "F_i_G1"));
                         double *sumFtot_G2 = REAL(getListElement(elmt, "F_i_G2"));
@@ -3893,7 +3895,7 @@ Rprintf("Mort11\n");
 
 
                         //on n'oublie pas d'archiver dans eVar ce dont on aura besoin dans les itérations suivantes
-                        if (Qvec[e]==0) SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 0, v_F_efmi2); //ESSENTIEL!!! : ne pas laisser d'indéfini en premier élément d'une liste ; il vaut mieux laisser la partie telle qu'initialisée
+                        if ((Qvec[e]==0) & (Svec[e]==0)) SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 0, v_F_efmi2); //ESSENTIEL!!! : ne pas laisser d'indéfini en premier élément d'une liste ; il vaut mieux laisser la partie telle qu'initialisée
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 1, formatEff);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 2, v_Sr_e);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 3, v_d_efi);
@@ -4043,24 +4045,24 @@ Rprintf("Mort11\n");
 
                     //if (indP==1) UNPROTECT(1);
                     //Rprintf("K3\n");
-                    if (Qvec[e]==1 & Svec[e]==0) {
+                    if ((Qvec[e]==1) & (Svec[e]==0)) {
                      UNPROTECT(97);
                      UNPROTECT(96);
                      UNPROTECT(64);
-                    } else if (Qvec[e]==0 & Svec[e]==0){
+                    } else if ((Qvec[e]==0) & (Svec[e]==0)){
                      UNPROTECT(5);
                     }
-                    else if (Qvec[e]==0 & Svec[e]==1){
+                    else if ((Qvec[e]==0) & (Svec[e]==1)){
                      UNPROTECT(8);
                     }
 
                     if (ind_t==0){
-                        if (Qvec[e]==1 & Svec[e]==0) {
-                                UNPROTECT(65)
-                        } else if (Qvec[e]==0 & Svec[e]==0) {
-                                UNPROTECT(3)
-                        } else if (Qvec[e]==0 & Svec[e]==1) {
-                                UNPROTECT(5)
+                        if ((Qvec[e]==1) & (Svec[e]==0)) {
+                                UNPROTECT(65);
+                        } else if ((Qvec[e]==0) & (Svec[e]==0)) {
+                                UNPROTECT(3);
+                        } else if ((Qvec[e]==0) & (Svec[e]==1)) {
+                                UNPROTECT(5);
                                 }
                     }
                     UNPROTECT(33);
@@ -4102,7 +4104,7 @@ Rprintf("Mort20\n");
                     int *fFactSup1 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 50));//Rprintf("MortZ6\n");
                     int *fFactSup2 = INTEGER(VECTOR_ELT(VECTOR_ELT(EVAR, e), 51));//Rprintf("MortZ7\n");
 Rprintf("Mort21\n");
-                    if (Qvec[e]==1 & Svec[e]==0) {
+                    if ((Qvec[e]==1) & (Svec[e]==0)) {
 
                     double *rans_11_S1M1 = REAL(VECTOR_ELT(out_F_fmi_S1M1, e));
                     double *rans_11_S1M2 = REAL(VECTOR_ELT(out_F_fmi_S1M2, e));
@@ -4752,7 +4754,7 @@ Rprintf("Mort21\n");
 
                     }
 
-                    } else if (Qvec[e]==0 & Svec[e]==0) {
+                    } else if ((Qvec[e]==0) & (Svec[e]==0)) {
                     double *r_Sr_e = REAL(getListElement(elmt, "sr"));
                     double *r_d_efi = REAL(getListElement(elmt, "d_i"));
                     double *r_doth_ei = REAL(getListElement(elmt, "doth_i"));
@@ -4797,7 +4799,7 @@ Rprintf("Mort21\n");
                             (1 - r_Sr_e[0*fFact3[0] + 0*fFact3[1] + ind_i*fFact3[2] + ind_t*fFact3[3]] *
                             r_doth_ei[0*fFact6[0] + 0*fFact6[1] + ind_i*fFact6[2] + ind_t*fFact6[3]]);
 
-                    } else if (Qvec[e]==0 & Svec[e]==1) {
+                    } else if ((Qvec[e]==0) & (Svec[e]==1)) {
                     double *r_Sr_e = REAL(getListElement(elmt, "sr"));
                     double *r_d_efi_G1 = REAL(getListElement(elmt, "d_i_G1"));
                     double *r_doth_ei_G1 = REAL(getListElement(elmt, "doth_i_G1"));
@@ -12859,7 +12861,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
             int nbi = length(getListElement(getListElement(list, CHAR(namVarTarg)), "modI"));
 
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
+            if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)) {//Age-based + global
 
                     Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
                     for (int ag = 0; ag < nbi; ag++) {
@@ -12868,7 +12870,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
                             fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
                     }
 
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1) {//Age and sex-based
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)) {//Age and sex-based
 
                     Fothi2_G1 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 224));
                     Fothi2_G2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 225));
@@ -12878,7 +12880,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
                             Fothi2_G2[ag + IND_T*nbi] = Fothi2_G2[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
                             fichier << "Apres T" << ind_t << "; Fothi_G1 age" << ag << "=" << Fothi2_G1[ag + IND_T*nbi] << "/ Fothi_G2 age " << ag <<"=" << Fothi2_G2[ag + IND_T*nbi] << endl;
                     }
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==1) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)){//Quarterly
 
                     Fothi2_S1M1 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 116));
                     Fothi2_S1M2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 117));
@@ -12996,7 +12998,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
         denom2 = denom;
 
         if (!ISNA(denom)){
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
+            if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)) {//Age-based + global
 //Rprintf("A6\n");
               newRec = 0.0;
               rans_N_eit = REAL(getListElement(out_N_eit,CHAR(namVarTarg)));
@@ -13013,7 +13015,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
               UNPROTECT(1);
 //Rprintf("A7\n");
 fichier << "Type 1 (moyenne) MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1) {//Ageand sex-based
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)) {//Ageand sex-based
                 r_N_eit_G1 = REAL(getListElement(out_N_eit_G1,CHAR(namVarTarg)));
                 r_N_eit_G2 = REAL(getListElement(out_N_eit_G2,CHAR(namVarTarg)));
                 newRec_G1 = 0.0; newRec_G2 = 0.0;
@@ -13038,7 +13040,7 @@ fichier << "Type 1 (moyenne) MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
 
                 UNPROTECT(2);
 fichier << "Type 1 (moyenne) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: " << r_N_e0t_G2[0]<< endl;
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==1) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)){//Quarterly
 //Rprintf("A8\n");
               //Quarter 1
                 r_N_eit_S1M1 = REAL(getListElement(out_N_eit_S1M1,CHAR(namVarTarg)));
@@ -13087,7 +13089,7 @@ fichier << "Type 1 (moyenne) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: " <<
 //Rprintf("A11\n");
         recValues = REAL(v_MeanRec_Ftarg);
 //Rprintf("A110\n");
-        if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {//Age-based + global
+        if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)) {//Age-based + global
 //Rprintf("A12\n");
               PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
               r_N_e0t = REAL(v_N_e0t);
@@ -13096,7 +13098,7 @@ fichier << "Type 1 (moyenne) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: " <<
 //Rprintf("A13\n");
 fichier << "Type 2 (historique) MeanRec: " << rans_N_eit[IND_T*nbI] << endl;
 
-        } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1){//age and sex-based
+        } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)){//age and sex-based
 //Rprintf("A14\n");
                 PROTECT(v_N_e0t_G1 = getListElement(elmt, "Ni0t_G1"));
                 PROTECT(v_N_e0t_G2 = getListElement(elmt, "Ni0t_G2"));
@@ -13111,7 +13113,7 @@ fichier << "Type 2 (historique) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: "
 
                UNPROTECT(2);
 
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){//Quarterly
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==1) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)){//Quarterly
 //Rprintf("A14\n");
                 PROTECT(v_N_e0t_S1M1 = getListElement(elmt, "Ni0_S1M1"));
                 PROTECT(v_N_e0t_S2M2 = getListElement(elmt, "Ni0_S2M2"));
@@ -13183,17 +13185,17 @@ fichier << "Type 2 (historique) MeanRecG1: " << r_N_e0t_G1[0] << "/ MeanRecG2: "
 
         //et re-correction des mortalités autres pour les espèces dynamiques XSA, Spict et SS3
 
-            if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==0) {
+            if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)) {
 
                     for (int ag = 0; ag < nbi; ag++) Fothi2[ag + IND_T*nbi] = Fothi2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
 
-            } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==0 & Svec[getListIndex(S, CHAR(namVarTarg))]==1){
+            } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)){
                 for (int ag = 0; ag < nbi; ag++) {
                         Fothi2_G1[ag + IND_T*nbi] = Fothi2_G1[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
                         Fothi2_G2[ag + IND_T*nbi] = Fothi2_G2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
                 }
 
-                } else if (Qvec[getListIndex(Q, CHAR(namVarTarg))]==1 & Svec[getListIndex(S, CHAR(namVarTarg))]==0){
+                } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==1) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)){
 
                     for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + IND_T*nbi] = Fothi2_S1M1[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
                     for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + IND_T*nbi] = Fothi2_S1M2[ag + IND_T*nbi] * r_Fbar / r_Ftarg;
