@@ -155,6 +155,8 @@ setClass("stockInput",
              gamma_fmce = NA,     #Coefficient modèle de prix
              TAC = NA,
              Fbar = NA,
+             Fbar_G1 = NA,
+             Fbar_G2 = NA,
              FmaxTarget = NA,
              #ACTIVITE
              Lref_f_e = NA,  #Quantité moyenne débarquée par navire d'une flottille par an en tonnes par espèce
