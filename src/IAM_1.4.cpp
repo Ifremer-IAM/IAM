@@ -8935,6 +8935,8 @@ if (cUpdate) {
     SEXP    elmt, dimCst, Dim, dimCst_F_efmit, dimCst_N_eit, dimCst_Z_eit, dimCst_wL_ei, dimCst_wD_ei, dimCst_d_efmit,
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
             intAge, v_F_efmit, v_N_eit, v_Z_eit, v_wL_ei, v_wD_ei, v_d_efmit, v_doth_eit, dimCst2, Dim2,
+             v_F_efmit_G1, v_N_eit_G1, v_Z_eit_G1, v_wL_ei_G1, v_wD_ei_G1, v_d_efmit_G1, v_doth_eit_G1,
+             v_F_efmit_G2, v_N_eit_G2, v_Z_eit_G2, v_wL_ei_G2, v_wD_ei_G2, v_d_efmit_G2, v_doth_eit_G2,
             cFACT1, cFACT2, cFACT3, cFACT4, cFACT5, cFACT6, cFACT7,
             dimYtot, dimCstYtot, dimNamYtot,
             dimCstOQ_ft, dimCstOQ_t, dimnames_oqD_eft, dimnames_oqD_et;
@@ -8943,6 +8945,9 @@ if (cUpdate) {
          dimnames=R_NilValue, rnames_Esp=R_NilValue, ans_C_eit=R_NilValue, ans_Y_eit=R_NilValue, ans_L_eit=R_NilValue, dimnames2=R_NilValue,
          ans_Ystat=R_NilValue, /*ans_Lstat=R_NilValue, */ans_Dstat=R_NilValue, dimnames_eStat=R_NilValue, rnames_eStat=R_NilValue,
          ans_DD_efmit=R_NilValue, ans_LD_efmit=R_NilValue,
+         ans_C_efmit_G1=R_NilValue, ans_Y_efmit_G1=R_NilValue, ans_D_efmit_G1=R_NilValue, ans_L_efmit_G1=R_NilValue,
+         ans_C_efmit_G2=R_NilValue, ans_Y_efmit_G2=R_NilValue, ans_D_efmit_G2=R_NilValue, ans_L_efmit_G2=R_NilValue,
+         ans_DD_efmit_G1=R_NilValue, ans_LD_efmit_G1=R_NilValue,ans_DD_efmit_G2=R_NilValue, ans_LD_efmit_G2=R_NilValue,
          ans_statDD=R_NilValue, ans_statLD=R_NilValue, ans_statLDst=R_NilValue, ans_statLDor=R_NilValue,
          ans_oqD_eft=R_NilValue, ans_oqD_et=R_NilValue, ans_oqDstat=R_NilValue;
 
@@ -8952,6 +8957,10 @@ if (cUpdate) {
 
     double *rans_C_efmit=&NA_REAL, *rans_Y_efmit=&NA_REAL, *rans_D_efmit=&NA_REAL, *rans_L_efmit=&NA_REAL, *r_F_efmit=&NA_REAL, *r_N_eit=&NA_REAL,
            *r_Z_eit=&NA_REAL, *r_wL_ei=&NA_REAL, *r_wD_ei=&NA_REAL, *r_d_efmit=&NA_REAL, *r_B_et=&NA_REAL,
+           *rans_C_efmit_G1=&NA_REAL, *rans_Y_efmit_G1=&NA_REAL, *rans_D_efmit_G1=&NA_REAL, *rans_L_efmit_G1=&NA_REAL, *r_F_efmit_G1=&NA_REAL, *r_N_eit_G1=&NA_REAL,
+           *rans_C_efmit_G2=&NA_REAL, *rans_Y_efmit_G2=&NA_REAL, *rans_D_efmit_G2=&NA_REAL, *rans_L_efmit_G2=&NA_REAL, *r_F_efmit_G2=&NA_REAL, *r_N_eit_G2=&NA_REAL,
+           *r_Z_eit_G1=&NA_REAL, *r_wL_ei_G1=&NA_REAL, *r_wD_ei_G1=&NA_REAL, *r_d_efmit_G1=&NA_REAL,
+           *r_Z_eit_G2=&NA_REAL, *r_wL_ei_G2=&NA_REAL, *r_wD_ei_G2=&NA_REAL, *r_d_efmit_G2=&NA_REAL,
             *rans_C_eit=&NA_REAL, *rans_Y_eit=&NA_REAL, *rans_L_eit=&NA_REAL, *rans_Ystat=&NA_REAL, *rans_Lstat=&NA_REAL, *rans_Dstat=&NA_REAL,
             *rans_Ytot_fm=&NA_REAL, *rans_DD_efmit=&NA_REAL,
             *rans_LD_efmit=&NA_REAL, *rans_statDD=&NA_REAL, *rans_statLD=&NA_REAL, *rans_statLDst=&NA_REAL, *rans_statLDor=&NA_REAL, *doth_eit=&NA_REAL,
@@ -9016,22 +9025,51 @@ if (nbE>0) {
 
                             nbI = length(getListElement(elmt, "modI"));
 
-                            PROTECT(v_wL_ei = getListElement(elmt, "wL_i"));
-                            PROTECT(v_wD_ei = getListElement(elmt, "wD_i"));
-                            PROTECT(v_d_efmit = getListElement(elmt, "d_i"));
-                            PROTECT(v_doth_eit = getListElement(elmt, "doth_i"));
+                            if (Svec[e]==0){
+                                PROTECT(v_wL_ei = getListElement(elmt, "wL_i"));
+                                PROTECT(v_wD_ei = getListElement(elmt, "wD_i"));
+                                PROTECT(v_d_efmit = getListElement(elmt, "d_i"));
+                                PROTECT(v_doth_eit = getListElement(elmt, "doth_i"));
 
-                            PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
-                            PROTECT(v_Z_eit = getListElement(out_Z_eit , CHAR(STRING_ELT(sppList,e))));
-                            PROTECT(v_N_eit = getListElement(out_N_eit , CHAR(STRING_ELT(sppList,e))));
-                            PROTECT(v_B_et = getListElement(out_B_et , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_Z_eit = getListElement(out_Z_eit , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_N_eit = getListElement(out_N_eit , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_B_et = getListElement(out_B_et , CHAR(STRING_ELT(sppList,e))));
 
-                            PROTECT(dimCst_wL_ei = getAttrib(v_wL_ei, install("DimCst")));
-                            PROTECT(dimCst_wD_ei = getAttrib(v_wD_ei, install("DimCst")));
-                            PROTECT(dimCst_d_efmit = getAttrib(v_d_efmit, install("DimCst")));
-                            PROTECT(dimCst_F_efmit = getAttrib(v_F_efmit, install("DimCst")));
-                            PROTECT(dimCst_N_eit = getAttrib(v_N_eit, install("DimCst")));
-                            PROTECT(dimCst_Z_eit = getAttrib(v_Z_eit, install("DimCst")));
+                                PROTECT(dimCst_wL_ei = getAttrib(v_wL_ei, install("DimCst")));
+                                PROTECT(dimCst_wD_ei = getAttrib(v_wD_ei, install("DimCst")));
+                                PROTECT(dimCst_d_efmit = getAttrib(v_d_efmit, install("DimCst")));
+                                PROTECT(dimCst_F_efmit = getAttrib(v_F_efmit, install("DimCst")));
+                                PROTECT(dimCst_N_eit = getAttrib(v_N_eit, install("DimCst")));
+                                PROTECT(dimCst_Z_eit = getAttrib(v_Z_eit, install("DimCst")));
+
+                            } else {
+                                PROTECT(v_wL_ei_G1 = getListElement(elmt, "wL_i_G1"));
+                                PROTECT(v_wL_ei_G2 = getListElement(elmt, "wL_i_G2"));
+                                PROTECT(v_wD_ei_G1 = getListElement(elmt, "wD_i_G1"));
+                                PROTECT(v_wD_ei_G2 = getListElement(elmt, "wD_i_G2"));
+                                PROTECT(v_d_efmit_G1 = getListElement(elmt, "d_i_G1"));
+                                PROTECT(v_d_efmit_G2 = getListElement(elmt, "d_i_G2"));
+                                PROTECT(v_doth_eit_G1 = getListElement(elmt, "doth_i_G1"));
+                                PROTECT(v_doth_eit_G2 = getListElement(elmt, "doth_i_G2"));
+
+                                PROTECT(v_F_efmit_G1 = getListElement(out_F_fmi_G1, CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_Z_eit_G1 = getListElement(out_Z_eit_G1 , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_N_eit_G1 = getListElement(out_N_eit_G1 , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_F_efmit_G2 = getListElement(out_F_fmi_G2, CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_Z_eit_G2 = getListElement(out_Z_eit_G2 , CHAR(STRING_ELT(sppList,e))));
+                                PROTECT(v_N_eit_G2 = getListElement(out_N_eit_G2 , CHAR(STRING_ELT(sppList,e))));
+
+                                PROTECT(v_B_et = getListElement(out_B_et , CHAR(STRING_ELT(sppList,e))));
+
+                                PROTECT(dimCst_wL_ei = getAttrib(v_wL_ei_G1, install("DimCst")));
+                                PROTECT(dimCst_wD_ei = getAttrib(v_wD_ei_G1, install("DimCst")));
+                                PROTECT(dimCst_d_efmit = getAttrib(v_d_efmit_G1, install("DimCst")));
+                                PROTECT(dimCst_F_efmit = getAttrib(v_F_efmit_G1, install("DimCst")));
+                                PROTECT(dimCst_N_eit = getAttrib(v_N_eit_G1, install("DimCst")));
+                                PROTECT(dimCst_Z_eit = getAttrib(v_Z_eit_G1, install("DimCst")));
+                            }
+
 //Rprintf("H3\n");fichier << "H3" << endl;
                             //tests sur les dimensions :
                             dim_d_efmit = INTEGER(dimCst_d_efmit);

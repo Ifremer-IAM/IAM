@@ -1,6 +1,6 @@
 Instructions Compilation pour architecture simple :
 
-cd C:\Users\BRI281\Dropbox\These\IAM_Dvt\IAM65
+cd C:\Users\BRI281\Dropbox\These\IAM_Dvt\
 
 %R_pgm_35%/R CMD check IAM65 --no-multiarch
 

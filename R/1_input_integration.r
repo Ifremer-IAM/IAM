@@ -1502,8 +1502,10 @@ if (is.null(LL$input$Fleet$nbv_f_m)) LL$input$Fleet$nbv_f_m <- NA
 Ftot <- lapply(1:length(namFtot),function(x) if (x<5) Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f) else Ftot[[x]]*as.vector(LL$input$Fleet$nbv_f_m))
 names(Ftot) <- namFtot 
 LL$input$Fleet <- c(LL$input$Fleet,Ftot)
-
-LL$input$Fleet$Yothsue_f_m <- (LL$input$Fleet$Lref_f_m - Reduce("+",lapply(LL$input[-length(LL$input)],function(x) x$Lref_f_m_e)))/Ftot[[5]]
+l=lapply(LL$input[-length(LL$input)],function(x) x$Lref_f_m_e)
+l = lapply(l, function(x){ x[which(is.na(x))] = 0; return(x)})
+LL$input$Fleet$Yothsue_f_m <- (LL$input$Fleet$Lref_f_m - Reduce("+",l))/Ftot[[5]]
+LL$input$Fleet$Yothsue_f_m[which(is.na(LL$input$Fleet$Yothsue_f_m))] = 0
 LL$input$Fleet$tripLgthIniMax_f_m <- LL$input$Fleet$tripLgth_f_m * as.vector(LL$input$Fleet$H_f*LL$input$Fleet$nbTrip_f*LL$input$Fleet$nbv_f / LL$input$Fleet$Lref_f)
 
 #on va traiter les inputs scénarios pour les organiser de la même manière que dans input
