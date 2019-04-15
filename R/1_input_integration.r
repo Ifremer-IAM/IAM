@@ -1052,11 +1052,12 @@ if (length(nam_stock)>0) {
   Sexnam_C <- paste("C_i_G",1:2,sep="")
   Sexnam_doth <- paste("doth_i_G",1:2,sep="")
   Sexnam_d <- paste("d_i_G",1:2,sep="")
+  Sexnam_Fbar <- paste("Fbar_G",1:2,sep="")
   
   renam <- c(as.character(rec$Variable),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
-             Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d) ;
+             Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar) ;
   names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
-                    Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d)
+                    Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar)
   renam <- renam[!duplicated(names(renam))]
   names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)]
   #et on applique le multiplicateur à chaque variable dans les deux listes
