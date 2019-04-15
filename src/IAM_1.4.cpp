@@ -458,6 +458,7 @@ if (nbE>0) {
     for (int e = 0 ; e < nbE ; e++) {
       PROTECT(eltE = allocVector(VECSXP,240)); //ex 62
       SET_VECTOR_ELT(eVar, e, eltE);
+      UNPROTECT(1);
     }
 }
 PROTECT_WITH_INDEX(eVar_copy = duplicate(eVar),&ipx_eVar_copy); //19
@@ -468,6 +469,7 @@ if (nbEstat>0) {
     for (int e = 0 ; e < nbEstat ; e++) {
         PROTECT(eltE = allocVector(VECSXP,10));
         SET_VECTOR_ELT(eStatVar, e, eltE);
+        UNPROTECT(1);
     }
 }
 PROTECT_WITH_INDEX(eStatVar_copy = duplicate(eStatVar),&ipx_eStatVar_copy); //21
@@ -677,6 +679,7 @@ if (nbE>0) {
     PROTECT(ans_PQuot_et = NEW_NUMERIC(nbT));
     setAttrib(ans_PQuot_et, R_NamesSymbol, times);
     SET_VECTOR_ELT(out_PQuot_et, e, ans_PQuot_et);
+    UNPROTECT(1);
  }
 }
 
@@ -685,6 +688,7 @@ fichier << "Debut boucle T"  << endl;
 for (int it = 0; it < nbT ; it++) {
 
 fichier << "T = " << it << endl;
+Rprintf("T= %d\n", it);
 
 //Rprintf("ini1");fichier << "ini1" << endl;
 
@@ -863,9 +867,11 @@ Rprintf("adjust\n");
 
             if (Qvec[eTmp]==0) {
 
-                    double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44));
+                    double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44)); Rprintf("Dans evar, Fothi2 (l.869)\n"); PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44));
 
                     for (int ag = 0; ag < nbi; ag++) Fothi2[ag + it*nbi] = Fothi2[ag + (DELAY-1)*nbi];
+
+                    Rprintf("Dans evar, Fothi2 (l.873)\n"); PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44));
 
             } else {
 
@@ -1075,8 +1081,13 @@ free_vector(EffsupTMP_fm,1,nbF*nbMe);
 free_vector(multFOTHinterm_e,1,nbE);
 
 //Rprintf("K2\n");fichier << "K2" << endl;
-UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajoutés après intégration de 'parOQD'
-if (nbEstat>0) UNPROTECT(nbEstat);
+//UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajoutés après intégration de 'parOQD'
+//if (nbEstat>0) UNPROTECT(nbEstat);
+UNPROTECT(26);
+UNPROTECT(14+14+4+16*6+8+9);//out_
+UNPROTECT(9);
+UNPROTECT(10); // PROTECT_WITH_INDEX
+
 fichier.close();
 }
 
@@ -1582,7 +1593,7 @@ PROTECT(effort = getListElement(Flist, "effort_f_m_tot"));
 
 PROTECT(dimEff = getAttrib(effort, install("DimCst")));
 
-int *dim_Sr_e, *dim_d_efi, *dim_doth_ei, *dim_F_efmi, *dimC, *dimE, *dimM, *dimEffort, *dimF, //*dim_Capt_emi, *dim_Capt_ei
+int *dim_Sr_e, *dim_d_efi, *dim_doth_ei, *dim_F_efmi, *dimC, *dimE, *dimM=0, *dimEffort, *dimF, //*dim_Capt_emi, *dim_Capt_ei
     *dimNav, *dimNbds; //, *dim_fm, *dim_vMoy,*rdim;
 int nbI;
 
@@ -1746,24 +1757,6 @@ Rprintf("Mort2\n");
 
                         nbI = length(getListElement(elmt, "modI"));
 
-                        PROTECT(v_Sr_e = getListElement(elmt, "sr"));
-                        PROTECT(v_d_efi = getListElement(elmt, "d_i"));
-                        PROTECT(v_doth_ei = getListElement(elmt, "doth_i"));
-                        PROTECT(v_d_efi_G1 = getListElement(elmt, "d_i_G1"));
-                        PROTECT(v_d_efi_G2 = getListElement(elmt, "d_i_G2"));
-                        PROTECT(v_doth_ei_G1 = getListElement(elmt, "doth_i_G1"));
-                        PROTECT(v_doth_ei_G2 = getListElement(elmt, "doth_i_G2"));
-
-                        PROTECT(dimCst_Sr_e = getAttrib(v_Sr_e, install("DimCst")));
-
-                        if((Qvec[e]==0) & (Svec[e]==0)){
-                            PROTECT(dimCst_d_efi = getAttrib(v_d_efi, install("DimCst")));
-                            PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
-                        } else if ((Qvec[e]==0) & (Svec[e]==1)){
-                            PROTECT(dimCst_d_efi = getAttrib(v_d_efi_G1, install("DimCst")));
-                            PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei_G1, install("DimCst")));
-                        }
-
 
                     //---------------------------------------------------------------------
                     // 1ère étape : on ventile la mortalité par les captures si possible
@@ -1771,6 +1764,18 @@ Rprintf("Mort2\n");
 
                     if ((Qvec[e]==1) & (Svec[e]==0)) {
 Rprintf("Mort3.1\n");
+                    PROTECT(v_Sr_e = getListElement(elmt, "sr"));
+                    PROTECT(v_d_efi = getListElement(elmt, "d_i"));
+                    PROTECT(v_doth_ei = getListElement(elmt, "doth_i"));
+                    PROTECT(dimCst_Sr_e = getAttrib(v_Sr_e, install("DimCst")));
+                    PROTECT(dimCst_d_efi = getAttrib(v_d_efi, install("DimCst")));
+                    PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
+
+                        r_Sr_e = REAL(v_Sr_e);
+                        r_d_efi = REAL(v_d_efi);
+                        r_doth_ei = REAL(v_doth_ei);
+
+
                      PROTECT(v_F_efmi_S1M1 = getListElement(elmt, "Ffmi_S1M1"));
 
                      //double *ttt = REAL(v_F_efmi_S1M1);
@@ -1887,11 +1892,42 @@ Rprintf("Mort3.1\n");
 
                     } else if ((Qvec[e]==0) & (Svec[e]==0)){
 Rprintf("Mort3.2\n");
+                        PROTECT(v_Sr_e = getListElement(elmt, "sr"));
+                        PROTECT(v_d_efi = getListElement(elmt, "d_i"));
+                        PROTECT(v_doth_ei = getListElement(elmt, "doth_i"));
+
+                        r_Sr_e = REAL(v_Sr_e);
+                        r_d_efi = REAL(v_d_efi);
+                        r_doth_ei = REAL(v_doth_ei);
+
+                        PROTECT(dimCst_Sr_e = getAttrib(v_Sr_e, install("DimCst")));
+                        PROTECT(dimCst_d_efi = getAttrib(v_d_efi, install("DimCst")));
+                        PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei, install("DimCst")));
+
                      PROTECT(v_F_efmi = getListElement(elmt, "F_fmi"));
                      PROTECT(dim_Finput = getAttrib(v_F_efmi, install("DimCst")));
 
                     } else if ((Qvec[e]==0) & (Svec[e]==1)){
 Rprintf("Mort3.3\n");
+                        PROTECT(v_Sr_e = getListElement(elmt, "sr"));
+
+                        PROTECT(v_d_efi_G1 = getListElement(elmt, "d_i_G1"));
+                        PROTECT(v_d_efi_G2 = getListElement(elmt, "d_i_G2"));
+                        PROTECT(v_doth_ei_G1 = getListElement(elmt, "doth_i_G1"));
+                        PROTECT(v_doth_ei_G2 = getListElement(elmt, "doth_i_G2"));
+
+
+                        r_Sr_e = REAL(v_Sr_e);
+                        r_d_efi_G1 = REAL(v_d_efi_G1);
+                        r_doth_ei_G1 = REAL(v_doth_ei_G1);
+                        r_d_efi_G2  = REAL(v_d_efi_G2);
+                        r_doth_ei_G2 = REAL(v_doth_ei_G2);
+
+                        PROTECT(dimCst_Sr_e = getAttrib(v_Sr_e, install("DimCst")));
+
+                        PROTECT(dimCst_d_efi = getAttrib(v_d_efi_G1, install("DimCst")));
+                        PROTECT(dimCst_doth_ei = getAttrib(v_doth_ei_G1, install("DimCst")));
+
                      PROTECT(v_F_efmi_G1 = getListElement(elmt, "F_fmi_G1"));
                      PROTECT(v_F_efmi_G2 = getListElement(elmt, "F_fmi_G2"));
                      PROTECT(dim_Finput = getAttrib(v_F_efmi_G1, install("DimCst")));
@@ -2141,8 +2177,10 @@ Rprintf("Mort4\n");
 
                         if ((Qvec[e]==1) & (Svec[e]==0)) {
                             dimM = INTEGER(getAttrib(v_F_efmi2_S1M1, install("DimCst")));
-                        } else {
+                        } else if ((Qvec[e]==0) & (Svec[e]==0)){
                             dimM = INTEGER(getAttrib(v_F_efmi2, install("DimCst")));
+                        } else if ((Qvec[e]==0) & (Svec[e]==1)){
+                            dimM = INTEGER(getAttrib(v_F_efmi2_G1, install("DimCst")));
                         }
 
                         PROTECT(dimCstEff = allocVector(INTSXP,4));
@@ -2667,15 +2705,6 @@ Rprintf("Mort9\n");
 
                     }
 
-
-
-                        r_Sr_e = REAL(v_Sr_e);
-                        r_d_efi = REAL(v_d_efi);
-                        r_doth_ei = REAL(v_doth_ei);
-                        r_d_efi_G1 = REAL(v_d_efi_G1);
-                        r_doth_ei_G1 = REAL(v_doth_ei_G1);
-                        r_d_efi_G2  = REAL(v_d_efi_G2);
-                        r_doth_ei_G2 = REAL(v_doth_ei_G2);
 
                             //facteurs des indices pour genériciser le processus
 Rprintf("Mort10\n");
@@ -3213,9 +3242,9 @@ Rprintf("Mort11\n");
 
                       }
                        SET_STRING_ELT(rnames, e, STRING_ELT(sppList,e));
-                        UNPROTECT(3);
-                        if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
-                        if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
+                        //UNPROTECT(3);
+                        //if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
+                        //if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(32);
 
                     }
 
@@ -3568,6 +3597,9 @@ Rprintf("Mort11\n");
                         setAttrib(Foth_i, R_DimSymbol, DimIT); setAttrib(Froth_i, R_DimSymbol, DimIT);
                         setAttrib(Foth_i, R_DimNamesSymbol, dimnamesIT); setAttrib(Froth_i, R_DimNamesSymbol, dimnamesIT);
                         setAttrib(Foth_i, install("DimCst"), dimIT); setAttrib(Froth_i, install("DimCst"), dimIT);
+
+                        Rprintf("Declaration l.3580, Foth_i = "); PrintValue(Foth_i);
+
                         r_Foth_i = REAL(Foth_i);
                         r_Froth_i = REAL(Froth_i);
 
@@ -3809,7 +3841,7 @@ Rprintf("Mort11\n");
                        if (ind_t==0) for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_FDWToth_i_S4M4[ind_i+ind_t*nbI] = fothi[ind_i];
                        if (ind_t<(nbT-1)) for (int ind_i = 0 ; ind_i < nbI ; ind_i++) r_FDWToth_i_S4M4[ind_i+(ind_t+1)*nbI] = fothi2[ind_i];
 
-                      } else if ((Qvec[e]==0) & (Svec[e]==1)){
+                      } else if ((Qvec[e]==0) & (Svec[e]==0)){
                     //if (ind_t==0) {//PrintValue(v_F_efmi); //PrintValue(aggregObj(v_F_efmi, dimI)); }
 
                         double *sumFtot = REAL(getListElement(elmt, "F_i"));
@@ -3828,7 +3860,8 @@ Rprintf("Mort11\n");
                                     r_Foth_i[ind_i+(ind_t+1)*nbI] = r_Foth_i[ind_i+ind_t*nbI];
                                 }
                             }
-                            ////PrintValue(v_F_efmi);//PrintValue(dimI);//PrintValue(Foth_i);
+                            ////PrintValue(v_F_efmi);//PrintValue(dimI);PrintValue(Foth_i);
+                            Rprintf("Initialisation l.3580, Foth_i = "); PrintValue(Foth_i);
                         } else {
                            if (ind_t<(nbT-1)) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
@@ -3912,7 +3945,7 @@ Rprintf("Mort11\n");
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 7, fFACT4);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 8, fFACT5);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 61, fFACT6);
-                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 44, Foth_i);
+                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 44, Foth_i); Rprintf("Dans EVAR - Apres module mortalite, Foth_i = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 60, Froth_i);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 50, fFACTsup1);
                         SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 51, fFACTsup2);
@@ -4053,26 +4086,26 @@ Rprintf("Mort11\n");
                     //if (indP==1) UNPROTECT(1);
                     //Rprintf("K3\n");
                     if ((Qvec[e]==1) & (Svec[e]==0)) {
-                     UNPROTECT(97);
+                     UNPROTECT(103);
                      UNPROTECT(96);
                      UNPROTECT(64);
                     } else if ((Qvec[e]==0) & (Svec[e]==0)){
-                     UNPROTECT(5);
+                     UNPROTECT(11);
                     }
                     else if ((Qvec[e]==0) & (Svec[e]==1)){
-                     UNPROTECT(8);
+                     UNPROTECT(17);
                     }
 
                     if (ind_t==0){
                         if ((Qvec[e]==1) & (Svec[e]==0)) {
-                                UNPROTECT(65);
+                                UNPROTECT(64+1);
                         } else if ((Qvec[e]==0) & (Svec[e]==0)) {
-                                UNPROTECT(3);
+                                UNPROTECT(2+1);
                         } else if ((Qvec[e]==0) & (Svec[e]==1)) {
-                                UNPROTECT(5);
+                                UNPROTECT(4+1);
                                 }
                     }
-                    UNPROTECT(33);
+                    UNPROTECT(23);
 }
 
 fUpdate = false;
@@ -4769,7 +4802,7 @@ Rprintf("Mort21\n");
                     double *rans_11 = REAL(VECTOR_ELT(out_F_fmi, e));
                     double *rans_11l = REAL(VECTOR_ELT(out_Fr_fmi, e));
                     double *r_F_efmi = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 0));
-                    double *r_Foth_it = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                    double *r_Foth_it = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); Rprintf("Dans EVAR (l.4782), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                     double *r_Froth_it = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
 
                     for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
@@ -5139,6 +5172,16 @@ Rprintf("G1.2");fichier << "G1.2" << endl;
 
                              }  else if ((Qvec[e]==0) & (Svec[e]==0)) {
 
+
+                                    PROTECT(v_r = getListElement(elmt, "r"));//Rprintf("g4");   fichier << "g4" << endl;           //added SPiCT 19/07/2016
+                                    PROTECT(v_K = getListElement(elmt, "K"));//Rprintf("g5");    fichier << "g5" << endl;          //
+                                    PROTECT(v_n = getListElement(elmt, "n"));                              //
+                                    PROTECT(v_B = getListElement(elmt, "B_i"));
+                                    PROTECT(v_M_ei = getListElement(elmt, "M_i")); //PrintValue(v_M_ei);
+                                    PROTECT(v_w_ei = getListElement(elmt, "wStock_i")); //PrintValue(v_w_ei);//Rprintf("g5");fichier << "g5" << endl;
+                                    PROTECT(v_mat_ei = getListElement(elmt, "mat_i")); //PrintValue(v_mat_ei);//Rprintf("g6");fichier << "g6" << endl;
+                                    PROTECT(v_Fbar = getListElement(elmt, "Fbar"));
+
                                     PROTECT(v_Fr_efmit = getListElement(out_Fr_fmi, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_N_ei0 = getListElement(elmt, "N_it0"));
@@ -5151,15 +5194,7 @@ Rprintf("G1.3");fichier << "G1.3" << endl;
                                     PROTECT(dimCst_w_ei = getAttrib(v_w_ei, install("DimCst")));
                                     PROTECT(dimCst_mat_ei = getAttrib(v_mat_ei, install("DimCst")));
 
-                                    PROTECT(v_M_ei = getListElement(elmt, "M_i"));//Rprintf("g4");fichier << "g4" << endl;
-                                    PROTECT(v_w_ei = getListElement(elmt, "wStock_i"));//Rprintf("g5");fichier << "g5" << endl;
-                                    PROTECT(v_mat_ei = getListElement(elmt, "mat_i"));//Rprintf("g6");fichier << "g6" << endl;
-                                    PROTECT(v_Fbar = getListElement(elmt, "Fbar"));
 
-                                    PROTECT(v_r = getListElement(elmt, "r"));//Rprintf("g4");   fichier << "g4" << endl;           //added SPiCT 19/07/2016
-                                    PROTECT(v_K = getListElement(elmt, "K"));//Rprintf("g5");    fichier << "g5" << endl;          //
-                                    PROTECT(v_n = getListElement(elmt, "n"));                              //
-                                    PROTECT(v_B = getListElement(elmt, "B_i"));
 
                              } else if ((Qvec[e]==0) & (Svec[e]==1)){
                                     PROTECT(v_Fr_efmit_G1 = getListElement(out_Fr_fmi_G1, CHAR(STRING_ELT(sppList,e))));
@@ -5195,8 +5230,8 @@ Rprintf("G1.3");fichier << "G1.3" << endl;
 
 
 Rprintf("G1.4");fichier << "G1.4" << endl;
-                                    dim_M_ei = INTEGER(dimCst_M_ei);
-                                    dim_w_ei = INTEGER(dimCst_w_ei);
+                                    dim_M_ei = INTEGER(dimCst_M_ei); fichier << "dim_M_ei =" << dim_M_ei << endl;
+                                    dim_w_ei = INTEGER(dimCst_w_ei); fichier << dim_w_ei << endl;
                                     dim_mat_ei = INTEGER(dimCst_mat_ei);
                                     dim_N_ei0 = INTEGER(dimCst_N_ei0);
                                     dim_N_e0t = INTEGER(dimCst_N_e0t);
@@ -6130,7 +6165,7 @@ Rprintf("G1.18");fichier << "G1.18" << endl;
                                     int *fact2_D = INTEGER(dFACT2);
                                     int *fact3_D = INTEGER(dFACT3);
 
-                                    double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                                    double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.6145), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                     double *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
 Rprintf("G1.19");fichier << "G1.19" << endl;
                                     double *r_Foth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 116));
@@ -7202,7 +7237,7 @@ Rprintf("Calcul_B\n");fichier << "Calcul_B" << endl;
                                         SEXP ans_interm = R_NilValue ;
                                         PROTECT(ans_interm = NEW_NUMERIC(1*nbT)); //PROTECT(ans_interm = NEW_NUMERIC(16*nbT));
                                         double *rans_interm = REAL(ans_interm); for (int yy = 0 ; yy < 1*nbT ; yy++) rans_interm[yy] = NA_REAL; //for (int yy = 0 ; yy < 16*nbT ; yy++) rans_interm[yy] = NA_REAL; //initialisation
-                                        double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                                        double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.7217), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                         double *r_F_efmit = REAL(getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
                                         double temp = 0.0;
                                         int *dim_F_efmit;
@@ -7268,7 +7303,7 @@ Rprintf("Calcul_B\n");fichier << "Calcul_B" << endl;
     if ((Qvec[e]==0) & (Svec[e]==1)) UNPROTECT(23+8);
 
     if (ind_t==0){
-        UNPROTECT(7);
+        UNPROTECT(6);
         if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(17+18);
         if ((Qvec[e]==0) & (Svec[e]==0)) UNPROTECT(1+2);
         if ((Qvec[e]==0) & (Svec[e]==1)) UNPROTECT(2+3);
@@ -7277,6 +7312,7 @@ Rprintf("Calcul_B\n");fichier << "Calcul_B" << endl;
 }
 //PrintValue(out_Fbar_et);
 dUpdate = false;
+UNPROTECT(1);
 
 } else {
 
@@ -7342,14 +7378,14 @@ Rprintf("G7\n");fichier << "G7" << endl;
             double  *rans_N_eit = REAL(VECTOR_ELT(out_N_eit,e));
 
 
-        Rprintf("avant T %i\n",ind_t);PrintValue(v_N_e0t);PrintValue(STRING_ELT(sppList,e));PrintValue(getListElement(recList,CHAR(STRING_ELT(sppList,e))));
+        //Rprintf("avant T %i\n",ind_t);PrintValue(v_N_e0t);PrintValue(STRING_ELT(sppList,e));PrintValue(getListElement(recList,CHAR(STRING_ELT(sppList,e))));
         //ajout 24/04/2018 pour prise en compte forçage recrutement XSA
         if ((!isNull(getListElement(recList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & (nbI>1) & Reality) { //seulement applicable à t=2
             SRInd[e]=0;
             r_N_e0t[ind_t*fact6_D[3]] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[ind_t]; //t
             if (ind_t<(nbT-1)) r_N_e0t[ind_t*fact6_D[3] + 1] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[ind_t+1]; //t+1
         }
-        Rprintf("après T %i\n",ind_t);PrintValue(v_N_e0t);
+        //Rprintf("après T %i\n",ind_t);PrintValue(v_N_e0t);
 
            //équation n°1 : out_Z_eit
 
@@ -9229,7 +9265,7 @@ Rprintf("Calcul.C_efmit\n");fichier << "Calcul.C_efmit" << endl;
                        r_N_eit = REAL(v_N_eit);
                        r_Z_eit = REAL(v_Z_eit);
                        r_B_et = REAL(v_B_et);
-                       r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                       r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.9245), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
 
                     } else {
                        r_F_efmit_G1 = REAL(v_F_efmit_G1);
@@ -10969,7 +11005,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
 
 
-  UNPROTECT(2+3+4+1+2);
+  UNPROTECT(2+4+4+1+2);
   if (Svec[e]==0){
     UNPROTECT(14);
   } else {UNPROTECT(21);}
@@ -12155,7 +12191,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");fichier
 //double Btemp;
                                 rans_C_efmit = REAL(VECTOR_ELT(out_C_efmit,e));
                                 rans_C_eit = REAL(VECTOR_ELT(out_C_eit,e));
-                                r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                                r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.12171), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
 
                                 r_F_efmit = REAL(VECTOR_ELT(out_F_fmi,e));
                                 r_N_eit = REAL(VECTOR_ELT(out_N_eit, e));
@@ -12903,9 +12939,9 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 /*----------------------------------------------------------------*/
 
 
-//                            if (Svec[e]==0){
-//                                    UNPROTECT(1);
-//                            } else {UNPROTECT(2);}
+                           if (Svec[e]==0){
+                                    UNPROTECT(1);
+                            } else {UNPROTECT(2);}
 
                             UNPROTECT(1);
 //Rprintf("H20\n");fichier << "H20" << endl;
@@ -14462,7 +14498,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
             if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==0)) {//Age-based + global
 
-                    Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
+                    Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44)); //Rprintf("Dans EVARcopy (l.14478), Fothi2 = "); PrintValue(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
                     for (int ag = 0; ag < nbi; ag++) {
                             fichier << "Avant T" << ind_t << "; Fothi age " << ag <<"=" << Fothi2[ag + IND_T*nbi] << endl;
                             Fothi2[ag + IND_T*nbi] = Fothi2[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
@@ -15484,7 +15520,7 @@ fichier << ff.str() << endl;
 
                 if (Qvec[SPPdynOPT[ind]-1]==0) {
 //fichier << "ST9.13" << endl;
-                    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 44));
+                    double *g_Fothi = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 44)); //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, SPPdynOPT[ind]-1), 44)); Rprintf("alpha= %f \n",alpha_f_st5);
                     int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
                     for (int ag = 0; ag < ni; ag++) {
                             g_Fothi[ag + ni*IND_T] = g_Fothi[ag + ni*IND_T]*alpha_f_st5;
@@ -17824,7 +17860,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
 
         SEXP output, out_names, out_Foth, out_Foth_G1,out_Foth_G2;
-        PROTECT(output = allocVector(VECSXP, 107)); //11/04/18 rajout de l'élément reconcilSPP
+        PROTECT(output = allocVector(VECSXP, 117)); //11/04/18 rajout de l'élément reconcilSPP
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
         SET_VECTOR_ELT(output, 2, object->out_Fbar_et);
@@ -17946,16 +17982,16 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 106, object->TACbyF);
 
         //Ajout indicateurs sex-based
-        PROTECT(out_Foth_G1 = allocVector(VECSXP, object->nbE));
-        setAttrib(out_Foth_G1, R_NamesSymbol, object->sppList);
-        if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G1, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 224));}
-        SET_VECTOR_ELT(output, 107, out_Foth_G1);
-        PROTECT(out_Foth_G2 = allocVector(VECSXP, object->nbE));
-        setAttrib(out_Foth_G2, R_NamesSymbol, object->sppList);
-        if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G2, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 225));}
-        SET_VECTOR_ELT(output, 108, out_Foth_G2);
+        //PROTECT(out_Foth_G1 = allocVector(VECSXP, object->nbE));
+        //setAttrib(out_Foth_G1, R_NamesSymbol, object->sppList);
+        //if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G1, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 224));}
+        //SET_VECTOR_ELT(output, 107, out_Foth_G1);
+        //PROTECT(out_Foth_G2 = allocVector(VECSXP, object->nbE));
+        //setAttrib(out_Foth_G2, R_NamesSymbol, object->sppList);
+        //if (object->nbE>0) {for (int i = 0; i < object->nbE; i++) SET_VECTOR_ELT(out_Foth_G2, i, VECTOR_ELT(VECTOR_ELT(object->eVar, i), 225));}
+        //SET_VECTOR_ELT(output, 108, out_Foth_G2);
         SET_VECTOR_ELT(output, 109, object->out_F_fmi_G1);
-        SET_VECTOR_ELT(output, 110, object->out_F_fmi_G1);
+        SET_VECTOR_ELT(output, 110, object->out_F_fmi_G2);
         SET_VECTOR_ELT(output, 111, object->out_Z_eit_G1);
         SET_VECTOR_ELT(output, 112, object->out_Z_eit_G2);
         SET_VECTOR_ELT(output, 113, object->out_N_eit_G1);
@@ -17980,7 +18016,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
         setAttrib(output, R_NamesSymbol, out_names);
 
-        UNPROTECT(5);
+        UNPROTECT(3);
         return(output);
         delete object;
 
