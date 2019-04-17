@@ -150,18 +150,24 @@ if (length(recParamList)>0) {
     if (!is.null(devRecParamL[[elem]])) {
         if (objInput@specific$Q[elem]==0 & objInput@specific$S[elem]==0 & length(objInput@specific$Ages[[elem]])>1) {#XSA
          del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
-         devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,1:3],delay=del)
+         devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                      delay=del,
+                                      type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
          devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
         } else if (objInput@specific$Q[elem]==0 & objInput@specific$S[elem]==1 & length(objInput@specific$Ages[[elem]])>1){ #sex-based
           Nze <- c(objInput@input[[elem]]$N_i0t_G1[1],objInput@input[[elem]]$N_i0t_G2[1])
           del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
-          devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,1:2],delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))))
+          devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                       delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
+                                       type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
           devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
           
         } else if (objInput@specific$Q[elem]==1) { #SS3
             Nze <- c(objInput@input[[elem]]$Ni0_S1M1,objInput@input[[elem]]$Ni0_S2M2,objInput@input[[elem]]$Ni0_S3M3,objInput@input[[elem]]$Ni0_S4M4)
             del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
-            devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,1:3],delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))))
+            devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                         delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
+                                         type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
             devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
          } 
       }else {

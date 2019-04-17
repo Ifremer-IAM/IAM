@@ -403,7 +403,7 @@ PROTECT(inpMeanRec_Ftarg = MeanRec_Ftarg);
 
 //tac_ctrl = tacCTRL;
 recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
-recParamList = getListElement(tacCTRL, "recParamList");PrintValue(recParamList);fichier << recParamList << endl;
+recParamList = getListElement(tacCTRL, "recParamList");
 maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0];
 diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0];
 lambda = REAL(getListElement(tacCTRL, "lambda"))[0];
@@ -7527,7 +7527,7 @@ Rprintf("G7\n");fichier << "G7" << endl;
                                     }
                             }
 
-Rprintf("après T %i\n",ind_t);PrintValue(VECTOR_ELT(out_N_eit,e));
+//Rprintf("après T %i\n",ind_t);PrintValue(VECTOR_ELT(out_N_eit,e));
 
 
                                 for (int ind_f = 0 ; ind_f < 1 ; ind_f++)
@@ -7549,15 +7549,25 @@ Rprintf("après T %i\n",ind_t);PrintValue(VECTOR_ELT(out_N_eit,e));
 Rprintf("G8\n");fichier << "G8" << endl;
 
         if ((!isNull(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & (nbI>1) & Reality) { //seulement applicable à t>0 et pour une dynamique XSA: ici Reality==TRUE donc forcage avec recParamList remplace la valeur de recList
-            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
-            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0];
+            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param")); Rprintf("param = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
+            int *typeSR = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type")); Rprintf("type = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type"));
+            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0]; Rprintf("delay = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"));
+
             if ((!ISNA(param[ind_t])) & (ind_t>=del)) {
                 double recr = 0.0;
-                if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) {
-                    recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
-                } else{
-                    recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
+
+                if (typeSR[ind_t]==1){ // Hockey Stick
+                    if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) {
+                        recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
+                    } else{
+                        recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
+                    }
+                } else if (typeSR[ind_t]==2){ // Beverton-Holt
+                    recr = (4*param[ind_t + 0*nbT] * param[ind_t + 1*nbT] * rans_SSB_et[ind_t - del]) /
+                    (param[ind_t + 2*nbT]*(1-param[ind_t + 0*nbT]) + rans_SSB_et[ind_t - del]*(5*param[ind_t + 0*nbT]-1)) *
+                    param[ind_t + 3*nbT];
                 }
+
                 Rprintf("Recruitment in reality = %f\n",recr);fichier << "Recruitment in reality = " << recr << endl;
                 r_N_e0t[ind_t] = recr;
                 rans_N_eit[0*fact4_D[2] + ind_t*fact4_D[3]] = recr;
@@ -7824,19 +7834,29 @@ Rprintf("après T %i\n",ind_t);PrintValue(VECTOR_ELT(out_N_eit,e));
      //ajout 01/06/2018 : recrutement alétoire sur la base de recParamList
 Rprintf("G8\n");fichier << "G8" << endl;
 
-        if ((!isNull(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & (nbI>1) & Reality) { //seulement applicable à t>0 et pour une dynamique XSA: ici Reality==TRUE donc forcage avec recParamList remplace la valeur de recList
+        if ((!isNull(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & (nbI>1) & Reality) { //seulement applicable à t>0: ici Reality==TRUE donc forcage avec recParamList remplace la valeur de recList
 
-            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
-            double *ventil = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil"));
-            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0];
+            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param")); Rprintf("param = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
+            double *ventil = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil")); Rprintf("ventil = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil"));
+            int *typeSR = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type")); Rprintf("type = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type"));
+            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0]; Rprintf("delay = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"));
 
             if ((!ISNA(param[ind_t])) & (ind_t>=del)) {
                 double recr = 0.0;
-                if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) {
-                    recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
-                } else{
-                    recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
+
+                if (typeSR[ind_t]==1){ // Hockey Stick
+                    if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) {
+                        recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
+                    } else{
+                        recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
+                    }
+                } else if (typeSR[ind_t]==2){ // Beverton-Holt
+                    recr = (4*param[ind_t + 0*nbT] * param[ind_t + 1*nbT] * rans_SSB_et[ind_t - del]) /
+                    (param[ind_t + 2*nbT]*(1-param[ind_t + 0*nbT]) + rans_SSB_et[ind_t - del]*(5*param[ind_t + 0*nbT]-1)) *
+                    param[ind_t + 3*nbT];
                 }
+
+
                 Rprintf("Recruitment in reality = %f\n",recr);fichier << "Recruitment in reality = " << recr << endl;
                 r_N_e0t_G1[ind_t] = recr*ventil[0];
                 rans_N_eit_G1[0*fact4_D[2] + ind_t*fact4_D[3]] = recr*ventil[0];
@@ -8865,19 +8885,26 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
     //ajout 01/06/2018 : recrutement alétoire sur la base de recParamList
 
-        if ((!isNull(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & Reality) { //seulement applicable à t>0 et pour une dynamique SS3
-            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
-            double *ventil = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil"));
-            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0];
+        if ((!isNull(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & Reality) {//seulement applicable à t>0 et pour une dynamique SS3
+            double *param = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param")); Rprintf("param = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"param"));
+            double *ventil = REAL(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil")); Rprintf("ventil = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"ventil"));
+            int *typeSR = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type")); Rprintf("type = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"type"));
+            int del = INTEGER(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"))[0]; Rprintf("delay = "); PrintValue(getListElement(getListElement(recParamList,CHAR(STRING_ELT(sppList,e))),"delay"));
+
             if ((!ISNA(param[ind_t])) & (ind_t>=del)) {
                 double recr = 0.0;
-                if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) { //on suppose ici que la modification qu'on s'apprête à opérer sur les recrutment laisse SSB constant (ce qui n'est qu'approximativement vrai --> r_matwt_M1[age 0] ~ 4.567683e-09, donc non strictement nul
-                    recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
-                } else{
-                    recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
-                }
-                Rprintf("Recruitment %f\n",recr);fichier << "Recruitment:" << recr << endl;
 
+                if (typeSR[ind_t]==1){ // Hockey Stick
+                    if ((1/param[ind_t + 1*nbT])>rans_SSB_et[ind_t - del]) {
+                        recr = param[ind_t + 0*nbT] * rans_SSB_et[ind_t - del] * param[ind_t + 2*nbT];
+                    } else{
+                        recr = param[ind_t + 0*nbT] * param[ind_t + 2*nbT] / param[ind_t + 1*nbT];
+                    }
+                } else if (typeSR[ind_t]==2){ // Beverton-Holt
+                    recr = (4*param[ind_t + 0*nbT] * param[ind_t + 1*nbT] * rans_SSB_et[ind_t - del]) /
+                    (param[ind_t + 2*nbT]*(1-param[ind_t + 0*nbT]) + rans_SSB_et[ind_t - del]*(5*param[ind_t + 0*nbT]-1)) *
+                    param[ind_t + 3*nbT];
+                }
 
                         //S1
                 rans_N_eit_S1M1[0*fact4_D[0] + 0*fact4_D[1] + 0*fact4_D[2] + ind_t*fact4_D[3]] = recr*ventil[0];
