@@ -56,6 +56,8 @@ setClass("iamOutput",
                     Li = list(),              #débarquements totaux aux âges en poids pour les flottilles et métiers bio modélisés  (composante âge)
                     Lc = list(),              #débarquements totaux en poids par catégorie pour les flottilles et métiers bio modélisés  (composante âge)
                     Ltot = list(),            #débarquements totaux en poids (composante âge)
+		                L_et = list(),            #débarquements totaux en poids 
+		                L_pt = list(),            #debarquements produit marche en poids
                     P = list(),               #prix moyen par espèce et catégorie
                     GVL_f_m_e = list(),       #CA total par espèce, flottille et métier éco
                      GVLcom_f_m_e = list(),

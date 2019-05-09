@@ -321,6 +321,36 @@ setClass("fleetInput",
 	validity=val.fleetInput
 )
 
+#====================================================================
+# Définition de l'objet Market et test de validité (paramètres requis renseignés,...)
+#====================================================================
+
+val.marketInput <- function(object){
+  
+  #à remplir avec les tests de validité à appliquer au données de paramétrage
+  #if ... stop(...)
+  
+  return(TRUE)
+  
+}
+
+setClass("marketInput",
+         representation(
+           input="list"
+         ),
+         prototype(
+           input=list(
+             #modalités
+             modE = NA,
+             modP = NA,
+             #variables 
+             ep = NA,                 #correspondance espece/espece marche
+             beta_pp = NA            #cross price flexibilities
+           )
+         ),
+         validity=val.marketInput
+)
+
 
 
 #====================================================================

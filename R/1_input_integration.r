@@ -166,7 +166,8 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
               tabD <- cbind.data.frame(expand.grid(dimnames(vec_di)),value1=as.vector(vec_di)) ; names(tabD) <- c("f","m","a","val1")
               tabD$fm <- paste(tabD$f,tabD$m,sep="__") 
               if (all(is.na(tabMM))) TABD <- cbind(tabD,mEco=tabD$m,val2=MM) else TABD <- merge(tabMM,tabD,all=TRUE)
-              TABD$val <- TABD$val1*TABD$val2 ; TABD <- TABD[!is.na(TABD$val),] 
+              #TABD$val <- TABD$val1*TABD$val2  change Florence 05/2019
+              TABD$val <- TABD$val1; TABD <- TABD[!is.na(TABD$val),] 
               TABD$f <- factor(as.character(TABD$f),levels=namF)
               TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)    
               TABD$a <- factor(as.character(TABD$a),levels=namI)
@@ -1542,8 +1543,6 @@ LL$input <- c(if (length(nam_stock)>0) lapply(LL$input[1:length(nam_stock)],refo
     if (length(nam_stock_bis)>0) lapply(LL$input[(1:length(nam_stock_bis))+length(nam_stock)],reformat,"staticStockInput") else NULL,
     lapply(LL$input[length(nam_stock)+length(nam_stock_bis)+1],reformat,"fleetInput"))
 
-#LL$input <- c(lapply(LL$input[1:(length(nam_stock)+length(nam_stock_bis))],reformat),
-#    lapply(LL$input[length(nam_stock)+length(nam_stock_bis)+1],reformat,"fleetInput"))
 
 #on laisse l'élément "scénario" tel quel pour le moment
 
@@ -1620,6 +1619,105 @@ if (indDYN) {
    for (spp in as.character(namList)) LL$input[[spp]]$mm <- tabMM[[spp]]
   }
 }
+
+#Price flexibility  # Florence 05/2019
+    PFlex = read.xlsx(file,sheet="Price_flexibility",rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
+    PFlex[] <- lapply(PFlex, function(x) gsub(",",".",as.character(x)))
+    PFlex <- as.matrix(rbind2("",PFlex))
+    PFlex[is.na(PFlex)] <- ""
+    
+    vec <- as.vector(PFlex)
+    vec <- vec[vec!=""]
+    MOD=NULL
+    MOD[[1]] <- c("NONE",gsub('p__',"",unique(vec[sapply(vec,function(y) substring(y,1,3)=='p__')]))) #modalites produits marche
+    Spp_dyn=if (indDYN) as.character(namList) else character(0)
+    StaticSpp=as.character(nam_stock_bis)
+    MOD[[2]] <- c(Spp_dyn,StaticSpp) #modalites especes
+    
+    indEmpt <- suppressWarnings(apply(PFlex,1,function(x) min(unlist(sapply(c("v__","e__","p__"),grep,x)))))
+    invisible(sapply(1:nrow(PFlex),function(x) if (is.finite(indEmpt[x])) {if (indEmpt[x]>1) PFlex[x,1:(indEmpt[x]-1)] <<- ""}))
+    
+    #on filtre tout ce qui n'est ni numérique, ni paramètre
+    #conversion en numérique
+    num <- apply(suppressWarnings(apply(PFlex,1,as.numeric)),1,as.character)
+    
+    #on ajoute les paramètres
+    indic <- substring(PFlex,1,3)%in%c("v__","e__","p__")
+    num[indic] <- PFlex[indic]
+    
+    indicRow <- apply(PFlex,1,function(x) any(substring(x,1,3)%in%c("v__","e__","p__")))
+    indicTbl <- cumsum(apply(num,1,function(x) all(is.na(x))))
+    #on sépare les tables (sauts de lignes)
+    sepTabl <- split(as.data.frame(num)[indicRow,],indicTbl[indicRow])
+    tbl <- lapply(sepTabl,function(x) x[,!apply(x,2,function(y) all(is.na(y)))])
+    
+    #il faut maintenant filtrer toutes les anomalies de format
+    
+    #on distingue pour commencer les tables 1D des tables 2D
+    tbl2Dind <- lapply(tbl,function(x) !(substring(as.character(x[1,1]),1,3)%in%c("v__","e__","p__")))
+    tbl2D <- tbl[(1:length(tbl))[unlist(tbl2Dind)]]
+    
+    if (length(tbl2D)>0) {tbl2D <- lapply(tbl2D,function(x) x[,apply(x,2,function(y) any(substring(as.matrix(y),1,3)%in%c("v__","e__","p__")))])
+    invisible(lapply(1:length(tbl2D),function(x) tbl2D[[x]][tbl2D[[x]]==-1] <<- as.numeric(NA)))}
+    
+    #on peut maintenant séparer les variables
+    #pour cela, il faut tout mettre sous forme 1D
+    if (length(tbl2D)>0) tbl2 <- lapply(tbl2D,twoDto1D,"2D") else tbl2 <- NULL
+    ListPflex <- tbl2
+    ListPflex <- lapply(ListPflex,function(x) split(x[,-match("v",names(x)),drop=FALSE],as.character(x[,match("v",names(x))])))
+    namL <- gsub("v__","",unlist(lapply(ListPflex,names)))
+    ListPflex <- unlist(ListPflex,recursive=FALSE,use.names = FALSE)
+    names(ListPflex) <- namL
+    
+    #il faut regrouper les tables de même variable découpées en plusieurs parties
+    Nam <- unique(names(ListPflex))
+    ListPflex <- lapply(Nam,function(x) {tt <- do.call("rbind",ListPflex[names(ListPflex)%in%x])
+    rownames(tt) <- NULL
+    return(tt)})
+    names(ListPflex) <- Nam
+    
+    #il faut etendre la matrice ep a toutes les especes 
+    combi = expand.grid(e=paste0('e__',MOD[[2]]),p=paste0('p__',MOD[[1]]))
+    ep = ListPflex$ep
+    ep=merge(combi,ep,all.x = TRUE)
+    ep[is.na(ep)]=0
+    ListPflex$ep = ep
+    
+    combi2 = expand.grid(p=paste0('p__',MOD[[1]]),p.1=paste0('p__',MOD[[1]]))
+    beta_pp = ListPflex$beta_pp
+    beta_pp = merge(combi2, beta_pp, all.x=TRUE)
+    beta_pp[is.na(beta_pp)]=0
+    ListPflex$beta_pp = beta_pp
+    
+    ListPflex$beta_pp$p = gsub(x=as.character(ListPflex$beta_pp$p),pattern='p__',rep='')
+    ListPflex$beta_pp$p.1 = gsub(x=as.character(ListPflex$beta_pp$p.1),pattern='p__',rep='')
+    ListPflex$ep$p = gsub(x=as.character(ListPflex$ep$p),pattern='p__',rep='')
+    ListPflex$ep$e = gsub(x=as.character(ListPflex$ep$e),pattern='e__',rep='')
+    
+    ListPflex$beta_pp$p <- factor(as.character(ListPflex$beta_pp$p),levels=MOD[[1]])
+    ListPflex$beta_pp$p.1 <- factor(as.character(ListPflex$beta_pp$p.1),levels=MOD[[1]])
+    ListPflex$ep$p <- factor(as.character(ListPflex$ep$p),levels=MOD[[1]])
+    ListPflex$ep$e <- factor(as.character(ListPflex$ep$e),levels=MOD[[2]])
+    ListPflex$ep$value = as.integer(ListPflex$ep$value)
+    dim.p <- length(MOD[[1]])
+    dim.e <- length(MOD[[2]])
+    dimL <- c(p=dim.p, e=dim.e)
+    
+    require(reshape2)
+    ListPflex$beta_pp = acast(ListPflex$beta_pp,p~p.1,value.var='value')
+    attributes(ListPflex$beta_pp)$DimCst = as.integer(c(dimL['p'],dimL['p']))
+    ListPflex$ep = acast(ListPflex$ep,e~p,value.var='value')
+    attributes(ListPflex$ep)$DimCst = as.integer(c(dimL['e'],dimL['p']))
+    
+    ListPflex$ep[which(rowSums(ListPflex$ep)==0),'NONE'] = as.integer(1) #on assigne les especes pour lesquelles pas de produit a produit NONE
+    
+    ListPflex$modE = as.character(MOD[[2]])
+    ListPflex$modP = as.character(MOD[[1]])
+    
+    
+    LL$input[['Market']] = reformat(ListPflex,"marketInput")
+
+
 Qvec <- as.integer(rep(0,length(namList))) ; names(Qvec) <- as.character(namList)
 Svec <- as.integer(rep(0,length(namList))) ; names(Svec) <- as.character(namList)
 

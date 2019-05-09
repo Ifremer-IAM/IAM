@@ -5,7 +5,7 @@ Date: 2018
 Author: AMURE
 Description: ToDo.
 Depends: R(>= 3.4.3), methods, lattice, stats, grDevices, abind, MASS,
-        openxlsx
+        openxlsx, reshape2
 Imports: tcltk, tcltk2
 Maintainer: Nobody <no@body.com>
 License: GPL (>= 2)

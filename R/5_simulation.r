@@ -39,22 +39,14 @@ if (length(NamSpict >0) ){
   MeanRec_Ftarg[NamSpict] = NA
 }
 
-#validation triplet arguments Ftarg/W_Ftarg/MeanRec_Ftarg
-if (!is.null(Ftarg) & !is.null(W_Ftarg) & !is.null(MeanRec_Ftarg)) {
-    intrs <- intersect(intersect(names(Ftarg),names(W_Ftarg)),names(MeanRec_Ftarg))
+#validation doublet arguments Ftarg/W_Ftarg
+if (!is.null(Ftarg) & !is.null(W_Ftarg)) {
+    intrs <- intersect(names(Ftarg),names(W_Ftarg))
     if (length(intrs)>0) {
        Ftarg <- Ftarg[intrs] ; W_Ftarg <- W_Ftarg[intrs] ; MeanRec_Ftarg <- MeanRec_Ftarg[intrs]
        Ftarg <- lapply(Ftarg,function(x) rep(as.double(x),length=nT))
        empty <- lapply(W_Ftarg,function(x) if ((nrow(x)!=nF) | (ncol(x)!=nT)) stop("Check your 'W_Ftarg' input !!!"))
-       MeanRec_Ftarg <- lapply(MeanRec_Ftarg,function(x) if (length(x)==1) {
-                                                          return(as.integer(x))    #moyenne mobile sur délai=n
-                                                         } else {
-                                                          if ((is.null(nrow(x)) & (length(x)==nT)) | (is.matrix(x) && (nrow(x)==4) && (ncol(x)==nT)) | (is.matrix(x) && (nrow(x)==2) && (ncol(x)==nT))){
-                                                            return(as.double(x))    #forçage recrutement XSA(vec:length=nT) ou SS3(mat:dim=4*nT) ou sex-based(mat:dim=2*nT)
-                                                          } else {
-                                                            stop("Check your 'MeanRec_Ftarg' input !!!")
-                                                          }
-                                                         })
+
        W_Ftarg = rapply( W_Ftarg, f=function(x) ifelse(is.na(x),0,x), how="replace" )
        
        #names(Ftarg) <- names(MeanRec_Ftarg) <- intrs
@@ -68,7 +60,17 @@ if (!is.null(Ftarg) & !is.null(W_Ftarg) & !is.null(MeanRec_Ftarg)) {
   Ftarg <- W_Ftarg <- MeanRec_Ftarg <- NULL
 }
 
-
+if (!is.null(MeanRec_Ftarg)){
+  MeanRec_Ftarg <- lapply(MeanRec_Ftarg,function(x) if (length(x)==1) {
+    return(as.integer(x))    #moyenne mobile sur délai=n
+  } else {
+    if ((is.null(nrow(x)) & (length(x)==nT)) | (is.matrix(x) && (nrow(x)==4) && (ncol(x)==nT)) | (is.matrix(x) && (nrow(x)==2) && (ncol(x)==nT))){
+      return(as.double(x))    #forçage recrutement XSA(vec:length=nT) ou SS3(mat:dim=4*nT) ou sex-based(mat:dim=2*nT)
+    } else {
+      stop("Check your 'MeanRec_Ftarg' input !!!")
+    }
+  })
+} 
 
 #Ajout 27/03/2018 ----------------
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
@@ -351,6 +353,8 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     Li = out$Li,              
                     Lc = out$Lc,              
                     Ltot = out$Ltot,
+                    L_et= out$L_et,
+                    L_pt = out$L_pt,
                     P = out$P,
                     GVL_f_m_e = out$E$GVL_f_m_e_out,
                      GVLcom_f_m_e = out$E$GVLcom_f_m_e_out,
