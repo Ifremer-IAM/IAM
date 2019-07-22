@@ -1259,7 +1259,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
     SEXP ans, dimObj, dimnames, Dim;
 
     int *dim, *ndim, *rdim;
-    double *rans, *robj;
+    double *rans = &NA_REAL, *robj = &NA_REAL;
 
     PROTECT(dimObj = getAttrib(object, install("DimCst")));
 
@@ -1267,7 +1267,7 @@ SEXP BioEcoPar::aggregObj(SEXP object, SEXP newDim)
 
     //tests sur les dimensions
     if ((dim[0]==0) & (dim[1]==0) & (dim[2]==0) & (dim[3]==0)) {  //c'est terminé, rien à agréger
-
+        UNPROTECT(3);
         return(object);
 
     } else {
@@ -3886,10 +3886,11 @@ for (int e = 0 ; e < nbE ; e++) {
                         double *sumFtot = REAL(getListElement(elmt, "F_i"));
 
                         rdimI[3] = dimC[3];
-                        double *sumFr = REAL(aggregObj(ans_11, dimI));
-                    //if (ind_t==0) {//PrintValue(aggregObj(ans_11, dimI));}
 
                         if (ind_t==0) { //on initialise
+                            SEXP gg0 = R_NilValue;
+                            PROTECT(gg0=aggregObj(ans_11, dimI));
+                            double *sumFr = REAL(gg0);
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                 r_Foth_i[ind_i+ind_t*nbI] = fmax2(0.0 , sumFtot[ind_i+ind_t*nbI*(dimF[3]>0)] - sumFr[ind_i+ind_t*nbI*(dimC[3]>0)]); //ON N'INTEGRE PAS DE MORTALITES NEGATIVES
 
@@ -3901,6 +3902,7 @@ for (int e = 0 ; e < nbE ; e++) {
                             }
                             ////PrintValue(v_F_efmi);//PrintValue(dimI);PrintValue(Foth_i);
                             //Rprintf("Initialisation l.3580, Foth_i = "); PrintValue(Foth_i);
+                            UNPROTECT(1);
                         } else {
                            if (ind_t<(nbT-1)) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
@@ -9053,7 +9055,6 @@ double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
 double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
-SEXP ans_Lstat=R_NilValue; //added 07/09/18
 
 if (cUpdate) {
 fichier << "cUpdate = " << cUpdate << endl;
@@ -9072,7 +9073,7 @@ fichier << "cUpdate = " << cUpdate << endl;
 
     SEXP ans_C_efmit=R_NilValue, ans_Y_efmit=R_NilValue, ans_D_efmit=R_NilValue, ans_L_efmit=R_NilValue,
          dimnames=R_NilValue, rnames_Esp=R_NilValue, ans_C_eit=R_NilValue, ans_Y_eit=R_NilValue, ans_L_eit=R_NilValue, dimnames2=R_NilValue,
-         ans_Ystat=R_NilValue, /*ans_Lstat=R_NilValue, */ans_Dstat=R_NilValue, dimnames_eStat=R_NilValue, rnames_eStat=R_NilValue,
+         ans_Ystat=R_NilValue, ans_Lstat=R_NilValue, ans_Dstat=R_NilValue, dimnames_eStat=R_NilValue, rnames_eStat=R_NilValue,
          ans_DD_efmit=R_NilValue, ans_LD_efmit=R_NilValue,
          ans_C_eit_G1=R_NilValue, ans_C_eit_G2=R_NilValue,
          ans_C_efmit_G1=R_NilValue,
@@ -14394,6 +14395,201 @@ if (strcmp(CHAR(namVar), "FDWToth_i_S4M4") == 0) {PROTECT(target_lvl_2 = VECTOR_
 }}
 
 
+//------------------------------------------
+// Module 'Report d'effort' selon une pondération des ratio profit par métier et effort par métier anticipés
+//------------------------------------------
+
+extern "C" {
+
+void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
+{
+
+ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.FleetBehav.txt", ios::out | ios::trunc);
+
+    SEXP Flist, nbds_f, nbds_f_m, fmtBhv, muBhv, alphaBhv, RTBS_f_m;
+
+    PROTECT(Flist = getListElement(list, "Fleet"));
+    PROTECT(nbds_f = getListElement(Flist, "nbds_f"));
+    PROTECT(nbds_f_m = getListElement(Flist, "nbds_f_m"));
+    PROTECT(fmtBhv = getListElement(paramBehav, "FMT"));
+    PROTECT(muBhv = getListElement(paramBehav, "MU"));
+    PROTECT(alphaBhv = getListElement(paramBehav, "ALPHA"));
+
+    double *r_nbds_f = REAL(nbds_f), *r_nbds_f_m = REAL(nbds_f_m);
+    int typeBhv = INTEGER(getListElement(paramBehav, "type"))[0];
+    int posMuBhv = INTEGER(getListElement(paramBehav, "MUpos"))[0];
+    bool isPos = (posMuBhv==1);
+
+ //type n°1 : pas de report d'effort. Intervention sur l'effort au niveau flottille-métier via la matrice FMT
+ // qui opère additivement, avec redressement en cas d'effort résultant négatif ou supérieur à 365 sommé sur les métiers
+ // L'effort au niveau flottille est ensuite réévalué par agrégation du niveau flottille-métier
+
+    if ((typeBhv==1) & (fmtBhv != NULL)) {
+
+       double *r_fmtBhv = REAL(fmtBhv);
+
+       for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+        double sumEff_byF = 0.0;
+
+        for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+            if (!ISNA(r_nbds_f_m[ind_f + nbF*ind_m])) {
+
+                r_nbds_f_m[ind_f + nbF*ind_m] = fmax2(r_nbds_f_m[ind_f + nbF*ind_m] + r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t],0.0); //NA+...=NA et max(NA,0)=NA
+                sumEff_byF = sumEff_byF + r_nbds_f_m[ind_f + nbF*ind_m];
+
+            }
+
+        }
+
+        //correction
+
+        if (sumEff_byF>365.0) {
+
+          for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+           r_nbds_f_m[ind_f + nbF*ind_m] = r_nbds_f_m[ind_f + nbF*ind_m]*365/sumEff_byF;
+
+          }
+
+        }
+
+        // niveau flottille
+
+        r_nbds_f[ind_f] = fmin2(sumEff_byF,365.0);
+
+       }
+    }
+
+
+ //type n°2 : reports d'effort pilotés. Intervention sur les métiers par flottille avec report conditionné par une matrice FMT
+ // de type :   | xx  xx   1 -0.5 -0.5   xx |
+ //             | xx 0.7 0.3   xx -0.2 -0.8 |
+ //             | ...                       |
+ //
+ // La quantité brute de report par flottille-métier est ensuite évaluée par multiplication de FMT par un vecteur MU de dimension nbF
+ // MU est contraint pour que les reports soient cohérents
+
+
+    if ((typeBhv==2) & (fmtBhv != NULL) & (muBhv != NULL)) {
+
+       double *r_fmtBhv = REAL(fmtBhv), *r_muBhv = REAL(muBhv);
+
+       for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+           //détermination de la validité de MU_f et correction le cas échéant
+
+        double mu_limSup=-1.0, mu_limInf=0.0, finalMu=0.0;
+
+        for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+            if (!ISNA(r_nbds_f_m[ind_f + nbF*ind_m])) {
+
+                if (mu_limSup<0) { //première évaluation
+                    if (r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]>0) {
+                       mu_limSup = (365-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                       if (!isPos) mu_limInf = (0-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                    } else {
+                       if (r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]<0) {
+                        mu_limSup = (0-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                        if (!isPos) mu_limInf = (365-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t];
+                       }
+                    }
+                } else {
+                    if (r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]>0) {
+                       mu_limSup = fmin2(mu_limSup , (365-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
+                       if (!isPos) mu_limInf = fmax2(mu_limInf , (0-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
+                    } else {
+                       if (r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]<0) {
+                        mu_limSup = fmin2(mu_limSup , (0-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
+                        if (!isPos) mu_limInf = fmax2(mu_limInf , (365-r_nbds_f_m[ind_f + nbF*ind_m])/r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]);
+                       }
+                    }
+                }
+            }
+        }
+
+        mu_limSup = fmax2(mu_limSup,0.0);
+
+        finalMu = fmax2(fmin2(r_muBhv[ind_f + nbF*ind_t],mu_limSup),mu_limInf);
+
+        //calcul
+
+        for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+            if (!ISNA(r_nbds_f_m[ind_f + nbF*ind_m]))
+
+                r_nbds_f_m[ind_f + nbF*ind_m] = r_nbds_f_m[ind_f + nbF*ind_m] + r_fmtBhv[ind_f + nbF*ind_m + nbF*nbMe*ind_t]*finalMu;
+
+        }
+
+        //normalement, pas besoin de réévaluer nbds_f car la conservation de l'effort est assurée par la méthodo
+       }
+    }
+
+
+
+
+ //type n°3 : report d'effort orienté par pondération des ratio de profit et d'effort de l'année précédente (cf P. Marchal).
+
+    if ((typeBhv==3) & (ind_t>0) & (alphaBhv != NULL)) {
+
+        if (ecodcf==0) {
+            PROTECT(RTBS_f_m = VECTOR_ELT(out_Eco,10));
+        } else {
+            PROTECT(RTBS_f_m = VECTOR_ELT(out_EcoDCF,44));
+        }
+
+        double *r_RTBS_f_m = REAL(RTBS_f_m), *r_alphaBhv = REAL(alphaBhv);
+
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+
+            r_alphaBhv[ind_f + nbF*ind_t] = fmax2(fmin2(r_alphaBhv[ind_f + nbF*ind_t],1.0),0.0);
+
+            double totalRTBS_f = 0.0, totalEff_f = 0.0;
+
+            for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+                if (!ISNA(r_RTBS_f_m[ind_f + nbF*ind_m + nbF*nbMe*(ind_t-1)]))
+
+                    totalRTBS_f = totalRTBS_f + fmax2(r_RTBS_f_m[ind_f + nbF*ind_m + nbF*nbMe*(ind_t-1)],0.0);
+
+            }
+
+            for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
+
+                if (!ISNA(r_nbds_f_m[ind_f + nbF*ind_m])) {
+
+                    if (totalRTBS_f==0.0) {
+
+                        r_nbds_f_m[ind_f + nbF*ind_m] = 0.0;
+
+                    } else {
+
+                        r_nbds_f_m[ind_f + nbF*ind_m] = r_nbds_f[ind_f] *
+                                ((r_alphaBhv[ind_f + nbF*ind_t] * fmax2(r_RTBS_f_m[ind_f + nbF*ind_m + nbF*nbMe*(ind_t-1)],0.0) / totalRTBS_f) +
+                                ((1 - r_alphaBhv[ind_f + nbF*ind_t]) * r_nbds_f_m[ind_f + nbF*ind_m] / r_nbds_f[ind_f]));
+
+                        totalEff_f = totalEff_f + r_nbds_f_m[ind_f + nbF*ind_m];
+                    }
+                }
+
+            }
+
+            r_nbds_f[ind_f] = totalEff_f; //=0 si totalRTBS_f=0
+        }
+
+        UNPROTECT(1);
+
+    }
+
+
+
+    UNPROTECT(6);
+}
+}
+
 // Numerical Recipes //----------------------------------------------------------------------------------------
 
 // --------  détermination racine (unidimensionnel)
@@ -15493,9 +15689,13 @@ if (N_SPPstatOPT>0) {
 
     for (int ind = 0 ; ind < N_SPPstatOPT ; ind++) { //boucle sur ces espèces statiques
 
+        SEXP gg1=R_NilValue, gg2=R_NilValue;
+        PROTECT(gg1=VECTOR_ELT(out_Lstat, SPPstatOPT[ind]-1));
+        PROTECT(gg2=VECTOR_ELT(out_statLD_efm, SPPstatOPT[ind]-1));
+
         double *TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppListStat,SPPstatOPT[ind]-1))));
-        double *totFM = REAL(aggregObj(VECTOR_ELT(out_Lstat, SPPstatOPT[ind]-1),nDimFM)); //PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, SPPstatOPT[ind]-1),nDimFM));
+        double *totFM = REAL(aggregObj(gg1,nDimFM)); //PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(aggregObj(gg2,nDimFM));
         //double *totF = REAL(aggregObj(VECTOR_ELT(out_Lstat, SPPstatOPT[ind]-1),nDimF));
         //double *totF2 = REAL(aggregObj(VECTOR_ELT(out_statLD_efm, SPPstatOPT[ind]-1),nDimF));
 //fichier << "ST4" << endl;
@@ -15534,6 +15734,7 @@ if (N_SPPstatOPT>0) {
             }
             //Rprintf("T %i F %i \n",ind_t,ind_f);
         }
+        UNPROTECT(2);
         }
 }
 
@@ -15543,16 +15744,21 @@ if (N_SPPspictOPT>0) {
 
     for (int ind = 0 ; ind < N_SPPspictOPT ; ind++) { //boucle sur ces espèces Spict
 //fichier << "ST5" << endl;
+        SEXP gg1=R_NilValue, gg2=R_NilValue, gg3=R_NilValue;
+        PROTECT(gg1=VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1));
+        PROTECT(gg2=VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1));
+        PROTECT(gg3=VECTOR_ELT(out_L_eit, SPPspictOPT[ind]-1));
+
         TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))));//fichier << "ST51" << endl;
         TAC_glob = REAL(getListElement(TAC, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))));//fichier << "ST52" << endl;
-        double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDimFM));//fichier << "ST53" << endl; //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDimFM));//fichier << "ST54" << endl; //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+        double *totFM = REAL(aggregObj(gg1,nDimFM));//fichier << "ST53" << endl; //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(aggregObj(gg2,nDimFM));//fichier << "ST54" << endl; //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
         //double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDimF));//fichier << "ST55" << endl;
         //double *totF2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDimF));//fichier << "ST56" << endl;
-        double *tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, SPPspictOPT[ind]-1),nDim));//fichier << "ST57" << endl;
-        double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPspictOPT[ind]-1),nDim));//fichier << "ST58" << endl;
-        double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPspictOPT[ind]-1),nDim));//fichier << "ST59" << endl;
-//fichier << "ST6" << endl;
+        double *tot = REAL(aggregObj(gg3,nDim));//fichier << "ST57" << endl;
+        double *totMod = REAL(aggregObj(gg1,nDim));//fichier << "ST58" << endl;
+        double *totMod2 = REAL(aggregObj(gg2,nDim));//fichier << "ST59" << endl;
+        //fichier << "ST6" << endl;
         for (int ind_f = 0 ; ind_f<nbF ; ind_f++) {
 
             double denom_st3 = 0.0; double alpha_f_st3 = 0.0;
@@ -15602,6 +15808,7 @@ if (N_SPPspictOPT>0) {
     int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPspictOPT[ind]-1))), "modI"));
     for (int ag = 0; ag < ni; ag++) g_Fothi[ag + ni*IND_T] = fmax2(g_Fothi[ag + ni*IND_T]*finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T])),0.0);
 //fichier << "ST8" << endl;
+    UNPROTECT(3);
     }
 }
 
@@ -15619,8 +15826,14 @@ if (N_SPPdynOPT>0) {
     //on finit d'initialiser Einterm_fm
      for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques restantes pour finaliser l'initialisation de Einterm_fm
 //fichier << "ST9" << endl;
-            double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimFM)); //fichier << "ST9a" << endl;//PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-            double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimFM)); //fichier << "ST9b" << endl;//PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+            SEXP gg1=R_NilValue, gg2=R_NilValue, Pgg1=R_NilValue, Pgg2=R_NilValue;;
+            PROTECT(Pgg1=VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1));
+            PROTECT(Pgg2=VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1));
+            PROTECT(gg1=aggregObj(Pgg1,nDimFM));
+            PROTECT(gg2=aggregObj(Pgg2,nDimFM));
+
+            double *totFM = REAL(gg1); //fichier << "ST9a" << endl;//PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+            double *totFM2 = REAL(gg2); //fichier << "ST9b" << endl;//PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
 
             for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
             for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
@@ -15635,6 +15848,7 @@ if (N_SPPdynOPT>0) {
                         }
                 }
             }
+             UNPROTECT(4);
      }
 }
 //fichier << "ST91" << endl;
@@ -15904,17 +16118,25 @@ for (int indM = 0 ; indM < nbMe ; indM++) {
     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3 : détermination de alpha, effort associé, réconciliation avec Einterm, màj Einterm
 //fichier << "ST18" << endl;
 //fichier << "ST8.29" << endl;
-        TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))));
-//fichier << "TAC_byFleet" << TAC_byFleet << endl;
+       SEXP gg1=R_NilValue, gg2=R_NilValue, gg3=R_NilValue, gg4=R_NilValue, gg5=R_NilValue, gg6=R_NilValue, gg7=R_NilValue;
 
+        PROTECT(gg1 = aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimFM));
+        PROTECT(gg2 = aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimFM));
+        PROTECT(gg3 = aggregObj(VECTOR_ELT(out_L_eit, SPPdynOPT[ind]-1),nDim));
+        PROTECT(gg4 = aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimF));
+        PROTECT(gg5 = aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimF));
+        PROTECT(gg6 = aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDim));
+        PROTECT(gg7 = aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDim));
+
+        TAC_byFleet = REAL(getListElement(TACbyF, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))));
         TAC_glob = REAL(getListElement(TAC, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))));
-        double *totFM = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
-        double *totFM2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimFM)); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
-        double *totF = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDimF));
-        double *totF2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDimF));
-        double *tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, SPPdynOPT[ind]-1),nDim));
-        double *totMod = REAL(aggregObj(VECTOR_ELT(out_L_efmit, SPPdynOPT[ind]-1),nDim));
-        double *totMod2 = REAL(aggregObj(VECTOR_ELT(out_LD_efmi, SPPdynOPT[ind]-1),nDim));
+        double *totFM = REAL(gg1); //PrintValue(VECTOR_ELT(out_L_efmit, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_L_efmit, eTemp),nDimFM));
+        double *totFM2 = REAL(gg2); //PrintValue(VECTOR_ELT(out_LD_efmi, eTemp)) ; PrintValue(aggregObj(VECTOR_ELT(out_LD_efmi, eTemp),nDimFM));
+        double *totF = REAL(gg4);
+        double *totF2 = REAL(gg5);
+        double *tot = REAL(gg3);
+        double *totMod = REAL(gg6);
+        double *totMod2 = REAL(gg7);
 //fichier << "ST8.291" << endl;
 
 //fichier << "ST19" << endl;
@@ -16102,6 +16324,7 @@ fichier << ff.str() << endl;
 
 
             }
+            UNPROTECT(7);
 
            }
 
@@ -17589,7 +17812,7 @@ double *rtripLgth_f = REAL(getListElement(Flist, "tripLgth_f"));
 
 // indicateurs espèces ---------------------------------------------------------
 
-for (int e = 0 ; e < nbE+nbEstat ; e++) {
+for (int e = 0 ; e < nbE+nbEstat ; e++) {//on assume qu'il y a au moins une espèce modélisée, qu'elle soit dynamique ou non --> pas de if
 
         if (e<nbE) {
          PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e)))); //espèce dynamique
@@ -17600,37 +17823,52 @@ for (int e = 0 ; e < nbE+nbEstat ; e++) {
         //if (e<nbE) nbI = length(getListElement(elmt, "modI"));
         if (e<nbE) nbC = length(getListElement(elmt, "modC"));
 
-        double *r_Lbio_f_sum_t_e=&NA_REAL, *r_GVLtot_f_m_e2=&NA_REAL, *r_Lbio_f_m_e=&NA_REAL, *r_P_f_m_e=&NA_REAL, *r_LD_efmc=&NA_REAL, r_theta_e, *r_statLDor_efm=&NA_REAL,
+        double *r_Lbio_f_sum_t_e=&NA_REAL, *r_GVLtot_f_m_e2=&NA_REAL, *r_Lbio_f_m_e=&NA_REAL, *r_P_f_m_e=&NA_REAL, *r_LD_efmc=&NA_REAL, r_theta_e=NA_REAL, *r_statLDor_efm=&NA_REAL,
                *r_statLDst_efm=&NA_REAL, r_Pst_e=NA_REAL, *r_LD_f_sum_t_e=&NA_REAL, *r_statLDor_f_sum_t_e=&NA_REAL, *r_statLDst_f_sum_t_e=&NA_REAL;
         int *dim_Lbio_e, *dim_P_e;
 
 //Rprintf("Eco X11\n");fichier << "EcoX11" << endl;
-       if (e<nbE) {
+       if ((nbE>0) & (e<nbE)) {
+            SEXP gg1=R_NilValue, gg2=R_NilValue, Pgg1=R_NilValue, Pgg2=R_NilValue;
+            PROTECT(Pgg1=VECTOR_ELT(out_L_efmct, e));
+            PROTECT(Pgg2=VECTOR_ELT(out_LD_efmc, e));
+            PROTECT(gg1=aggregObj(Pgg1,dimCstF));
+            PROTECT(gg2=aggregObj(Pgg2,dimCstF));
 
             r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),41));
             r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),228));
             r_GVLst_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),229));
             r_Lbio_f_m_e = REAL(VECTOR_ELT(out_L_efmct, e));
-            r_Lbio_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_L_efmct, e),dimCstF));
+            r_Lbio_f_sum_t_e = REAL(gg1);
             r_LD_efmc = REAL(VECTOR_ELT(out_LD_efmc, e));
-            r_LD_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_LD_efmc, e),dimCstF));
+            r_LD_f_sum_t_e = REAL(gg2);
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
             //r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             r_P_f_m_e = REAL(VECTOR_ELT(out_P_t, e));
             dim_Lbio_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_L_efmct, e), install("DimCst")))));
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_P_t, e), install("DimCst")))));
 //Rprintf("Eco X12\n");fichier << "EcoX12" << endl;
-        } else {
+            UNPROTECT(4);
+        }
+        if ((nbEstat>0) & (e>=nbE)) {
+
+            SEXP gg1=R_NilValue, gg2=R_NilValue, gg3=R_NilValue, Pgg1=R_NilValue, Pgg2=R_NilValue, Pgg3=R_NilValue;
+            PROTECT(Pgg1=VECTOR_ELT(out_Lstat, e-nbE));
+            PROTECT(Pgg2=VECTOR_ELT(out_statLDor_efm, e-nbE));
+            PROTECT(Pgg3=VECTOR_ELT(out_statLDst_efm, e-nbE));
+            PROTECT(gg1=aggregObj(Pgg1,dimCstF));
+            PROTECT(gg2=aggregObj(Pgg2,dimCstF));
+            PROTECT(gg3=aggregObj(Pgg3,dimCstF));
 
             r_GVLtot_f_m_e2 = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
             r_GVLcom_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),8));
             r_GVLst_f_m_e_out = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),9));
             r_Lbio_f_m_e = REAL(VECTOR_ELT(out_Lstat, e-nbE));
-            r_Lbio_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_Lstat, e-nbE),dimCstF));
+            r_Lbio_f_sum_t_e = REAL(gg1);
             r_statLDor_efm = REAL(VECTOR_ELT(out_statLDor_efm, e-nbE));
-            r_statLDor_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_statLDor_efm, e-nbE),dimCstF));
+            r_statLDor_f_sum_t_e = REAL(gg2);
             r_statLDst_efm = REAL(VECTOR_ELT(out_statLDst_efm, e-nbE));
-            r_statLDst_f_sum_t_e = REAL(aggregObj(VECTOR_ELT(out_statLDst_efm, e-nbE),dimCstF));
+            r_statLDst_f_sum_t_e = REAL(gg3);
             r_theta_e = REAL(getListElement(elmt, "theta_e"))[0];
             //r_Lref_f_e = REAL(getListElement(elmt, "Lref_f_e"));
             r_P_f_m_e = REAL(VECTOR_ELT(out_Pstat, e-nbE));
@@ -17638,6 +17876,7 @@ for (int e = 0 ; e < nbE+nbEstat ; e++) {
             dim_P_e = INTEGER(iDim(INTEGER(getAttrib(VECTOR_ELT(out_Pstat, e-nbE), install("DimCst")))));
             r_Pst_e = REAL(getListElement(elmt, "Pst_e"))[0];
 //Rprintf("Eco X13\n");fichier << "EcoX13" << endl;
+            UNPROTECT(6);
         }
 
 
