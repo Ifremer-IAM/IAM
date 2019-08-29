@@ -1,7 +1,7 @@
-Package: IAM65
+Package: IAMMSpTAC
 Title: BioEconomic model for fisheries
 Version: 0.1
-Date: 2018
+Date: 2019
 Author: AMURE
 Description: ToDo.
 Depends: R(>= 3.4.3), methods, lattice, stats, grDevices, abind, MASS,
