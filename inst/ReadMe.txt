@@ -15,6 +15,6 @@ R -d gdb -f c:\test.r
 
 Compilation 64 bits
 
-%R_pgm_35%/R CMD INSTALL --build --compile-both IAM65_0.1.tar.gz
+%R_pgm_35%/R CMD INSTALL --build --compile-both IAMMSpTAC_0.1.tar.gz
 
 

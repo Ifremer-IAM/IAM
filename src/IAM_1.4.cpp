@@ -123,7 +123,7 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
 SEXP    FList, sppList, sppListStat, pList, sppListAll, fleetList, metierList, metierListEco, namDC, t_init, times, Q, S,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables intermédiaires par espèces
-        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList;
+        fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList, ParamSPMlist;
 
 SEXP inpFtarg, inpW_Ftarg, inpMeanRec_Ftarg;
 
@@ -290,8 +290,8 @@ BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
 {
 
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.txt", ios::out | ios::trunc);
-fichier << "Début " << endl;
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.txt", ios::out | ios::trunc);
+//fichier << "Début " << endl;
 
 
 PROTECT(listSpec);
@@ -309,7 +309,7 @@ PROTECT_INDEX ipx_eVar_copy;
 PROTECT_INDEX ipx_eStatVar_copy;
 PROTECT_INDEX ipx_fVar_copy;
 
-Rprintf("step0\n");fichier << "step0" << endl;
+//Rprintf("step0\n");fichier << "step0" << endl;
 
 PROTECT_WITH_INDEX(list = duplicate(listInput),&ipx_list);
 PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
@@ -417,6 +417,7 @@ PROTECT(inpMeanRec_Ftarg = MeanRec_Ftarg);
 //tac_ctrl = tacCTRL;
 recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
 recParamList = getListElement(tacCTRL, "recParamList");
+ParamSPMlist = getListElement(tacCTRL, "ParamSPMList");
 maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0];
 diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0];
 lambda = REAL(getListElement(tacCTRL, "lambda"))[0];
@@ -702,11 +703,11 @@ if (nbE>0) {
  }
 }
 
-fichier << "Debut boucle T"  << endl;
+//fichier << "Debut boucle T"  << endl;
 
 for (int it = 0; it < nbT ; it++) {
 
-fichier << "T = " << it << endl;
+//fichier << "T = " << it << endl;
 Rprintf("T= %d\n", it);
 
 //Rprintf("ini1");fichier << "ini1" << endl;
@@ -748,7 +749,7 @@ if (bhv_active & (it>=1)) FleetBehav(list, it, parBHV);
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-Rprintf("intro0\n");fichier << "intro0" << endl;
+//Rprintf("intro0\n");fichier << "intro0" << endl;
  //copie de sauvegarde car il faudra revenir aux valeurs initiales s'il y a une correction des ajustements
 
 REPROTECT(list_copy = duplicate(list),ipx_list_copy);//Rprintf("intro0.1\n");
@@ -802,19 +803,19 @@ REPROTECT(eVar_copy = duplicate(eVar),ipx_eVar_copy);//Rprintf("intro0.3\n");fic
 
 REPROTECT(eStatVar_copy = duplicate(eStatVar),ipx_eStatVar_copy);//Rprintf("intro0.4\n");fichier << "intro.4" << endl;
 REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");fichier << "intro0.5" << endl;
-Rprintf("intro1\n");fichier << "intro1" << endl;
+//Rprintf("intro1\n");fichier << "intro1" << endl;
 
 
-Rprintf("intro2\n");fichier << "intro2" << endl;
+//Rprintf("intro2\n");fichier << "intro2" << endl;
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
-    PrintValue(TACbyF);
-   Rprintf("call.EstimationTACfromF\n");
-   fichier << "call.EstimationTACfromF" << endl;
+   // PrintValue(TACbyF);
+   //Rprintf("call.EstimationTACfromF\n");
+   //fichier << "call.EstimationTACfromF" << endl;
    int oooo = EstimationTACfromF(it) ;
    oooo = oooo * 2;
-   Rprintf("end.EstimationTACfromF\n");
-   fichier << "end.EstimationTACfromF" << endl;
-   PrintValue(TACbyF);
+   //Rprintf("end.EstimationTACfromF\n");
+   //fichier << "end.EstimationTACfromF" << endl;
+   //PrintValue(TACbyF);
 
 }
 
@@ -822,7 +823,7 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !isNull(Ftarg) & !isNu
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activée si au moins un élément de TACbyF est renseigné
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
 
-Rprintf("adjust\n");
+//Rprintf("adjust\n");
 
 //Rprintf("introOPT\n");fichier << "introOPT" << endl;
 
@@ -986,10 +987,10 @@ Rprintf("adjust\n");
         }
 
 
-     Rprintf("call.GestionF2\n");fichier << "call.GestionF2" << endl;
+     //Rprintf("call.GestionF2\n");fichier << "call.GestionF2" << endl;
      int ooo = GestionF2(it);
      ooo = ooo * 2;
-     Rprintf("end.GestionF2\n");fichier << "end.GestionF2" << endl;
+     //Rprintf("end.GestionF2\n");fichier << "end.GestionF2" << endl;
 
   //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
 
@@ -1005,7 +1006,7 @@ Rprintf("adjust\n");
 //
 //}
 
-Rprintf("intro4\n");fichier << "intro4" << endl;
+//Rprintf("intro4\n");fichier << "intro4" << endl;
 
 //if (scen & it>=1) Scenario(list, listScen, it);
 //Rprintf("E\n");
@@ -1036,17 +1037,17 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
 //3 modules avec pas de temps différencié au niveau trimestre
 if (nbE>0) {
- Rprintf("call.Mortalite\n");fichier << "call.Mortalite" << endl;
+ //Rprintf("call.Mortalite\n");fichier << "call.Mortalite" << endl;
  Mortalite(list, it, eVar);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
- Rprintf("end.Mortalite\n");fichier << "end.Mortalite" << endl;
+ //Rprintf("end.Mortalite\n");fichier << "end.Mortalite" << endl;
 
- Rprintf("call.DynamicPop\n");fichier << "call.DynamicPop" << endl;
+ //Rprintf("call.DynamicPop\n");fichier << "call.DynamicPop" << endl;
  DynamicPop(list, it, eVar, true);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
- Rprintf("end.DynamicPop\n");fichier << ".DynamicPop" << endl;
+ //Rprintf("end.DynamicPop\n");fichier << ".DynamicPop" << endl;
 }
-Rprintf("call.CatchDL\n");fichier << "call.CatchDL" << endl;
+//Rprintf("call.CatchDL\n");fichier << "call.CatchDL" << endl;
 CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
-Rprintf("end.CatchDL\n");fichier << "end.CatchDL" << endl;
+//Rprintf("end.CatchDL\n");fichier << "end.CatchDL" << endl;
 
 
 
@@ -1061,18 +1062,18 @@ Rprintf("end.CatchDL\n");fichier << "end.CatchDL" << endl;
 //}
 
 
-Rprintf("call.Marche\n");fichier << "call.Marche" << endl;
+//Rprintf("call.Marche\n");fichier << "call.Marche" << endl;
 Marche(list, it);
-Rprintf("end.Marche\n");fichier << "end.Marche" << endl;
+//Rprintf("end.Marche\n");fichier << "end.Marche" << endl;
 
-Rprintf("call.EcoDCF\n");fichier << "call.EcoDCF" << endl;
+//Rprintf("call.EcoDCF\n");fichier << "call.EcoDCF" << endl;
 EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
-Rprintf("end.EcoDCF\n");fichier << "end.EcoDCF" << endl;
+//Rprintf("end.EcoDCF\n");fichier << "end.EcoDCF" << endl;
 
 
 }
 ////Rprintf("K");
-fichier << "Fin boucle T"  << endl;
+//fichier << "Fin boucle T"  << endl;
 
 SET_VECTOR_ELT(out_effort, 0, NBVF); SET_VECTOR_ELT(out_effort, 1, NBDSF); SET_VECTOR_ELT(out_effort, 2, EFF2F);
 SET_VECTOR_ELT(out_effort, 3, NBVFM); SET_VECTOR_ELT(out_effort, 4, NBDSFM); SET_VECTOR_ELT(out_effort, 5, EFF2FM);
@@ -1108,7 +1109,7 @@ UNPROTECT(14+18+4+16*6+8+9+2);//out_
 UNPROTECT(9);
 UNPROTECT(10); // PROTECT_WITH_INDEX
 
-fichier.close();
+//fichier.close();
 }
 
 //------------------------------------------------------------------------------------
@@ -1463,11 +1464,11 @@ PROTECT(Flist = getListElement(list, "Fleet"));
 //        ofstream fichier2(str1c.c_str() , ios::out | ios::trunc);
 //
 //        fichier2 << "Début" << endl;
-ofstream fichier2("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test_Mortalite.txt", ios::out | ios::trunc);
-fichier2 << "Début " << endl;
+//ofstream fichier2("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test_Mortalite.txt", ios::out | ios::trunc);
+//fichier2 << "Début " << endl;
 
 if (fUpdate) {
-        fichier2 << "fUpdate = " << fUpdate << endl;
+        //fichier2 << "fUpdate = " << fUpdate << endl;
 
 SEXP    elmt, dimEff,
         dimCst, Dim, dimCst_Sr_e= R_NilValue, dimCst_d_efi= R_NilValue, dimCst_doth_ei= R_NilValue, dimCst_F_efmi= R_NilValue, intAge, //dimCst_Capt_emi, dimCst_Capt_ei,
@@ -1707,7 +1708,7 @@ double *rans_11=&NA_REAL, *rans_11l=&NA_REAL, *r_Sr_e=&NA_REAL, *r_d_efi=&NA_REA
         *r_nbds_f, *r_Foth_i=&NA_REAL, *r_Froth_i=&NA_REAL, *r_Foth_i_G1=&NA_REAL, *r_Foth_i_G2=&NA_REAL, *r_Froth_i_G1=&NA_REAL, *r_Froth_i_G2=&NA_REAL;
 
 //préparation de l'output
-if (ind_t==0) { Rprintf("Mort1\n");
+if (ind_t==0) { //Rprintf("Mort1\n");
 
     PROTECT(rnames = allocVector(STRSXP, nbE));
     setAttrib(out_F_fmi, R_NamesSymbol, rnames);
@@ -4155,7 +4156,7 @@ if (ind_t==0) UNPROTECT(1);
 UNPROTECT(2);
 
 } else {
-    fichier2 << "fUpdate = " << fUpdate << endl;
+    //fichier2 << "fUpdate = " << fUpdate << endl;
 
 for (int e = 0 ; e < nbE ; e++) {
 
@@ -4947,7 +4948,7 @@ for (int e = 0 ; e < nbE ; e++) {
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                 r_Foth_it_G1[ind_i+(ind_t+1)*nbI] = r_Foth_it_G1[ind_i+ind_t*nbI];   //à modifier quand on considèrera une mortalité "autres" variable
                                 r_Foth_it_G2[ind_i+(ind_t+1)*nbI] = r_Foth_it_G2[ind_i+ind_t*nbI];
-                                fichier2 << "Age " << ind_i <<  " Foth dans Evar : " << r_Foth_it_G1[ind_i+ind_t*nbI] << endl;
+                                //fichier2 << "Age " << ind_i <<  " Foth dans Evar : " << r_Foth_it_G1[ind_i+ind_t*nbI] << endl;
                             }
                         }
                     }
@@ -4973,7 +4974,7 @@ for (int e = 0 ; e < nbE ; e++) {
 //Rprintf("K6\n");
 UNPROTECT(1);
 
-fichier2.close();
+//fichier2.close();
 
 }}
 
@@ -4996,11 +4997,12 @@ void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality) //Real
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 7));//Rprintf("Mort20.4\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 61));//Rprintf("Mort20.5\n");
 
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
 
 if (dUpdate) {
+ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
 fichier << "dUpdate = " << dUpdate << endl;
-Rprintf("dUpdate = %f \n" ,dUpdate);
+//Rprintf("dUpdate = %f \n" ,dUpdate);
 
     SEXP    elmt, dFACT1, dFACT2, dFACT3, dFACT4, dFACT5, dFACT6, dFACT7, dFACT8, dFACT9, dFACT10,
             dimCst1, dimCst2, dimCst3, dimCst4, Dim1, Dim2, Dim3, Dim4,
@@ -5041,6 +5043,8 @@ Rprintf("dUpdate = %f \n" ,dUpdate);
           *r_Fbar_G1=&NA_REAL, *r_Fbar_G2=&NA_REAL, *r_N_ei0_G1=&NA_REAL, *r_N_ei0_G2=&NA_REAL,
           *r_M_ei_G1=&NA_REAL, *r_M_ei_G2=&NA_REAL, *r_w_ei_G1=&NA_REAL, *r_w_ei_G2=&NA_REAL,
           *r_mat_ei_G1=&NA_REAL, *r_mat_ei_G2=&NA_REAL, *r_r=&NA_REAL, *r_K=&NA_REAL, *r_n=&NA_REAL, *r_B=&NA_REAL;
+
+    double delta_r = 0.0, delta_K = 0.0;
 
     double *rans_Z_eit_S1M1=&NA_REAL, *rans_Z_eit_S1M2=&NA_REAL, *rans_Z_eit_S1M3=&NA_REAL, *rans_Z_eit_S1M4=&NA_REAL,
            *rans_Z_eit_S2M1=&NA_REAL, *rans_Z_eit_S2M2=&NA_REAL, *rans_Z_eit_S2M3=&NA_REAL, *rans_Z_eit_S2M4=&NA_REAL,
@@ -5220,6 +5224,8 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
                                     PROTECT(v_n = getListElement(elmt, "n"));                              //
                                     PROTECT(v_B = getListElement(elmt, "B_i"));
 
+
+
                              }  else if ((Qvec[e]==0) & (Svec[e]==0)) {
 
 
@@ -5280,8 +5286,8 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
 
 //Rprintf("G1.4");fichier << "G1.4" << endl;
-                                    dim_M_ei = INTEGER(dimCst_M_ei); fichier << "dim_M_ei =" << dim_M_ei << endl;
-                                    dim_w_ei = INTEGER(dimCst_w_ei); fichier << dim_w_ei << endl;
+                                    dim_M_ei = INTEGER(dimCst_M_ei); //fichier << "dim_M_ei =" << dim_M_ei << endl;
+                                    dim_w_ei = INTEGER(dimCst_w_ei); //fichier << dim_w_ei << endl;
                                     dim_mat_ei = INTEGER(dimCst_mat_ei);
                                     dim_N_ei0 = INTEGER(dimCst_N_ei0);
                                     dim_N_e0t = INTEGER(dimCst_N_e0t);
@@ -5835,7 +5841,7 @@ sumWt = 0.0; fmax = 0.0;
                                         }
                                     }
 
-                                    fichier << "prod = " << prod << endl;
+                                    //fichier << "prod = " << prod << endl;
 
                                     PROTECT(Dim2 = allocVector(INTSXP, count));
                                     dim2 = INTEGER(Dim2);
@@ -6135,8 +6141,15 @@ sumWt = 0.0; fmax = 0.0;
                                                   (tempG2 + r_Froth_i_G2[ind_i + nbI*ind_t]) * r_Fbar_G2[ind_i] * rans_N_eit_G2[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] /
                                                     (rans_N_eit_G1[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] + rans_N_eit_G2[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] );
                                     sumWt = sumWt + (r_Fbar_G1[ind_i]  + r_Fbar_G2[ind_i])/2 ;
-
-
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; F_i_G1 = " << tempG1 + r_Froth_i_G1[ind_i + nbI*ind_t] << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; F_i_G2 = " << tempG2 + r_Froth_i_G2[ind_i + nbI*ind_t] << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; N_i_G1 = " << rans_N_eit_G1[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; N_i_G2 = " << rans_N_eit_G2[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]]<< endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; Ntot_i = " << rans_N_eit_G2[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]]+rans_N_eit_G1[0*fact4_D[0] + 0*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]]<< endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; Fbar_G1 = " << r_Fbar_G1[ind_i] << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; Fbar_G2 = " << r_Fbar_G2[ind_i] << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; fmax = " << fmax << endl;
+                                    fichier << "e = " << CHAR(STRING_ELT(sppList,e)) <<"; Age = " << ind_i << "; sumW = " << sumWt << endl;
 
                                     }
 
@@ -7281,6 +7294,12 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                         }
 
                                     } else {
+                                        if ((!isNull(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e)))))){ // si aleatoire sur les parametres K et r
+                                            delta_r = REAL(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e))))[ind_t];
+                                            delta_K = REAL(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e))))[ind_t+nbT];
+                                        }
+                                        Rprintf("t = ",ind_t,"; sp = ",CHAR(STRING_ELT(sppList,e)), "delta_r = ",  delta_r,"\n");
+                                        Rprintf("t = ",ind_t,"; sp = ",CHAR(STRING_ELT(sppList,e)), "delta_K = ",  delta_K,"\n");
 
                                         rans_B_et[ind_t] = r_B[0]; //biomasse initiale SPiCT
 
@@ -7308,8 +7327,8 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                          //                                        (temp + r_Foth_i[0 + ind_t*1])*rans_interm[0];
 
                                         // Fox equation
-                                        rans_interm[1] = rans_interm[0] * (1 + r_r[0] * log ( r_K[0] / rans_interm[0]) - (temp + r_Foth_i[ind_t])) ;
-                                        Rprintf("ransinterm[0] = %f, ransinterm[1] = %f, r = %f, K = %f, F = %f",rans_interm[0],rans_interm[1], r_r[0], r_K[0], temp + r_Foth_i[ind_t]);
+                                        rans_interm[1] = rans_interm[0] * (1 + (r_r[0]+delta_r) * log ( (r_K[0]+delta_K) / rans_interm[0]) - (temp + r_Foth_i[ind_t])) ;
+                                        //Rprintf("ransinterm[0] = %f, ransinterm[1] = %f, r = %f, K = %f, F = %f",rans_interm[0],rans_interm[1], r_r[0], r_K[0], temp + r_Foth_i[ind_t]);
                                         //for (int ib = 1 ; ib < 17 ; ib++) rans_interm[ib] = rans_interm[ib-1] + (r_r[0]/(r_n[0]-1))*rans_interm[ib-1]*(1-pow(rans_interm[ib-1]/r_K[0],r_n[0]-1))/16 -
                                         //                                         (temp + r_Foth_i[0 + ind_t*1])*rans_interm[ib-1]/16;
                                         SET_VECTOR_ELT(intermBIOMspict, e, ans_interm);
@@ -7368,6 +7387,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 //PrintValue(out_Fbar_et);
 dUpdate = false;
 UNPROTECT(1);
+fichier.close();
 
 } else {
 
@@ -7429,6 +7449,9 @@ for (int e = 0 ; e < nbE ; e++) {
             double  *r_r = REAL(getListElement(elmt, "r"));
             double  *r_K = REAL(getListElement(elmt, "K"));
             double  *r_n = REAL(getListElement(elmt, "n"));
+
+            double delta_r = 0.0;
+            double delta_K = 0.0;
 
             double  *rans_Z_eit = REAL(VECTOR_ELT(out_Z_eit,e));
             double  *rans_N_eit = REAL(VECTOR_ELT(out_N_eit,e));
@@ -7598,7 +7621,7 @@ for (int e = 0 ; e < nbE ; e++) {
                     param[ind_t + 3*nbT] * param[ind_t + 4*nbT];
                 }
 
-                //Rprintf("Recruitment in reality = %f\n",recr);fichier << "Recruitment in reality = " << recr << endl;
+                //Rprintf("Recruitment in reality = %f\n",recr);fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << "; Recruitment in reality = " << recr << endl;
                 r_N_e0t[ind_t] = recr;
                 rans_N_eit[0*fact4_D[2] + ind_t*fact4_D[3]] = recr;
 
@@ -7628,6 +7651,13 @@ for (int e = 0 ; e < nbE ; e++) {
                                 }
 
                              } else { //SPiCT
+                                    if ((!isNull(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e)))))){ // si aleatoire sur les parametres K et r
+                                        delta_r = REAL(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e))))[ind_t];
+                                        delta_K = REAL(getListElement(ParamSPMlist,CHAR(STRING_ELT(sppList,e))))[ind_t+nbT];
+                                    }
+                                    Rprintf("t = %i; sp = %s; delta_r = %f \n",ind_t,CHAR(STRING_ELT(sppList,e)), delta_r);
+                                    Rprintf("t = %i; sp = %s; delta_K = %f \n",ind_t,CHAR(STRING_ELT(sppList,e)), delta_K);
+
 
                                     double *Bspict = REAL(VECTOR_ELT(intermBIOMspict, e));
                                     double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
@@ -7651,7 +7681,7 @@ for (int e = 0 ; e < nbE ; e++) {
                                        //                                          (temp + r_Foth_i[0 + ind_t*1])*Bspict[ind_t];
 
                                       // Fox equation
-                                      Bspict[ind_t+1] = Bspict[ind_t] * (1 + r_r[0] * log( r_K[0] / Bspict[ind_t]) - (temp + r_Foth_i[ind_t]));
+                                      Bspict[ind_t+1] = Bspict[ind_t] * (1 + (r_r[0]+delta_r) * log( (r_K[0]+delta_K) / Bspict[ind_t]) - (temp + r_Foth_i[ind_t]));
 
                                     }
                                     //Rprintf(" Bspict[ind_t+1] = %f, Bspict[ind_t] = %f, r = %f, K = %f, F = %f",Bspict[ind_t+1],Bspict[ind_t], r_r[0], r_K[0], temp + r_Foth_i[ind_t]);
@@ -7697,7 +7727,7 @@ for (int e = 0 ; e < nbE ; e++) {
         //ajout 24/04/2018 pour prise en compte forçage recrutement
         if ((!isNull(getListElement(recList,CHAR(STRING_ELT(sppList,e))))) & (ind_t>0) & (nbI>1) & Reality) { //seulement applicable à t=2
             SRInd[e]=0;
-            r_N_e0t_G1[ind_t*fact6_D[3]] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[0 + 2*ind_t]; fichier << "Rec.1: e = " << CHAR(STRING_ELT(sppList,e)) << ", r_N_e0t_G1 = " << r_N_e0t_G1[ind_t*fact6_D[3]] << endl;
+            r_N_e0t_G1[ind_t*fact6_D[3]] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[0 + 2*ind_t]; //fichier << "Rec.1: e = " << CHAR(STRING_ELT(sppList,e)) << ", r_N_e0t_G1 = " << r_N_e0t_G1[ind_t*fact6_D[3]] << endl;
             r_N_e0t_G2[ind_t*fact6_D[3]] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[1 + 2*ind_t];//t
             if (ind_t<(nbT-1)) {
                     r_N_e0t_G1[ind_t*fact6_D[3] + 1] = REAL(getListElement(recList,CHAR(STRING_ELT(sppList,e))))[0 + 2*(ind_t+1)]; //t+1
@@ -7775,14 +7805,14 @@ for (int e = 0 ; e < nbE ; e++) {
 
                                                 rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                   r_N_ei0_G1[ind_f*fact5_D[0] + ind_m*fact5_D[1] + ind_i*fact5_D[2] + ind_t*fact5_D[3]];
-                                                  fichier << "Rec.2.1: e = " << CHAR(STRING_ELT(sppList,e)) << ", rans_N_eit_G1 = " << rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] << endl;
+                                                  //fichier << "Rec.2.1: e = " << CHAR(STRING_ELT(sppList,e)) << ", rans_N_eit_G1 = " << rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] << endl;
 
 
                                             } else {
 
                                                 rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] =
                                                   r_N_e0t_G1[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]];
-                                                  fichier << "Rec.2.2: e = " << CHAR(STRING_ELT(sppList,e)) << ", rans_N_eit_G1 = " << rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] << endl;
+                                                  //fichier << "Rec.2.2: e = " << CHAR(STRING_ELT(sppList,e)) << ", rans_N_eit_G1 = " << rans_N_eit_G1[ind_f*fact4_D[0] + ind_m*fact4_D[1] + ind_i*fact4_D[2] + ind_t*fact4_D[3]] << endl;
 
                                             }
 
@@ -7888,9 +7918,10 @@ for (int e = 0 ; e < nbE ; e++) {
                 }
 
 
-                //Rprintf("Recruitment in reality = %f\n",recr);fichier << "Recruitment in reality = " << recr << endl;
+                //Rprintf("Recruitment in reality = %f\n",recr);fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << "Recruitment in reality = " << recr << endl;
                 r_N_e0t_G1[ind_t] = recr*ventil[0];
-                rans_N_eit_G1[0*fact4_D[2] + ind_t*fact4_D[3]] = recr*ventil[0]; fichier << "Rec.3: e = " << CHAR(STRING_ELT(sppList,e)) << ", delay = " << del <<", SSB = " << rans_SSB_et[ind_t - del] << ", r_N_e0t_G1 = " << r_N_e0t_G1[ind_t] << endl;
+                rans_N_eit_G1[0*fact4_D[2] + ind_t*fact4_D[3]] = recr*ventil[0]; //fichier << "Rec.3: e = " << CHAR(STRING_ELT(sppList,e)) << ", delay = " << del <<", SSB = " << rans_SSB_et[ind_t - del] << ", r_N_e0t_G1 = " << r_N_e0t_G1[ind_t] << endl;
+                //Rprintf("Recruitment in reality G1 = %f\n",recr);fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << "Recruitment in reality G1 = " << rans_N_eit_G1[0*fact4_D[2] + ind_t*fact4_D[3]] << endl;
                 r_N_e0t_G2[ind_t] = recr*ventil[1];
                 rans_N_eit_G2[0*fact4_D[2] + ind_t*fact4_D[3]] = recr*ventil[1];
 
@@ -9010,7 +9041,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 }}
 
 
-fichier.close();
+//fichier.close();
 }
 }
 
@@ -9039,7 +9070,7 @@ void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR)
 //        ssy << EcoIndCopy[0];
 //        str1b = str1b + ssi.str() + str3b + ssy.str() + str2b;
 //
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Catch_DL.txt" , ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Catch_DL.txt" , ios::out | ios::trunc);
 
 //
 //        fichier1 << "Début" << endl;
@@ -9057,7 +9088,7 @@ double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
 
 if (cUpdate) {
-fichier << "cUpdate = " << cUpdate << endl;
+//fichier << "cUpdate = " << cUpdate << endl;
 
     SEXP    elmt, dimCst, Dim, dimCst_F_efmit, dimCst_N_eit, dimCst_Z_eit, dimCst_wL_ei, dimCst_wD_ei, dimCst_d_efmit,
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
@@ -10142,7 +10173,7 @@ if (nbI>1) {
 
 
                     if (all_is_na(v_wD_ei_G1) | all_is_na(v_wD_ei_G2)) { //1ère méthode
-Rprintf("L1\n");
+//Rprintf("L1\n");
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
@@ -10166,7 +10197,7 @@ Rprintf("L1\n");
                             //Loth_eit
 
                             if ((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) { //OD s'applique, Loth_eit=Yoth_eit (pas d'exemption)
-Rprintf("L1.1\n");
+//Rprintf("L1.1\n");
                              for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
                                 rans_L_eit[ind_i + ind_t*nbI] =
                                         (r_Foth_i_G1[ind_i + ind_t*nbI] * r_N_eit_G1[0*fact3_C[0] + 0*fact3_C[1] + ind_i*fact3_C[2] + ind_t*fact3_C[3]] *
@@ -10181,7 +10212,7 @@ Rprintf("L1.1\n");
 
 
                             } else { //pas d'OD
-Rprintf("L1.2\n");
+//Rprintf("L1.2\n");
                              for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
                                 rans_L_eit[ind_i + ind_t*nbI] =
                                         (r_Foth_i_G1[ind_i + ind_t*nbI] * r_N_eit_G1[0*fact3_C[0] + 0*fact3_C[1] + ind_i*fact3_C[2] + ind_t*fact3_C[3]] *
@@ -10197,7 +10228,7 @@ Rprintf("L1.2\n");
 
 
                     } else {                 //2ème méthode
-Rprintf("L2\n");
+//Rprintf("L2\n");
                             for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                             for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                             for (int ind_i = 0 ; ind_i < nbI ; ind_i++){
@@ -10223,7 +10254,7 @@ Rprintf("L2\n");
                             //Loth_eit : pas d'exemption pour les autres si OD
 
                             if ((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) { //OD s'applique, Loth_eit=Yoth_eit, pas de rejet car pas d'exemption
-Rprintf("L2.1\n")  ;
+//Rprintf("L2.1\n")  ;
                                 for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
                                 rans_L_eit[ind_i + ind_t*nbI] =
                                         (r_Foth_i_G1[ind_i + ind_t*nbI] * r_N_eit_G1[0*fact3_C[0] + 0*fact3_C[1] + ind_i*fact3_C[2] + ind_t*fact3_C[3]] *
@@ -10238,7 +10269,7 @@ Rprintf("L2.1\n")  ;
 
 
                             } else { //pas d'OD
-Rprintf("L2.2\n");
+//Rprintf("L2.2\n");
                              for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
                                 rans_L_eit[ind_i + ind_t*nbI] =
                                         (r_Foth_i_G1[ind_i + ind_t*nbI] * r_N_eit_G1[0*fact3_C[0] + 0*fact3_C[1] + ind_i*fact3_C[2] + ind_t*fact3_C[3]] *
@@ -10257,8 +10288,8 @@ Rprintf("L2.2\n");
 
                     }
 
-Rprintf("e = %s\n",STRING_ELT(sppList,e));
-PrintValue(ans_L_eit);
+//Rprintf("e = %s\n",STRING_ELT(sppList,e));
+//PrintValue(ans_L_eit);
 
                  for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
                  for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
@@ -10324,8 +10355,8 @@ PrintValue(ans_L_eit);
 
                     }
 
-Rprintf("e = %s\n",STRING_ELT(sppList,e));
-PrintValue(ans_L_eit);
+//Rprintf("e = %s\n",STRING_ELT(sppList,e));
+//PrintValue(ans_L_eit);
 
                    }
 
@@ -11109,7 +11140,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     PROTECT(nDim = allocVector(INTSXP,4));
     nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
-    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     if (ind_t==0) {
             PROTECT(ans_L_et = NEW_NUMERIC(nbT));
@@ -11127,14 +11158,14 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
                 rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
                     }
 
-            rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; fichier << "rans_L_et = " << rans_L_et [ind_t] << endl;
+            rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << endl;
 
     if (ind_t==0) {
             SET_VECTOR_ELT(out_L_et, ind_e, ans_L_et);
             SET_STRING_ELT(rnames_eAll, ind_e, STRING_ELT(sppList,e));
     }
 
-fichier << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
+//fichier << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
 /*----------------------------------------------------------------*/
 
 
@@ -11483,7 +11514,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     PROTECT(nDim = allocVector(INTSXP,4));
     nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
-    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     if (ind_t==0) {
             PROTECT(ans_L_et = NEW_NUMERIC(nbT));
@@ -11501,7 +11532,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
                 rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
                     }
 
-            rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; fichier << "rans_L_et = " << rans_L_et[ind_t] << endl;
+            rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << endl;
 
 
     if (ind_t==0) {
@@ -11509,7 +11540,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
             SET_STRING_ELT(rnames_eAll, ind_e, STRING_ELT(sppListStat,e));
     }
 
-    fichier << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
+    //fichier << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
 
 //Rprintf("H14.1\n");fichier << "H14.1" << endl;
                     if (ind_t==0) {
@@ -11537,7 +11568,7 @@ UNPROTECT(3);
 //PrintValue(out_Fbar_et);
 
 } else {
-fichier << "cUpdate = " << cUpdate << endl;
+//fichier << "cUpdate = " << cUpdate << endl;
 
 double *rans_Ytot_fm = REAL(out_Ytot_fm);
 
@@ -13084,10 +13115,10 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     PROTECT(ans_L_eit = VECTOR_ELT(out_L_eit,e));
     PROTECT(nDim = allocVector(INTSXP,4));
     nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
-    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-    rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; fichier << "rans_L_et = " << rans_L_et [ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
+    rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
 
 
 
@@ -13283,10 +13314,10 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     PROTECT(ans_Ystat = VECTOR_ELT(out_Ystat, e));
     PROTECT(nDim = allocVector(INTSXP,4));
     nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
-    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+    ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-    rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; fichier << "rans_L_et = " << rans_L_et[ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] <<  endl;
+    rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] <<  endl;
 
 
 
@@ -13323,7 +13354,7 @@ extern "C" {
 void BioEcoPar::Marche(SEXP list, int ind_t)
 {
 
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Marche.txt", ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Marche.txt", ios::out | ios::trunc);
 
     SEXP    elmt, intC, v_P_fmce, v_icat, v_L_efmit, dimCst_P_fmce, dimCst_L_efmit, dimCst_L_efmct, Dim_L_efmct, //Dim_P_fmce,
             ans_L_efmct = R_NilValue, ans_P_fmce = R_NilValue, dimnames_Lc = R_NilValue, dimnames_P = R_NilValue,
@@ -13412,10 +13443,10 @@ if(pUpdate){
             L_p = 0.0;
             for (int k = 0; k < nbEall; k++) {
                     L_p = L_p + r_ep[p*nbEall + k] * REAL(VECTOR_ELT(out_L_et, k))[ind_t];
-                    fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", k = " << CHAR(STRING_ELT(sppListAll,k)) << ", r_ep = " << r_ep[p*nbEall + k] << ", L_p = " << L_p << endl;
+                    //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", k = " << CHAR(STRING_ELT(sppListAll,k)) << ", r_ep = " << r_ep[p*nbEall + k] << ", L_p = " << L_p << endl;
             }
 
-            rans_L_pt [ind_t] = L_p; fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", rans_L_pt = " << rans_L_pt [ind_t] << endl;
+            rans_L_pt [ind_t] = L_p; //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", rans_L_pt = " << rans_L_pt [ind_t] << endl;
 
             if (ind_t==0) {
                 SET_VECTOR_ELT(out_L_pt, p, ans_L_pt);
@@ -13429,8 +13460,8 @@ if(pUpdate){
 if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
-Rprintf("M2\n");fichier << "M2" << endl;
-fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << endl;
+//Rprintf("M2\n");fichier << "M2" << endl;
+//fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << endl;
 
         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
 
@@ -13468,29 +13499,29 @@ fichier << "e = " << CHAR(STRING_ELT(sppList,e)) << endl;
         {
             error("Non_homogeneous dimensions in icat element. Check .ini biological parameters files !!\n");
         }
-Rprintf("M4\n");fichier << "M4" << endl;
+//Rprintf("M4\n");fichier << "M4" << endl;
 
 //        ---------
 //         Ajustement prix avec relation prix/quantite
 //        ---------
         mult_p = 1.0;
         if(pUpdate){
-Rprintf("M5\n");fichier << "M5" << endl;
+//Rprintf("M5\n");fichier << "M5" << endl;
                 int ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //indice dans matrice ep
-                fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+                //fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
                 double *r_L_pt;
 
                 //Trouver l'indice du produit correspondant
                 for (ind_p = 0 ; ind_p < nbP ; ind_p++) {if (r_ep[ind_p*nbEall + ind_e] == 1) break;}
 
-                fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
+                //fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
 
                 for ( int k = 0; k < nbP; k++) {
 
                     r_L_pt = REAL(VECTOR_ELT(out_L_pt, k));
                     if (r_L_pt[0]!=0) mult_p = mult_p * pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) ;
-                    fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
+                    //fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
 
                 }
 
@@ -13642,7 +13673,7 @@ if (ind_t==0){
             r_P_fmce[ind_f*fact_P[0] + ind_m*fact_P[1] + ind_c*fact_P[2] + ind_t*fact_P[3]] =
                 r_P_fmceIni[ind_f*fact_Pini[0] + ind_m*fact_Pini[1] + ind_c*fact_Pini[2] + 0*fact_Pini[3]] * mult_p; //Florence 05/2019
 
-                if ((ind_f==0) & (ind_m==0)) fichier << "r_P_fmceIni = " << r_P_fmceIni[ind_f*fact_Pini[0] + ind_m*fact_Pini[1] + ind_c*fact_Pini[2] + 0*fact_Pini[3]] << ", mult_p = " << mult_p << ", r_P_fmce = " << r_P_fmce[ind_f*fact_P[0] + ind_m*fact_P[1] + ind_c*fact_P[2] + ind_t*fact_P[3]] << endl;
+                //if ((ind_f==0) & (ind_m==0)) fichier << "r_P_fmceIni = " << r_P_fmceIni[ind_f*fact_Pini[0] + ind_m*fact_Pini[1] + ind_c*fact_Pini[2] + 0*fact_Pini[3]] << ", mult_p = " << mult_p << ", r_P_fmce = " << r_P_fmce[ind_f*fact_P[0] + ind_m*fact_P[1] + ind_c*fact_P[2] + ind_t*fact_P[3]] << endl;
 
         }
 
@@ -13685,7 +13716,7 @@ UNPROTECT(15);
 
 if (nbEstat>0) {
     for (int e = 0 ; e < nbEstat ; e++) {
-Rprintf("M2\n");fichier << "M2" << endl;
+//Rprintf("M2\n");fichier << "M2" << endl;
         PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 
 //        ---------
@@ -13693,22 +13724,22 @@ Rprintf("M2\n");fichier << "M2" << endl;
 //        ---------
         mult_p = 1.0;
         if(pUpdate){
-Rprintf("M5\n");fichier << "M5" << endl;
+//Rprintf("M5\n");fichier << "M5" << endl;
                 int ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //indice dans matrice ep
-                fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
+                //fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
                 double *r_L_pt;
 
                 //Trouver l'indice du produit correspondant
                 for (ind_p = 0 ; ind_p < nbP ; ind_p++) {if (r_ep[ind_p*nbEall + ind_e] == 1) break;}
 
-                fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
+                //fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
 
                 for ( int k = 0; k < nbP; k++) {
 
                     r_L_pt = REAL(VECTOR_ELT(out_L_pt, k));
                     if (r_L_pt[0]!=0) mult_p = mult_p * pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) ;
-                    fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
+                    //fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
 
                 }
 
@@ -13780,7 +13811,7 @@ if (ind_t==0){
                 r_PstatIni[ind_f*fact_Pstatini[0] + ind_m*fact_Pstatini[1] + 0*fact_Pstatini[2] + 0*fact_Pstatini[3]] * mult_p;// Florence 05/2019
 
 
-                if ((ind_f==0) & (ind_m==0)) fichier << "r_PstatIni = " << r_PstatIni[ind_f*fact_Pstatini[0] + ind_m*fact_Pstatini[1] + 0*fact_Pstatini[2] + 0*fact_Pstatini[3]] << ", mult_p = " << mult_p << ", r_Pstat = " << r_Pstat[ind_f*fact_Pstat[0] + ind_m*fact_Pstat[1] + 0*fact_Pstat[2] + ind_t*fact_Pstat[3]] << endl;
+                //if ((ind_f==0) & (ind_m==0)) fichier << "r_PstatIni = " << r_PstatIni[ind_f*fact_Pstatini[0] + ind_m*fact_Pstatini[1] + 0*fact_Pstatini[2] + 0*fact_Pstatini[3]] << ", mult_p = " << mult_p << ", r_Pstat = " << r_Pstat[ind_f*fact_Pstat[0] + ind_m*fact_Pstat[1] + 0*fact_Pstat[2] + ind_t*fact_Pstat[3]] << endl;
 
 
         }
@@ -13811,7 +13842,7 @@ if (pUpdate){
 if (ind_t==0) UNPROTECT(1);
 
 
-fichier.close();
+//fichier.close();
 
 }}
 
@@ -14404,7 +14435,7 @@ extern "C" {
 void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 {
 
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.FleetBehav.txt", ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.FleetBehav.txt", ios::out | ios::trunc);
 
     SEXP Flist, nbds_f, nbds_f_m, fmtBhv, muBhv, alphaBhv, RTBS_f_m;
 
@@ -14867,8 +14898,8 @@ int BioEcoPar::EstimationTACfromF(int ind_t)
 //ss << EcoIndCopy[0];
 //str1 = str1 + mp.str()+ str3 + ss.str() + str2;
 //
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.EstimationTAC.txt", ios::out | ios::trunc);
-fichier << "Début" << endl;
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.EstimationTAC.txt", ios::out | ios::trunc);
+//fichier << "Début" << endl;
 
 
     if (ind_t<delay) {
@@ -14960,7 +14991,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     //calcul du ratio Ftarg/Fbar
     double r_Ftarg = REAL(getListElement(inpFtarg, CHAR(namVarTarg)))[IND_T];
     double r_Fbar = REAL(getListElement(out_Fbar_et, CHAR(namVarTarg)))[IND_T-1];
-    Rprintf("Ftarg: %f, Fbar: %f \n",r_Ftarg, r_Fbar); fichier << "Ftarg:" << r_Ftarg << ", Fbar:" << r_Fbar << endl;
+    //Rprintf("Ftarg: %f, Fbar: %f \n",r_Ftarg, r_Fbar); fichier << "Ftarg:" << r_Ftarg << ", Fbar:" << r_Fbar << endl;
 
     PROTECT(elmt = getListElement(listTempP, CHAR(namVarTarg)));
     int nbI = length(getListElement(elmt, "modI"));
@@ -14976,12 +15007,12 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
         }
 
-        fichier << "Avant T" << ind_t << ": Effort1 Fleet " << indF << " = " << g_effort1F[indF] << "; Nbtrip = " << g_nbTripF[indF]<< endl;
+        //fichier << "Avant T" << ind_t << ": Effort1 Fleet " << indF << " = " << g_effort1F[indF] << "; Nbtrip = " << g_nbTripF[indF]<< endl;
 
         g_effort1F[indF] = g_effort1F[indF] * r_Ftarg / r_Fbar;
         g_nbTripF[indF] = g_nbTripF[indF] * r_Ftarg / r_Fbar;
 
-        fichier << "Apres T" << ind_t << ": Effort1 Fleet " << indF << " = " << g_effort1F[indF] << "; Nbtrip = " << g_nbTripF[indF]<< endl;
+        //fichier << "Apres T" << ind_t << ": Effort1 Fleet " << indF << " = " << g_effort1F[indF] << "; Nbtrip = " << g_nbTripF[indF]<< endl;
 
     }
 
@@ -14995,9 +15026,9 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
                     Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44)); //Rprintf("Dans EVARcopy (l.14478), Fothi2 = "); PrintValue(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
                     for (int ag = 0; ag < nbi; ag++) {
-                            fichier << "Avant T" << ind_t << "; Fothi age " << ag <<"=" << Fothi2[ag + IND_T*nbi] << endl;
+                            //fichier << "Avant T" << ind_t << "; Fothi age " << ag <<"=" << Fothi2[ag + IND_T*nbi] << endl;
                             Fothi2[ag + IND_T*nbi] = Fothi2[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
-                            fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
+                            //fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
                     }
 
             } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)) {//Age and sex-based
@@ -15126,7 +15157,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     // calcul recrutement
     if (!isNull(inpMeanRec_Ftarg) && (!isNull(getListElement(inpMeanRec_Ftarg,CHAR(namVarTarg))))){ // si MeanRec_Ftarg renseigne: forcage selon type 1 (Moyenne sur X dernieres annees) ou 2 (Forçage avec valeurs renseignees)
 
-        fichier << "Recruitment in HCR = from MeanRecFtarg" << endl;
+        //fichier << "Recruitment in HCR = from MeanRecFtarg" << endl;
 
             PROTECT(v_MeanRec_Ftarg = getListElement(inpMeanRec_Ftarg, CHAR(namVarTarg)));
             PrintValue(v_MeanRec_Ftarg);
@@ -15283,7 +15314,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
             UNPROTECT(1);
 
     } else if ((!isNull(getListElement(recParamList,CHAR(namVarTarg)))) & (IND_T>0) & (nbI>1)) { // recrutement = recrutement attendu avec la relation SR (sans incertitude)
-fichier << "Recruitment in HCR = expected from SR" << endl;
+//fichier << "Recruitment in HCR = expected from SR" << endl;
 
             double  *rans_SSB_et = REAL(getListElement(out_SSB_et,CHAR(namVarTarg)));
 
@@ -15301,15 +15332,15 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
                         } else{
                             recr = param[IND_T + 0*nbT] * param[IND_T + 2*nbT] / param[IND_T + 1*nbT];
                         }
-                    } else if (typeSR[IND_T]==2){ // Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta])
+                    } else if (typeSR[IND_T]==2){ // Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta = exp(norm(0,sigma^2))])
                         recr = (4*param[IND_T + 0*nbT] * param[IND_T + 1*nbT] * rans_SSB_et[IND_T -1 - del]) /
                         (param[IND_T + 2*nbT]*(1-param[IND_T + 0*nbT]) + rans_SSB_et[IND_T -1 - del]*(5*param[IND_T + 0*nbT]-1)) *
-                        param[IND_T + 3*nbT];
+                        param[IND_T + 3*nbT] ;
                     }
 
                     PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
                     r_N_e0t = REAL(v_N_e0t);
-                    r_N_e0t[IND_T] = recr;
+                    r_N_e0t[IND_T] = recr; //fichier << "e = " << CHAR(namVarTarg) << " recr = " << recr << ", N_i0t = " << r_N_e0t[IND_T] << endl;
                     UNPROTECT(1);
                 }
 
@@ -15328,7 +15359,7 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
                             } else{
                                 recr = param[IND_T + 0*nbT] * param[IND_T + 2*nbT] / param[IND_T + 1*nbT];
                             }
-                        } else if (typeSR[IND_T]==2){ // Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta])
+                        } else if (typeSR[IND_T]==2){ //Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta = exp(norm(0,sigma^2))])
                             recr = (4*param[IND_T + 0*nbT] * param[IND_T + 1*nbT] * rans_SSB_et[IND_T -1 - del]) /
                             (param[IND_T + 2*nbT]*(1-param[IND_T + 0*nbT]) + rans_SSB_et[IND_T -1 - del]*(5*param[IND_T + 0*nbT]-1)) *
                             param[IND_T + 3*nbT];
@@ -15362,7 +15393,7 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
 
                     if ((!ISNA(param[IND_T])) & (IND_T>=del)) {
                         double recr = 0.0;
-                        fichier << "e = " << CHAR(namVarTarg) << " SSB = " << rans_SSB_et[IND_T - 1 - del] << endl;
+                        //fichier << "e = " << CHAR(namVarTarg) << " SSB = " << rans_SSB_et[IND_T - 1 - del] << endl;
 
                         if (typeSR[IND_T]==1){ // Hockey Stick
                             if ((1/param[IND_T + 1*nbT])>rans_SSB_et[IND_T -1 - del]) { // on prend SSB [t-1] comme approximation de SSB [t] pour calcul recrutement
@@ -15370,8 +15401,8 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
                             } else{
                                 recr = param[IND_T + 0*nbT] * param[IND_T + 2*nbT] / param[IND_T + 1*nbT];
                             }
-                        } else if (typeSR[IND_T]==2){ // Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta])
-                            fichier << " Beverton Holt" << endl;
+                        } else if (typeSR[IND_T]==2){ //Beverton-Holt (param = [h,R0,B0,exp(RecDev in log scale),delta = exp(norm(0,sigma^2))])
+                            //fichier << " Beverton Holt" << endl;
                             recr = (4*param[IND_T + 0*nbT] * param[IND_T + 1*nbT] * rans_SSB_et[IND_T - 1 - del]) /
                             (param[IND_T + 2*nbT]*(1-param[IND_T + 0*nbT]) + rans_SSB_et[IND_T - 1 - del]*(5*param[IND_T + 0*nbT]-1)) *
                             param[IND_T + 3*nbT];
@@ -15383,7 +15414,7 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
                         r_N_e0t_G1 = REAL(v_N_e0t_G1);
                         r_N_e0t_G2 = REAL(v_N_e0t_G2);
 
-                        r_N_e0t_G1[IND_T] = recr*ventil[0]; fichier << "e = " << CHAR(namVarTarg) << " recr = " << recr << ", N_i0t_G1 = " << REAL(getListElement(elmt, "N_i0t_G1")) << endl;
+                        r_N_e0t_G1[IND_T] = recr*ventil[0]; //fichier << "e = " << CHAR(namVarTarg) << " recr = " << recr << ", N_i0t_G1 = " << r_N_e0t_G1[IND_T] << endl;
                         r_N_e0t_G2[IND_T] = recr*ventil[1];
 
                          UNPROTECT(2);
@@ -15424,8 +15455,8 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
 //Rprintf("A22\n");
 
     TAC_glob[IND_T] = LTOT[IND_T];
-    fichier << "Ltot t-1: " << LTOT[IND_T-1] << endl;
-    fichier << "Tactot t: " << TAC_glob[IND_T] << endl;
+    //fichier << "Ltot t-1: " << LTOT[IND_T-1] << endl;
+    //fichier << "Tactot t: " << TAC_glob[IND_T] << endl;
 
     for (int indF = 0 ; indF < nbF ; indF++) TAC_byFleet[indF + nbF*IND_T] = r_W_Ftarg[indF + nbF*IND_T] * LTOT[IND_T];
 
@@ -15523,7 +15554,7 @@ fichier << "Recruitment in HCR = expected from SR" << endl;
     }
 
    return(0);
-   fichier.close();
+   //fichier.close();
 
 
   }
@@ -15547,10 +15578,10 @@ int BioEcoPar::GestionF2(int ind_t)
 //ss << EcoIndCopy[0];
 //str1 = str1 + mp.str()+ str3 + ss.str() + str2;
 //
-ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test_GestionF2.txt", ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test_GestionF2.txt", ios::out | ios::trunc);
 
 //
-fichier << "Début" << endl;
+//fichier << "Début" << endl;
 
     if (ind_t<delay) {
 
@@ -15624,12 +15655,12 @@ fichier << "Début" << endl;
 
 //for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
 //for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-//    if ((ind_t==1) & (ind_f==0)) {
-//
-//        std::stringstream ggg2;
-//        ggg2 << g_effort1FM[ind_f + nbF*ind_m];
-//
-//        fichier << "effort_step2T1" << ggg2.str() << endl;
+// if ((ind_t==1) & (ind_f==0)) {
+
+//std::stringstream ggg2;
+ //       ggg2 << g_effort1FM[ind_f + nbF*ind_m];
+
+ //       fichier << "effort_step2T1" << ggg2.str() << endl;
 //
 //    }
 //}
@@ -15640,17 +15671,17 @@ fichier << "Début" << endl;
     //double *g_effort2FM_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort2_f_m")));
     //double *g_effort2F_copy = REAL(duplicate(getListElement(getListElement(listTempP, "Fleet"), "effort2_f")));
 //new
-    Rprintf("call.Mortalite.1\n");fichier << "call.Mortalite.1" << endl;
+    //Rprintf("call.Mortalite.1\n");fichier << "call.Mortalite.1" << endl;
     Mortalite(listTempP, IND_T, eVar);
-    Rprintf("end.Mortalite.1\n");fichier << "end.Mortalite.1" << endl;
+    //Rprintf("end.Mortalite.1\n");fichier << "end.Mortalite.1" << endl;
 
-    Rprintf("call.DynamicPop.1\n");fichier << "call.DynamicPop.1" << endl;
+    //Rprintf("call.DynamicPop.1\n");fichier << "call.DynamicPop.1" << endl;
     DynamicPop(listTempP, IND_T, eVar,true);
-    Rprintf("end.DynamicPop.1\n");fichier << "end.DynamicPop.1" << endl;
+    //Rprintf("end.DynamicPop.1\n");fichier << "end.DynamicPop.1" << endl;
 
-    Rprintf("call.CatchDL.1\n");fichier << "call.CatchDL.1" << endl;
+    //Rprintf("call.CatchDL.1\n");fichier << "call.CatchDL.1" << endl;
     CatchDL(listTempP, IND_T, eVar);
-    Rprintf("end.CatchDL.1\n");fichier << "end.CatchDL.1" << endl;
+    //Rprintf("end.CatchDL.1\n");fichier << "end.CatchDL.1" << endl;
 
 
 //    double *g_effort1FM = REAL(getListElement(getListElement(listTempP, "Fleet"), "effort1_f_m"));
@@ -15673,9 +15704,13 @@ fichier << "Début" << endl;
     for (int indF = 0 ; indF < nbF ; indF++) {
         if (ISNA(g_effSup[indF + nbF*ind_t])) g_effSup[indF + nbF*ind_t] = 300; //ATTENTION : important à noter, si un navire n'est contraint par rien, c'est direct 300 jours de mer
         double denom_st1 = 0.0; double alpha_f_st1 = 0.0;
-        for (int indM = 0 ; indM<nbMe ; indM++) denom_st1 = denom_st1 + g_effort1F[indF] * mpond_fm[indF + nbF*indM]; //c'est censé valoir eff_f normalement si la somme des facteurs de pond. vaut 1
+        for (int indM = 0 ; indM<nbMe ; indM++) {
+                denom_st1 = denom_st1 + g_effort1F[indF] * mpond_fm[indF + nbF*indM]; //c'est censé valoir eff_f normalement si la somme des facteurs de pond. vaut 1
+        }
         if (denom_st1>0) alpha_f_st1 = g_effSup[indF + nbF*ind_t] / denom_st1;
-        for (int indM = 0 ; indM<nbMe ; indM++) EffsupTMP_fm[1 + indF + nbF*indM] = alpha_f_st1 * g_effort1F[indF] * g_nbvF[indF] * g_effort2F[indF] * mpond_fm[indF + nbF*indM];
+        for (int indM = 0 ; indM<nbMe ; indM++) {
+                EffsupTMP_fm[1 + indF + nbF*indM] = alpha_f_st1 * g_effort1F[indF] * g_nbvF[indF] * g_effort2F[indF] * mpond_fm[indF + nbF*indM];
+    }
     }
 //fichier << "ST2" << endl;
     for (int indF = 0 ; indF < nbF ; indF++)
@@ -15925,9 +15960,9 @@ for (int indM = 0 ; indM < nbMe ; indM++) Einterm_fm_copy[1 + indF + nbF*indM] =
 
 //fichier << "ST7.42" << endl;
 //fichier << "ST12" << endl;
-    Rprintf("call.Mortalite.SPPdynOPT.1\n");fichier << "call.Mortalite.SPPdynOPT.1" << endl;
+    //Rprintf("call.Mortalite.SPPdynOPT.1\n");fichier << "call.Mortalite.SPPdynOPT.1" << endl;
     Mortalite(listTempP, IND_T, eVar) ; //on génère les Z dans out_Z_eit (il faut s'assurer que l'application du Ztemp est bloquée -> utilisation de ZoptSS3)
-    Rprintf("end.Mortalite.SPPdynOPT.1\n");fichier << "end.Mortalite.SPPdynOPT.1" << endl;
+    //Rprintf("end.Mortalite.SPPdynOPT.1\n");fichier << "end.Mortalite.SPPdynOPT.1" << endl;
 //fichier << "ST7.43" << endl;
 // on actualise les Ztemp ----
     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) { //boucle sur les espèces dynamiques XSA ou SS3 : initialisation des Z temporaires (ZtempList)
@@ -16057,13 +16092,13 @@ for (int indM = 0 ; indM < nbMe ; indM++) {
 
 //fichier << "ST8.24" << endl;
 //fichier << "ST15" << endl;
-        Rprintf("call.Mortalite.SPPdynOPT.2\n");fichier << "call.Mortalite.SPPdynOPT.2" << endl;
+        //Rprintf("call.Mortalite.SPPdynOPT.2\n");fichier << "call.Mortalite.SPPdynOPT.2" << endl;
         Mortalite(listTempP, IND_T, eVar); //hors boucle espèce à optimiser
-        Rprintf("end.Mortalite.SPPdynOPT.2\n");fichier << "end.Mortalite.SPPdynOPT.2" << endl;
+        //Rprintf("end.Mortalite.SPPdynOPT.2\n");fichier << "end.Mortalite.SPPdynOPT.2" << endl;
 
-        Rprintf("call.DynamicPop.SPPdynOPT.2\n");fichier << "call.DynamicPop.SPPdynOPT.2" << endl;
+        //Rprintf("call.DynamicPop.SPPdynOPT.2\n");fichier << "call.DynamicPop.SPPdynOPT.2" << endl;
         DynamicPop(listTempP, IND_T, eVar,true); //hors boucle espèce à optimiser
-        Rprintf("end.DynamicPop.SPPdynOPT.2\n");fichier << "end.DynamicPop.SPPdynOPT.2" << endl;
+        //Rprintf("end.DynamicPop.SPPdynOPT.2\n");fichier << "end.DynamicPop.SPPdynOPT.2" << endl;
 //fichier << "ST8.25" << endl;
     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3
 
@@ -16111,9 +16146,9 @@ for (int indM = 0 ; indM < nbMe ; indM++) {
 //fichier << "ST17" << endl;
     }
 
-        Rprintf("call.CatchDL.SPPdynOPT.2\n");fichier << "call.CatchDL.SPPdynOPT.2" << endl;
+        //Rprintf("call.CatchDL.SPPdynOPT.2\n");fichier << "call.CatchDL.SPPdynOPT.2" << endl;
         CatchDL(listTempP, IND_T, eVar); //hors boucle espèce à optimiser
-        Rprintf("end.CatchDL.SPPdynOPT.2\n");fichier << "end.CatchDL.SPPdynOPT.2" << endl;
+        //Rprintf("end.CatchDL.SPPdynOPT.2\n");fichier << "end.CatchDL.SPPdynOPT.2" << endl;
 
     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les espèces dynamiques XSA ou SS3 : détermination de alpha, effort associé, réconciliation avec Einterm, màj Einterm
 //fichier << "ST18" << endl;
@@ -16152,9 +16187,9 @@ for (int indM = 0 ; indM < nbMe ; indM++) {
 
                 alpha_f_st4 = finite(TAC_byFleet[ind_f + nbF*IND_T] / (totF[ind_f + nbF*IND_T] + totF2[ind_f + nbF*IND_T])); //Eq: A4 ???????????????????
 //fichier << "ST8.293" << endl;
-std::stringstream ff;
-ff << alpha_f_st4;
-fichier << ff.str() << endl;
+//std::stringstream ff;
+//ff << alpha_f_st4;
+//fichier << ff.str() << endl;
 
                 //réconciliation
                 for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
@@ -16184,7 +16219,7 @@ fichier << ff.str() << endl;
                 }
                 //fichier << "ST9.12" << endl;
                 alpha_f_st5 = finite(TACoth / (tot[IND_T] - totMod[IND_T] - totMod2[IND_T]));
-                Rprintf("TACothIni %f TACoth %f tot %f totMod %f totMod2 %f\n",TAC_glob[IND_T],TACoth,tot[IND_T],totMod[IND_T],totMod2[IND_T]);
+                //Rprintf("TACothIni %f TACoth %f tot %f totMod %f totMod2 %f\n",TAC_glob[IND_T],TACoth,tot[IND_T],totMod[IND_T],totMod2[IND_T]);
 
                 if ((Qvec[SPPdynOPT[ind]-1]==0) & (Svec[SPPdynOPT[ind]-1]==0)) {
 //fichier << "ST9.13" << endl;
@@ -16192,7 +16227,7 @@ fichier << ff.str() << endl;
                     int ni = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[ind]-1))), "modI"));
                     for (int ag = 0; ag < ni; ag++) {
                             g_Fothi[ag + ni*IND_T] = g_Fothi[ag + ni*IND_T]*alpha_f_st5;
-                            Rprintf("Age: %f ; Fothi : %f \n",ag,g_Fothi[ag + ni*IND_T]);
+                            //Rprintf("Age: %f ; Fothi : %f \n",ag,g_Fothi[ag + ni*IND_T]);
                     }
 //fichier << "ST9.14" << endl;
 
@@ -16359,9 +16394,9 @@ fichier << ff.str() << endl;
 
 //fichier << "ST9.23" << endl;
 //fichier << "ST21" << endl;
-    Rprintf("call.Mortalite.SPPdynOPT.3\n");fichier << "call.Mortalite.SPPdynOPT.3" << endl;
+    //Rprintf("call.Mortalite.SPPdynOPT.3\n");fichier << "call.Mortalite.SPPdynOPT.3" << endl;
     Mortalite(listTempP, IND_T, eVar) ; //on génère les Z dans out_Z_eit (il faut s'assurer que l'application du Ztemp est bloquée -> utilisation de ZoptSS3)
-    Rprintf("end.Mortalite.SPPdynOPT.3\n");fichier << "end.Mortalite.SPPdynOPT.3" << endl;
+    //Rprintf("end.Mortalite.SPPdynOPT.3\n");fichier << "end.Mortalite.SPPdynOPT.3" << endl;
 
 //       for (int ind_f = 0 ; ind_f<nbF ; ind_f++)
 //        for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
@@ -16374,9 +16409,9 @@ fichier << ff.str() << endl;
 //
 //            }
 //        }
-    Rprintf("call.DynamicPop.SPPdynOPT.3\n");fichier << "call.DynamicPop.SPPdynOPT.3" << endl;
+    //Rprintf("call.DynamicPop.SPPdynOPT.3\n");fichier << "call.DynamicPop.SPPdynOPT.3" << endl;
     DynamicPop(listTempP, IND_T, eVar,true);
-    Rprintf("end.DynamicPop.SPPdynOPT.3\n");fichier << "end.DynamicPop.SPPdynOPT.3" << endl;
+    //Rprintf("end.DynamicPop.SPPdynOPT.3\n");fichier << "end.DynamicPop.SPPdynOPT.3" << endl;
 
 
 
@@ -16594,7 +16629,7 @@ fichier << ff.str() << endl;
     ZoptSS3 = false;
 	return 0;
 
-fichier.close();
+//fichier.close();
 }
 
 }
@@ -16624,13 +16659,12 @@ int BioEcoPar::MinimizeF(double **p, double y[], int ndim, double ftol)
 	//Rprintf("\nNumber of function evaluations: %3d\n",nfunc);
 	//Rprintf("Vertices of final 3-d simplex and\n");
 	//Rprintf("function values at the vertices:\n\n");
-	Rprintf("%3s %10s %12s %12s %14s\n\n",
-		"i","x[i]","y[i]","z[i]","function");
-	for (i=1;i<=MP;i++) {
+	//Rprintf("%3s %10s %12s %12s %14s\n\n","i","x[i]","y[i]","z[i]","function");
+	//for (i=1;i<=MP;i++) {
 		//Rprintf("%3d ",i);
-		for (j=1;j<=NP;j++) Rprintf("%12.6f ",p[i][j]);
+	//	for (j=1;j<=NP;j++) Rprintf("%12.6f ",p[i][j]);
 		//Rprintf("%12.6f\n",y[i]);
-	}
+	//}
 	//Rprintf("\nTrue minimum is at (0.5,0.6,0.7)\n");
 	//free_matrix(p,1,MP,1,NP);
 	//free_vector(y,1,MP);

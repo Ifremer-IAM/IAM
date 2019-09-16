@@ -15,9 +15,9 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){
 
 setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0, updateE=0,
                   TACbyF=NULL, TACtot=NULL, Ftarg=NULL, W_Ftarg=NULL, MeanRec_Ftarg=NULL,#sont générés en interne Ztemp, SPPstatOPT, SPPspictOPT et SPPdynOPT, qui sont insérés dans l'export tacCTRL
-                  #  Ftarg= list(SOL=c(length="nYear"),...) / W_Ftarg=list(SOL=c("matrx=nFleet*nYear"),...) / MeanRec_Ftarg = list(SOL=c(soit INT_length=1 soit DBL_length="NT"),...) #à développer
                   TACbyFoptimCTRL=list(maxIter = as.integer(7), diffZmax = 0.0001, lambda = 0.9, t_stop = 0),
                   recList=list(), recParamList=list(), #new 24/04/2018  31/05/2018
+                  ParamSPMList = list(), #added 16/09/19 aleatoire pour Global Surplus Production Model
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
                   parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
@@ -182,6 +182,21 @@ if (length(recParamList)>0) {
  recParamList <- devRecParamL
 }
 
+#on vérifie le formatage des éléments de ParamSPMList
+if (length(ParamSPMList)>0) {
+  devParamSPMList <- ParamSPMList[objInput@specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
+  for (elem in 1:length(devParamSPMList)) {
+    if (!is.null(devParamSPMList[[elem]])) {
+      devParamSPMList[[elem]][] = as.numeric(devParamSPMList[[elem]][1:nT,])
+    }else {
+      devParamSPMList[elem] <- list(NULL)
+    }
+    
+  }
+  
+  names(devParamSPMList) <- objInput@specific$Species
+  ParamSPMList <- devParamSPMList
+}
 
 #on étend les listes 'parOQD' à l'ensemble des espèces modélisées                                          #10/07/17
 allSpp <- c(objArgs@specific$Species,objArgs@specific$StaticSpp)                                           #10/07/17
@@ -270,7 +285,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
                           maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda),t_stop=as.integer(TACbyFoptimCTRL$t_stop),
-                          Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT, recList=recList, recParamList=recParamList), #forçage recrutements inséré
+                          Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT, recList=recList, recParamList=recParamList, ParamSPMList=ParamSPMList), #forçage recrutements inséré
                     newStochPrice,       #liste d'éléments espèce (pas forcément toutes présentes, liste vide aussi possible) 
                                          #de format décrit par la ligne de code de construction de 'newStochPrice'
                     as.integer(updateE),
