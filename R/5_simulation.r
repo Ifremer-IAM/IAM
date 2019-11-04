@@ -19,7 +19,7 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   recList=list(), recParamList=list(), #new 24/04/2018  31/05/2018
                   ParamSPMList = list(), #added 16/09/19 aleatoire pour Global Surplus Production Model
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
-                  parOptQuot=list(active=as.integer(0),pxQuIni=NA, pxQuMin=0, pxQuMax=NA, lambda=NA, ftol=0.0000001),
+                  parOptQuot=list(active=as.integer(0),pxQuIni=NULL, pxQuMin=NULL, pxQuMax=NULL, lambda=0.1, ftol=0.0000001, itmax=500),
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
                   stochPrice=list(), #liste d'éléments nommés par espèce considérée, chaque élément étant une liste selon le schéma :
                                 #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA)) 
@@ -92,6 +92,8 @@ if ((length(TACbyF)==0) | (length(TACtot)==0)) {
  if (length(SPPdynOPT)==0) SPPdynOPT <- integer(0)
  Ztemp <- lapply(objArgs@specific$Species,function(x) if (objInput@specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else if (objInput@specific$S[x]==1) rep(as.numeric(0),2*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
  names(Ztemp) <- objArgs@specific$Species
+ 
+ for(i in 1:length(TACbyF)) attributes(TACbyF[[i]])$DimCst <- as.integer(c(nF,0,0,nT))
 }
 #---------------------------------
 
@@ -230,12 +232,14 @@ if (is.null(tacControl$Blim)) tacControl$Blim <- NA
 if (is.null(tacControl$Bmax)) tacControl$Bmax <- NA
 if (is.null(tacControl$BlimTrigger)) tacControl$BlimTrigger <- as.integer(0)   #application de l'ajustement restrictif du Fmsy en fonction de la SSB ???
 
+def_Px <- lapply(TACtot,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- objInput@specific$times ; return(tmp)})
 if (is.null(parOptQuot$active)) parOptQuot$active <- as.integer(0)
-if (is.null(parOptQuot$pxQuIni)) parOptQuot$pxQuIni <- NA
-if (is.null(parOptQuot$pxQuMin)) parOptQuot$pxQuMin <- 0
-if (is.null(parOptQuot$pxQuMax)) parOptQuot$pxQuMax <- NA
-if (is.null(parOptQuot$lambda)) parOptQuot$lambda <- NA
+if (is.null(parOptQuot$pxQuIni)) parOptQuot$pxQuIni <- def_Px
+if (is.null(parOptQuot$pxQuMin)) parOptQuot$pxQuMin <- def_Px
+if (is.null(parOptQuot$pxQuMax)) parOptQuot$pxQuMax <- NULL
+if (is.null(parOptQuot$lambda)) parOptQuot$lambda <- 0.1
 if (is.null(parOptQuot$ftol)) parOptQuot$ftol <- 0.0000001
+if (is.null(parOptQuot$itmax)) parOptQuot$itmax <- 500
 
 if (is.null(parBehav$active)) parBehav$active <- as.integer(0)
 if (is.null(parBehav$type)) parBehav$type <- as.integer(3)
@@ -279,8 +283,8 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     TACbyF, #as.double(objArgs@arguments$Gestion$TACbyF),
                     Ftarg, W_Ftarg, MeanRec_Ftarg,
                     parBehav,
-                    list(active=as.integer(parOptQuot$active),pxQuIni=as.double(parOptQuot$pxQuIni), pxQuMin=as.double(parOptQuot$pxQuMin), 
-                          pxQuMax=as.double(parOptQuot$pxQuMax), lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol)),                           #fonctionne en conjugaison avec TACbyF
+                    list(active=as.integer(parOptQuot$active),pxQuIni=parOptQuot$pxQuIni, pxQuMin=parOptQuot$pxQuMin, 
+                          pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax)),                           #fonctionne en conjugaison avec TACbyF
                     list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
@@ -382,6 +386,7 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                      statGVLcom_f_m = out$E$GVLcom_f_m_eStat_out,
                      statGVLst_f_m = out$E$GVLst_f_m_eStat_out,
                     PQuot = out$PQuot,
+                    TradedQ = out$TradedQ_f,
                     F_G1 = out$F_G1,F_G2 = out$F_G2,
                     Fr_G1 = out$Fr_G1,Fr_G2 = out$Fr_G2,
                     Fothi_G1 = out$Fothi_G1,Fothi_G2 = out$Fothi_G2,
@@ -417,7 +422,9 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     oqD_e= out$oqD_e,
                     oqDstat_ef= out$oqDstat_ef,
                     TACtot = out$TACtot,
-                    TACbyF = out$TACbyF),
+                    TACbyF = out$TACbyF,
+                    PQuot_conv = out$PQuot_conv,
+                    diffLQ_conv = out$diffLQ_conv),
                 output = list(
                   typeGest = out$typeGest,
                   nbv_f = out$Eff$nbv_f,              
@@ -484,7 +491,9 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   ratio_np_K_f = out$E$ratio_np_K_f_out,
                   ratio_GVL_cnb_ue_f = out$E$ratio_GVL_cnb_ue_f_out,
                   YTOT_fm = out$YTOT_fm,
-                  reconcilSPP = out$reconcilSPP)
+                  reconcilSPP = out$reconcilSPP,
+                  quotaExp_f = out$E$QuotaExp_f_out,
+                  allocEff_f_m = out$allocEff_fm)
   ))
 }              
                                  

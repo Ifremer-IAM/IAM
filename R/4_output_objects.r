@@ -70,6 +70,7 @@ setClass("iamOutput",
                      statGVLcom_f_m = list(),
                      statGVLst_f_m = list(),
                     PQuot = list(),
+		                TradedQ = list(),
                     F_S1M1= list(),F_S1M2= list(),F_S1M3= list(),F_S1M4= list(),
                     F_S2M1= list(),F_S2M2= list(),F_S2M3= list(),F_S2M4= list(),
                     F_S3M1= list(),F_S3M2= list(),F_S3M3= list(),F_S3M4= list(),
@@ -108,7 +109,9 @@ setClass("iamOutput",
                     oqD_e= list(),
                     oqDstat_ef= list(),
                     TACtot = list(),
-                    TACbyF = list()),
+                    TACbyF = list(),
+		                PQuot_conv = list(),
+		                diffLQ_conv = list()),
     output = list(typeGest = integer(),                #type de scénario de gestion appliqué
                   nbv_f = numeric(),                   #Nb de navires par flottille
                   effort1_f = numeric(),               #1ère composante d'effort moyen par an et par flottille
@@ -116,6 +119,7 @@ setClass("iamOutput",
                   nbv_f_m = numeric(),                 #Nb de navires par flottille-métier
                   effort1_f_m = numeric(),             #1ère composante d'effort moyen par an et par flottille-métier
                   effort2_f_m = numeric(),             #2ème composante d'effort moyen par an et par flottille-métier
+                  allocEff_f_m = numeric(),
                   #Lbio_f = numeric(),
                   GVLtot_f_m = numeric(),
                   GVLav_f_m = numeric(),
@@ -174,7 +178,8 @@ setClass("iamOutput",
                   ratio_np_K_f = numeric(),
                   ratio_GVL_cnb_ue_f = numeric(),
                   YTOT_fm = numeric(),
-                  reconcilSPP = character())
+                  reconcilSPP = character(),
+                  quotaExp_f = numeric())
   ),
 	validity=val.iamOutput
 )
@@ -242,7 +247,8 @@ setClass("iamOutputRep",
                     statL = list(),           #débarquements par flottille, métier pour les espèces sans dynamique
                     statD = list(),           #rejets par flottille, métier pour les espèces sans dynamique
                     statGVL_f_m = list(),     #CA total par espèce statique , flottille et métier éco
-                    PQuot = list()),
+                    PQuot = list(),
+		                TradedQ = list()),
     output = list(nbv_f = list(),                   #Nb de navires par flottille
                   nbds_f = list(),                  #Nb de jdm moyen par an et par flottille
                   nbv_f_m = list(),                 #Nb de navires par flottille-métier
