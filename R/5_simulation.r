@@ -19,7 +19,7 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   recList=list(), recParamList=list(), #new 24/04/2018  31/05/2018
                   ParamSPMList = list(), #added 16/09/19 aleatoire pour Global Surplus Production Model
                   parBehav=list(active=as.integer(0),type=as.integer(3),FMT=NULL,MU=NULL,MUpos=as.integer(0),ALPHA=NULL),
-                  parOptQuot=list(active=as.integer(0),pxQuIni=NULL, pxQuMin=NULL, pxQuMax=NULL, lambda=0.1, ftol=0.0000001, itmax=500),
+                  parOptQuot=list(active=as.integer(0),pxQuIni=NULL, pxQuMin=NULL, pxQuMax=NULL, lambda=0.1, sdmax=0, ftol=0.0000001, itmax=500),
                   tacControl=list(tolVarTACinf=NA,tolVarTACsup=NA,corVarTACval=NA,corVarTACnby=2,Blim=NA,Bmax=NA,BlimTrigger=as.integer(0),typeMng=NA),
                   stochPrice=list(), #liste d'éléments nommés par espèce considérée, chaque élément étant une liste selon le schéma :
                                 #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA)) 
@@ -238,6 +238,7 @@ if (is.null(parOptQuot$pxQuIni)) parOptQuot$pxQuIni <- def_Px
 if (is.null(parOptQuot$pxQuMin)) parOptQuot$pxQuMin <- def_Px
 if (is.null(parOptQuot$pxQuMax)) parOptQuot$pxQuMax <- NULL
 if (is.null(parOptQuot$lambda)) parOptQuot$lambda <- 0.1
+if (is.null(parOptQuot$sdmax)) parOptQuot$sdmax <- 0
 if (is.null(parOptQuot$ftol)) parOptQuot$ftol <- 0.0000001
 if (is.null(parOptQuot$itmax)) parOptQuot$itmax <- 500
 
@@ -284,7 +285,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     Ftarg, W_Ftarg, MeanRec_Ftarg,
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=parOptQuot$pxQuIni, pxQuMin=parOptQuot$pxQuMin, 
-                          pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax)),                           #fonctionne en conjugaison avec TACbyF
+                          pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda),sdmax=as.double(parOptQuot$sdmax), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax)),                           #fonctionne en conjugaison avec TACbyF
                     list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
@@ -493,7 +494,8 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                   YTOT_fm = out$YTOT_fm,
                   reconcilSPP = out$reconcilSPP,
                   quotaExp_f = out$E$QuotaExp_f_out,
-                  allocEff_f_m = out$allocEff_fm)
+                  allocEff_f_m = out$allocEff_fm,
+                  GoFish = out$GoFish)
   ))
 }              
                                  

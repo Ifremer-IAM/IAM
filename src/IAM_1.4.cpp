@@ -12,6 +12,7 @@
 #include <Rdefines.h>
 #include <Rmath.h>
 //#include <Rcpp.h>
+//#include <Rcpp.h>
 
 
 //using namespace Rcpp;
@@ -240,7 +241,7 @@ SEXP    ZtempList;
 
     void FleetBehav(SEXP list, int ind_t, SEXP paramBehav);
 
-    void QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc );
+    void QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc );
 
     //int QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double lambda, int spp, double ftol, int ind_t);
 
@@ -687,7 +688,7 @@ PROTECT(dnmsFM = allocVector(VECSXP,3));
 
 
 PROTECT(dnmsIter = allocVector(VECSXP,2));
-int itmaxQ = INTEGER(VECTOR_ELT(parQEX,6))[0];
+int itmaxQ = INTEGER(VECTOR_ELT(parQEX,7))[0];
 PROTECT(itListQ = NEW_INTEGER(itmaxQ));
 for (int i=0; i<itmaxQ; i++) INTEGER(itListQ)[i] = i;
 
@@ -892,7 +893,7 @@ if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | 
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
 
    //fichier << "call.QuotaMarket" << endl;
-   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], INTEGER(VECTOR_ELT(parQEX,6))[0], parBHV, it, INTEGER(EcoInd)[4]);
+   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(EcoInd)[4]);
    // fichier << "end.QuotaMarket" << endl;
 
 }
@@ -14519,10 +14520,13 @@ if (strcmp(CHAR(namVar), "FDWToth_i_S4M4") == 0) {PROTECT(target_lvl_2 = VECTOR_
 
 extern "C" {
 
-void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc ) //ind_t>0
+void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc ) //ind_t>0
 {
 
-//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
+ //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
+//ofstream fichier;
+//if (ind_t ==4) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
+//fichier << "Start" << endl;
  //time_t my_time;
 
     SEXP listTemp, eVarCopy, alphaBhv, pQuota ,nam_eQuota,
@@ -14625,6 +14629,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     PROTECT(reducelambda = NEW_LOGICAL(nbEQuota));
     for (int int_eQuota = 0 ; int_eQuota  < nbEQuota ; int_eQuota++) LOGICAL(reducelambda)[int_eQuota] = false;
 
+    double lambdaQ_iter;
+
     //---------------------------------------------
     // 1 - Tatonnement of quota market
     //---------------------------------------------
@@ -14647,6 +14653,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     bool GoOn = true;
 
     int itQ=0;
+    double min_sum_diffLQ, sum_diffLQ, nb_overTAC, max_diffLQ, min_max_diffLQ, max_nb_overTAC;
+    int min_itQ;
     //fichier << "itmax" << itmax  << endl;
 
     //Calculate L_fme for quoted species
@@ -14673,7 +14681,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 
     while (GoOn & (itQ<itmax)){
-      //      fichier << "itQ: " << itQ << endl;
+            //fichier << "itQ: " << itQ << endl;
             //Rprintf("itQ = %i \n", itQ);
 
             //fichier << "QM1.1"  << endl;
@@ -14699,15 +14707,16 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 toinit = true;
 
                 // retrieve last ind_t when active
-                keep = true;
-                ind_t_last = ind_t-1;
-                while(keep){
-                    if (r_GoFish_f[ind_f+nbF*ind_t_last]>0){
-                            keep = false;
-                    } else{
-                    ind_t_last = ind_t_last -1;}
-
-                }
+//                keep = true;
+//                ind_t_last = ind_t-1;
+//                while(keep){
+//                    if (r_GoFish_f[ind_f+nbF*ind_t_last]>0){
+//                            keep = false;
+//                    } else{
+//                    ind_t_last = ind_t_last -1;}
+//
+//                }
+               ind_t_last=0;
           //      fichier << "ind_t_last: " << ind_t_last << endl;
                 //fichier << "QM1.3"  << endl;
                 //Rprintf("QM1.3\n");
@@ -14773,15 +14782,22 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                        // }
 
                         // 3- fixed costs
+//                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
+//                                                          (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
+//                                                           r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
+//                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
+//                                                           r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]]) *
+//                                                           (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
+//                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
+
                         r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
                                                           (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
                                                            r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
-                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
-                                                           r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]]) *
+                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]) *
                                                            (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
                                                           (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
 
-                        //if (ind_f==5) fichier << " fixed costs_f =  " <<  r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
+//                        if (ind_f==5) fichier << " fixed costs_f =  " <<  r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
                        //                                                     r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
                        //                                                     r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
                        //                                                     r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]] <<
@@ -14892,14 +14908,19 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
         // Adjust quota prices for all species
         GoOn = false;
+        //lambdaQ_iter = lambdaQ * ( 1 - ((double)rand() / (double)RAND_MAX) * pow(((double)itQ/(double)itmax),2.0) * sdmax);
+        lambdaQ_iter = lambdaQ * ( 1 - pow(((double)itQ/(double)itmax),2.0) * sdmax);
+
+        //fichier << "LambdaQ = "<< lambdaQ <<  "; itQ = "  << itQ  <<  "; Lambda iter = "<< lambdaQ_iter <<endl;
+        sum_diffLQ = 0.0;
+        max_diffLQ=0.0;
+        nb_overTAC = 0.0;
 
         for (int int_eQuota = 0 ; int_eQuota  < nbEQuota ; int_eQuota++) {
 
                 PROTECT(nam_eQuota=STRING_ELT(sppListQ,int_eQuota));
                 //fichier << "nam_eQuota: " << CHAR(nam_eQuota) << endl;
                 PROTECT(pQuota = getListElement(out_PQuot_et,CHAR(nam_eQuota)));
-
-
 
                 if (!isNull (getListElement(out_L_efmit, CHAR(nam_eQuota)))){ // espece dyn
                                     PROTECT(Lmodel = aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota)),nDimT));
@@ -14920,36 +14941,94 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 r_diffLQ = REAL(diffLQ);
 
                 r_diffLQ[itQ + itmax*ind_t] =  (r_Lmodel[ind_t] - r_TACmodel[ind_t]) / r_TACmodel[ind_t]; //save value for current iteration to check algorithm convergence
+                sum_diffLQ = sum_diffLQ + fabs(r_diffLQ[itQ + itmax*ind_t]);
+
+                if (int_eQuota ==0){
+                      max_diffLQ = r_diffLQ[itQ + itmax*ind_t];
+                } else if (r_diffLQ[itQ + itmax*ind_t] > max_diffLQ) max_diffLQ = r_diffLQ[itQ + itmax*ind_t];
+
+                if (r_diffLQ[itQ + itmax*ind_t]>0) nb_overTAC = nb_overTAC+1;
                 r_PQuot_temp[itQ + itmax*ind_t] = r_pQuota[ind_t]; //save value for current iteration to check algorithm convergence
 
 
-
-                    if (!LOGICAL(reducelambda)[int_eQuota] & (r_diffLQ[itQ + itmax*ind_t]*r_diffLQ[itQ-1 + itmax*ind_t] < 0)) LOGICAL(reducelambda)[int_eQuota] = true;
+                    if ((!LOGICAL(reducelambda)[int_eQuota]) & (r_diffLQ[itQ + itmax*ind_t]*r_diffLQ[itQ-1 + itmax*ind_t] < 0)) LOGICAL(reducelambda)[int_eQuota] = true;
                     //Rprintf("Reduce lambda at iter %i: %d \n",itQ,LOGICAL(reducelambda)[int_eQuota]);
 
+
                     if(!LOGICAL(reducelambda)[int_eQuota]){
-                        if ((lambdaQ * r_diffLQ[itQ + itmax*ind_t]) > 0.5){
-                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 1.5);
-                        } else if ((lambdaQ * r_diffLQ[itQ + itmax*ind_t]) < -0.5){
-                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 0.5);
-                        } else {r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * (1 + lambdaQ * r_diffLQ[itQ + itmax*ind_t])); }
+                        if ((lambdaQ_iter * r_diffLQ[itQ + itmax*ind_t]) > 0.2){
+                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 1.2);
+                        } else if ((lambdaQ_iter * r_diffLQ[itQ + itmax*ind_t]) < -0.2){
+                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 0.8);
+                        } else {r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * (1 + lambdaQ_iter * r_diffLQ[itQ + itmax*ind_t])); }
                     } else {
-                        if ((lambdaQ/2 * r_diffLQ[itQ + itmax*ind_t]) > 0.5){
-                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 1.5);
-                        } else if ((lambdaQ/2 * r_diffLQ[itQ + itmax*ind_t]) < -0.5){
-                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 0.5);
-                        } else {r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * (1 + lambdaQ/2 * r_diffLQ[itQ + itmax*ind_t])); }}
+                        if ((lambdaQ_iter/5 * r_diffLQ[itQ + itmax*ind_t]) > 0.2){
+                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 1.2);
+                        } else if ((lambdaQ_iter/5 * r_diffLQ[itQ + itmax*ind_t]) < -0.2){
+                            r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * 0.8);
+                        } else {r_pQuota[ind_t] = fmax2(0, r_pQuota[ind_t] * (1 + lambdaQ_iter/5 * r_diffLQ[itQ + itmax*ind_t])); }}
 
 
-                    if(fabs(r_diffLQ[itQ + itmax*ind_t]) > ftol) GoOn=true;
+                    if((fabs(r_diffLQ[itQ + itmax*ind_t]) > ftol) | (itQ < floor(itmax/2))) GoOn=true;
 
                     //fichier << "itQ: " << itQ << ", diffLQ = " << r_diffLQ[itQ + itmax*ind_t] << "Quota price = "<< r_pQuota[ind_t] << "GoOn =" << GoOn << endl;
                 UNPROTECT(6);
         }
         //fichier << "QM5"  << endl;
+        if (itQ == 0){ //floor(itmax/2)
+            min_sum_diffLQ = sum_diffLQ;
+            min_itQ = itQ;
+            max_nb_overTAC = nb_overTAC;
+        } else if (itQ > 0){
+            if(nb_overTAC > max_nb_overTAC) {
+                min_sum_diffLQ = sum_diffLQ;
+                min_itQ = itQ;
+                max_nb_overTAC = nb_overTAC;
+            } else if ((nb_overTAC == max_nb_overTAC) & (sum_diffLQ < min_sum_diffLQ)){
+                min_sum_diffLQ = sum_diffLQ;
+                min_itQ = itQ;
+            }
+        }
+//fichier << "itQ = "  << itQ << ", max_diffLQ = " << max_diffLQ << ", min_max_diffLQ = " << min_max_diffLQ << endl;
+//        if (itQ == 0){ //floor(itmax/2)
+//            min_itQ = itQ;
+//            min_max_diffLQ = fabs(max_diffLQ);
+//            } else if (fabs(max_diffLQ) < min_max_diffLQ) {
+//                min_itQ = itQ;
+//                min_max_diffLQ = fabs(max_diffLQ);
+//            }
+//fichier << "min_max_diffLQ = " << min_max_diffLQ << endl;
 
+         //rerun the best iteration
+        if (((GoOn == false) & (itQ<itmax-1)) | (itQ == itmax-2)){
+            GoOn = true;
+            itQ = itmax-2;
+
+            for (int int_eQuota = 0 ; int_eQuota  < nbEQuota ; int_eQuota++) {
+                PROTECT(nam_eQuota=STRING_ELT(sppListQ,int_eQuota));
+                PROTECT(pQuota = getListElement(out_PQuot_et,CHAR(nam_eQuota)));
+                PROTECT(PQuot_temp = getListElement(out_PQuot_temp, CHAR(nam_eQuota)));
+                REAL(pQuota)[ind_t] = REAL(PQuot_temp)[min_itQ + itmax*ind_t];
+
+                UNPROTECT(3);
+            }
+        }
+
+        // for the last iteration, save the final price
+        if (itQ == itmax-1){
+            for (int int_eQuota = 0 ; int_eQuota  < nbEQuota ; int_eQuota++) {
+                PROTECT(nam_eQuota=STRING_ELT(sppListQ,int_eQuota));
+                PROTECT(pQuota = getListElement(out_PQuot_et,CHAR(nam_eQuota)));
+                PROTECT(PQuot_temp = getListElement(out_PQuot_temp, CHAR(nam_eQuota)));
+                REAL(pQuota)[ind_t] = REAL(PQuot_temp)[itQ + itmax*ind_t];
+
+                UNPROTECT(3);
+            }
+        }
 
         itQ = itQ+1;
+
+
     }
     //---------------------------------------------
     // 2 - Trade quotas
@@ -15018,6 +15097,14 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
         r_TACbyF_ex = REAL(TACbyF_ex);
 
         //fichier << "QM7.1"  << endl;
+//        if (ind_t==4){
+//                Rprintf("sp = %s Expected catches: \n",CHAR(nam_eQuota));
+//                PrintValue(L_ef);
+//                fichier << "sp = " << CHAR(nam_eQuota) <<", Expected catches:" << endl;
+//                for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+//                    fichier << ind_f << ";" << r_L_ef[ind_f+nbF*ind_t]  << endl;
+//                }
+//        }
 
         // Calculate net demand for quota by fleet = expected catches - holdings
         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
@@ -15073,6 +15160,15 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
         //PrintValue(offerQ_f_e);
         //Rprintf("TAC after trade\n");
         //PrintValue(TACbyF_e);
+//
+//        if (ind_t==4){
+//                Rprintf("sp = %s , Quota after trade: \n",CHAR(nam_eQuota));
+//                PrintValue(TACbyF_e);
+//                fichier << "sp = " << CHAR(nam_eQuota) <<", Quota after trade:" << endl;
+//                for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+//                    fichier << ind_f << ";" << r_TACbyF_e[ind_f+nbF*ind_t]  << endl;
+//                }
+//        }
 
         // REcord quota trades
          PROTECT(QuotaTrade_fe = getListElement(out_QuotaTrade_fe, CHAR(nam_eQuota)));
@@ -15090,7 +15186,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 
     UNPROTECT(30);
-    //fichier.close();
+//    if (ind_t ==4) fichier.close();
 }
 }
 
@@ -15567,7 +15663,7 @@ int BioEcoPar::EstimationTACfromF(int ind_t)
 //ss << EcoIndCopy[0];
 //str1 = str1 + mp.str()+ str3 + ss.str() + str2;
 //
-//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.EstimationTAC.txt", ios::out | ios::trunc);
+ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.EstimationTAC.txt", ios::out | ios::trunc);
 //fichier << "Début" << endl;
 
 
@@ -15696,9 +15792,9 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
                     // Dans eVarCopy
                     Fothi2 = REAL(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44)); //Rprintf("Dans EVARcopy (l.14478), Fothi2 = "); PrintValue(VECTOR_ELT(getListElement(eVarCopy, CHAR(namVarTarg)), 44));
                     for (int ag = 0; ag < nbi; ag++) {
-                            //fichier << "Avant T" << ind_t << "; Fothi age " << ag <<"=" << Fothi2[ag + IND_T*nbi] << endl;
+                            fichier << "Avant T" << ind_t << "; Fothi age " << ag <<"=" << Fothi2[ag + IND_T*nbi] << endl;
                             Fothi2[ag + IND_T*nbi] = Fothi2[ag + IND_T*nbi] * r_Ftarg / r_Fbar;
-                            //fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
+                            fichier << "Apres T" << ind_t << "; Fothi age" << ag << "=" << Fothi2[ag + IND_T*nbi] << endl;
                     }
 
                     // Dans eVar pour usage hors de cette fonction
@@ -15949,7 +16045,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     //fichier << "End.Mortalite" << endl;
 
     // calcul recrutement
-    if (!isNull(inpMeanRec_Ftarg) && (!isNull(getListElement(inpMeanRec_Ftarg,CHAR(namVarTarg))))){ // si MeanRec_Ftarg renseigne: forcage selon type 1 (Moyenne sur X dernieres annees) ou 2 (Forçage avec valeurs renseignees)
+    if ((nbI>1) && !isNull(inpMeanRec_Ftarg) && (!isNull(getListElement(inpMeanRec_Ftarg,CHAR(namVarTarg))))){ // si MeanRec_Ftarg renseigne: forcage selon type 1 (Moyenne sur X dernieres annees) ou 2 (Forçage avec valeurs renseignees)
 
         //fichier << "Recruitment in HCR = from MeanRecFtarg" << endl;
 
@@ -16107,7 +16203,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
             UNPROTECT(1);
 
-    } else if ((!isNull(getListElement(recParamList,CHAR(namVarTarg)))) & (IND_T>0) & (nbI>1)) { // recrutement = recrutement attendu avec la relation SR (sans incertitude)
+    } else if ((nbI>1) && (!isNull(getListElement(recParamList,CHAR(namVarTarg)))) && (IND_T>0)) { // recrutement = recrutement attendu avec la relation SR (sans incertitude)
 //fichier << "Recruitment in HCR = expected from SR" << endl;
 
             double  *rans_SSB_et = REAL(getListElement(out_SSB_et,CHAR(namVarTarg)));
@@ -16249,8 +16345,8 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 //Rprintf("A22\n");
 
     TAC_glob[IND_T] = LTOT[IND_T];
-    //fichier << "Ltot t-1: " << LTOT[IND_T-1] << endl;
-    //fichier << "Tactot t: " << TAC_glob[IND_T] << endl;
+    fichier << "Ltot t-1: " << LTOT[IND_T-1] << endl;
+    fichier << "Tactot t: " << TAC_glob[IND_T] << endl;
 
     for (int indF = 0 ; indF < nbF ; indF++) TAC_byFleet[indF + nbF*IND_T] = r_W_Ftarg[indF + nbF*IND_T] * LTOT[IND_T];
 
@@ -16348,7 +16444,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     }
 
    return(0);
-   //fichier.close();
+   fichier.close();
 
 
   }
@@ -19236,7 +19332,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
 
         SEXP output, out_names, out_Foth, out_Foth_G1,out_Foth_G2;
-        PROTECT(output = allocVector(VECSXP, 127)); //11/04/18 rajout de l'élément reconcilSPP
+        PROTECT(output = allocVector(VECSXP, 128)); //11/04/18 rajout de l'élément reconcilSPP
         SET_VECTOR_ELT(output, 0, object->out_F_fmi);
         SET_VECTOR_ELT(output, 1, object->out_Z_eit);
         SET_VECTOR_ELT(output, 2, object->out_Fbar_et);
@@ -19384,22 +19480,23 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         SET_VECTOR_ELT(output, 124, object->out_allocEff_fm);
         SET_VECTOR_ELT(output, 125, object->out_PQuot_temp);
         SET_VECTOR_ELT(output, 126, object->out_diffLQ);
+        SET_VECTOR_ELT(output, 127, object->intermGoFish);
 
 //PrintValue(object->reconcilSPP);
         //----------------------------------------------------------------------------------------------------------
 
         //on nomme les éléments de output
-        const char *namesOut[127] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
+        const char *namesOut[128] = {"F","Z","Fbar","N","B","SSB","C","Ctot","Y","Ytot","D","Li","Lc","Ltot","P","E","Fothi","mu_nbds","mu_nbv","Eff","Fr","GVLoths_f","PQuot","typeGest","Ystat","Lstat","Dstat","Pstat",//};
                                     "F_S1M1","F_S1M2","F_S1M3","F_S1M4","F_S2M1","F_S2M2","F_S2M3","F_S2M4","F_S3M1","F_S3M2","F_S3M3","F_S3M4","F_S4M1","F_S4M2","F_S4M3","F_S4M4",
                                     "Fr_S1M1","Fr_S1M2","Fr_S1M3","Fr_S1M4","Fr_S2M1","Fr_S2M2","Fr_S2M3","Fr_S2M4","Fr_S3M1","Fr_S3M2","Fr_S3M3","Fr_S3M4","Fr_S4M1","Fr_S4M2","Fr_S4M3","Fr_S4M4",
                                     "Z_S1M1","Z_S1M2","Z_S1M3","Z_S1M4","Z_S2M1","Z_S2M2","Z_S2M3","Z_S2M4","Z_S3M1","Z_S3M2","Z_S3M3","Z_S3M4","Z_S4M1","Z_S4M2","Z_S4M3","Z_S4M4",
                                     "N_S1M1","N_S1M2","N_S1M3","N_S1M4","N_S2M1","N_S2M2","N_S2M3","N_S2M4","N_S3M1","N_S3M2","N_S3M3","N_S3M4","N_S4M1","N_S4M2","N_S4M3","N_S4M4",
                                     "YTOT_fm", "DD_efmi", "DD_efmc", "LD_efmi", "LD_efmc", "statDD_efm", "statLD_efm", "statLDst_efm", "statLDor_efm",
                                     "oqD_ef","oqD_e","oqDstat_ef","reconcilSPP","TACtot","TACbyF","Fothi_G1","Fothi_G2","F_G1","F_G2","Z_G1","Z_G2","N_G1","N_G2","Fr_G1","Fr_G2","C_G1","C_G2","Ctot_G1","Ctot_G2","L_et","L_pt","TradedQ_f","allocEff_fm",
-                                    "PQuot_conv","diffLQ_conv"};
-        PROTECT(out_names = allocVector(STRSXP, 127));
+                                    "PQuot_conv","diffLQ_conv","GoFish"};
+        PROTECT(out_names = allocVector(STRSXP, 128));
 
-        for(int ct = 0; ct < 127; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
+        for(int ct = 0; ct < 128; ct++) SET_STRING_ELT(out_names, ct, mkChar(namesOut[ct]));
 
         setAttrib(output, R_NamesSymbol, out_names);
 

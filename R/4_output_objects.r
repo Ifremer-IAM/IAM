@@ -179,7 +179,9 @@ setClass("iamOutput",
                   ratio_GVL_cnb_ue_f = numeric(),
                   YTOT_fm = numeric(),
                   reconcilSPP = character(),
-                  quotaExp_f = numeric())
+                  quotaExp_f = numeric(),
+                  allocEff_f_m = numeric(),
+                  GoFish = numeric())
   ),
 	validity=val.iamOutput
 )

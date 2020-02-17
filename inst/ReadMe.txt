@@ -18,3 +18,4 @@ Compilation 64 bits
 %R_pgm_35%/R CMD INSTALL --build --compile-both IAMMSpTAC_0.1.tar.gz
 
 
+install.packages("/home1/datahome/fbriton/AMURE/IAMMSpTAC_0.1.tar.gz", repos=NULL, type="source")
