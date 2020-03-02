@@ -240,7 +240,7 @@ SEXP    ZtempList;
 
     void FleetBehav(SEXP list, int ind_t, SEXP paramBehav);
 
-    void QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc );
+    void QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaFix, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc );
 
     //int QuotaExch(double pxQuIni, double pxQuMin, double pxQuMax, double lambda, int spp, double ftol, int ind_t);
 
@@ -419,12 +419,16 @@ PROTECT(inpW_Ftarg = W_Ftarg);
 PROTECT(inpMeanRec_Ftarg = MeanRec_Ftarg);
 
 nbEQuota = length(getAttrib(TAC, R_NamesSymbol));
-PROTECT(sppListQ = getAttrib(TAC, R_NamesSymbol));
+PROTECT(sppListQ = getAttrib(TAC, R_NamesSymbol)); PrintValue(sppListQ);
+
+PrintValue(VECTOR_ELT(parQEX,1));
+PrintValue(getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol));
 
 nbEQuotaMarket = length(getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol));
-PROTECT(sppListQM = getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol));
+PROTECT(sppListQM = getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol)); PrintValue(sppListQM_dyn);
+
 nbEQuotaMarket_dyn = nbEQuota;
-PROTECT(sppListQM_dyn = sppListQ);
+PROTECT(sppListQM_dyn = sppListQ); PrintValue(sppListQM);
 
 //tac_ctrl = tacCTRL;
 recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
@@ -898,7 +902,7 @@ if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | 
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
 
    //fichier << "call.QuotaMarket" << endl;
-   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(EcoInd)[4]);
+   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), VECTOR_ELT(parQEX,4), REAL(VECTOR_ELT(parQEX,5))[0],REAL(VECTOR_ELT(parQEX,6))[0], REAL(VECTOR_ELT(parQEX,7))[0],INTEGER(VECTOR_ELT(parQEX,8))[0], parBHV, it, INTEGER(EcoInd)[4]);
    // fichier << "end.QuotaMarket" << endl;
 
 }
@@ -1195,7 +1199,7 @@ free_vector(multFOTHinterm_e,1,nbE);
 //UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajoutés après intégration de 'parOQD'
 //if (nbEstat>0) UNPROTECT(nbEstat);
 if(pUpdate) UNPROTECT(2);
-UNPROTECT(29);
+UNPROTECT(27);
 UNPROTECT(17+20+4+16*6+8+9);//out_
 UNPROTECT(13);
 UNPROTECT(10); // PROTECT_WITH_INDEX
@@ -14525,10 +14529,10 @@ if (strcmp(CHAR(namVar), "FDWToth_i_S4M4") == 0) {PROTECT(target_lvl_2 = VECTOR_
 
 extern "C" {
 
-void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc ) //ind_t>0
+void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaFix, SEXP pQuotaMin, SEXP pQuotaMax, double lambdaQ, double sdmax, double ftol, int itmax, SEXP paramBehav, int ind_t, int persCalc ) //ind_t>0
 {
 
-// ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
+ //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
 //ofstream fichier;
 //if (ind_t ==4) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
 //fichier << "Start" << endl;
@@ -14641,7 +14645,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     //---------------------------------------------
 
     // Initialize quota price
-//    fichier << "QM0.7"  << endl;
+    //fichier << "QM0.7"  << endl;
     //fichier << "nbEQuotaMarket:" << nbEQuotaMarket  << endl;
 
     for (int int_eQuota = 0 ; int_eQuota  < nbEQuotaMarket ; int_eQuota++) {
@@ -14687,10 +14691,10 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 
     while (GoOn & (itQ<itmax)){
-//            fichier << "itQ: " << itQ << endl;
+            //fichier << "itQ: " << itQ << endl;
             //Rprintf("itQ = %i \n", itQ);
 
-//            fichier << "QM1.1"  << endl;
+            //fichier << "QM1.1"  << endl;
             // Initialization
             for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
                 for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
@@ -14735,8 +14739,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                         //Deduce costs
                         // 1- Quota costs
 
-                        for (int ind_eQ = 0 ; ind_eQ< nbEQuotaMarket ; ind_eQ++) { //deduce quota expenses for dynamic markets
-   //                             fichier << "ind_eQ: " << ind_eQ << endl;
+                        for (int ind_eQ = 0 ; ind_eQ< nbEQuotaMarket_dyn ; ind_eQ++) { //deduce quota expenses for dynamic markets
+                                //fichier << "ind_eQ: " << ind_eQ << endl;
                                 PROTECT(nam_eQuota = STRING_ELT(sppListQM,ind_eQ));
 
                                 r_L_f_m_e = REAL(getListElement(L_f_m_e, CHAR(nam_eQuota)));
@@ -14827,7 +14831,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                         }
                 }
         }
-//        fichier << "QM1.4"  << endl;
+        //fichier << "QM1.4"  << endl;
         //my_time = time(NULL);
         //fichier << "time: " << ctime(&my_time) << endl;
         //Rprintf("QM1.4\n");
@@ -14848,7 +14852,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 }
             }
         }
-//        fichier << "QM2"  << endl;
+        //fichier << "QM2"  << endl;
         //my_time = time(NULL);
         //fichier << "time: " << ctime(&my_time) << endl;
         //Rprintf("QM2\n");
@@ -14873,7 +14877,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                     r_GoFish_f[ind_f+nbF*ind_t] = 0.0;
                     }
         }
-//        fichier << "QM3"  << endl;
+        //fichier << "QM3"  << endl;
         //my_time = time(NULL);
         //fichier << "time: " << ctime(&my_time) << endl;
          //Rprintf("QM3\n");
@@ -14894,20 +14898,20 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
         //PrintValue(getListElement(getListElement(listTemp, "Fleet"), "effort1_f_m"));
 
 
-//        fichier << "QM4.1"  << endl;
+        //fichier << "QM4.1"  << endl;
         // Rprintf("QM4.1\n");
 
         Mortalite(listTemp, ind_t, eVarCopy);
-//        fichier << "QM4.2"  << endl;
+        //fichier << "QM4.2"  << endl;
         // Rprintf("QM4.2\n");
 
 
         DynamicPop(listTemp, ind_t, eVarCopy,false);
-//        fichier << "QM4.3"  << endl;
+        //fichier << "QM4.3"  << endl;
         // Rprintf("QM4.3\n");
 
         CatchDL(listTemp, ind_t, eVarCopy);
-//        fichier << "QM4.4"  << endl;
+        //fichier << "QM4.4"  << endl;
         // Rprintf("QM4.4\n");
        // my_time = time(NULL);
         //fichier << "time: " << ctime(&my_time) << endl;
@@ -14980,7 +14984,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                     //fichier << "itQ: " << itQ << ", diffLQ = " << r_diffLQ[itQ + itmax*ind_t] << "Quota price = "<< r_pQuota[ind_t] << "GoOn =" << GoOn << endl;
                 UNPROTECT(6);
         }
-//        fichier << "QM5"  << endl;
+        //fichier << "QM5"  << endl;
 //        if (itQ == 0){ //floor(itmax/2)
 //            min_sum_diffLQ = sum_diffLQ;
 //            min_itQ = itQ;
@@ -15072,7 +15076,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     //PrintValue(ExpProfUE_f);
     //PrintValue(rank_Prof_f);
 
-//    fichier << "QM6"  << endl;
+    //fichier << "QM6"  << endl;
 
     //Trade quotas per species
 
@@ -15159,7 +15163,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 
 
-//        fichier << "QM7.4"  << endl;
+        //fichier << "QM7.4"  << endl;
         //Rprintf("Demand after trade\n");
         //PrintValue(demandQ_f_e);
         //Rprintf("Offer after trade\n");
@@ -15187,12 +15191,12 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
         UNPROTECT(5);
     }
-//    fichier << "QM7.5"  << endl;
+    //fichier << "QM7.5"  << endl;
 
 
 
     UNPROTECT(30);
-//   fichier.close();
+//    if (ind_t ==4) fichier.close();
 }
 }
 
@@ -15763,7 +15767,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     double r_Ftarg = REAL(getListElement(inpFtarg, CHAR(namVarTarg)))[IND_T];
     double r_Fbar_prev = REAL(getListElement(out_Fbar_et, CHAR(namVarTarg)))[IND_T-1];
     double r_Fbar_init = REAL(getListElement(out_Fbar_et, CHAR(namVarTarg)))[0];
-    //Rprintf("Ftarg: %f, Fbar_init: %f, Fbar_prev: %f \n",r_Ftarg, r_Fbar_init,r_Fbar_prev); fichier << "Ftarg:" << r_Ftarg << ", Fbar_prev:" << r_Fbar_prev << ", Fbar_init:" << r_Fbar_init << endl;
+    //Rprintf("Ftarg: %f, Fbar: %f \n",r_Ftarg, r_Fbar); fichier << "Ftarg:" << r_Ftarg << ", Fbar:" << r_Fbar << endl;
 
     PROTECT(elmt = getListElement(listTempP, CHAR(namVarTarg)));
     int nbI = length(getListElement(elmt, "modI"));
