@@ -119,7 +119,8 @@ SEXP    out_F_fmi,  //mortalité "captures" par pêche (par espèce)
         out_DD_efmi_G1, out_DD_efmi_G2, out_LD_efmi_G1, out_LD_efmi_G2,
         out_statLDst_efm, out_statLDor_efm,
         intermBIOMspict, //effort1_fm et effort2_fm sont désormais inclus dans out_effort
-        intermGoFish;
+        intermGoFish,
+        multPrice;
 //    VARIABLES  ---------------
 
 //parties des inputs
@@ -129,6 +130,7 @@ SEXP    FList, sppList, sppListStat, sppListQ,sppListQM,sppListQM_dyn, pList, sp
         fVar /*variable intermédiaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList, ParamSPMlist;
 
 SEXP inpFtarg, inpW_Ftarg, inpMeanRec_Ftarg;
+SEXP Qholdings;
 
 int     nbT, nbF, nbM, nbMe, nbE, nbEstat, nbP,nbEall,nbEQuota,nbEQuotaMarket, nbEQuotaMarket_dyn,//dimensions
         curQ, spQ, scen, //application du scénario??
@@ -295,7 +297,7 @@ BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
 {
 
-//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.txt", ios::out | ios::trunc);
+//ofstream fichier("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.txt", ios::out | ios::trunc);
 //fichier << "Début " << endl;
 
 
@@ -425,6 +427,8 @@ nbEQuotaMarket = length(getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol));
 PROTECT(sppListQM = getAttrib(VECTOR_ELT(parQEX,1), R_NamesSymbol));
 nbEQuotaMarket_dyn = nbEQuota;
 PROTECT(sppListQM_dyn = sppListQ);
+
+PROTECT(Qholdings = VECTOR_ELT(parQEX,8));
 
 //tac_ctrl = tacCTRL;
 recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
@@ -723,18 +727,18 @@ double *NBDSfm = REAL(NBDSFM);
 double *EFF2f = REAL(EFF2F);
 double *EFF2fm = REAL(EFF2FM);
 
-SEXP ans_PQuot_et;
+SEXP ans_PQuot_et, pQuotaIni;
 if (nbEQuotaMarket>0) {
  setAttrib(out_PQuot_et, R_NamesSymbol, sppListQM);
  for (int e = 0 ; e < nbEQuotaMarket ; e++) {
     PROTECT(ans_PQuot_et = NEW_NUMERIC(nbT));
     setAttrib(ans_PQuot_et, R_NamesSymbol, times);
-    for (int ind_t=0; ind_t < nbT ; ind_t++) REAL(ans_PQuot_et)[ind_t] = 0.0;
+    PROTECT(pQuotaIni = VECTOR_ELT(VECTOR_ELT(parQEX,1),e));
+    for (int ind_t=0; ind_t < nbT ; ind_t++) REAL(ans_PQuot_et)[ind_t] = REAL(pQuotaIni)[ind_t];
     SET_VECTOR_ELT(out_PQuot_et, e, ans_PQuot_et);
-    UNPROTECT(1);
+    UNPROTECT(2);
  }
 }
-
 
 SEXP ans_QuotaTrade_fe;
 if (nbEQuotaMarket_dyn>0) {
@@ -777,7 +781,22 @@ if (nbEQuotaMarket_dyn>0) {
 
 PROTECT(intermGoFish = allocMatrix(REALSXP,nbF,nbT));
 setAttrib(intermGoFish, R_DimNamesSymbol, dnmsF);
-for (int ind_f = 0 ; ind_f < nbF ; ind_f++) REAL(intermGoFish)[ind_f] = 1.0; //initialisation t=0
+for (int ind_t = 0 ; ind_t < nbT ; ind_t++){
+    for (int ind_f = 0 ; ind_f < nbF ; ind_f++) REAL(intermGoFish)[ind_t*nbF + ind_f] = 1.0; //initialisation
+}
+
+PROTECT(multPrice = allocVector(VECSXP, nbE+nbEstat));
+SEXP ans_multPrice;
+if ((nbE+nbEstat)>0) {
+ setAttrib(multPrice, R_NamesSymbol, sppListAll);
+ for (int e = 0 ; e < (nbE+nbEstat) ; e++) {
+    PROTECT(ans_multPrice = NEW_NUMERIC(nbT));
+    setAttrib(ans_multPrice, R_NamesSymbol, times);
+    for (int ind_t=0; ind_t < nbT ; ind_t++) REAL(ans_multPrice)[ind_t] = 1.0;
+    SET_VECTOR_ELT(multPrice, e, ans_multPrice);
+    UNPROTECT(1);
+ }
+}
 
 //fichier << "Debut boucle T"  << endl;
 
@@ -885,21 +904,22 @@ REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");fic
 //Rprintf("intro2\n");fichier << "intro2" << endl;
 if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
    // PrintValue(TACbyF);
-   //Rprintf("call.EstimationTACfromF\n");
-   //fichier << "call.EstimationTACfromF" << endl;
+//   Rprintf("call.EstimationTACfromF\n");
+//   fichier << "call.EstimationTACfromF" << endl;
    int oooo = EstimationTACfromF(it) ;
    oooo = oooo * 2;
-   //Rprintf("end.EstimationTACfromF\n");
-   //fichier << "end.EstimationTACfromF" << endl;
+//   Rprintf("end.EstimationTACfromF\n");
+//   fichier << "end.EstimationTACfromF" << endl;
    //PrintValue(TACbyF);
 
 }
 
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
-
-   //fichier << "call.QuotaMarket" << endl;
+//Rprintf("call.QuotaMarket\n");
+//   fichier << "call.QuotaMarket" << endl;
    QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(EcoInd)[4]);
-   // fichier << "end.QuotaMarket" << endl;
+//    fichier << "end.QuotaMarket" << endl;
+//Rprintf("end.QuotaMarket\n");
 
 }
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activée si au moins un élément de TACbyF est renseigné
@@ -1119,23 +1139,26 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
 //3 modules avec pas de temps différencié au niveau trimestre
 if (nbE>0) {
- //Rprintf("call.Mortalite\n");fichier << "call.Mortalite" << endl;
- //fichier << "call.Mortalite" << endl;
+// Rprintf("call.Mortalite\n");fichier << "call.Mortalite" << endl;
+// fichier << "call.Mortalite" << endl;
  Mortalite(list, it, eVar);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
- //fichier << "end.Mortalite" << endl;
- //Rprintf("end.Mortalite\n");fichier << "end.Mortalite" << endl;
+// fichier << "end.Mortalite" << endl;
+// Rprintf("end.Mortalite\n");
+// fichier << "end.Mortalite" << endl;
 
- //Rprintf("call.DynamicPop\n");fichier << "call.DynamicPop" << endl;
+// Rprintf("call.DynamicPop\n");fichier << "call.DynamicPop" << endl;
 // fichier << "call.DynamicPop" << endl;
  DynamicPop(list, it, eVar, true);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
- // fichier << "end.DynamicPop" << endl;
-//Rprintf("end.DynamicPop\n");fichier << ".DynamicPop" << endl;
+// fichier << "end.DynamicPop" << endl;
+//Rprintf("end.DynamicPop\n");
+//fichier << ".DynamicPop" << endl;
 }
 //Rprintf("call.CatchDL\n");fichier << "call.CatchDL" << endl;
 // fichier << "call.CatchDL" << endl;
 CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
 //fichier << "end.CatchDL" << endl;
-//Rprintf("end.CatchDL\n");fichier << "end.CatchDL" << endl;
+//Rprintf("end.CatchDL\n");
+//fichier << "end.CatchDL" << endl;
 
 
 
@@ -1154,13 +1177,15 @@ CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(o
 //fichier << "call.Marche" << endl;
 Marche(list, it);
 //fichier << "end.Marche" << endl;
-//Rprintf("end.Marche\n");fichier << "end.Marche" << endl;
+//Rprintf("end.Marche\n");
+//fichier << "end.Marche" << endl;
 
 //Rprintf("call.EcoDCF\n");fichier << "call.EcoDCF" << endl;
 //fichier << "call.EcoDCF" << endl;
 EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
 //fichier << "end.EcoDCF" << endl;
-//Rprintf("end.EcoDCF\n");fichier << "end.EcoDCF" << endl;
+//Rprintf("end.EcoDCF\n");
+//fichier << "end.EcoDCF" << endl;
 
 }
 ////Rprintf("K");
@@ -1195,9 +1220,9 @@ free_vector(multFOTHinterm_e,1,nbE);
 //UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajoutés après intégration de 'parOQD'
 //if (nbEstat>0) UNPROTECT(nbEstat);
 if(pUpdate) UNPROTECT(2);
-UNPROTECT(29);
+UNPROTECT(30);
 UNPROTECT(17+20+4+16*6+8+9);//out_
-UNPROTECT(13);
+UNPROTECT(14);
 UNPROTECT(10); // PROTECT_WITH_INDEX
 
 //fichier.close();
@@ -13466,6 +13491,7 @@ void BioEcoPar::Marche(SEXP list, int ind_t)
     double *r_beta_pp = &NA_REAL;
     int *r_ep = &NA_INTEGER;
     int ind_p;
+    SEXP ans_MultPrice;
 
 
 ////Rprintf("CCC1");
@@ -13618,7 +13644,12 @@ if (nbE>0) {
 
                 }
 
+                PROTECT(ans_MultPrice = VECTOR_ELT(multPrice, ind_e));
+                REAL(ans_MultPrice)[ind_t] = mult_p;
+                UNPROTECT(1);
+
         }
+
 
 
 
@@ -13835,6 +13866,10 @@ if (nbEstat>0) {
                     //fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
 
                 }
+            PROTECT(ans_MultPrice = VECTOR_ELT(multPrice, ind_e));
+            REAL(ans_MultPrice)[ind_t] = mult_p;
+            UNPROTECT(1);
+
 
         }
 
@@ -14530,7 +14565,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 // ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
 //ofstream fichier;
-//if (ind_t ==4) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
+//if (ind_t ==9) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
 //fichier << "Start" << endl;
  //time_t my_time;
 
@@ -14553,8 +14588,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //fichier << "QM0.3"  << endl;
     double* r_L_f_m_e;
 
-    SEXP rtbs_f_m_out, rtbs_f_out, ccw_f_out, rep_f, gc_f, fixc_f, dep_f;
-    double *r_rtbs_f_m_out, *r_rtbs_f_out, *r_ccw_f_out, *r_rep_f, *r_gc_f, *r_fixc_f, *r_dep_f;
+    SEXP rtbs_f_m_out, rtbs_f_out, ccw_f_out, rep_f, gc_f, fixc_f, dep_f, GVLtot_f_m_out, cshrT_f_m_out;
+    double *r_rtbs_f_m_out, *r_rtbs_f_out, *r_ccw_f_out, *r_rep_f, *r_gc_f, *r_fixc_f, *r_dep_f,*r_GVLtot_f_m_out, *r_GVLtot_f_m_e_ref, *r_P_f_m_e,*r_cshrT_f_m_out;
     PROTECT(rep_f = getListElement(getListElement(listTemp, "Fleet"), "rep_f"));
     r_rep_f = REAL(rep_f);
     PROTECT(gc_f = getListElement(getListElement(listTemp, "Fleet"), "gc_f"));
@@ -14563,10 +14598,14 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     r_fixc_f = REAL(fixc_f);
     PROTECT(dep_f = getListElement(getListElement(listTemp, "Fleet"), "dep_f"));
     r_dep_f = REAL(dep_f);
+    PROTECT(GVLtot_f_m_out = VECTOR_ELT(out_EcoDCF, 6));
+    r_GVLtot_f_m_out = REAL(GVLtot_f_m_out);
     PROTECT(rtbs_f_m_out = VECTOR_ELT(out_EcoDCF, 15));
     r_rtbs_f_m_out = REAL(rtbs_f_m_out);
     PROTECT(ccw_f_out = VECTOR_ELT(out_EcoDCF, 29));
     r_ccw_f_out = REAL(ccw_f_out);
+    PROTECT(cshrT_f_m_out = VECTOR_ELT(out_EcoDCF, 18));
+    r_cshrT_f_m_out = REAL(cshrT_f_m_out);
     PROTECT(rtbs_f_out = VECTOR_ELT(out_EcoDCF, 16));
     r_rtbs_f_out = REAL(rtbs_f_out);
 
@@ -14602,8 +14641,10 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //    PrintValue(intermGoFish);
     PROTECT(Profmin_f = NEW_NUMERIC(nbF));
     double *r_Profmin_f = REAL(Profmin_f);
+    double ratio_p;
+    double *rans_multPrice;
 //fichier << "QM0.5"  << endl;
-    int ind_t_last;
+    int ind_t_last, ind_t_price;
 
     PROTECT(alphaBhv = getListElement(paramBehav, "ALPHA"));
     double *r_alphaBhv = REAL(alphaBhv);
@@ -14628,6 +14669,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
     double *r_pQuota;
     double* r_pQuotaIni;
+    SEXP ans_multPrice;
+    int ind_ePrice;
     SEXP Lmodel,TACmodel;
     double *r_Lmodel, *r_TACmodel  ;
     SEXP reducelambda;
@@ -14643,14 +14686,24 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     // Initialize quota price
 //    fichier << "QM0.7"  << endl;
     //fichier << "nbEQuotaMarket:" << nbEQuotaMarket  << endl;
+    ind_t_last=0 ; // reference to calculate ProfUE_fm
+    //ind_t_price = ind_t-1; // to capture market dynamics
+    if (ind_t == 1){ind_t_price = 0;} else {ind_t_price = ind_t-1;} // to capture market dynamics
+//    fichier << "ind_t_price: " << ind_t_price << endl;
 
     for (int int_eQuota = 0 ; int_eQuota  < nbEQuotaMarket ; int_eQuota++) {
+            ind_ePrice = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListQM,int_eQuota))); // index of species in MultPrice
+            PROTECT(ans_multPrice = VECTOR_ELT(multPrice,ind_ePrice));
             PROTECT(pQuota = VECTOR_ELT(out_PQuot_et,int_eQuota));
             r_pQuota = REAL(pQuota);
             r_pQuotaIni = REAL(VECTOR_ELT(pQuotaIni,int_eQuota));
-            r_pQuota[ind_t] = r_pQuotaIni[ind_t];
-            UNPROTECT(1);
+            r_pQuota[ind_t] = r_pQuotaIni[ind_t] * REAL(ans_multPrice)[ind_t_price]; // adjust quota price for change in fish price in previous year
+            UNPROTECT(2);
     }
+//                PrintValue(sppListAll);
+//                PrintValue(multPrice);
+//                PrintValue(sppListQM);
+//                PrintValue(out_PQuot_et);
 
   //  fichier << "QM0.8"  << endl;
 
@@ -14722,26 +14775,82 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //                    ind_t_last = ind_t_last -1;}
 //
 //                }
-               ind_t_last=0;
-          //      fichier << "ind_t_last: " << ind_t_last << endl;
+
                 //fichier << "QM1.3"  << endl;
                 //Rprintf("QM1.3\n");
+//                if ((itQ==0) & (ind_t<5)) Rprintf("f: %d, ind_t_last: %d \n", ind_f, ind_t_last);
 
                 for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
-            //            if (ind_f==5) fichier << "ind_m: " << ind_m << endl;
-                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]];
-              //          if (ind_f==5) fichier << "Only RTBS : r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+//                    if (ind_f==6) fichier << "ind_m: " << ind_m << endl;
+
+                     // Adjust GVL by species to account for market dynamics
+                        for (int e = 0 ; e < nbE+nbEstat ; e++) {
+                                if ((nbE>0) & (e<nbE)) {
+                                    r_GVLtot_f_m_e_ref = REAL(VECTOR_ELT(VECTOR_ELT(eVar, e),41));
+                                    ind_ePrice = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e)));
+                                    //Rprintf("e = %s, ind_ePrice = %d \n", CHAR(STRING_ELT(sppList,e)),ind_ePrice);
+                                    PROTECT(ans_multPrice = VECTOR_ELT(multPrice,ind_ePrice));
+                                    rans_multPrice = REAL(ans_multPrice);
+
+                                } if ((nbEstat>0) & (e>=nbE)) {
+                                    r_GVLtot_f_m_e_ref = REAL(VECTOR_ELT(VECTOR_ELT(eStatVar, e-nbE),1));
+                                    ind_ePrice = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e-nbE)));
+                                    //Rprintf("e = %s, ind_ePrice = %d \n", CHAR(STRING_ELT(sppListStat,e-nbE)),ind_ePrice);
+                                    PROTECT(ans_multPrice = VECTOR_ELT(multPrice,ind_ePrice));
+                                    rans_multPrice = REAL(ans_multPrice);
+                                    }
+
+                        ratio_p = rans_multPrice[ind_t_price] / rans_multPrice[ind_t_last];
+
+                        if (!ISNA(r_GVLtot_f_m_e_ref[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]* ratio_p)){
+                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] +
+                                r_GVLtot_f_m_e_ref[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * ratio_p;}
+
+                        UNPROTECT(1);
+
+//                        if (ind_f==6) fichier << "e = " <<  e <<
+//                            "; GVL init = " << r_GVLtot_f_m_e_ref[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]  <<
+//                            "; ratio = " << ratio_p <<
+//                            "; GVL actual = " << r_GVLtot_f_m_e_ref[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * ratio_p <<
+//                            "; ProfUE_f_m = " << r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+                        }
+
+                        // Deduce variable costs : RTBS
+                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
+                            (r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] - r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]);
+//                       if (ind_f==6) fichier << "Deduce var costs : r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
 
                         //Deduce costs
-                        // 1- Quota costs
+                         // 1- crew costs
+                        if (persCalc > 0){ // crew share
+                            r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] *
+                                        (1 - r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]);
+                        }else{ // fixed wages
+                            r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
+                                                          r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]  *
+                                                          (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
+                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
+                        }
+//                        if (ind_f==6) {
+//                                if (persCalc > 0){
+//                                fichier << " cshrT = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                 " ; rtbs = " <<  r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                 " crew share = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl; } else{
+//                                fichier << " crew costs_f =  " <<  r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] <<
+//                                "; ratio Effort" << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
+//                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]) <<
+//                                "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+//                                }}
+
+                        // 2- Quota costs
 
                         for (int ind_eQ = 0 ; ind_eQ< nbEQuotaMarket ; ind_eQ++) { //deduce quota expenses for dynamic markets
-   //                             fichier << "ind_eQ: " << ind_eQ << endl;
                                 PROTECT(nam_eQuota = STRING_ELT(sppListQM,ind_eQ));
 
                                 r_L_f_m_e = REAL(getListElement(L_f_m_e, CHAR(nam_eQuota)));
 
-                //                if (ind_f==5) fichier << "nam_eQuota: " << CHAR(nam_eQuota) << endl;
+//                                if (ind_f==6) fichier << "nam_eQuota: " << CHAR(nam_eQuota) << endl;
 
 
                                 if (!ISNA(r_L_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]])){
@@ -14751,11 +14860,11 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
                                     r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m]  -
                                                                 r_L_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] *1000 * r_pQuota[ind_t];
-                    //                if (ind_f==5){
-                  //                          fichier << "index: " << ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3] << endl;
-                      //                      fichier << "r_L_f_m_e: " << r_L_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] *1000 << endl;
-                       //                     fichier << "r_pQuota: " << r_pQuota[ind_t] << endl;
-                       //                     fichier << "Deduce quota costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;}
+//                                    if (ind_f==6){
+//                                            fichier << "index: " << ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3] << endl;
+//                                            fichier << "r_L_f_m_e: " << r_L_f_m_e[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] *1000 << endl;
+//                                            fichier << "r_pQuota: " << r_pQuota[ind_t] << endl;
+//                                            fichier << "Deduce quota costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;}
 
 
                                     UNPROTECT(1);
@@ -14764,59 +14873,43 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
                         }
 
-                        // 2- crew costs
-                        if (persCalc > 0){ // crew share
-                            r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
-                                                          r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]  *
-                                                          r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]];
-                        }else{ // fixed wages
-                            r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
-                                                          r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]  *
-                                                          (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
-                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
+
+                        // Divide by effort
+                        if(r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]>0){
+                                r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] /
+                                (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) ;
                         }
-                       // if (ind_f==5) {
-                       //         if (persCalc > 0){
-                       //         fichier << " crew costs_f =  " <<  r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] <<
-                       //         "; ratio RTBS" << r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] <<
-                       //         "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl; } else{
-                       //         fichier << " crew costs_f =  " <<  r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] <<
-                       //         "; ratio Effort" << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
-                       //                                   (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]) <<
-                       //         "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
-                        //        }
-                       // }
+
+//                        if (ind_f==6){
+//                            fichier << "Effort_f_m = " << r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] << endl;
+//                            fichier << "Divide by effort: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+//                       }
+
+
 
                         // 3- fixed costs
 //                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
 //                                                          (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
 //                                                           r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
-//                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
-//                                                           r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]]) *
-//                                                           (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
-//                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
+//                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]) /
+//                                                          g_effSup[ind_f + nbF*ind_t];
 
                         r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
                                                           (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
                                                            r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
-                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]) *
-                                                           (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
-                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
+                                                           r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
+                                                           r_dep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]]) /
+                                                          g_effSup[ind_f + nbF*ind_t];
 
-//                        if (ind_f==5) fichier << " fixed costs_f =  " <<  r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
-                       //                                                     r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
-                       //                                                     r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
-                       //                                                     r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]] <<
-                       //         "; ratio Effort" << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
-                       //                                  (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]])  <<
-                      //          "; Deduce fixed costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+//                        if (ind_f==6) fichier << " fixed costs_f =  " <<  r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t_last*dim_rep_f[3]] +
+//                                                                            r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t_last*dim_fixc_f[3]] +
+//                                                                            r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t_last*dim_gc_f[3]]+
+//                                                                            r_dep_f[ind_f*dim_dep_f[0] + 0*dim_dep_f[1] + 0*dim_dep_f[2] + ind_t_last*dim_dep_f[3]] <<
+//                                "; Eff sup = " << g_effSup[ind_f + nbF*ind_t] <<
+//                                "; Deduce fixed costs per UE: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
 
 
-                        r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] / (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) ;
-                        //if (ind_f==5){
-                        //    fichier << "Effort_f_m = " << r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] << endl;
-                        //    fichier << "Divide by effort: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
-                       //}
+
 
                         if (!ISNA(r_ProfUE_f_m[ind_f + nbF*ind_m])){
                             if (toinit){
@@ -14861,10 +14954,10 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                                                            (1-r_alphaBhv[ind_f + nbF*ind_t]) * (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]]) /
                                                            (r_out_effort1_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]  * r_out_effort2_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]);
                         if (ISNA(r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t])) r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] = 0.0;
-                        //if(ind_f ==5) fichier << "m= " << ind_m << "; attract = " << r_ProfUE_f_m_ctr[ind_f + nbF*ind_m] / r_ProfUE_f[ind_f] << "; trad = " << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]]) /
-                        //                                   (r_out_effort1_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]  * r_out_effort2_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) << "; allocEff = " << r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] << endl;
+//                        if(ind_f ==6) fichier << "m= " << ind_m << "; attract = " << r_ProfUE_f_m_ctr[ind_f + nbF*ind_m] / r_ProfUE_f[ind_f] << "; trad = " << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]]) /
+//                                                          (r_out_effort1_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]  * r_out_effort2_f[ind_f*eF_f[0] + ind_m*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]]) << "; allocEff = " << r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] << endl;
                         if (!ISNA(r_ProfUE_f_m[ind_f + nbF*ind_m])) r_ExpProfUE_f[ind_f] = r_ExpProfUE_f[ind_f] + r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] * r_ProfUE_f_m[ind_f + nbF*ind_m];
-                       //if (ind_f ==5){ fichier << "r_allocEff_f_m = " << r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] << "r_ProfUE_f_m = " << r_ProfUE_f_m[ind_f + nbF*ind_m] << "; r_ExpProfUE_f = " << r_ExpProfUE_f[ind_f] << endl;}
+//                        if (ind_f ==6){ fichier << "r_allocEff_f_m = " << r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] << "; r_ProfUE_f_m = " << r_ProfUE_f_m[ind_f + nbF*ind_m] << "; r_ExpProfUE_f = " << r_ExpProfUE_f[ind_f] << endl;}
 
                 }
                 if(r_ExpProfUE_f[ind_f]>=0.0) {
@@ -14884,10 +14977,10 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
 
                        g_effort1FM[ind_f + nbF*ind_m] = r_GoFish_f[ind_f+nbF*ind_t] * g_effSup[ind_f + nbF*ind_t] * r_allocEff_f_m[ind_f + nbF*ind_m + nbF*nbMe*ind_t] / r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + 0*eF_fm[3]];
-                       //if(ind_f ==5) fichier << "m= " << ind_m << "; Eff = " << g_effort1FM[ind_f + nbF*ind_m] << endl;
+//                      if(ind_f ==6) fichier << "m= " << ind_m << "; Eff = " << g_effort1FM[ind_f + nbF*ind_m] << endl;
                 }
                 g_effort1F[ind_f] = r_GoFish_f[ind_f+nbF*ind_t] * g_effSup[ind_f + nbF*ind_t] / r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + 0*eF_f[3]];
-                //if(ind_f ==5) fichier << "; Eff_f = " << g_effort1F[ind_f] << endl;
+//                if(ind_f ==6) fichier << "; Eff_f = " << g_effort1F[ind_f] << endl;
 
         }
         //PrintValue(getListElement(getListElement(listTemp, "Fleet"), "effort1_f"));
@@ -14929,14 +15022,16 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 PROTECT(pQuota = getListElement(out_PQuot_et,CHAR(nam_eQuota_dyn)));
 
                 if (!isNull (getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)))){ // espece dyn
-                                    PROTECT(Lmodel = aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)),nDimT));
+                                    PROTECT(Lmodel = aggregObj(getListElement(out_L_eit, CHAR(nam_eQuota_dyn)),nDimT));
+                                    //PROTECT(Lmodel = aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)),nDimT));
                                 } else{ // espece stat
                                     PROTECT(Lmodel = aggregObj(getListElement(out_Lstat, CHAR(nam_eQuota_dyn)),nDimT));
                                 }
 
                 //PrintValue(Lmodel);
                 r_Lmodel = REAL(Lmodel);
-                PROTECT(TACmodel = aggregObj(getListElement(TACbyF, CHAR(nam_eQuota_dyn)),nDimT));
+                PROTECT(TACmodel = getListElement(TAC, CHAR(nam_eQuota_dyn)));
+                //PROTECT(TACmodel = aggregObj(getListElement(TACbyF, CHAR(nam_eQuota_dyn)),nDimT)); //ne fonctionne plus si quota pas detenu par navires modelises
                 //PrintValue(TACmodel);
                 r_TACmodel = REAL(TACmodel);
                 r_pQuota = REAL(pQuota);
@@ -14949,9 +15044,12 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
                 r_diffLQ[itQ + itmax*ind_t] =  (r_Lmodel[ind_t] - r_TACmodel[ind_t]) / r_TACmodel[ind_t]; //save value for current iteration to check algorithm convergence
                 sum_diffLQ = sum_diffLQ + fabs(r_diffLQ[itQ + itmax*ind_t]);
 
+//                fichier << "L_eit = " << r_Lmodel[ind_t] << "; L_efmit = " <<  REAL(aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)),nDimT))[ind_t] <<
+//                 "; TAC = " << r_TACmodel[ind_t] << "; diff = " << r_diffLQ[itQ + itmax*ind_t] << endl;
+
                 if (int_eQuota_dyn ==0){
-                      max_diffLQ = r_diffLQ[itQ + itmax*ind_t];
-                } else if (r_diffLQ[itQ + itmax*ind_t] > max_diffLQ) max_diffLQ = r_diffLQ[itQ + itmax*ind_t];
+                      max_diffLQ = fabs(r_diffLQ[itQ + itmax*ind_t]);
+                } else if (fabs(r_diffLQ[itQ + itmax*ind_t]) > max_diffLQ) max_diffLQ = fabs(r_diffLQ[itQ + itmax*ind_t]);
 
                 if (r_diffLQ[itQ + itmax*ind_t]>0) nb_overTAC = nb_overTAC+1;
                 r_PQuot_temp[itQ + itmax*ind_t] = r_pQuota[ind_t]; //save value for current iteration to check algorithm convergence
@@ -14999,9 +15097,17 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
         if (itQ == 0){ //floor(itmax/2)
             min_itQ = itQ;
             min_max_diffLQ = fabs(max_diffLQ);
+            min_sum_diffLQ = sum_diffLQ;
             } else if (fabs(max_diffLQ) < min_max_diffLQ) {
+                //Rprintf("Cas 1 , old diffLQ = %f; new diffLQ = %f; min itQ = %d \n",min_max_diffLQ,fabs(max_diffLQ) ,itQ);
                 min_itQ = itQ;
                 min_max_diffLQ = fabs(max_diffLQ);
+                min_sum_diffLQ = sum_diffLQ;
+            } else if ((fabs(max_diffLQ) == min_max_diffLQ) & (sum_diffLQ < min_sum_diffLQ)){
+                //Rprintf("Cas 2 , diffLQ = %f; old sum_diffLQ = %f; new sum_diffLQ = %f; min itQ = %d \n",fabs(max_diffLQ),min_sum_diffLQ,sum_diffLQ ,itQ);
+                min_itQ = itQ;
+                min_max_diffLQ = fabs(max_diffLQ);
+                min_sum_diffLQ = sum_diffLQ;
             }
 //fichier << "min_max_diffLQ = " << min_max_diffLQ << endl;
 
@@ -15036,8 +15142,65 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 
     }
+
     //---------------------------------------------
-    // 2 - Trade quotas
+    // 2 - Final adjustment quota prices to account for current stock status and market
+    //---------------------------------------------
+    // Run Market and EcoDCF modules
+    double max_ratio_GOS_QuotaExp;
+    SEXP GOS_f,QuotaExp_f;
+    double *r_GOS_f, *r_QuotaExp_f;
+
+    Marche(listTemp, ind_t);
+
+    GoOn=TRUE;
+    itQ=0;
+
+    while(GoOn && (itQ<10)){
+//            fichier << "itQ = " << itQ << endl;
+
+        EcoDCF(listTemp, ind_t, EcoIndCopy[4], drCopy);
+
+        PROTECT(GOS_f = VECTOR_ELT(out_EcoDCF, 35));
+        r_GOS_f = REAL(GOS_f);
+        PROTECT(QuotaExp_f = VECTOR_ELT(out_EcoDCF, 59));
+        r_QuotaExp_f = REAL(QuotaExp_f);
+
+        max_ratio_GOS_QuotaExp = 1.0;
+
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+                if ((r_GoFish_f[ind_f+nbF*ind_t]==1) && (r_QuotaExp_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GOS_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] > max_ratio_GOS_QuotaExp)){
+                    max_ratio_GOS_QuotaExp = r_QuotaExp_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GOS_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]  ;
+                }
+//                fichier << "GoFish = " << r_GoFish_f[ind_f+nbF*ind_t] <<
+//                "; GOS = " <<  r_GOS_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]<<
+//                "; QuotaExp = " << r_QuotaExp_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] <<
+//                "; ratio = " << r_QuotaExp_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / r_GOS_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]<<
+//                "; max ratio = " << max_ratio_GOS_QuotaExp << endl;
+        }
+
+        if (max_ratio_GOS_QuotaExp == 1.0){ //OK
+                GoOn=FALSE;
+        } else{// Adjust Quota price by the ratio
+                for (int int_eQuota_dyn = 0 ; int_eQuota_dyn  < nbEQuotaMarket_dyn ; int_eQuota_dyn++) {
+                        PROTECT(nam_eQuota_dyn=STRING_ELT(sppListQM_dyn,int_eQuota_dyn));
+                        PROTECT(pQuota = getListElement(out_PQuot_et,CHAR(nam_eQuota_dyn)));
+//                        fichier << "Pquot before = " << REAL(pQuota)[ind_t] << endl;
+                        REAL(pQuota)[ind_t] = REAL(pQuota)[ind_t]/(1.05 * max_ratio_GOS_QuotaExp);
+//                        fichier << " PQuota after = " << REAL(pQuota)[ind_t] << endl;
+
+                        UNPROTECT(2);
+                    }
+        }
+//        fichier << "GoOn = " << GoOn << endl;
+        itQ ++ ;
+        UNPROTECT(2);
+    }
+
+
+
+    //---------------------------------------------
+    // 3 - Trade quotas
     //---------------------------------------------
 
     // Rank fleet in order of profitability
@@ -15074,8 +15237,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 //    fichier << "QM6"  << endl;
 
-    //Trade quotas per species
 
+    if (false){ //Old version
 
     SEXP demandQ_f_e, offerQ_f_e, L_ef,TACbyF_e,TACbyF_ex, QuotaTrade_fe ;
     PROTECT(demandQ_f_e = NEW_NUMERIC(nbF));
@@ -15187,12 +15350,113 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
         UNPROTECT(5);
     }
+    UNPROTECT(2);
+    } else{ // New
+
+    SEXP demandQ_f_e, offerQ_f_e, L_ef,TACbyF_e, QuotaTrade_fe,Qholdings_e ;
+    PROTECT(demandQ_f_e = NEW_NUMERIC(nbF+1));
+    PROTECT(offerQ_f_e = NEW_NUMERIC(nbF+1));
+    double *r_L_ef;
+    double *r_demandQ_f_e = REAL(demandQ_f_e);
+    double *r_offerQ_f_e = REAL(offerQ_f_e);
+    double *r_TACbyF_e, *r_Qholdings;
+    double *r_QuotaTrade_fe;
+    int ind_buyer, ind_seller;
+
+    for (int int_eQuota_dyn = 0 ; int_eQuota_dyn  < nbEQuotaMarket_dyn ; int_eQuota_dyn++) {
+        PROTECT(nam_eQuota_dyn=STRING_ELT(sppListQM_dyn,int_eQuota_dyn));
+        if (!isNull(getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)))){ // espece dyn
+                                    PROTECT(L_ef = aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota_dyn)),dimCstF));
+                } else{ // espece stat
+                                    PROTECT(L_ef = aggregObj(getListElement(out_Lstat, CHAR(nam_eQuota_dyn)),dimCstF));
+                                }
+        r_L_ef = REAL(L_ef);
+        PROTECT(TACbyF_e = getListElement(TACbyF, CHAR(nam_eQuota_dyn)));
+        r_TACbyF_e = REAL(TACbyF_e);
+        PROTECT(Qholdings_e = getListElement(Qholdings, CHAR(nam_eQuota_dyn)));
+        r_Qholdings = REAL(Qholdings_e);
+
+//                fichier << "sp = " << CHAR(nam_eQuota_dyn) <<", Expected catches:" << endl;
+//                for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+//                    fichier << ind_f << ";" << r_L_ef[ind_f+nbF*ind_t]  << endl;
+//                }
+
+
+        // Calculate net demand for quota by fleet = expected catches - holdings
+        for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+            r_demandQ_f_e[ind_f] = r_L_ef[ind_f+nbF*ind_t] - r_Qholdings[ind_f+(nbF+1)*ind_t] ;
+            r_offerQ_f_e[ind_f] = - r_demandQ_f_e[ind_f] ;
+        }
+
+        // And for external investors
+        r_demandQ_f_e[nbF] = 0.0;
+        r_offerQ_f_e[nbF] = r_Qholdings[nbF+(nbF+1)*ind_t];
+
+        //Trade quotas
+        int rank_buyer = 0;
+        ind_buyer = r_rank_Prof_f[rank_buyer];
+        int rank_seller = nbF; // start with external investors
+        ind_seller = nbF;
+        double trade;
+
+
+
+                while ((rank_buyer < nbF) &&  (rank_seller >=0)){
+                        //fichier << "rank buyer = " << rank_buyer  << "; ind buyer = " << ind_buyer << endl;
+                    while ((rank_seller >=0) && (r_demandQ_f_e[ind_buyer] > 0)){
+                        //fichier << "rank seller = " << rank_seller << "; ind seller = " << ind_seller << endl;
+
+                        if(r_offerQ_f_e[ind_seller] > 0){
+                            trade = fmin2(r_demandQ_f_e[ind_buyer],r_offerQ_f_e[ind_seller]);
+                            //fichier << "demand = " << r_demandQ_f_e[ind_buyer] << ", offer = " << r_offerQ_f_e[ind_seller] << ", trade = " << trade << endl;
+                            r_demandQ_f_e[ind_buyer] = r_demandQ_f_e[ind_buyer] - trade;
+                            r_offerQ_f_e[ind_seller] = r_offerQ_f_e[ind_seller] - trade;
+
+                            r_TACbyF_e[ind_buyer+nbF*ind_t] = r_TACbyF_e[ind_buyer+nbF*ind_t] + trade;
+
+                            if(ind_seller<nbF)// Only for vessels, not external investors
+                            r_TACbyF_e[ind_seller+nbF*ind_t] = r_TACbyF_e[ind_seller+nbF*ind_t] - trade;
+                        } else {
+                            rank_seller --;
+                            ind_seller = r_rank_Prof_f[rank_seller];
+                        }
+                    }
+                    rank_buyer ++;
+                    ind_buyer = r_rank_Prof_f[rank_buyer];
+
+                }
+
+//                fichier << "sp = " << CHAR(nam_eQuota_dyn) <<", Quota after trade:" << endl;
+//                for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+//                    fichier << ind_f << ";" << r_TACbyF_e[ind_f+nbF*ind_t]  << endl;
+//                }
+
+
+        // REcord quota trades
+         PROTECT(QuotaTrade_fe = getListElement(out_QuotaTrade_fe, CHAR(nam_eQuota_dyn)));
+         r_QuotaTrade_fe= REAL(QuotaTrade_fe);
+
+         for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+                r_QuotaTrade_fe[ind_f+ nbF*ind_t] = r_TACbyF_e[ind_f+ nbF*ind_t] - r_Qholdings[ind_f+ (nbF+1)*ind_t];
+         }
+
+
+//                fichier << "sp = " << CHAR(nam_eQuota_dyn) <<", Traded quota:" << endl;
+//                for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
+//                    fichier << ind_f << ";" << r_QuotaTrade_fe[ind_f+nbF*ind_t]  << endl;
+//                }
+
+
+        UNPROTECT(5);
+    }
+    UNPROTECT(2);
+    }
 //    fichier << "QM7.5"  << endl;
 
 
 
     UNPROTECT(30);
-//   fichier.close();
+//  fichier.close();
 }
 }
 
@@ -15733,7 +15997,7 @@ int denom=0, denom2=0;
 
 double *r_N_eit_S1M1=&NA_REAL, *r_N_eit_S2M2=&NA_REAL, *r_N_eit_S3M3=&NA_REAL, *r_N_eit_S4M4=&NA_REAL, *rans_N_eit=&NA_REAL, *r_N_eit_G1=&NA_REAL, *r_N_eit_G2=&NA_REAL,
        *r_N_e0t_S1M1=&NA_REAL, *r_N_e0t_S2M2=&NA_REAL, *r_N_e0t_S3M3=&NA_REAL, *r_N_e0t_S4M4=&NA_REAL, *r_N_e0t=&NA_REAL, *r_N_e0t_G1=&NA_REAL, *r_N_e0t_G2=&NA_REAL, *recValues=&NA_REAL, *LTOT=&NA_REAL,
-       *TAC_byFleet=&NA_REAL, *TAC_glob=&NA_REAL, *r_W_Ftarg=&NA_REAL;
+       *TAC_byFleet=&NA_REAL, *TAC_glob=&NA_REAL, *r_W_Ftarg=&NA_REAL, *r_Qholdings;
 
 double *Fothi2=&NA_REAL, *Fothi2_G1=&NA_REAL, *Fothi2_G2=&NA_REAL;
 
@@ -16349,14 +16613,17 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     TAC_byFleet = REAL(getListElement(TACbyF, CHAR(namVarTarg)));
     TAC_glob = REAL(getListElement(TAC, CHAR(namVarTarg)));
     r_W_Ftarg = REAL(v_W_Ftarg);
+    r_Qholdings = REAL(getListElement(Qholdings, CHAR(namVarTarg)));
 //Rprintf("A22\n");
 
     TAC_glob[IND_T] = LTOT[IND_T];
     //fichier << "Ltot t-1: " << LTOT[IND_T-1] << endl;
     //fichier << "Tactot t: " << TAC_glob[IND_T] << endl;
 
-    for (int indF = 0 ; indF < nbF ; indF++) TAC_byFleet[indF + nbF*IND_T] = r_W_Ftarg[indF + nbF*IND_T] * LTOT[IND_T];
+    for (int indF = 0 ; indF < nbF ; indF++) TAC_byFleet[indF + nbF*IND_T] = r_W_Ftarg[indF + (nbF+1)*IND_T] * LTOT[IND_T]; // for use in Gestion F2: only modelled fleets
 
+    for (int indF = 0 ; indF <= nbF ; indF++) r_Qholdings[indF + (nbF+1)*IND_T] = r_W_Ftarg[indF + (nbF+1)*IND_T] * LTOT[IND_T]; // for use in quota trading, contains also external investors
+//    PrintValue(getListElement(Qholdings, CHAR(namVarTarg)));
         //re-correction des efforts par l'inverse du ratio précédent
     for (int indF = 0 ; indF < nbF ; indF++) {
 
@@ -17578,7 +17845,8 @@ extern "C" {
 void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 {
 
-//ofstream fichier("C:\\Users\\mmerzere\\Desktop\\test2\\testEco.txt", ios::out | ios::trunc);
+//ofstream fichier;
+//if (ind_t ==4) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\EcoDCF.txt", ios::out | ios::trunc);
 
 //extern "C" {
 //void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
@@ -17641,6 +17909,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
     PROTECT(dimCstFini = allocVector(INTSXP, 4));
     PROTECT(dimCstFM = allocVector(INTSXP, 4));
     PROTECT(dimCstFMini = allocVector(INTSXP, 4));
+
 
     dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
     dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
@@ -18794,19 +19063,39 @@ for (int e = 0 ; e < nbE+nbEstat ; e++) {//on assume qu'il y a au moins une espè
 }
 
 // Calcul quota costs
-SEXP nam_eQuota_dyn, PQuot_et,QuotaTrade_fe;
-double *r_PQuot_et, *r_QuotaTrade_fe;
-for (int eQuota_dyn = 0 ; eQuota_dyn < nbEQuotaMarket_dyn ; eQuota_dyn++) {
+for (int ind_f = 0 ; ind_f < nbF ; ind_f++) //Reinitialisation si plusieurs appels au module
+        r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = 0.0;
 
-    PROTECT(nam_eQuota_dyn = STRING_ELT(sppListQM_dyn,eQuota_dyn));
-    PROTECT(PQuot_et = getListElement(out_PQuot_et, CHAR(nam_eQuota_dyn)));
-    PROTECT(QuotaTrade_fe = getListElement(out_QuotaTrade_fe, CHAR(nam_eQuota_dyn)));
+SEXP nam_eQuota, PQuot_et,QuotaTrade_fe;
+double *r_PQuot_et, *r_QuotaTrade_fe;
+for (int eQuota = 0 ; eQuota < nbEQuotaMarket ; eQuota++) {
+
+    PROTECT(nam_eQuota = STRING_ELT(sppListQM,eQuota));
+    PROTECT(PQuot_et = getListElement(out_PQuot_et, CHAR(nam_eQuota)));
+
+//    if(!isNull(getListElement(out_QuotaTrade_fe, CHAR(nam_eQuota)))){ //explicitely traded: amount traded = landings - holdings
+//        PROTECT(QuotaTrade_fe = getListElement(out_QuotaTrade_fe, CHAR(nam_eQuota)));
+//        r_QuotaTrade_fe = REAL(QuotaTrade_fe);
+//    } else { //otherwise amount traded = landings
+        if (!isNull (getListElement(out_L_efmit, CHAR(nam_eQuota)))){ // espece dyn
+                                    PROTECT(QuotaTrade_fe = aggregObj(getListElement(out_L_efmit, CHAR(nam_eQuota)),dimCstF));
+                                } else{ // espece stat
+                                    PROTECT(QuotaTrade_fe = aggregObj(getListElement(out_Lstat, CHAR(nam_eQuota)),dimCstF));
+                                }
+        r_QuotaTrade_fe = REAL(QuotaTrade_fe);
+//    }
+
     r_PQuot_et = REAL(PQuot_et);
-    r_QuotaTrade_fe = REAL(QuotaTrade_fe);
 
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
         r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] = r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] +
-                                                                                    r_PQuot_et[ind_t] * r_QuotaTrade_fe[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]*1000;
+                                                                                    r_PQuot_et[ind_t] * r_QuotaTrade_fe[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * 1000;
+//        if (ind_f==6){
+//            fichier << "e = " << CHAR(nam_eQuota) <<
+//                        "; Pquot = " << r_PQuot_et[ind_t] <<
+//                        "; Traded amount = " << r_QuotaTrade_fe[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]*1000 <<
+//                        "; QuotaExp = " << r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] << endl;
+//        }
 
     }
     UNPROTECT(3);
@@ -18973,7 +19262,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
         }
 
-        if (perscCalc==1) {  //part équipage constante
+        if (perscCalc==1) {  //part équipage constante (RAP)
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -18981,7 +19270,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
         }
 
-        if (perscCalc==2) {  //part équipage constante calculée - ccwr
+        if (perscCalc==2) {  //part équipage constante calculée (RAP) - ccwr
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_ccwr_f2[ind_f] *
@@ -18990,7 +19279,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
         }
 
 
-        if (perscCalc==3) {  //part équipage constante + salaire marin supplémentaire fixé
+        if (perscCalc==3) {  //part équipage constante (RAP) + salaire marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -19002,7 +19291,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
         }
 
 
-        if (perscCalc==4) {  //part équipage constante calculée salaires marin supplémentaire fixé
+        if (perscCalc==4) {  //part équipage constante calculée (RAP)- salaires marin supplémentaire fixé
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_ccwr_f2[ind_f] *
@@ -19050,8 +19339,8 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
                     r_rtbs_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] -
                     (r_rep_f[ind_f*dim_rep_f[0] + 0*dim_rep_f[1] + 0*dim_rep_f[2] + ind_t*dim_rep_f[3]] +
                     r_fixc_f[ind_f*dim_fixc_f[0] + 0*dim_fixc_f[1] + 0*dim_fixc_f[2] + ind_t*dim_fixc_f[3]] +
-                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]]+
-                    r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]]) / pow(1+0.0,ind_t) ;
+                    r_gc_f[ind_f*dim_gc_f[0] + 0*dim_gc_f[1] + 0*dim_gc_f[2] + ind_t*dim_gc_f[3]])/ pow(1+0.0,ind_t) ;//+
+                    //r_QuotaExp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] / pow(1+0.0,ind_t) ;
 
 
                 //version actualisée

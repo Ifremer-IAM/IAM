@@ -45,7 +45,7 @@ if (!is.null(Ftarg) & !is.null(W_Ftarg)) {
     if (length(intrs)>0) {
        Ftarg <- Ftarg[intrs] ; W_Ftarg <- W_Ftarg[intrs] ; MeanRec_Ftarg <- MeanRec_Ftarg[intrs]
        Ftarg <- lapply(Ftarg,function(x) rep(as.double(x),length=nT))
-       empty <- lapply(W_Ftarg,function(x) if ((nrow(x)!=nF) | (ncol(x)!=nT)) stop("Check your 'W_Ftarg' input !!!"))
+       empty <- lapply(W_Ftarg,function(x) if ((nrow(x)!=(nF+1)) | (ncol(x)!=nT)) stop("Check your 'W_Ftarg' input !!!"))
 
        W_Ftarg = rapply( W_Ftarg, f=function(x) ifelse(is.na(x),0,x), how="replace" )
        
@@ -241,6 +241,10 @@ if (is.null(parOptQuot$lambda)) parOptQuot$lambda <- 0.1
 if (is.null(parOptQuot$sdmax)) parOptQuot$sdmax <- 0
 if (is.null(parOptQuot$ftol)) parOptQuot$ftol <- 0.0000001
 if (is.null(parOptQuot$itmax)) parOptQuot$itmax <- 500
+def_Holdings <- lapply(parOptQuot$pxQuIni,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- objInput@specific$times ; return(tmp)})
+if (is.null(parOptQuot$holdings)) parOptQuot$holdings <- def_Holdings
+
+
 
 if (is.null(parBehav$active)) parBehav$active <- as.integer(0)
 if (is.null(parBehav$type)) parBehav$type <- as.integer(3)
@@ -285,7 +289,8 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     Ftarg, W_Ftarg, MeanRec_Ftarg,
                     parBehav,
                     list(active=as.integer(parOptQuot$active),pxQuIni=parOptQuot$pxQuIni, pxQuMin=parOptQuot$pxQuMin, 
-                          pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda),sdmax=as.double(parOptQuot$sdmax), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax)),                           #fonctionne en conjugaison avec TACbyF
+                          pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda),sdmax=as.double(parOptQuot$sdmax), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax),
+                         holdings = parOptQuot$holdings),                           #fonctionne en conjugaison avec TACbyF
                     list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
