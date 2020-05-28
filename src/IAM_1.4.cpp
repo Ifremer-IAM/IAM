@@ -14565,7 +14565,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
 // ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt", ios::out | ios::trunc);
 //ofstream fichier;
-//if (ind_t ==9) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
+//if (ind_t ==1) fichier.open ("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.QuotaMarket.txt");
 //fichier << "Start" << endl;
  //time_t my_time;
 
@@ -14588,8 +14588,8 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //fichier << "QM0.3"  << endl;
     double* r_L_f_m_e;
 
-    SEXP rtbs_f_m_out, rtbs_f_out, ccw_f_out, rep_f, gc_f, fixc_f, dep_f, GVLtot_f_m_out, cshrT_f_m_out;
-    double *r_rtbs_f_m_out, *r_rtbs_f_out, *r_ccw_f_out, *r_rep_f, *r_gc_f, *r_fixc_f, *r_dep_f,*r_GVLtot_f_m_out, *r_GVLtot_f_m_e_ref, *r_P_f_m_e,*r_cshrT_f_m_out;
+    SEXP rtbs_f_m_out, rtbs_f_out, ccw_f_out, rep_f, gc_f, fixc_f, dep_f, GVLtot_f_m_out, cshrT_f_m_out,GVLtot_f_out;
+    double *r_rtbs_f_m_out, *r_rtbs_f_out, *r_ccw_f_out, *r_rep_f, *r_gc_f, *r_fixc_f, *r_dep_f,*r_GVLtot_f_m_out, *r_GVLtot_f_m_e_ref, *r_P_f_m_e,*r_cshrT_f_m_out,*r_GVLtot_f_out;
     PROTECT(rep_f = getListElement(getListElement(listTemp, "Fleet"), "rep_f"));
     r_rep_f = REAL(rep_f);
     PROTECT(gc_f = getListElement(getListElement(listTemp, "Fleet"), "gc_f"));
@@ -14643,6 +14643,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     double *r_Profmin_f = REAL(Profmin_f);
     double ratio_p;
     double *rans_multPrice;
+    double GVLtot_temp_f_m;
 //fichier << "QM0.5"  << endl;
     int ind_t_last, ind_t_price;
 
@@ -14688,7 +14689,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     //fichier << "nbEQuotaMarket:" << nbEQuotaMarket  << endl;
     ind_t_last=0 ; // reference to calculate ProfUE_fm
     //ind_t_price = ind_t-1; // to capture market dynamics
-    if (ind_t == 1){ind_t_price = 0;} else {ind_t_price = ind_t-1;} // to capture market dynamics
+    if (ind_t == 1){ind_t_price = 0;} else {ind_t_price = 1;} // to capture market dynamics
 //    fichier << "ind_t_price: " << ind_t_price << endl;
 
     for (int int_eQuota = 0 ; int_eQuota  < nbEQuotaMarket ; int_eQuota++) {
@@ -14814,6 +14815,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //                            "; GVL actual = " << r_GVLtot_f_m_e_ref[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * ratio_p <<
 //                            "; ProfUE_f_m = " << r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
                         }
+                        GVLtot_temp_f_m = r_ProfUE_f_m[ind_f + nbF*ind_m]; // temporary save to use to calculate crew share if persCalc=5
 
                         // Deduce variable costs : RTBS
                         r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
@@ -14822,21 +14824,33 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 
                         //Deduce costs
                          // 1- crew costs
-                        if (persCalc > 0){ // crew share
+                        if ((persCalc == 1) | (persCalc == 2) | (persCalc == 3) | (persCalc == 4)) { // crew share RTBS
                             r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] *
                                         (1 - r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]);
-                        }else{ // fixed wages
+                                        }else if (persCalc == 5){ // crew share GVL
+                            r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
+                                        (r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] /
+                                        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] *
+                                        GVLtot_temp_f_m);
+                        } else { // fixed wages
                             r_ProfUE_f_m[ind_f + nbF*ind_m] = r_ProfUE_f_m[ind_f + nbF*ind_m] -
                                                           r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]  *
                                                           (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
                                                           (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]);
                         }
+
 //                        if (ind_f==6) {
-//                                if (persCalc > 0){
+//                                if ((persCalc == 1) | (persCalc == 2) | (persCalc == 3) | (persCalc == 4)) {
 //                                fichier << " cshrT = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
 //                                 " ; rtbs = " <<  r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
 //                                 " crew share = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
-//                                "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl; } else{
+//                                "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl; } else if (persCalc == 5){
+//                                    fichier << " cshrT ref = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                 " ; GVL ref = " <<  r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                 " crew share = " << r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] / r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] <<
+//                                "; GVL  =  " <<  GVLtot_temp_f_m <<
+//                                    "; Deduce crew costs: r_ProfUE_f_m =  " <<  r_ProfUE_f_m[ind_f + nbF*ind_m] << endl;
+//                                    } else{
 //                                fichier << " crew costs_f =  " <<  r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] <<
 //                                "; ratio Effort" << (r_out_effort1_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]] * r_out_effort2_f_m[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t_last*eF_fm[3]]) /
 //                                                          (r_out_effort1_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]] * r_out_effort2_f[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t_last*eF_f[3]]) <<
@@ -16321,7 +16335,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
         //fichier << "Recruitment in HCR = from MeanRecFtarg" << endl;
 
             PROTECT(v_MeanRec_Ftarg = getListElement(inpMeanRec_Ftarg, CHAR(namVarTarg)));
-            PrintValue(v_MeanRec_Ftarg);
+            //PrintValue(v_MeanRec_Ftarg);
         //Rprintf("A5\n");
             if (length(v_MeanRec_Ftarg)==1) {
 
@@ -16432,8 +16446,8 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 
                 } else if ((Qvec[getListIndex(Q, CHAR(namVarTarg))]==0) & (Svec[getListIndex(S, CHAR(namVarTarg))]==1)){//age and sex-based
         //Rprintf("A14\n");
-                        PROTECT(v_N_e0t_G1 = getListElement(elmt, "N_i0t_G1")); PrintValue(v_N_e0t_G1);
-                        PROTECT(v_N_e0t_G2 = getListElement(elmt, "N_i0t_G2")); PrintValue(v_N_e0t_G2);
+                        PROTECT(v_N_e0t_G1 = getListElement(elmt, "N_i0t_G1")); //PrintValue(v_N_e0t_G1);
+                        PROTECT(v_N_e0t_G2 = getListElement(elmt, "N_i0t_G2")); //PrintValue(v_N_e0t_G2);
 
                         r_N_e0t_G1 = REAL(v_N_e0t_G1);
                         r_N_e0t_G2 = REAL(v_N_e0t_G2);
@@ -16623,7 +16637,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
     for (int indF = 0 ; indF < nbF ; indF++) TAC_byFleet[indF + nbF*IND_T] = r_W_Ftarg[indF + (nbF+1)*IND_T] * LTOT[IND_T]; // for use in Gestion F2: only modelled fleets
 
     for (int indF = 0 ; indF <= nbF ; indF++) r_Qholdings[indF + (nbF+1)*IND_T] = r_W_Ftarg[indF + (nbF+1)*IND_T] * LTOT[IND_T]; // for use in quota trading, contains also external investors
-//    PrintValue(getListElement(Qholdings, CHAR(namVarTarg)));
+    //PrintValue(getListElement(Qholdings, CHAR(namVarTarg)));
         //re-correction des efforts par l'inverse du ratio précédent
     for (int indF = 0 ; indF < nbF ; indF++) {
 
@@ -19211,7 +19225,13 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
                         0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
                         r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
 
-                   } else {
+                   } else if (perscCalc==5){
+
+                       r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
+                        0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
+                        r_GVLtot_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
+
+                       }else {
 
                     r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] = NA_REAL;
 
@@ -19302,7 +19322,13 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
         }
 
+        if (perscCalc==5) {  //part équipage constante (GVL)
 
+                    r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+                        0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
+                            r_GVLtot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] ;
+
+                }
              //-- 15. ncshr_f
 
                 r_ncshr_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
@@ -19367,7 +19393,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-            if ( (perscCalc==0) | (perscCalc==1) | (perscCalc==3) ) {
+            if ( (perscCalc==0) | (perscCalc==1) | (perscCalc==3)| (perscCalc==5) ) {
 
             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_opersc_f2[ind_f];
