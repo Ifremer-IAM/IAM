@@ -94,7 +94,9 @@ setClass("iamOutput",
                     statLDor_efm= list(),
                     oqD_ef= list(),
                     oqD_e= list(),
-                    oqDstat_ef= list()),
+                    oqDstat_ef= list(),
+                    TACtot = list(),
+                    TACbyF = list()),
     output = list(typeGest = integer(),                #type de scénario de gestion appliqué
                   nbv_f = numeric(),                   #Nb de navires par flottille
                   effort1_f = numeric(),               #1ère composante d'effort moyen par an et par flottille
