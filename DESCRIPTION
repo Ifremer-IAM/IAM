@@ -1,0 +1,20 @@
+Package: IAM
+Title: BioEconomic model for fisheries
+Version: 2.0.0
+Date: 2021
+Author: AMURE
+Description: ToDo.
+Depends: R(>= 3.4.3), methods, lattice, stats, grDevices, abind, MASS,
+        openxlsx, reshape2
+Imports: tcltk, tcltk2, Rcpp (>=  1.0.7)
+Maintainer: Maxime Jaunatre <maxime.jaunatre@ifremer.fr>
+License: CeCILL-2
+Collate: 0_input_objects.r 1_input_integration.r 2_args_integration.r
+        3_args_input_txtExport.r 4_output_objects.r 5_simulation.r
+        6_utils.r 7_plotting.r
+LazyLoad: Yes
+ZipData: no
+NeedsCompilation: yes
+Packaged: 2018-09-28 10:05:14 UTC; mmerzere
+RoxygenNote: 7.1.2
+LinkingTo: Rcpp
