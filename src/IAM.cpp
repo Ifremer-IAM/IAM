@@ -459,7 +459,6 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
 
 
             UNPROTECT(2);
-
         }
 
         //on nomme les �l�ments de output
@@ -479,9 +478,6 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         delete object;
 
     }
-
-
-
 }
 }
 
