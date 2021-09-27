@@ -1525,7 +1525,7 @@ LL$scenario <- lapply(gg,function(x) lapply(x,function(y) lapply(y,function(z) S
 
 #il ne reste plus qu'? mettre en forme
 
-reformat <- function(x,slotN="stockInput") {
+reformat <- function(x, slotN="stockInput") {
   n <- names(new(slotN)@input)
   ll <- x[n]
   names(ll) <- n
