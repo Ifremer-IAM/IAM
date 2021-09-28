@@ -4,6 +4,7 @@
 .Ruserdata
 
 data/
+raw_data/
 output/
 tryhard.R
 src/*.dll
