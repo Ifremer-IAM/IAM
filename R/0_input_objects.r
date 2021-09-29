@@ -13,16 +13,34 @@
 #'
 #' # TODO
 #'
-#' @slot desc # TODO descr
-#' @slot specific # TODO descr
+#' @slot desc Short description of the object. chr.
+#' @slot specific List.
+#' \describe{
+#'   \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
+#'   \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.
+#'   This information is extracted from the Fleet sheet. chr vector}
+#'   \item{Fleet}{Fleet types, defined thanks to vessel length, area and times. A vesserl can have multiple Metier. chr vector}
+#'   \item{Metier}{Typology depending on fishing gear, vessel length, area and times of fisheries. chr vector}
+#'   \item{MetiersEco}{Economic metier, depending on fishing gear. chr vector}
+#'   \item{Ages}{Ages structure for each dynamic species. List of chr vector}
+#'   \item{Cat}{Economic type for each dynamic species. List of chr vector}
+#'   \item{t_init}{Initial year of the model. int}
+#'   \item{NbSteps}{Number of years for the model to be used. Initial year is included as step 0. int vector}
+#'   \item{times}{Years used in the model. Defined with t_init and NbSteps}
+#'   \item{Q}{# TODO}
+#'   \item{S}{# TODO}
+#' }
 #' @slot historical # TODO descr
 #' @slot input # TODO descr
-#' @slot scenario # TODO descr
-#' @slot stochastic # TODO descr
-#' @slot optimization # TODO descr
+#' @slot scenario List of scenarii with each containing one element per species
+#' and one supplementary element for Fleets. # TODO why is there a Fleet element here ?
+#' # TODO describe the format a species element
+#' @slot stochastic # TODO description is not possible with med style input.
+#' @slot optimization # TODO description is not possible with med style input.
 #'
 #' @details The \code{iamInput} class has methods defined for creation of
 #' a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
+#'
 #'
 #' @name iamInput-class
 #' @rdname iamInput-class
@@ -39,7 +57,7 @@ setClass("iamInput", ## Class ####
 	),
 	prototype(
 		desc="iamInput",
-		specific = list(Species=character(),
+		specific = list(Species=character(), # list of species names
                     StaticSpp=character(),
     	              Fleet=character(),
                   	Metier=character(),
