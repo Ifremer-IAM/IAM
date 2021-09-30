@@ -14,18 +14,35 @@ a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
 \section{Slots}{
 
 \describe{
-\item{\code{desc}}{# TODO descr}
+\item{\code{desc}}{Short description of the object. chr.}
 
-\item{\code{specific}}{# TODO descr}
+\item{\code{specific}}{List.
+\describe{
+  \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
+  \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.
+  This information is extracted from the Fleet sheet. chr vector}
+  \item{Fleet}{Fleet types, defined thanks to vessel length, area and times. A vesserl can have multiple Metier. chr vector}
+  \item{Metier}{Typology depending on fishing gear, vessel length, area and times of fisheries. chr vector}
+  \item{MetiersEco}{Economic metier, depending on fishing gear. chr vector}
+  \item{Ages}{Ages structure for each dynamic species. List of chr vector}
+  \item{Cat}{Economic type for each dynamic species. List of chr vector}
+  \item{t_init}{Initial year of the model. int}
+  \item{NbSteps}{Number of years for the model to be used. Initial year is included as step 0. int vector}
+  \item{times}{Years used in the model. Defined with t_init and NbSteps}
+  \item{Q}{# TODO}
+  \item{S}{# TODO}
+}}
 
 \item{\code{historical}}{# TODO descr}
 
 \item{\code{input}}{# TODO descr}
 
-\item{\code{scenario}}{# TODO descr}
+\item{\code{scenario}}{List of scenarii with each containing one element per species
+and one supplementary element for Fleets. # TODO why is there a Fleet element here ?
+# TODO describe the format a species element}
 
-\item{\code{stochastic}}{# TODO descr}
+\item{\code{stochastic}}{# TODO description is not possible with med style input.}
 
-\item{\code{optimization}}{# TODO descr}
+\item{\code{optimization}}{# TODO description is not possible with med style input.}
 }}
 
