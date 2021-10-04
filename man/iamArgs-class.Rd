@@ -3,7 +3,7 @@
 \docType{class}
 \name{iamArgs-class}
 \alias{iamArgs-class}
-\title{iamArgs class object}
+\title{Class "iamArgs"}
 \description{
 # TODO
 }
@@ -20,3 +20,10 @@ Used by \code{IAM.Args} method that use tcltk package for GUI.
 \item{\code{specific}}{# TODO descr}
 }}
 
+\examples{
+showClass("iamArgs")
+
+}
+\author{
+Mathieu Merzereaud
+}

@@ -317,10 +317,13 @@ CLK <- function(infile, field="ter",l.mult=1,out=NULL,...) {
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-#' standFormat
-#'
-#' reformat a dataframe into a standart formated matrix
-#'
+# standFormat
+#
+# reformat a dataframe into a standart formated matrix
+#
+# @param DF a data frame
+# @param nbStep Number of year to use in the model
+#
 standFormat <- function(DF,nbStep,modF,modM,modI,modC,alk,as.na=NULL) {
 
   if (is.null(ncol(DF))) {
@@ -507,6 +510,7 @@ reformat <- function(x, slotN="stockInput") {
 #'
 #' @author Florence Briton 05/2019
 read.Pflex <- function(file, nam_stock, nam_stock_bis){
+  namList <- gsub("Stock__","",nam_stock)
   indDYN <- length(nam_stock)>0
 
   PFlex <- read.sheet(file = file, sheet = "Price_flexibility")
@@ -763,9 +767,11 @@ result_filtre <- function(result, indEmpt){
 #' initialise list Historique and list Input for a specific stock
 #'
 #' @param List a result table filtered before
+#' @param t_init Initial time of the simulation
 #' @param t_hist_max first time of the modelisation
+#' @param nbStep number of step for the modelisation
 #'
-init_listHisto <- function(List, t_init, t_hist_max){
+init_listHisto <- function(List, t_init, t_hist_max, nbStep){
   prefix <- c("v__","t__","i__","f__","m__","l__","e__","c__")
   #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
   #il faut consid?rer l'historique... (t<=t_init)
@@ -1144,7 +1150,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 
       #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
       #il faut consid?rer l'historique... (t<=t_init)
-      res <- IAM:::init_listHisto(List, t_init, t_hist_max)
+      res <- IAM:::init_listHisto(List, t_init, t_hist_max, nbStep)
       listHisto <- res[[1]] ; listInput <- res[[2]]
       rm(res)
 
@@ -1421,7 +1427,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 
       #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
       #il faut consid?rer l'historique... (t<=t_init)
-      res <- IAM:::init_listHisto(List, t_init, t_hist_max)
+      res <- IAM:::init_listHisto(List, t_init, t_hist_max, nbStep)
       listHisto <- res[[1]] ; listInput <- res[[2]]
       rm(res)
 
@@ -1609,7 +1615,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 
   if("Price_flexibility" %in% tbls){ ## Price flexibility  ####
     ListPflex <- read.Pflex(file = file, nam_stock = nam_stock,
-                            nam_stock_bis)
+                            nam_stock_bis = nam_stock_bis)
     LL$input[['Market']] <- reformat(ListPflex,"marketInput")
   }
 
@@ -1645,13 +1651,48 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 
 # only accpet .xlsx files, will stop on xls files.
 # maybe possibility to load both with regex
+
+#' 'iamInput' objects creator
+#'
+#' @param fileIN .xls standard IAM input file
+#' @param fileSPEC deprecated argument.
+#' @param fileSCEN deprecated argument.
+#' @param fileSTOCH deprecated argument.
+#' @param ... Further arguments used when the input is a .xls. Described below.
+#'
+#' @name IAM.input
+#' @rdname IAM.input-methods
+#' @export
 setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
   standardGeneric("IAM.input")
 }
 )
 
+# why do we use a method here, it can be a single function that create a iamInput class object...
+
 # a partir d'un fichier .xls
 
+#' @name IAM.input
+#' @aliases IAM.input,character,missing,missing,missing-method
+#' @rdname IAM.input-methods
+#'
+#' @param t_init Only for first signature. Initial year.
+#' @param nbStep Only for first signature. Number of timesteps (including initial year).
+#' @param t_hist_max Only for first signature. Last year considered for 'historical' slot.
+#' @param desc Object descriptor (default value : "My Input").
+#' @param folderFleet Folder containing fleets input sheets (Optionnal. Default value : NULL).
+#' @param readXLS Character. Package to be used to read parameter Excel file. # TODO remove
+#' 'openxlsx' for post-2007 excel version (.xlsx files),
+#' 'XLConnect' for pre-2007 excel version (.xls files).(Default value : "openxlsx").
+#' @param Fq_i List containing SS3 parameters arrays for quarterly stock dynamic simulation.
+#' One element per considered species, all names must match with input species.
+#' Fishing mortality per season, morph, and age.
+#' (Optionnal. Default value : NULL. Example : list(hake=array(...,dim=c(4,4,nAge))).
+#' @param Fq_fmi See above. Fishing mortality per season, morph, fleet, "economic" metiers and age
+#' (Optionnal. Default value : NULL).
+#' @param Ni0q See above. Recruits numbers per season (Optionnal. Default value : NULL).
+#'
+#'
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
                    function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,readXLS="openxlsx",
                                     Fq_i=NULL,iniFq_i=NULL,Fq_fmi=NULL,iniFq_fmi=NULL,
@@ -1826,7 +1867,9 @@ return(OUT)
 # outdated method for txt files
 
   # ? partir de fichiers .txt
-
+#' @name IAM.input
+#' @aliases IAM.input,character,character,missing,missing-method
+#' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "missing", "missing"),
                    function(fileIN, fileSPEC, desc="My Input", ...){
 
@@ -1842,7 +1885,9 @@ return(convertInput(out))
 })
 
 
-
+#' @name IAM.input
+#' @aliases IAM.input,character,character,character,missing-method
+#' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "character", "missing"),
                    function(fileIN, fileSPEC, fileSCEN, desc="My Input", ...){
 
@@ -1860,7 +1905,9 @@ return(convertInput(out))
 })
 
 
-
+#' @name IAM.input
+#' @aliases IAM.input,character,character,missing,character-method
+#' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "missing", "character"),
                    function(fileIN, fileSPEC, fileSTOCH, desc="My Input", ...){
 
@@ -1878,7 +1925,9 @@ return(convertInput(out))
 })
 
 
-
+#' @name IAM.input
+#' @aliases IAM.input,character,character,character,character-method
+#' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "character", "character"),
                    function(fileIN, fileSPEC, fileSCEN, fileSTOCH, desc="My Input", ...){
 

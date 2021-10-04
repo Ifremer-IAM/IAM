@@ -12,5 +12,5 @@ result_filtre(result, indEmpt)
 \item{indEmpt}{something I need to understand # TODO}
 }
 \description{
-Principe is DRY (Don't Repeat Yourself)
+Idea is DRY (Don't Repeat Yourself)
 }

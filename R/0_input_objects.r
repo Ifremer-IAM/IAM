@@ -9,7 +9,7 @@
 #
 # }
 
-#' iamInput Class
+#' Class "iamInput"
 #'
 #' # TODO
 #'
@@ -41,7 +41,10 @@
 #' @details The \code{iamInput} class has methods defined for creation of
 #' a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
 #'
+#' @examples
+#' showClass("iamInput")
 #'
+#' @author Mathieu Merzereaud
 #' @name iamInput-class
 #' @rdname iamInput-class
 #' @export
@@ -496,7 +499,7 @@ val.iamArgs <- function(object){
 
 }
 
-#' iamArgs class object
+#' Class "iamArgs"
 #'
 #' # TODO
 #'
@@ -506,6 +509,10 @@ val.iamArgs <- function(object){
 #'
 #' @details Used by \code{IAM.Args} method that use tcltk package for GUI.
 #'
+#' @examples
+#' showClass("iamArgs")
+#'
+#' @author Mathieu Merzereaud
 #' @name iamArgs-class
 #' @rdname iamArgs-class
 #' @export

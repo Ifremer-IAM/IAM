@@ -15,17 +15,17 @@ ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nb
 if (classInp=="args") {
 
   input <- INPUT@arguments
-  
+
   spp <- c(na.omit(INPUT@specific$Species))
-  sppY <- c(na.omit(spp[!as.logical(INPUT@specific$Q)]))    #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
+  sppY <- c(na.omit(spp[!as.logical(INPUT@specific$Q)]))    #esp?ces ? dynamique annuelle -> les seules pour lesquelles on donne la possibilit? de piloter le mod?le de recrutement
   sppStat <- c(na.omit(INPUT@specific$StaticSpp))
   years <- INPUT@specific$times
   fleets <- INPUT@specific$Fleet
   metier <- INPUT@specific$MetierEco
   ALLscenario <- input$Scen$ALLscenario
   SELECTscen <- input$Scen$SELECTscen
-  SELECTvar <- input$Rep$SELECTvar         #character avec intitulés des variables
-  tacfbar <- rbind(TAC=input$Gest$tac,Fbar=input$Gest$fbar) 
+  SELECTvar <- input$Rep$SELECTvar         #character avec intitul?s des variables
+  tacfbar <- rbind(TAC=input$Gest$tac,Fbar=input$Gest$fbar)
   typeG <- input$Gest$typeG
   matFM <- input$Gest$mfm
   tacOth <- matrix(as.numeric(NA),nrow=length(sppStat)+length(spp),ncol=length(years),dimnames=list(c(spp,sppStat),years))
@@ -42,24 +42,24 @@ if (classInp=="args") {
   input <- INPUT
 
   spp <- c(na.omit(input@specific$Species))
-  sppY <- c(na.omit(spp[!as.logical(input@specific$Q)]))     #espèces à dynamique annuelle -> les seules pour lesquelles on donne la possibilité de piloter le modèle de recrutement
+  sppY <- c(na.omit(spp[!as.logical(input@specific$Q)]))     #esp?ces ? dynamique annuelle -> les seules pour lesquelles on donne la possibilit? de piloter le mod?le de recrutement
   sppStat <- c(na.omit(input@specific$StaticSpp))
   RecIni <- unlist(lapply(input@input,function(x) as.numeric(x$N_it0[1]))[sppY])   #NULL si sppY=character(0)
-  years <- input@specific$times 
+  years <- input@specific$times
   fleets <- input@specific$Fleet
   metier <- input@specific$MetierEco
-  ALLscenario <- names(input@scenario) 
+  ALLscenario <- names(input@scenario)
   SELECTscen <- 1
   SELECTvar <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Ystat","Lstat","Dstat","Eff",
                  "GVL_fme","StatGVL_fme","GVLtot_fm","GVLav_f","rtbs_f","vcst_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
                  "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","P","Pstat")
   tacfbar <- matrix(as.numeric(NA),nrow=2,ncol=length(years),dimnames=list(c("TAC","Fbar"),years))
   typeG <- 0
-  #objectifs autres espèces
+  #objectifs autres esp?ces
   tacOth <- matrix(as.numeric(NA),nrow=length(sppStat)+length(spp),ncol=length(years),dimnames=list(c(spp,sppStat),years))
-  #limite sup effort par flottille/année
+  #limite sup effort par flottille/ann?e
   supEff <- matrix(as.numeric(NA),nrow=length(fleets),ncol=length(years),dimnames=list(fleets,years))
-  #TAC par flottille/année (complété par tac pour déduire les TAC autres)
+  #TAC par flottille/ann?e (compl?t? par tac pour d?duire les TAC autres)
   TACbyF <- matrix(as.numeric(NA),nrow=length(fleets),ncol=length(years),dimnames=list(fleets,years))
 
   matFM <- input@input$Fleet$nbv_f_m ; matFM[!is.na(matFM)] <- 1
@@ -68,7 +68,7 @@ if (classInp=="args") {
 
 
 
-BASE <- tktoplevel(height=500,width=1000)     #interface entière
+BASE <- tktoplevel(height=500,width=1000)     #interface enti?re
 tkwm.title(BASE,"IAM")
 
 BASE1 <- tkframe(BASE)
@@ -81,8 +81,8 @@ base2_2 <- tkframe(base2)
 
   #variables
 
-if (classInp=="args") {  
-  
+if (classInp=="args") {
+
   EcoDisable <- tclVar(as.character(input$Eco$active))
   Type <- tclVar(as.character(input$Eco$type))
   Adj <- tclVar(as.character(input$Eco$adj))
@@ -107,7 +107,7 @@ if (classInp=="args") {
   Report <- tclVar("0")
   Dr <- tclVar("0")
 
-} 
+}
 
   #frame Eco
 
@@ -266,8 +266,8 @@ tkgrid(tk2label(frmEco,text="    "))
 
 #frame Gestion -----------------------------------------------------------------
 
-if (classInp=="args") {  
- 
+if (classInp=="args") {
+
   #variables
   GestDisable <- tclVar(as.character(input$Gest$active))
   Controle <- tclVar(as.character(input$Gest$control))
@@ -296,8 +296,8 @@ if (classInp=="args") {
   Update <- tclVar("1")
   Super <- tclVar("0")
   Infer <- tclVar("0")
-  assign("TACFbar",tacfbar,envir=e1) 
-  assign("mFM",matFM,envir=e1) 
+  assign("TACFbar",tacfbar,envir=e1)
+  assign("mFM",matFM,envir=e1)
   assign("tacOth",tacOth,envir=e1)
   assign("supEff",supEff,envir=e1)
   assign("TACbyF",TACbyF,envir=e1)
@@ -344,7 +344,7 @@ set.ges.state<-function(){
 butGes <- ttkcheckbutton(base2_1,text="Management",variable=GestDisable,command=set.ges.state)
 frmGes <- ttklabelframe(base2_1,labelwidget=butGes,borderwidth=2,height=500,width=300)
 
-  #Contrôle
+  #Contr?le
 comboControl <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 tkconfigure(comboControl, textvariable = Controle, values=c("Nb vessels","Nb trips"))
 
@@ -352,7 +352,7 @@ tkconfigure(comboControl, textvariable = Controle, values=c("Nb vessels","Nb tri
 comboTarget <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 tkconfigure(comboTarget, textvariable = Target, values=c("TAC","Fbar","TAC->Fbar"))
 
-  #espèce
+  #esp?ce
 comboSpecies <- tk2combobox(frmGes,state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 tkconfigure(comboSpecies, textvariable = Espece, values=c(spp,sppStat))
 
@@ -418,7 +418,7 @@ MFbut <- tk2button(frmBut2, text="Wfm", width=5, command=function() {
                                                                       temp <- get("mFM",envir=e1)
                                                                       res <- fix(temp)
                                                                       assign("mFM",res,envir=e1)
-                                                                      tkfocus(BASE)                                                      
+                                                                      tkfocus(BASE)
                                                                     },
               state=ifelse(tclvalue(GestDisable)=="0","disabled","normal"))
 
@@ -477,11 +477,11 @@ tkgrid(tk2label(frmGes,text="  "))
 
 
   #variables
-  
+
 
 RecDisable <- tclVar("0")
 
-    #par espèce annuelle
+    #par esp?ce annuelle
 ll <- lapply(sppY,function(x) NA)
 ModSRDisable <- SimuStochDisable <- TypeModSR <- ParAModSR <- ParBModSR <- ParCModSR <- WNoiseModSR <- ParNoiseSR <- TypeSimuStoch <- ll
 names(ModSRDisable) <- names(SimuStochDisable) <- names(TypeModSR) <- names(ParAModSR) <- names(ParBModSR) <-
@@ -529,7 +529,7 @@ if (classInp=="args") {
 
 set.modSR.state<-function(index){
     on.off<-tclvalue(ModSRDisable[[index]])
-    if(on.off=="1") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"normal\");",     
+    if(on.off=="1") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"normal\");",
                      "tkconfigure(spinboxParA",index,", state=\"normal\");",
                      "tkconfigure(spinboxParB",index,", state=\"normal\");",
                      "tkconfigure(spinboxParC",index,", state=\"normal\");",
@@ -542,7 +542,7 @@ set.modSR.state<-function(index){
                      "tclvalue(SimuStochDisable[[",index,"]]) <- \"0\"",sep="")))
                      }
 
-    if(on.off=="0") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"disabled\");",     
+    if(on.off=="0") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParA",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParB",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParC",index,", state=\"disabled\");",
@@ -558,7 +558,7 @@ set.modSR.state<-function(index){
 
 set.simu.state<-function(index){
     on.off<-tclvalue(SimuStochDisable[[index]])
-    if(on.off=="1") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"disabled\");",     
+    if(on.off=="1") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParA",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParB",index,", state=\"disabled\");",
                      "tkconfigure(spinboxParC",index,", state=\"disabled\");",
@@ -571,7 +571,7 @@ set.simu.state<-function(index){
                      "tclvalue(ModSRDisable[[",index,"]]) <- \"0\"",sep="")))
                      }
 
-    if(on.off=="0") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"normal\");",     
+    if(on.off=="0") {eval(parse('',text=paste("tkconfigure(comboTypeRec",index,", state=\"normal\");",
                      "tkconfigure(spinboxParA",index,", state=\"normal\");",
                      "tkconfigure(spinboxParB",index,", state=\"normal\");",
                      "tkconfigure(spinboxParC",index,", state=\"normal\");",
@@ -590,7 +590,7 @@ titRec <- tk2label(base1,text="Recruitment")
 frmRec <- ttklabelframe(base1,labelwidget=titRec,borderwidth=2)
 
 
-nb <- tk2notebook(frmRec, tabs = sppY)     #à modifier en frmRec
+nb <- tk2notebook(frmRec, tabs = sppY)     #? modifier en frmRec
 tkpack(tk2label(frmRec,text="    "),nb, tk2label(frmRec,text="    "),fill = "both", expand = 1,side="top")
 
 if (length(sppY)>0) {
@@ -608,23 +608,23 @@ for (i in 1:length(sppY)){
   eval(parse('',text=paste("tkconfigure(comboTypeRec",i,", textvariable = TypeModSR[[",i,
             "]], values=c(\"Mean\",\"Hockey-Stick\",\"Beverton-Holt\",\"Ricker\",\"Shepherd\",\"Quadratic-HS\",\"Smooth-HS\"))",sep="")))
 
-    #Paramètre a
+    #Param?tre a
   eval(parse('',text=paste("spinboxParA",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
                     "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
                 #tk2entry(tbook1,width=12,state=ifelse(tclvalue(ModSRDisable[[1]])=="0","disabled","normal"))
   eval(parse('',text=paste("tkconfigure(spinboxParA",i,", textvariable = ParAModSR[[",i,"]])",sep="")))
 
-    #Paramètre b
+    #Param?tre b
   eval(parse('',text=paste("spinboxParB",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
                     "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(spinboxParB",i,", textvariable = ParBModSR[[",i,"]])",sep="")))
 
-    #Paramètre c
+    #Param?tre c
   eval(parse('',text=paste("spinboxParC",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
                     "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(spinboxParC",i,", textvariable = ParCModSR[[",i,"]])",sep="")))
 
-    #Paramètre Wnoise
+    #Param?tre Wnoise
   eval(parse('',text=paste("spinboxWN",i," <- tk2spinbox(tbook",i,",from=-1000000,to=1000000,increment=0.0001,width=12,",
                     "state=ifelse(tclvalue(ModSRDisable[[",i,"]])==\"0\",\"disabled\",\"normal\"))",sep="")))
   eval(parse('',text=paste("tkconfigure(spinboxWN",i,", textvariable = WNoiseModSR[[",i,"]])",sep="")))
@@ -671,13 +671,13 @@ for (i in 1:length(sppY)){
   ##eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Noise dist.  \"),butWN",i,",tk2label(frmModSR",i,",text=\"  \"),butWLN",i,")",sep="")))
   eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\" \"))",sep="")))
   eval(parse('',text=paste("tkgrid(tk2label(frmModSR",i,",text=\"Noise st.dev. \"),spinboxWN",i,")",sep="")))
-  
+
   eval(parse('',text=paste("tkgrid(frmModSR",i,",frmSimuSt",i,")",sep="")))
 
 }
 }
   #tkpack(frmRec)
-  
+
 #-------------------------------------------------------------------------------
 
 
@@ -697,7 +697,7 @@ if (classInp=="args") {
   BootDisable <- tclVar("0")
   NbIt <- tclVar("500")
 
-} 
+}
   #frame Boot
 
 set.boot.state<-function(){
@@ -711,14 +711,14 @@ butBoot <- ttkcheckbutton(base1,text="Iterative",variable=BootDisable,command=se
 frmBoot <- ttklabelframe(base1,labelwidget=butBoot,borderwidth=2)
 
   #NbIterations & liste variables
-  
+
 frmNbit <- tkframe(frmBoot)
 spinboxBoot <- tk2spinbox(frmNbit,from=1,to=5000,increment=1,width=5,
               state=ifelse(tclvalue(BootDisable)=="0","disabled","normal"))
 tkpack(spinboxBoot,side="left")
 tkconfigure(spinboxBoot, textvariable = NbIt)
 
-scr2 <- tkscrollbar(frmBoot,repeatinterval=5,command=function(...)tkyview(menuVar,...))  
+scr2 <- tkscrollbar(frmBoot,repeatinterval=5,command=function(...)tkyview(menuVar,...))
 menuVar <- tk2listbox(frmBoot,height=7,width=15,selectmode="multiple",background="white",yscrollcommand=function(...)tkset(scr2,...))
 
 for (j in (1:length(ALLVarRep))) tkinsert(menuVar,"end",ALLVarRep[j])
@@ -744,9 +744,9 @@ tkgrid(tk2label(frmBoot,text="    "))
 
 
   #variables
-  
+
 if (classInp=="args") {
- 
+
   ScenDisable <- tclVar(as.character(input$Scen$active))
 
 } else {
@@ -758,7 +758,7 @@ if (classInp=="args") {
 
 set.scen.state<-function(){
     on.off <- tclvalue(ScenDisable)
-    if(on.off=="1") tkconfigure(menuScen, state="normal") 
+    if(on.off=="1") tkconfigure(menuScen, state="normal")
     if(on.off=="0") tkconfigure(menuScen, state="disabled")
 }
 
@@ -766,7 +766,7 @@ butScen <- ttkcheckbutton(base2_2,text="Scenario",variable=ScenDisable,command=s
 frmScen <- ttklabelframe(base2_2,labelwidget=butScen,borderwidth=2,width=700,height=150)
 
   #Scenarii
-scr <- tkscrollbar(frmScen,repeatinterval=5,command=function(...)tkyview(menuScen,...))  
+scr <- tkscrollbar(frmScen,repeatinterval=5,command=function(...)tkyview(menuScen,...))
 menuScen <- tk2listbox(frmScen,height=4,width=50,selectmode="single",background="white",yscrollcommand=function(...)tkset(scr,...))
 
 
@@ -781,14 +781,14 @@ tkgrid(tk2label(frmScen,text="    "))
 
 #tkpack(frmScen)
 
-#accès aux sélections : tkcurselection(menuScen) 
+#acc?s aux s?lections : tkcurselection(menuScen)
 # --> SELECTscen <- as.numeric(strsplit(tclvalue(tkcurselection(menuScen))," ")[[1]])+1
 
 #-------------------------------------------------------------------------------
 
 
 
-#1ère colonne (frame base1) : Recrutement/Bootstrap/Scénario
+#1?re colonne (frame base1) : Recrutement/Bootstrap/Sc?nario
 
 
 tkpack(frmRec,frmBoot,tk2label(base1,text="    "),side="top",fill="both")     #base1
@@ -810,7 +810,7 @@ listEco <- list(active = as.integer(tclvalue(EcoDisable)),
                oths = as.integer(tclvalue(Oths)),
                othsFM = as.integer(tclvalue(OthsFM)),
                perscCalc = as.integer(tclvalue(PerscCalc)),
-               report = as.integer(tclvalue(Report)), 
+               report = as.integer(tclvalue(Report)),
                dr =  as.double(tclvalue(Dr)))
 
 TACOTH <- get("tacOth",envir=e1)
@@ -837,7 +837,7 @@ listGestion <- list(active = as.integer(tclvalue(GestDisable)),
                    effSup = get("supEff",envir=e1),
                    mfm = get("mFM",envir=e1),
                    TACbyF = get("TACbyF",envir=e1))
-                   
+
 attributes(listGestion$tac)$DimCst <- as.integer(c(0,0,0,length(listGestion$tac)))
 attributes(listGestion$fbar)$DimCst <- as.integer(c(0,0,0,length(listGestion$fbar)))
 attributes(listGestion$effSup)$DimCst <- as.integer(c(nrow(listGestion$effSup),0,0,ncol(listGestion$effSup)))
@@ -880,7 +880,7 @@ listScen <- list(active = as.integer(tclvalue(ScenDisable)),
 tkdestroy(BASE)
 
 param <- list(Recruitment=listRec,Replicates=listBoot,Scenario=listScen,Gestion=listGestion,Eco=listEco)
- 
+
 if (classInp=="args") {
   if (!is.na(desc)) {newDesc <- desc} else {newDesc <- INPUT@desc}
   OUT <- new("iamArgs", desc=newDesc, arguments=param, specific=INPUT@specific)
@@ -919,48 +919,48 @@ tkpack(BASE1,BASE2,side="top",fill="both")     #base2
 tkbind(BASE, "<Destroy>", function() assign("LL",INPUT,envir=e1))
 
 tkwait.window(BASE)
-invisible(get("LL",envir=e1))      
+invisible(get("LL",envir=e1))
 }
 
 
 
-                                        
+
 
 #modelIAM <- function(outGUI) {
 #
 #out <- outGUI
 #
-#varFoth <- as.double(rep(0,length(out$input@specific$Species)))                                        # à intégrer dans l'interface
+#varFoth <- as.double(rep(0,length(out$input@specific$Species)))                                        # ? int?grer dans l'interface
 #varFoth[match(out$param$Gest$espece,out$input@specific$Species)] <- as.double(1)                             #
 #
 #
-#system.time(outPGS <- .Call("essai", out$input@input, out$input@specific, out$input@stochastic, 
+#system.time(outPGS <- .Call("essai", out$input@input, out$input@specific, out$input@stochastic,
 #              eval(parse('',text=paste(c("inp@scenario",out$param$Scen$ALLscenario[out$param$Scen$SELECTscen]),collapse="$"))), #attention, ne marche qu'avec un seul choix de scenario
-#              RecType1=unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==0 & x$typeSIMUstoch==1))), #le recrutement stochastique sera de type 1 O/N(tirage aléatoire dans l'historique indépendant par espèce
+#              RecType1=unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==0 & x$typeSIMUstoch==1))), #le recrutement stochastique sera de type 1 O/N(tirage al?atoire dans l'historique ind?pendant par esp?ce
 #              RecType2=unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==0 & x$typeSIMUstoch==2))), #le recrutement stochastique sera de type 2 O/N
 #              RecType3=unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==0 & x$typeSIMUstoch==3))), #le recrutement stochastique sera de type 1 O/N
-#              as.integer(out$param$Scen$active), #pas de scénario caractérisé dans l'onglet 'Scénario' du fichier de paramètres
-#              as.integer(out$param$Boot$active), #on enclenche la procédure itérative
-#              as.integer(out$param$Boot$nbIter),#nombre d'itérations
+#              as.integer(out$param$Scen$active), #pas de sc?nario caract?ris? dans l'onglet 'Sc?nario' du fichier de param?tres
+#              as.integer(out$param$Boot$active), #on enclenche la proc?dure it?rative
+#              as.integer(out$param$Boot$nbIter),#nombre d'it?rations
 #              as.integer(out$param$Gest$active), #on enclenche le module de Gestion
-#              as.double(out$param$Gest$mf), #le taux de variation appliqué à l'effort de chaque flottille pour atteindre le TAC reste constant
-#              varFoth, #attention !!!! -> à modifier #on ne fait varier conjointement aux efforts par flottille que la mortalité par pêche de la sole générée par les autres flottilles
+#              as.double(out$param$Gest$mf), #le taux de variation appliqu? ? l'effort de chaque flottille pour atteindre le TAC reste constant
+#              varFoth, #attention !!!! -> ? modifier #on ne fait varier conjointement aux efforts par flottille que la mortalit? par p?che de la sole g?n?r?e par les autres flottilles
 #              as.double(c(out$param$Gest$inf,out$param$Gest$sup)), #bornes/contraintes du multiplicateur
-#              as.double(out$param$Gest$tac_fbar["TAC",]), #vecteur des valeurs de TAC à atteindre pour chaque année simulée (la variable "délai" déterminera la première année d'application)
-#              as.double(out$param$Gest$tac_fbar["Fbar",]), #vecteur des valeurs de Fbar à atteindre pour chaque année simulée (la variable "délai" déterminera la première année d'application)
-#              as.integer(c(                        #vecteur des paramètres de gestion
-#                           eTemp = match(out$param$Gest$espece,out$input@specific$Species)-1,                          #eTemp = espèce concernée par la mesure de gestion
+#              as.double(out$param$Gest$tac_fbar["TAC",]), #vecteur des valeurs de TAC ? atteindre pour chaque ann?e simul?e (la variable "d?lai" d?terminera la premi?re ann?e d'application)
+#              as.double(out$param$Gest$tac_fbar["Fbar",]), #vecteur des valeurs de Fbar ? atteindre pour chaque ann?e simul?e (la variable "d?lai" d?terminera la premi?re ann?e d'application)
+#              as.integer(c(                        #vecteur des param?tres de gestion
+#                           eTemp = match(out$param$Gest$espece,out$input@specific$Species)-1,                          #eTemp = esp?ce concern?e par la mesure de gestion
 #                           var = match(out$param$Gest$control,c("Nb jdm","Nb navires")),      #var = variable de controle (1=nbds, 2=nbv)
 #                           trgt = match(out$param$Gest$target,c("TAC","Fbar","TAC->Fbar")),   #trgt = variable cible (1=TAC, 2=Fbar)
-#                           delay = out$param$Gest$delay,                                      #delay = délai de première application de la mesure de gestion
-#                           upd = out$param$Gest$upd)),                  #à corriger                       #upd = expression des multiplicateurs de sorties (appliqués à une valeur initiale=1, ou à la valeur antérieure=2)                                                                              
-#              as.integer(out$param$Eco$type-1),  #type de modèle éco appliqué (DCF=1, complet=0)
-#              as.integer(c(adj = out$param$Eco$adj, lev = out$param$Eco$lev, ue_choice = out$param$Eco$ue_choice, oths = out$param$Eco$oths, 
-#                            othsFM = out$param$Eco$othsFM, perscCalc = out$param$Eco$perscCalc, report = out$param$Eco$report)), #paramètres du module éco
-#              as.double(out$param$Eco$dr), #taux d'actualisation à appliquer aux indicateurs éco
-#              as.integer(unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==1)))), #emploi d'un modèle de recrutement (incompatible avec recrutement stochastique)
-#              lapply(out$param$Rec,function(x) as.double(x[3:6])), #paramètres SR par espèce (par milliers)
-#              lapply(out$param$Rec,function(x) as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd"))))))  #type de relation SR par espèce
+#                           delay = out$param$Gest$delay,                                      #delay = d?lai de premi?re application de la mesure de gestion
+#                           upd = out$param$Gest$upd)),                  #? corriger                       #upd = expression des multiplicateurs de sorties (appliqu?s ? une valeur initiale=1, ou ? la valeur ant?rieure=2)
+#              as.integer(out$param$Eco$type-1),  #type de mod?le ?co appliqu? (DCF=1, complet=0)
+#              as.integer(c(adj = out$param$Eco$adj, lev = out$param$Eco$lev, ue_choice = out$param$Eco$ue_choice, oths = out$param$Eco$oths,
+#                            othsFM = out$param$Eco$othsFM, perscCalc = out$param$Eco$perscCalc, report = out$param$Eco$report)), #param?tres du module ?co
+#              as.double(out$param$Eco$dr), #taux d'actualisation ? appliquer aux indicateurs ?co
+#              as.integer(unlist(lapply(out$param$Rec,function(x) as.integer(x$modSRactive==1)))), #emploi d'un mod?le de recrutement (incompatible avec recrutement stochastique)
+#              lapply(out$param$Rec,function(x) as.double(x[3:6])), #param?tres SR par esp?ce (par milliers)
+#              lapply(out$param$Rec,function(x) as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd"))))))  #type de relation SR par esp?ce
 #
 #
 #invisible(outPGS)
@@ -973,43 +973,56 @@ invisible(get("LL",envir=e1))
 #-------------------------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-#Méthodes de constitution des objets 'iamArgs' par interface graphique
+#M?thodes de constitution des objets 'iamArgs' par interface graphique
 
 #Arguments...
 
+#' 'iamArgs' objects creator
+#'
+#' @param object TODO
+#' @param specific TODO
+#' @param ... TODO
+#'
+#' @name IAM.args
+#' @rdname IAM.args-methods
+#'
+#'
+#' @export
 setGeneric("IAM.args", function(object, specific, ...){
 	standardGeneric("IAM.args")
 	}
 )
 
-  # étape d'initialisation
+  # ?tape d'initialisation
 
+#' @param desc Object descriptor (default value : \code{as.character(NA)})
+#' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
-	
+
   return(GUIiam(object,classInp="param",desc=desc))
 
 })
 
   # ou...
-  
+#' @rdname IAM.args-methods
 setMethod("IAM.args", signature("character","character"),function(object, specific, desc=as.character(NA), ...){
-	
+
   if (substring(object,nchar(object)-3,nchar(object))!=".txt") stop("'object' must be a .txt file!!")
   if (substring(specific,nchar(specific)-3,nchar(specific))!=".txt") stop("'specific' must be a .txt file!!")
-  
+
   specif <- .Call("Fun",normalizePath(specific),NULL)
   argum <- .Call("Fun",normalizePath(object),specif)
-  
+
   return(new("iamArgs", desc=desc, arguments=argum, specific=specif))
 
 })
-  
 
 
-  # étape de modification 
 
+  # ?tape de modification
+#' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.character(NA), ...){
-	
+
   return(GUIiam(object,classInp="args",desc=desc))
 
 })
@@ -1020,7 +1033,7 @@ setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.ch
 #Examples
 #---------------
 
-##importation de l'input 
+##importation de l'input
 #out <- IAM.input("Z:/Projet/Projet SIAD/Param bio_eco/Modele/Inputs_SIAD_SEL_2.xls",t_init=2010,nbStep=21)
 #
 ##initialisation des arguments

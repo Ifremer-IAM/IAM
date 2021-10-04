@@ -3,7 +3,7 @@
 \docType{class}
 \name{iamInput-class}
 \alias{iamInput-class}
-\title{iamInput Class}
+\title{Class "iamInput"}
 \description{
 # TODO
 }
@@ -46,3 +46,10 @@ and one supplementary element for Fleets. # TODO why is there a Fleet element he
 \item{\code{optimization}}{# TODO description is not possible with med style input.}
 }}
 
+\examples{
+showClass("iamInput")
+
+}
+\author{
+Mathieu Merzereaud
+}

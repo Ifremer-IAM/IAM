@@ -21,7 +21,7 @@ Authors@R: c(person(given = "Mathieu",
               person(given = "AMURE Ifremer",
                     role = "cph"))
 Description: ToDo.
-Depends: R(>= 3.4.3), methods, lattice, stats, grDevices, abind, MASS,
+Depends: R(>= 3.4.3), methods, lattice, grDevices, abind, MASS,
         openxlsx, reshape2
 Imports: tcltk, tcltk2, Rcpp (>=  1.0.7)
 License: CeCILL-2

@@ -4,13 +4,17 @@
 \alias{init_listHisto}
 \title{init_listHisto}
 \usage{
-init_listHisto(List, t_init, t_hist_max)
+init_listHisto(List, t_init, t_hist_max, nbStep)
 }
 \arguments{
 \item{List}{a result table filtered before}
 
+\item{t_init}{Initial time of the simulation}
+
 \item{t_hist_max}{first time of the modelisation}
+
+\item{nbStep}{number of step for the modelisation}
 }
 \description{
-initialise list Historique
+initialise list Historique and list Input for a specific stock
 }
