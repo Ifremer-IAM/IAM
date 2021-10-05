@@ -1,10 +1,20 @@
 
-
+#' Graphic User Interface
+#'
+#' @param INPUT # TODO named object in method
+#' @param classInp chr between "param" and "args"
+#' @param desc object description. chr.
+#'
+#' @importFrom stats na.omit
+#' @importFrom utils fix
+#' @importFrom methods new
+#' @import tcltk
+#' @import tcltk2
+#'
 GUIiam <- function(INPUT,classInp="args",desc=as.character(NA)) {     #or classInp="param"
 
-
-requireNamespace("tcltk")
-requireNamespace("tcltk2")
+# requireNamespace("tcltk")
+# requireNamespace("tcltk2")
 e1 <- new.env()
 
 ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Ystat","Lstat","Dstat","Eff",
@@ -77,7 +87,7 @@ base1 <- tkframe(BASE1)
 base2 <- tkframe(BASE1)
 base2_1 <- tkframe(base2)
 base2_2 <- tkframe(base2)
-#frame Economic  ---------------------------------------------------------------
+## frame Economic  ####
 
   #variables
 
@@ -109,7 +119,7 @@ if (classInp=="args") {
 
 }
 
-  #frame Eco
+  ## frame Eco ####
 
 set.eco.state<-function(){
     on.off<-tclvalue(EcoDisable)
@@ -258,14 +268,14 @@ tkgrid(tk2label(frmEco,text="    "))
 
 #tkpack(frmEco)
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 
 
-
-#frame Gestion -----------------------------------------------------------------
-
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## frame Gestion ####
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 if (classInp=="args") {
 
   #variables
@@ -467,13 +477,13 @@ tkgrid(tk2label(frmGes,text="  "))
 
 #tkpack(frmEco,frmGes,side="left",fill="both")
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 
-
-#frame Recrutement -------------------------------------------------------------
-
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## frame Recrutement ####
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
   #variables
@@ -678,11 +688,11 @@ for (i in 1:length(sppY)){
 }
   #tkpack(frmRec)
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 
-#frame Bootstrap ---------------------------------------------------------------
+## frame Bootstrap ####
 
 
   #variables
@@ -736,11 +746,11 @@ tkgrid(tk2label(frmBoot,text="    "))
 
 
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 
-#frame Scenario ---------------------------------------------------------------
+## frame Scenario ####
 
 
   #variables
@@ -784,7 +794,7 @@ tkgrid(tk2label(frmScen,text="    "))
 #acc?s aux s?lections : tkcurselection(menuScen)
 # --> SELECTscen <- as.numeric(strsplit(tclvalue(tkcurselection(menuScen))," ")[[1]])+1
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
 
@@ -798,7 +808,7 @@ tkpack(base2_1,base2_2,side="top",fill="both")            #base2
 
 
 
-#frame Buttons   ---------------------------------------------------------------
+## frame Buttons  ####
 
 RETURN <- function() {
 
@@ -915,7 +925,7 @@ tkpack(base1,base2,side="left",fill="both")     #BASE
 tkpack(But,side="top")
 tkpack(BASE1,BASE2,side="top",fill="both")     #base2
 
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 tkbind(BASE, "<Destroy>", function() assign("LL",INPUT,envir=e1))
 
 tkwait.window(BASE)
@@ -970,8 +980,8 @@ invisible(get("LL",envir=e1))
 
 
 
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 #M?thodes de constitution des objets 'iamArgs' par interface graphique
 
@@ -1005,6 +1015,7 @@ setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.c
 
   # ou...
 #' @rdname IAM.args-methods
+#' @importFrom methods new
 setMethod("IAM.args", signature("character","character"),function(object, specific, desc=as.character(NA), ...){
 
   if (substring(object,nchar(object)-3,nchar(object))!=".txt") stop("'object' must be a .txt file!!")
@@ -1029,9 +1040,9 @@ setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.ch
 
 
 
-#---------------
+#:::::::::::::
 #Examples
-#---------------
+#:::::::::::::
 
 ##importation de l'input
 #out <- IAM.input("Z:/Projet/Projet SIAD/Param bio_eco/Modele/Inputs_SIAD_SEL_2.xls",t_init=2010,nbStep=21)

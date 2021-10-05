@@ -57,7 +57,7 @@ IAM.input(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...)
 
 \item{fileSTOCH}{deprecated argument.}
 
-\item{...}{Further arguments used when the input is a .xls}
+\item{...}{Further arguments used when the input is a .xls. Described below.}
 
 \item{t_init}{Only for first signature. Initial year.}
 

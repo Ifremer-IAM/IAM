@@ -8,6 +8,8 @@
 #' @param Fq_fmi # TODO
 #' @param Fg_fmi # TODO
 #'
+#' @importFrom abind adrop
+#'
 convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
 
   namF <- inp@specific$Fleet ; nF <- length(namF)
@@ -15,7 +17,7 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
   llF <- list()
 
   #1ere etape : ventilation de la mortalite (ATTENTION : ici, la ventilation sur indices non communs n'est pas envisag?e)
-  #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   for (i in inp@specific$Species) {
     if (inp@specific$Q[i]==0 & inp@specific$S[i]==0) {
 
@@ -244,12 +246,15 @@ recFun <- function(df,field,rec) {
 
 
 #fonction pour g?n?rer des cl?s cat?gories/tailles ? partir de fichiers d'extraction d'Arpege
+#' @importFrom utils read.table write.table
+#' @import tcltk
+#' @import tcltk2
 CLK <- function(infile, field="ter",l.mult=1,out=NULL,...) {
 
   tab <- read.table(infile,...)
   #on peut avoir envie de recoder les occurences, ou subsetter sur quelques unes
-  requireNamespace("tcltk")
-  requireNamespace("tcltk2")
+  # requireNamespace("tcltk")
+  # requireNamespace("tcltk2")
 
   #on construit la df
   CAT <- switch(field,loc=tab$categorie_locale,ter=tab$categorie_terrain)
@@ -486,6 +491,7 @@ expand.time <- function(df,t_init,nbStep=1,scenario=FALSE){
 #on aura besoin des objets d?finis
 #source("Z:/Projet/Projet SIAD/Param bio_eco/Modele/Input_object.r")
 
+#' @importFrom methods new
 reformat <- function(x, slotN="stockInput") {
   n <- names(new(slotN)@input)
   ll <- x[n]
@@ -507,6 +513,8 @@ reformat <- function(x, slotN="stockInput") {
 #' @param nam_stock_bis # TODO what is this format
 #'
 #' # TODO add example file.
+#'
+#' @importFrom reshape2 acast
 #'
 #' @author Florence Briton 05/2019
 read.Pflex <- function(file, nam_stock, nam_stock_bis){
@@ -693,6 +701,9 @@ read.Scenar <- function(file){
 #' Replace "," with "." and all columns into character.
 #' Replace NA values with empty string ("")
 #'
+#' @importFrom openxlsx read.xlsx
+#' @importFrom methods rbind2
+#'
 read.sheet <- function(file, sheet){
   sheet <- read.xlsx(file,sheet=sheet,rowNames=FALSE,colNames=FALSE,skipEmptyRows = FALSE,skipEmptyCols = FALSE)
   sheet[] <- lapply(sheet, function(x) gsub(",",".",as.character(x)))
@@ -855,7 +866,9 @@ init_listHisto <- function(List, t_init, t_hist_max, nbStep){
 }
 
 
-# @importFrom openxlsx getSheetNames, read.xlsx
+#' @importFrom openxlsx getSheetNames read.xlsx
+#' @importFrom methods rbind2 new
+#' @importFrom utils read.table
 read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
                        desc = "My input", folderFleet = NULL) {
   if(!is.null(getOption("dev"))){ # will be triggered if option(dev = TRUE)
@@ -1867,6 +1880,7 @@ return(OUT)
 # outdated method for txt files
 
   # ? partir de fichiers .txt
+#' @importFrom methods new
 #' @name IAM.input
 #' @aliases IAM.input,character,character,missing,missing-method
 #' @rdname IAM.input-methods
@@ -1885,6 +1899,7 @@ return(convertInput(out))
 })
 
 
+#' @importFrom methods new
 #' @name IAM.input
 #' @aliases IAM.input,character,character,character,missing-method
 #' @rdname IAM.input-methods
@@ -1905,6 +1920,7 @@ return(convertInput(out))
 })
 
 
+#' @importFrom methods new
 #' @name IAM.input
 #' @aliases IAM.input,character,character,missing,character-method
 #' @rdname IAM.input-methods
@@ -1925,6 +1941,7 @@ return(convertInput(out))
 })
 
 
+#' @importFrom methods new
 #' @name IAM.input
 #' @aliases IAM.input,character,character,character,character-method
 #' @rdname IAM.input-methods

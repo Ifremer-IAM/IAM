@@ -21,9 +21,18 @@ Authors@R: c(person(given = "Mathieu",
               person(given = "AMURE Ifremer",
                     role = "cph"))
 Description: ToDo.
-Depends: R(>= 3.4.3), methods, lattice, grDevices, abind, MASS,
-        openxlsx, reshape2
-Imports: tcltk, tcltk2, Rcpp (>=  1.0.7)
+Depends: R(>= 3.4.3) 
+Imports: utils,
+         stats,
+         methods,
+         grDevices,
+         abind,
+         reshape2,
+         openxlsx,
+         lattice,
+         tcltk, 
+         tcltk2,
+         Rcpp (>=  1.0.7)
 License: CeCILL-2
 LazyLoad: Yes
 NeedsCompilation: yes

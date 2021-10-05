@@ -10,6 +10,9 @@
 #' @param objInput output from \code{\link[IAM]{IAM.input}}
 #' @param ... there is so much more arg.... # TODO
 #'
+#' @importFrom methods new
+#'
+#' @useDynLib IAM, .registration = TRUE
 #' @docType methods
 #' @rdname IAM.model-methods
 #' @export

@@ -13,6 +13,7 @@
 
 
 #on red?finit la mani?re de calculer les box (quantiles : 0.025,0.25,0.75,0.975)
+# importFrom stats quantile
 boxplot.stats.custom <-function (x,coef = 1.5, do.conf=TRUE, do.out=TRUE) {
 
       Mean <- mean(x,na.rm = TRUE)
@@ -86,6 +87,8 @@ boxplot.stats.custom <-function (x,coef = 1.5, do.conf=TRUE, do.out=TRUE) {
 #' \item{origin}{Numeric}
 #' \item{as.table}{Logical}
 #'  }
+#' @importFrom grDevices rainbow
+#' @import lattice
 #'
 #' @name IAM.bwplot
 #' @rdname IAM.plot
@@ -235,6 +238,10 @@ IAM.bwplot <- function(formula, data, ...) {
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+#' @importFrom grDevices rainbow
+#' @import lattice
+#' @importFrom stats quantile
+#'
 #' @name IAM.zone
 #' @rdname IAM.plot
 #' @export
@@ -379,6 +386,10 @@ IAM.zone <- function(formula, data,...) {
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+#' @importFrom grDevices rainbow
+#' @import lattice
+#' @importFrom stats quantile
+#'
 #' @name IAM.barIC
 #' @rdname IAM.plot
 #' @export
@@ -558,7 +569,9 @@ IAM.barIC <- function(formula, data,...) {
     # 2. 'iamOutput' ####
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
+#' @importFrom grDevices rainbow
+#' @import lattice
+#'
 #' @name IAM.barplot
 #' @rdname IAM.plot
 #' @export
@@ -682,7 +695,9 @@ IAM.barplot <- function(formula, data,...) {
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
+#' @importFrom grDevices rainbow
+#' @import lattice
+#'
 #' @rdname IAM.plot
 #' @name IAM.plot
 #' @export

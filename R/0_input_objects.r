@@ -433,6 +433,7 @@ setClass("marketInput", ## Class ####
 #'
 #' @param object \code{\link[IAM]{iamArgs-class}} object
 #'
+#' @importFrom stats na.omit
 val.iamArgs <- function(object){
 
   arg <- object@arguments

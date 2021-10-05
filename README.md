@@ -35,20 +35,22 @@ You are free to copy, modify, and distribute IAM with attribution under the term
 Before using IAM, you need few software :
 - R >= 3.6
 
-<!--
+
 ### Dependencies
 
 This package relies on very few packages listed below, that you can install with the following code.
 
-methods, lattice, stats, grDevices, abind, MASS,
-        openxlsx, reshape2
 
 ```{r, eval = FALSE}
-for (i in c('graphics', 'stats', 'viridisLite') ){
+for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
+         'reshape2', 'openxlsx', 'lattice', 'tcltk', 'tcltk2',
+         'Rcpp') ){
   if(!require(i,character.only = TRUE))
     install.packages(i)
 }
 ```
+
+<!--
 
 ### Development version
 
@@ -62,7 +64,6 @@ devtools::install_github('https://github.com/gowachin/DiveR')
 remotes::install_github("gowachin/DiveR")
 ```
 
-<!--## Usage-->
 
 This is a simple example where we simulate a dive. This show also the desaturation stops due in the table model.
 
@@ -73,6 +74,5 @@ dive <- dive(depth = 39, time = 22, secu = TRUE,
              ascent_speed = 10, desat_model = "table")
 summary(dive)
 ```
-
 
 -->
