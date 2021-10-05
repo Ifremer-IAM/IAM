@@ -17,7 +17,7 @@ library(badger)
 -->
 
 <!-- badges: start -->
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) `r badge_devel(color = "blue")` 
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![Dev Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam) [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cran.r-project.org/web/licenses/CeCILL-2)
 <!-- badges: end -->
 
 By Mathieu Merzéréaud, Claire Macher, Michel Bertignac, 
@@ -35,7 +35,7 @@ You are free to copy, modify, and distribute IAM with attribution under the term
 Before using IAM, you need few software :
 - R >= 3.6
 
-
+<!--
 ### Dependencies
 
 This package relies on very few packages listed below, that you can install with the following code.
@@ -73,3 +73,6 @@ dive <- dive(depth = 39, time = 22, secu = TRUE,
              ascent_speed = 10, desat_model = "table")
 summary(dive)
 ```
+
+
+-->
