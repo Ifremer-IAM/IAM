@@ -1,22 +1,22 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <vector>
-#include <math.h>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <fstream>
+// #include <stdlib.h>
+// #include <stdio.h>
+// #include <time.h>
+// #include <vector>
+// #include <math.h>
+// #include <string>
+// #include <sstream>
+// #include <iostream>
+// #include <fstream>
 #include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
-//#include <Rcpp.h>
+// #include <Rcpp.h>
 
 #include "BioEcoPar.h" // Class is defined in this file.
 // #include "Modules.h" // Contient tout les modules
 
 //using namespace Rcpp;
-using namespace std;
+// using namespace std;
 
 //---------------------------------
 //

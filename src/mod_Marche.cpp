@@ -1,13 +1,13 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <vector>
-#include <math.h>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <R.h>
+// #include <stdlib.h>
+// #include <stdio.h>
+// #include <time.h>
+// #include <vector>
+// #include <math.h>
+// #include <string>
+// #include <sstream>
+// #include <iostream>
+// #include <fstream>
+// #include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
 //#include <Rcpp.h>
@@ -16,7 +16,7 @@
 // #include "Modules.h" // Contient tout les modules
 
 //using namespace Rcpp;
-using namespace std;
+// using namespace std;
 
 //
 //------------------------------------------

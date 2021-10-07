@@ -1,13 +1,13 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <vector>
-#include <math.h>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <R.h>
+// #include <stdlib.h>
+// #include <stdio.h>
+// #include <time.h>
+// #include <vector>
+// #include <math.h>
+// #include <string>
+// #include <sstream>
+// #include <iostream>
+// #include <fstream>
+// #include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
 //#include <Rcpp.h>
@@ -16,7 +16,7 @@
 // #include "Modules.h" // Contient tout les modules
 
 //using namespace Rcpp;
-using namespace std;
+// using namespace std;
 
 //------------------------------------------
 // Module 'Dynamique de population' : 'out_F_fmi' = output de la fonction 'Mortalite' MAJ 27/09/2010 ajout de l'output SSB_et
@@ -2206,14 +2206,14 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                         }
                         } else if ((Qvec[e]==1) & (Svec[e]==0)){
 
-                        r_matwt_M1 = REAL(v_matwt_M1) ; r_matwt_M2 = REAL(v_matwt_M2) ; r_matwt_M3 = REAL(v_matwt_M3) ; r_matwt_M4 = REAL(v_matwt_M4) ;
-                        double tempSSB = 0.0;
-                        for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
+                          r_matwt_M1 = REAL(v_matwt_M1) ; r_matwt_M2 = REAL(v_matwt_M2) ; r_matwt_M3 = REAL(v_matwt_M3) ; r_matwt_M4 = REAL(v_matwt_M4) ;
+                          double tempSSB = 0.0;
+                          for (int ind_i = 0 ; ind_i < nbI ; ind_i++)
                             tempSSB = tempSSB + r_matwt_M1[ind_i]*rans_N_eit_S1M1[ind_i+ind_t*nbI] + r_matwt_M2[ind_i]*rans_N_eit_S1M2[ind_i+ind_t*nbI] +
                                   r_matwt_M3[ind_i]*rans_N_eit_S1M3[ind_i+ind_t*nbI] + r_matwt_M4[ind_i]*rans_N_eit_S1M4[ind_i+ind_t*nbI];
 
-                            rans_SSB_et[ind_t] = tempSSB ;
-                            rans_Fbar_et[ind_t] = fmax/sumWt;
+                          rans_SSB_et[ind_t] = tempSSB ;
+                          rans_Fbar_et[ind_t] = fmax/sumWt;
 
                         }
 
