@@ -34,13 +34,26 @@ You are free to copy, modify, and distribute IAM with attribution under the term
 
 Before using IAM, you need few software :
 - R >= 3.6
+- Rtools (can be installed with {devtools} R package)
 
+<!--
+## Installation
 
-### Dependencies
+### From Gitlab (recommended)
 
-This package relies on very few packages listed below, that you can install with the following code.
+To install the released version of IAM from https://gitlab.ifremer.fr/iam/iam:
 
+1. install "remotes" R package by executing in a R console:
 
+`install.packages("remotes")` 
+
+2. install IAM package by executing in a R console:
+
+`remotes::install_gitlab(repo="iam/iam",host="https://gitlab.ifremer.fr")`
+
+### From a package archive file
+
+1. Install IAM dependencies by running in a R console:
 ```{r, eval = FALSE}
 for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
          'reshape2', 'openxlsx', 'lattice', 'tcltk', 'tcltk2',
@@ -50,29 +63,30 @@ for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
 }
 ```
 
-<!--
+2. Go to the [Project 'Releases' page](https://gitlab.ifremer.fr/iam/iam/releases) and download an IAM binary package (.zip format under Window, tar.gz format under Linux)
+3. Install IAM from the archive file by either entering the following command in the R prompt: 
+`install.packages(path_to_file, repos = NULL, type="source")`
+or use e.g. the RStudio graphical interface
+-->
+
+## See the Wiki section for more support
+
+If you want to contribute code, please email Mathieu.Merzereaud[at]ifremer.fr 
+
+
+
+<!-- Not working because private repo
 
 ### Development version
 
-You can install the development version of `{DiveR}` from [github](https://github.com/gowachin/DiveR) with:
+You can install the development version of `{IAM}` from [github](https://gitlab.ifremer.fr/iam/iam) with:
 
 ```{r, eval = FALSE}
 # install.packages("devtools")
-devtools::install_github('https://github.com/gowachin/DiveR')
+devtools::install_gitlab('gitlab.ifremer.fr/iam/iam')
 # or 
 # install.packages("remotes")
-remotes::install_github("gowachin/DiveR")
-```
-
-
-This is a simple example where we simulate a dive. This show also the desaturation stops due in the table model.
-
-```{r example_dive, dev='png', out.width="100%"}
-# Simulation of a dive
-library(DiveR)
-dive <- dive(depth = 39, time = 22, secu = TRUE, 
-             ascent_speed = 10, desat_model = "table")
-summary(dive)
+remotes::install_gitlab("gitlab.ifremer.fr/iam/iam")
 ```
 
 -->

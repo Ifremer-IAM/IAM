@@ -20,7 +20,13 @@ Authors@R: c(person(given = "Mathieu",
                     email = "maxime.jaunatre@yahoo.fr"),
               person(given = "AMURE Ifremer",
                     role = "cph"))
-Description: ToDo.
+Description: IAM (Impact Assessment Model) is a bio-economic model 
+    for the simulation of fisheries dynamics, 
+    integrating specific decision support tools within the 
+    framework of the theoretical implementation of management measures
+    It is a discrete time, multi-fleet, multi-trade, multi-species annual 
+    bio-economic model with "age" components for the biological part, 
+    and "commercial category" components for the economic part.
 Depends: R(>= 3.4.3) 
 Imports: utils,
          stats,
@@ -34,7 +40,10 @@ Imports: utils,
          tcltk2,
          Rcpp (>=  1.0.7)
 License: CeCILL-2
-LazyLoad: Yes
 NeedsCompilation: yes
 RoxygenNote: 7.1.2
 LinkingTo: Rcpp
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr

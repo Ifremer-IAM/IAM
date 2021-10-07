@@ -1,0 +1,23 @@
+---
+title: "How to use IAM"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{How to use IAM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+To use the IAM model, you first need to load it into R. If the package is not installed, this command will return an error. For installation advices, please refer to the README document or contact us.
+```{r setup}
+library(IAM)
+```
+
+IAM require a .xlsx file in input. 
