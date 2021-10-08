@@ -20,7 +20,7 @@ IAM.args(object, specific, ...)
 
 \item{specific}{TODO}
 
-\item{...}{TODO}
+\item{...}{# TODO : is this argument really usefull ?}
 
 \item{desc}{Object descriptor (default value : \code{as.character(NA)})}
 }

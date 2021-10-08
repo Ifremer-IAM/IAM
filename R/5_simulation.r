@@ -265,6 +265,7 @@ mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
 if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
 
+cat('Everything is fine before the C\n')
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
                     as.integer(objArgs@arguments$Scenario$active), as.integer(objArgs@arguments$Replicates$active),

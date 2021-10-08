@@ -20,4 +20,57 @@ To use the IAM model, you first need to load it into R. If the package is not in
 library(IAM)
 ```
 
-IAM require a .xlsx file in input. 
+
+# Data selection
+
+## Importing dataset
+
+IAM require a .xlsx file in input. The file format is complex and explained in the main manual document. <!-- Could be usefull to show some example about the construction of this file in another vignette. -->
+
+Loading the file will return an `iamInput` class object containing 7 slots. These are constructed for the C++ function latter and you should not modify them by hand !
+
+<!-- there is a need for a summary function !!! -->
+
+```{r, eval = FALSE}
+fileIN <- "../raw_data/IAM_MED_simpl.xlsx" # simplified with only 2 dyn and 2 static
+
+input <- IAM::IAM.input(fileIN = fileIN, t_init = 2020, nbStep = 5, folderFleet = NULL, desc = "Vignette example")
+slotNames(input)
+```
+
+<!--
+If the file has already been imported and exported as .txt files, it can be reimported with the same function.
+-->
+
+## Initialize arguments
+
+`IAM.args()` use an `iamInput` class object and will open an interface to help the user input simulations caracteristics. 
+This function will return an `iamArgs` class object. This object can be reused by the `IAM.args()` function to update it.
+
+```{r, eval = FALSE}
+# init args object
+args <- IAM.args(input)
+
+# update args object.
+up_args <- IAM.args(args)
+```
+
+
+<!--
+iamArgs object can be exported as .txt files and reloaded by this function
+
+#
+##importation des arguments
+#impArg <- IAM.args("C:/Documents and Settings/mmerzere/Bureau/COST_R/IAMwd/expArgs/args.txt",
+#                   "C:/Documents and Settings/mmerzere/Bureau/COST_R/IAMwd/expArgs/specific.txt",desc="My args")
+#
+-->
+
+# Simulate
+
+`IAM.model()` function allow to run a simulation according to what is define in corresponding <!-- # TODO : really corresponding ?--> `iamArgs` and `iamInput` objects.
+```{r, eval = FALSE}
+mod <- IAM::IAM.model(args, input)
+```
+
+

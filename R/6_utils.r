@@ -226,14 +226,14 @@ setMethod("IAM.format", signature("iamOutputRep"),function(object, ...){ ## iamO
 #'
 #' @rdname IAM.unite
 #' @export
-setGeneric("IAM.unite", function(listObj,...){
+setGeneric("IAM.unite", function(listObj,...){  # IAM.unite gen ####
 	standardGeneric("IAM.unite")
 	}
 )
 
 #' @rdname IAM.unite
 #' @aliases IAM.unite,list-method
-setMethod("IAM.unite", signature(listObj="list"), function(listObj,...){
+setMethod("IAM.unite", signature(listObj="list"), function(listObj,...){  ## list meth ####
 
 	if (!(all(unlist(lapply(listObj,class))%in%"iamOutput") | all(unlist(lapply(listObj,class))%in%"iamOutputRep")))
     stop("only 'iamOutput' objects OR (not AND) 'iamOutputRep' objects allowed in input list!!")

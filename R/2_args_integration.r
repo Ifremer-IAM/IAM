@@ -991,7 +991,7 @@ invisible(get("LL",envir=e1))
 #'
 #' @param object TODO
 #' @param specific TODO
-#' @param ... TODO
+#' @param ... # TODO : is this argument really usefull ?
 #'
 #' @name IAM.args
 #' @rdname IAM.args-methods
