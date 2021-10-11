@@ -234,91 +234,6 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
 }
 
 
-#petite fonction de recodage interne ? CLK
-recFun <- function(df,field,rec) {
-  Typ <- class(df[,field])
-  fc <- factor(df[,field])
-  Lev <- levels(fc)[!levels(fc)%in%rec$from]
-  df[,field] <- factor(fc,levels=c(Lev,rec$from),labels=c(Lev,rec$to))
-  eval(parse('',text=paste("df[,field] <- as.",Typ,"(as.character(df[,field]))",sep="")))
-  return(df)
-}
-
-
-#fonction pour g?n?rer des cl?s cat?gories/tailles ? partir de fichiers d'extraction d'Arpege
-#' @importFrom utils read.table write.table
-#' @import tcltk
-#' @import tcltk2
-CLK <- function(infile, field="ter",l.mult=1,out=NULL,...) {
-
-  tab <- read.table(infile,...)
-  #on peut avoir envie de recoder les occurences, ou subsetter sur quelques unes
-  # requireNamespace("tcltk")
-  # requireNamespace("tcltk2")
-
-  #on construit la df
-  CAT <- switch(field,loc=tab$categorie_locale,ter=tab$categorie_terrain)
-  df <- data.frame(categorie=CAT,recodage=CAT)
-  df <- as.matrix(unique(df))
-  df[is.na(df)] <- ""
-  recVal <- character(nrow(df))
-
-  tt <- tktoplevel()
-  tkfocus(tt)
-  tkwm.deiconify(tt)
-  #tkgrab.set(tt)
-  tkwm.title(tt, "Recodage Categories Commerciales")
-  fontHeading <- tkfont.create(family="times",weight="bold")
-  tkgrid(tklabel(tt,text="          Categorie          ",font=fontHeading),tklabel(tt,text=""),tklabel(tt,text="          Recodage          ",font=fontHeading))
-  tkgrid(tklabel(tt,text=""))
-
-  for (i in 1:nrow(df)) {
-
-    eval(parse('',text=paste("textEntry",i," <- tclVar(as.character(df[",i,",\"recodage\"]))",sep="")))
-    eval(parse('',text=paste("textEntryWidget",i," <- tkentry(tt, width = 20, textvariable = textEntry",i,")",sep="")))
-    eval(parse('',text=paste("tkgrid(tklabel(tt,text=as.character(df[",i,",1])),tklabel(tt,text=\"\"),textEntryWidget",i,")",sep="")))
-  }
-
-
-  OnOK <- function()
-  {
-    for (i in 1:nrow(df)) eval(parse('',text=paste("recVal[",i,"] <<- as.character(tclvalue(textEntry",i,"))",sep="")))
-    tkgrab.release(tt)
-    tkdestroy(tt)
-  }
-
-  OnCancel <- function() {
-    #    cbVal <<- rep("1",nrow(df))
-    recVal <<- as.character(df$rec)
-    tkgrab.release(tt)
-    tkdestroy(tt)
-  }
-
-  OK.but <- tkbutton(tt, text = "   OK   ", command = OnOK)
-  # Cancel.but <- tkbutton(tt, text = " Cancel ", command = OnCancel)
-  tkgrid(tklabel(tt,text=""))
-  tkgrid(tklabel(tt,text=""), OK.but, tklabel(tt,text=""))
-  tkgrid(tklabel(tt, text = "    "))
-
-  tkwait.window(tt)
-
-  #on d?termine les instructions de recodage en fonction de recVal
-  REF <- df[,"recodage",drop=FALSE]
-  recList <- list(from=REF[REF!=recVal],to=recVal[REF!=recVal])
-  headeR <- switch(field,loc="categorie_locale",ter="categorie_terrain")
-  if (length(recList$from)>0) tab <- recFun(tab,headeR,recList)
-
-  tab$poids_elevation[is.na(tab$poids_elevation)] <- (tab$poids_utilise*tab$facteur_elevation)[is.na(tab$poids_elevation)]
-
-  key <- tapply(tab$comptages*tab$poids_elevation/tab$poids_utilise,list(tab$classe*l.mult,tab[,headeR]),sum,na.rm=TRUE)
-  key[is.na(key)] <- 0
-
-  if (!is.null(out)) write.table(key,file=out,append=FALSE,quote=FALSE,sep="\t")
-  return(key)
-}
-
-
-#CLK(infile="C:/Documents and Settings/mmerzere/Bureau/ANCHOIS 2009.txt",field="ter",l.mult=10,out="C:/Documents and Settings/mmerzere/Bureau/CLK.txt",sep="\t",header=TRUE)
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -1694,9 +1609,6 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
 #' @param t_hist_max Only for first signature. Last year considered for 'historical' slot.
 #' @param desc Object descriptor (default value : "My Input").
 #' @param folderFleet Folder containing fleets input sheets (Optionnal. Default value : NULL).
-#' @param readXLS Character. Package to be used to read parameter Excel file. # TODO remove
-#' 'openxlsx' for post-2007 excel version (.xlsx files),
-#' 'XLConnect' for pre-2007 excel version (.xls files).(Default value : "openxlsx").
 #' @param Fq_i List containing SS3 parameters arrays for quarterly stock dynamic simulation.
 #' One element per considered species, all names must match with input species.
 #' Fishing mortality per season, morph, and age.
@@ -1707,7 +1619,7 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
 #'
 #'
 setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
-                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,readXLS="openxlsx",
+                   function(fileIN, t_init, nbStep=20, t_hist_max=t_init, desc="My Input", folderFleet=NULL,
                                     Fq_i=NULL,iniFq_i=NULL,Fq_fmi=NULL,iniFq_fmi=NULL,
                                     FqLwt_i=NULL,iniFqLwt_i=NULL,FqLwt_fmi=NULL,iniFqLwt_fmi=NULL,
                                     FqDwt_i=NULL,iniFqDwt_i=NULL,FqDwt_fmi=NULL,iniFqDwt_fmi=NULL,
