@@ -10,4 +10,5 @@ tryhard.R
 src/*.dll
 src/*.o
 inst/doc
+inst/extdata
 .vscode/

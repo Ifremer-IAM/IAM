@@ -1082,15 +1082,15 @@
      inkscape:cx="524.76129"
      inkscape:cy="328.88685"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer12"
-     showgrid="true"
+     inkscape:current-layer="layer11"
+     showgrid="false"
      inkscape:pagecheckerboard="true"
      inkscape:window-width="1304"
      inkscape:window-height="745"
      inkscape:window-x="54"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
-     showguides="true"
+     showguides="false"
      inkscape:lockguides="true"
      inkscape:snap-grids="true"
      inkscape:snap-to-guides="false"
@@ -1115,12 +1115,14 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-87)"
-     style="display:inline">
+     style="display:inline"
+     sodipodi:insensitive="true">
     <g
        inkscape:groupmode="layer"
        id="layer13"
        inkscape:label="IAM.format"
-       style="display:inline">
+       style="display:inline"
+       sodipodi:insensitive="true">
       <g
          inkscape:groupmode="layer"
          id="layer9"
@@ -1188,6 +1190,23 @@
                x="206.80923"
                y="190.46236">IAM.unite</tspan></text>
         </g>
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-weight:normal;font-size:5.07978px;line-height:1.25;font-family:sans-serif;display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.126995"
+           x="18.888985"
+           y="191.29774"
+           id="text58093"
+           transform="translate(0,-87.000001)"><tspan
+             sodipodi:role="line"
+             id="tspan58091"
+             style="stroke-width:0.126995"
+             x="18.888985"
+             y="191.29774">From another </tspan><tspan
+             sodipodi:role="line"
+             style="stroke-width:0.126995"
+             x="18.888985"
+             y="197.64748"
+             id="tspan58347">IAM.model run</tspan></text>
       </g>
       <path
          style="display:inline;fill:none;stroke:#000000;stroke-width:0.7;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#DotS-79-6);marker-end:url(#Arrow1Mend-0-7)"
@@ -1236,7 +1255,8 @@
        inkscape:groupmode="layer"
        id="layer12"
        inkscape:label="IAM.model"
-       style="display:inline">
+       style="display:inline"
+       sodipodi:insensitive="true">
       <path
          style="display:inline;fill:none;stroke:#000000;stroke-width:0.7;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#DotS-7);marker-end:url(#Arrow1Mend-9)"
          d="M 136.3738,181.72081 C 158.75,182.25 158.75,203.41667 164.04167,198.125"
@@ -1313,22 +1333,52 @@
              x="139.21158"
              y="111.91822">IAM.model</tspan></text>
       </g>
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-weight:normal;font-size:5.07978px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.126995"
-         x="18.888985"
-         y="191.29774"
-         id="text58093"><tspan
-           sodipodi:role="line"
-           id="tspan58091"
-           style="stroke-width:0.126995"
-           x="18.888985"
-           y="191.29774">From another </tspan><tspan
-           sodipodi:role="line"
-           style="stroke-width:0.126995"
-           x="18.888985"
-           y="197.64748"
-           id="tspan58347">IAM.model run</tspan></text>
+      <g
+         id="g27489"
+         transform="matrix(0.68571422,0,0,0.68571422,-42.595943,54.63564)"
+         style="display:inline">
+        <ellipse
+           style="fill:#d4aa00;stroke:#c87137;stroke-width:1.88964;stroke-miterlimit:4;stroke-dasharray:none"
+           id="path20015-3"
+           cx="200.97446"
+           cy="224.70772"
+           rx="33.375549"
+           ry="11.254959" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+           x="172.66934"
+           y="227.44734"
+           id="text21735-2"><tspan
+             sodipodi:role="line"
+             id="tspan21733-1"
+             style="stroke-width:0.264583"
+             x="172.66934"
+             y="227.44734">iamOutput</tspan></text>
+      </g>
+      <g
+         id="g27494"
+         transform="matrix(0.68571422,0,0,0.68571422,66.1455,32.878741)"
+         style="display:inline">
+        <ellipse
+           style="fill:#d4aa00;stroke:#c87137;stroke-width:2.13429;stroke-miterlimit:4;stroke-dasharray:none"
+           id="path20015-3-5"
+           cx="243.60406"
+           cy="256.45773"
+           rx="43.044868"
+           ry="11.132636" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+           x="205.11501"
+           y="259.19736"
+           id="text21735-2-4"><tspan
+             sodipodi:role="line"
+             id="tspan21733-1-1"
+             style="stroke-width:0.264583"
+             x="205.11501"
+             y="259.19736">iamOutputRep</tspan></text>
+      </g>
     </g>
     <g
        inkscape:groupmode="layer"
@@ -1528,7 +1578,8 @@
        inkscape:groupmode="layer"
        id="layer11"
        inkscape:label="IAM.arg"
-       style="display:inline">
+       style="display:inline"
+       sodipodi:insensitive="true">
       <g
          inkscape:groupmode="layer"
          id="layer8"
@@ -1607,6 +1658,17 @@
              x="179.01933"
              y="190.40567">iamArgs</tspan></text>
       </g>
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+         x="175.15424"
+         y="131.44997"
+         id="text67337"><tspan
+           sodipodi:role="line"
+           id="tspan67335"
+           style="stroke-width:0.264583"
+           x="175.15424"
+           y="131.44997">GUI</tspan></text>
     </g>
     <g
        inkscape:groupmode="layer"
@@ -1698,56 +1760,6 @@
              x="160.49854"
              y="111.03068">iamInput</tspan></text>
       </g>
-    </g>
-    <g
-       inkscape:groupmode="layer"
-       id="layer3"
-       inkscape:label="functions"
-       style="display:inline"
-       transform="translate(0,87)" />
-    <g
-       id="g27489"
-       transform="matrix(0.68571423,0,0,0.68571423,-42.595944,54.635641)">
-      <ellipse
-         style="fill:#d4aa00;stroke:#c87137;stroke-width:1.88964;stroke-miterlimit:4;stroke-dasharray:none"
-         id="path20015-3"
-         cx="200.97446"
-         cy="224.70772"
-         rx="33.375549"
-         ry="11.254959" />
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-         x="172.66934"
-         y="227.44734"
-         id="text21735-2"><tspan
-           sodipodi:role="line"
-           id="tspan21733-1"
-           style="stroke-width:0.264583"
-           x="172.66934"
-           y="227.44734">iamOutput</tspan></text>
-    </g>
-    <g
-       id="g27494"
-       transform="matrix(0.68571423,0,0,0.68571423,66.145501,32.87874)">
-      <ellipse
-         style="fill:#d4aa00;stroke:#c87137;stroke-width:2.13429;stroke-miterlimit:4;stroke-dasharray:none"
-         id="path20015-3-5"
-         cx="243.60406"
-         cy="256.45773"
-         rx="43.044868"
-         ry="11.132636" />
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-         x="205.11501"
-         y="259.19736"
-         id="text21735-2-4"><tspan
-           sodipodi:role="line"
-           id="tspan21733-1-1"
-           style="stroke-width:0.264583"
-           x="205.11501"
-           y="259.19736">iamOutputRep</tspan></text>
     </g>
   </g>
 </svg>
