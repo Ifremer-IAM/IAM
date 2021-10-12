@@ -43,16 +43,18 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
             SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
             SEXP parBHV, SEXP parQEX,
-            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, SEXP bootVar = R_NilValue)
+            SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, SEXP bootVar = R_NilValue, SEXP verbose = 0)
 {
+int VERBOSE = INTEGER(verbose)[0];
 //Rprintf("OO");
     if (INTEGER(Bootstrp)[0]==0) {
-
+        
+        if(VERBOSE){Rprintf("No bootstrap \n");}
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                             RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                             GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
                                             EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg,
-                                            parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
+                                            parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE);
 
 
         SEXP output, out_names, out_Foth, out_Foth_G1,out_Foth_G2;
@@ -225,6 +227,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         setAttrib(output, R_NamesSymbol, out_names);
 
         UNPROTECT(5);
+        if(VERBOSE){Rprintf("---- Exit C++ ----\n");}
         return(output);
         delete object;
 
@@ -246,18 +249,18 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         }
 
         //on commence le bootstrap
-
+        if(VERBOSE){Rprintf("Init bootstrap \n");}
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE);
 
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
-
+            if(VERBOSE && (it % 50) == 0){Rprintf("boot :");}
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, Bootstrp, nbBoot,
                                     GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
-                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD);
+                                    EcoInd, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE);
 
             //objet vide pour garder la structuration malgr� la non-s�lection de la variable en question
             PROTECT(emptyObj = allocVector(VECSXP, object->nbE));
@@ -474,6 +477,7 @@ SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
         setAttrib(output, R_NamesSymbol, out_names);
 
         UNPROTECT(2+44);
+        if(VERBOSE){Rprintf("---- Exit C++ ----\n");}
         return(output);
         delete object;
 

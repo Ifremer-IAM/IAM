@@ -18,7 +18,6 @@ IAM.input(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...)
   t_hist_max = t_init,
   desc = "My Input",
   folderFleet = NULL,
-  readXLS = "openxlsx",
   Fq_i = NULL,
   iniFq_i = NULL,
   Fq_fmi = NULL,
@@ -68,10 +67,6 @@ IAM.input(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...)
 \item{desc}{Object descriptor (default value : "My Input").}
 
 \item{folderFleet}{Folder containing fleets input sheets (Optionnal. Default value : NULL).}
-
-\item{readXLS}{Character. Package to be used to read parameter Excel file. # TODO remove
-'openxlsx' for post-2007 excel version (.xlsx files),
-'XLConnect' for pre-2007 excel version (.xls files).(Default value : "openxlsx").}
 
 \item{Fq_i}{List containing SS3 parameters arrays for quarterly stock dynamic simulation.
 One element per considered species, all names must match with input species.

@@ -493,7 +493,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
 //        fichier << "QM4.3"  << endl;
         // Rprintf("QM4.3\n");
 
-        CatchDL(listTemp, ind_t, eVarCopy);
+        CatchDL(listTemp, ind_t, eVarCopy, 0);
 //        fichier << "QM4.4"  << endl;
         // Rprintf("QM4.4\n");
        // my_time = time(NULL);

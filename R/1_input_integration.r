@@ -789,8 +789,9 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   if(!is.null(getOption("dev"))){ # will be triggered if option(dev = TRUE)
     rm(list = ls())
     library(openxlsx)
-    file <- "raw_data/IAM_MED_simpl.xlsx"
+    file <- "inst/extdata/IAM_MED_simpl.xlsx"
     t_init <- 2020
+    t_hist_max <- 2020
     nbStep <-  5
     desc <- "Med tryhard"
     folderFleet = NULL
@@ -1555,6 +1556,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   return(new("iamInput", desc=desc,
              specific=list(Species=if (indDYN) as.character(namList) else character(0),
                            StaticSpp=as.character(nam_stock_bis),
+                           AllSpp = c(if (indDYN) as.character(namList) else character(0),as.character(nam_stock_bis)),
                            Fleet=modF, Metier=modMbio, MetierEco=modMeco,
                            Ages=if (indDYN) lapply(LL$input,function(x) x$modI)[namList] else list(),
                            Cat=if (indDYN) lapply(LL$input,function(x) x$modC)[namList] else list(),

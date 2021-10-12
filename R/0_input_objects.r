@@ -14,11 +14,12 @@
 #' # TODO
 #'
 #' @slot desc Short description of the object. chr.
-#' @slot specific List.
+#' @slot specific structurak dimension
 #' \describe{
 #'   \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
 #'   \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.
 #'   This information is extracted from the Fleet sheet. chr vector}
+#'   \item{AllSpp}{All the stocks names concatenated from Species and StaticSpp. chr vector}
 #'   \item{Fleet}{Fleet types, defined thanks to vessel length, area and times. A vesserl can have multiple Metier. chr vector}
 #'   \item{Metier}{Typology depending on fishing gear, vessel length, area and times of fisheries. chr vector}
 #'   \item{MetiersEco}{Economic metier, depending on fishing gear. chr vector}
@@ -30,10 +31,10 @@
 #'   \item{Q}{# TODO}
 #'   \item{S}{# TODO}
 #' }
-#' @slot historical # TODO descr
+#' @slot historical # TODO descr juste pour les graphes.pas utilise dans le modele C++
 #' @slot input # TODO descr
 #' @slot scenario List of scenarii with each containing one element per species
-#' and one supplementary element for Fleets. # TODO why is there a Fleet element here ?
+#' and one supplementary element for Fleets. # TODO explain why is there a Fleet element here ?
 #' # TODO describe the format a species element
 #' @slot stochastic # TODO description is not possible with med style input.
 #' @slot optimization # TODO description is not possible with med style input.

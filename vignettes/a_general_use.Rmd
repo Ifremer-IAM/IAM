@@ -31,10 +31,25 @@ Loading the file will return an `iamInput` class object containing 7 slots. Thes
 
 <!-- there is a need for a summary function !!! -->
 
-```{r, eval = FALSE}
-fileIN <- "../raw_data/IAM_MED_simpl.xlsx" # simplified with only 2 dyn and 2 static
+```{r, include=FALSE}
+# TODO  export the function into the package.
+# simplified system from {readr} package.
+# @param file Name of the file. Need to be in inst/extdata/ directory of the package
+IAM_example <- function(file){
+  system.file("extdata", file, package = "IAM", mustWork = TRUE)
+}
+# test basic :
+fileIN <- IAM_example("IAM_MED_simpl.xlsx") # simplified with only 2 dyn and 2 static
+file.exists(fileIN)
+```
 
-input <- IAM::IAM.input(fileIN = fileIN, t_init = 2020, nbStep = 5, folderFleet = NULL, desc = "Vignette example")
+
+```{r}
+fileIN <- IAM_example("IAM_MED_simpl.xlsx") # simplified with only 2 dyn and 2 static
+
+file.exists(fileIN)
+
+input <- IAM.input(fileIN = fileIN, t_init = 2020, nbStep = 5, folderFleet = NULL, desc = "Vignette example")
 slotNames(input)
 ```
 
@@ -70,7 +85,19 @@ iamArgs object can be exported as .txt files and reloaded by this function
 
 `IAM.model()` function allow to run a simulation according to what is define in corresponding <!-- # TODO : really corresponding ?--> `iamArgs` and `iamInput` objects.
 ```{r, eval = FALSE}
-mod <- IAM::IAM.model(args, input)
+mod <- IAM20::IAM.model(args, input)
+stripe <- IAM::IAM.model(args, input, verbose = TRUE)
 ```
+
+
+```{r}
+all.equal(mod@arguments, stripe@arguments)
+all.equal(mod@specific, stripe@specific)
+all.equal(mod@outputSp, stripe@outputSp)
+all.equal(mod@output, stripe@output)
+```
+
+
+
 
 

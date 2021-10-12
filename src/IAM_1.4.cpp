@@ -334,7 +334,7 @@ SEXP BioEcoPar::calcCapturabilite(SEXP adjustedMortal, SEXP effortIni)
 
 // --------  d�termination racine (unidimensionnel)
 
-// TODO beign remove
+// TODO begin remove
 // TODO : remove this function
 void BioEcoPar::zbrak(BEfn1 fx, double x1, double x2, int n, double xb1[],
 	double xb2[], int *nb)
@@ -507,6 +507,7 @@ void BioEcoPar::free_matrix(double **m, long nrl, long nrh, long ncl, long nch)
 
 
 // TODO : if MinimizeF removed, remove this function
+// TODO : numerical recipes, fonction recup autre part.
 void BioEcoPar::amoeba(BEfn1_F funk, double **p, double y[], int ndim, double ftol, int *nfunk) {
 
     //float amotry(float **p, float y[], float psum[], int ndim, float (*funk)(float []), int ihi, float fac);
@@ -1276,7 +1277,7 @@ for (int intEspTarg = 0 ; intEspTarg < nbEtarg ; intEspTarg++) {
 //Rprintf("A17\n");
   //  Rprintf("call.CatchDL\n");
   //  fichier << "call.CatchDL" << endl;
-    CatchDL(listTempP, IND_T, eVarCopy);
+    CatchDL(listTempP, IND_T, eVarCopy, 0);
  //   Rprintf("end.CatchDL\n");
  //   fichier << "end.CatchDL" << endl;
 //Rprintf("A18\n");
@@ -1524,7 +1525,7 @@ int BioEcoPar::GestionF2(int ind_t)
     //Rprintf("end.DynamicPop.1\n");fichier << "end.DynamicPop.1" << endl;
 
     //Rprintf("call.CatchDL.1\n");fichier << "call.CatchDL.1" << endl;
-    CatchDL(listTempP, IND_T, eVar);
+    CatchDL(listTempP, IND_T, eVar, 0);
     //Rprintf("end.CatchDL.1\n");fichier << "end.CatchDL.1" << endl;
 
 
@@ -1991,7 +1992,7 @@ for (int indM = 0 ; indM < nbMe ; indM++) {
     }
 
         //Rprintf("call.CatchDL.SPPdynOPT.2\n");fichier << "call.CatchDL.SPPdynOPT.2" << endl;
-        CatchDL(listTempP, IND_T, eVar); //hors boucle esp�ce � optimiser
+        CatchDL(listTempP, IND_T, eVar, 0); //hors boucle esp�ce � optimiser
         //Rprintf("end.CatchDL.SPPdynOPT.2\n");fichier << "end.CatchDL.SPPdynOPT.2" << endl;
 
     for (int ind = 0 ; ind < N_SPPdynOPT ; ind++) {  //boucle sur les esp�ces dynamiques XSA ou SS3 : d�termination de alpha, effort associ�, r�conciliation avec Einterm, m�j Einterm

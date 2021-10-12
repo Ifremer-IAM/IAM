@@ -1,8 +1,8 @@
-// #include <stdlib.h>
-// #include <stdio.h>
+// #include <stdlib.h> // loaded with R.h
+// #include <stdio.h> // loaded with R.h
 // #include <time.h>
-// #include <vector>
-// #include <math.h>
+// #include <vector> // loaded with R.h
+// #include <math.h> // loaded with R.h
 // #include <string>
 // #include <sstream>
 // #include <iostream>
@@ -27,7 +27,7 @@ BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@
                      SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                      SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                      SEXP parBHV, SEXP parQEX,
-                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD)
+                     SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE)
 {
 
 //ofstream fichier("C:\\Users\\fbriton\\Dropbox\\These\\IAM_Dvt\\test.txt", ios::out | ios::trunc);
@@ -49,7 +49,7 @@ PROTECT_INDEX ipx_eVar_copy;
 PROTECT_INDEX ipx_eStatVar_copy;
 PROTECT_INDEX ipx_fVar_copy;
 
-//Rprintf("step0\n");fichier << "step0" << endl;
+if(VERBOSE){Rprintf("Step 0 | ");}
 
 PROTECT_WITH_INDEX(list = duplicate(listInput),&ipx_list);
 PROTECT_WITH_INDEX(list_copy = duplicate(list),&ipx_list_copy);
@@ -81,7 +81,7 @@ Zoptim_use = false;
 FOTHoptim_use = false;
 
 
-
+if(VERBOSE){Rprintf("Step 0.1 | ");}
 //Rprintf("step0\n");fichier << "step0 " << endl;
 
 nbT = INTEGER(getListElement(listSpec, "NbSteps"))[0];
@@ -114,11 +114,14 @@ pUpdate = !isNull(getListElement(list, "Market"));  //Rprintf("pUpdate = %d \n",
 eUpdate = true;    //
 
 if (pUpdate) {
+    if(VERBOSE){Rprintf("pUpdate | ");}
     PROTECT(sppListAll = getListElement(getListElement(list, "Market"),"modE")); //PrintValue(sppListAll);
     PROTECT(pList = getListElement(getListElement(list, "Market"),"modP"));
     nbP = length(pList);
-    nbEall = length(sppListAll);
+} else {
+    PROTECT(sppListAll = getListElement(listSpec, "AllSpp")); // TODO : this should not require Market sheet to be input
 }
+nbEall = length(sppListAll);
 
 scen = INTEGER(Scenarii)[0];
 bhv_active = INTEGER(getListElement(parBHV, "active"))[0];
@@ -147,7 +150,7 @@ X2 = REAL(bounds)[1];
 //TAC_glob = REAL(TAC);  //� corriger
 Fbar_trgt = REAL(FBAR);  //� corriger
 PROTECT(TACbyF = TACbyFL);  //� corriger
-PROTECT(TAC = TACL);
+PROTECT(TAC = TACL); // TODO :pourquoi juste un changement de nom la en fait ?
 
 PROTECT(inpFtarg = Ftarg);
 PROTECT(inpW_Ftarg = W_Ftarg);
@@ -238,7 +241,7 @@ if (nbEstat>0) {
 PROTECT_WITH_INDEX(eStatVar_copy = duplicate(eStatVar),&ipx_eStatVar_copy); //21
 
 
-//Rprintf("step0\n");fichier << "step0 " << endl;
+if(VERBOSE){Rprintf("Step 0.2 | ");}
 
 PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 34),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m & 33=ETini_f_m
 PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
@@ -409,6 +412,8 @@ PROTECT(out_statLDst_efm = allocVector(VECSXP, nbEstat));
 PROTECT(out_statLDor_efm = allocVector(VECSXP, nbEstat));
 
 
+if(VERBOSE){Rprintf("Step 0.3 | ");}
+
 //int *typegest = INTEGER(out_typeGest);
 double *mu_nbds_t = REAL(mu_nbds); for (int i=0; i<nbT; i++) mu_nbds_t[i] = 0.0; //initialisation
 double *mu_nbv_t = REAL(mu_nbv); for (int i=0; i<nbT; i++) mu_nbv_t[i] = 0.0;    //
@@ -462,6 +467,7 @@ double *EFF2fm = REAL(EFF2FM);
 
 SEXP ans_PQuot_et, pQuotaIni;
 if (nbEQuotaMarket>0) {
+ if(VERBOSE){Rprintf("Step 0.3.1");}
  setAttrib(out_PQuot_et, R_NamesSymbol, sppListQM);
  for (int e = 0 ; e < nbEQuotaMarket ; e++) {
     PROTECT(ans_PQuot_et = NEW_NUMERIC(nbT));
@@ -471,10 +477,12 @@ if (nbEQuotaMarket>0) {
     SET_VECTOR_ELT(out_PQuot_et, e, ans_PQuot_et);
     UNPROTECT(2);
  }
+ if(VERBOSE){Rprintf(" | ");}
 }
 
 SEXP ans_QuotaTrade_fe;
 if (nbEQuotaMarket_dyn>0) {
+ if(VERBOSE){Rprintf("Step 0.3.2");}
  setAttrib(out_QuotaTrade_fe, R_NamesSymbol, sppListQM_dyn);
  for (int e = 0 ; e < nbEQuotaMarket_dyn ; e++) {
     PROTECT(ans_QuotaTrade_fe = allocMatrix(REALSXP,nbF,nbT));
@@ -484,10 +492,12 @@ if (nbEQuotaMarket_dyn>0) {
     SET_VECTOR_ELT(out_QuotaTrade_fe, e, ans_QuotaTrade_fe);
     UNPROTECT(1);
  }
+ if(VERBOSE){Rprintf(" | ");}
 }
 
 SEXP ans_diffLQ;
 if (nbEQuotaMarket_dyn>0) {
+ if(VERBOSE){Rprintf("Step 0.3.3");}
  setAttrib(out_diffLQ, R_NamesSymbol, sppListQM_dyn);
  for (int e = 0 ; e < nbEQuotaMarket_dyn ; e++) {
     PROTECT(ans_diffLQ = allocMatrix(REALSXP,itmaxQ,nbT));
@@ -497,10 +507,12 @@ if (nbEQuotaMarket_dyn>0) {
     SET_VECTOR_ELT(out_diffLQ, e, ans_diffLQ);
     UNPROTECT(1);
  }
+ if(VERBOSE){Rprintf(" | ");}
 }
 
 SEXP ans_PQuot_temp;
 if (nbEQuotaMarket_dyn>0) {
+ if(VERBOSE){Rprintf("Step 0.3.4");}
  setAttrib(out_PQuot_temp, R_NamesSymbol, sppListQM_dyn);
  for (int e = 0 ; e < nbEQuotaMarket_dyn ; e++) {
     PROTECT(ans_PQuot_temp = allocMatrix(REALSXP,itmaxQ,nbT));
@@ -510,17 +522,21 @@ if (nbEQuotaMarket_dyn>0) {
     SET_VECTOR_ELT(out_PQuot_temp, e, ans_PQuot_temp);
     UNPROTECT(1);
  }
+ if(VERBOSE){Rprintf(" | ");}
 }
 
+if(VERBOSE){Rprintf("Step 0.3.5");}
 PROTECT(intermGoFish = allocMatrix(REALSXP,nbF,nbT));
 setAttrib(intermGoFish, R_DimNamesSymbol, dnmsF);
 for (int ind_t = 0 ; ind_t < nbT ; ind_t++){
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++) REAL(intermGoFish)[ind_t*nbF + ind_f] = 1.0; //initialisation
 }
+if(VERBOSE){Rprintf(" | ");}
 
 PROTECT(multPrice = allocVector(VECSXP, nbE+nbEstat));
 SEXP ans_multPrice;
 if ((nbE+nbEstat)>0) {
+ if(VERBOSE){Rprintf("Step 0.3.6");}
  setAttrib(multPrice, R_NamesSymbol, sppListAll);
  for (int e = 0 ; e < (nbE+nbEstat) ; e++) {
     PROTECT(ans_multPrice = NEW_NUMERIC(nbT));
@@ -529,14 +545,13 @@ if ((nbE+nbEstat)>0) {
     SET_VECTOR_ELT(multPrice, e, ans_multPrice);
     UNPROTECT(1);
  }
+ if(VERBOSE){Rprintf(" | ");}
 }
 
-//fichier << "Debut boucle T"  << endl;
+if(VERBOSE){Rprintf("\nLoop : \n");}
 
 for (int it = 0; it < nbT ; it++) {
-
-//fichier << "T = " << it << endl;
-Rprintf("T= %d\n", it);
+    Rprintf("T = %d => ", it);
 
 //Rprintf("ini1");fichier << "ini1" << endl;
 
@@ -636,27 +651,22 @@ REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");fic
 
 //Rprintf("intro2\n");fichier << "intro2" << endl;
 if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
-   // PrintValue(TACbyF);
-//   Rprintf("call.EstimationTACfromF\n");
-//   fichier << "call.EstimationTACfromF" << endl;
+    if(VERBOSE){Rprintf(" | EstimationTACfromF");}
    int oooo = EstimationTACfromF(it) ;
    oooo = oooo * 2;
-//   Rprintf("end.EstimationTACfromF\n");
-//   fichier << "end.EstimationTACfromF" << endl;
-   //PrintValue(TACbyF);
-
+   if(VERBOSE){Rprintf(" | ");}
 }
 
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
-//Rprintf("call.QuotaMarket\n");
-//   fichier << "call.QuotaMarket" << endl;
+   if(VERBOSE){Rprintf("QuotaMarket");}
    QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(EcoInd)[4]);
-//    fichier << "end.QuotaMarket" << endl;
-//Rprintf("end.QuotaMarket\n");
-
+   if(VERBOSE){Rprintf(" | ");}
 }
+
+
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activ�e si au moins un �l�ment de TACbyF est renseign�
 if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
+    if(VERBOSE){Rprintf("GestionF2 | ");}
 
 //Rprintf("adjust\n");
 
@@ -872,28 +882,17 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
 //3 modules avec pas de temps diff�renci� au niveau trimestre
 if (nbE>0) {
-// Rprintf("call.Mortalite\n");fichier << "call.Mortalite" << endl;
-// fichier << "call.Mortalite" << endl;
+if(VERBOSE){Rprintf("Mortalite");}
  Mortalite(list, it, eVar);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
-// fichier << "end.Mortalite" << endl;
-// Rprintf("end.Mortalite\n");
-// fichier << "end.Mortalite" << endl;
+ if(VERBOSE){Rprintf(" | ");}
 
-// Rprintf("call.DynamicPop\n");fichier << "call.DynamicPop" << endl;
-// fichier << "call.DynamicPop" << endl;
+if(VERBOSE){Rprintf("DynamicPop");}
  DynamicPop(list, it, eVar, true);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
-// fichier << "end.DynamicPop" << endl;
-//Rprintf("end.DynamicPop\n");
-//fichier << ".DynamicPop" << endl;
+ if(VERBOSE){Rprintf(" | ");}
 }
-//Rprintf("call.CatchDL\n");fichier << "call.CatchDL" << endl;
-// fichier << "call.CatchDL" << endl;
-CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
-//fichier << "end.CatchDL" << endl;
-//Rprintf("end.CatchDL\n");
-//fichier << "end.CatchDL" << endl;
-
-
+if(VERBOSE){Rprintf("CatchDL");}
+CatchDL(list, it, eVar, VERBOSE);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
+if(VERBOSE){Rprintf(" | ");}
 
 //if (it>0) error("Unexpectedz scondition occurred");
 //if (it<5) {
@@ -906,19 +905,11 @@ CatchDL(list, it, eVar);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(o
 //}
 
 
-//Rprintf("call.Marche\n");fichier << "call.Marche" << endl;
-//fichier << "call.Marche" << endl;
+if(VERBOSE){Rprintf("Marche | ");}
 Marche(list, it);
-//fichier << "end.Marche" << endl;
-//Rprintf("end.Marche\n");
-//fichier << "end.Marche" << endl;
 
-//Rprintf("call.EcoDCF\n");fichier << "call.EcoDCF" << endl;
-//fichier << "call.EcoDCF" << endl;
+if(VERBOSE){Rprintf("EcoDCF \n");}
 EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
-//fichier << "end.EcoDCF" << endl;
-//Rprintf("end.EcoDCF\n");
-//fichier << "end.EcoDCF" << endl;
 
 }
 ////Rprintf("K");

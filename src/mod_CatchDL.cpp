@@ -24,7 +24,7 @@
 
 extern "C" {
 
-void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR)
+void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE = 0)
 {
 
 //        string str1b, str2b, str3b;
@@ -54,7 +54,7 @@ double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
 
 if (cUpdate) {
-//fichier << "cUpdate = " << cUpdate << endl;
+if(VERBOSE){Rprintf(" pUpdate : ");}
 
     SEXP    elmt, dimCst, Dim, dimCst_F_efmit, dimCst_N_eit, dimCst_Z_eit, dimCst_wL_ei, dimCst_wD_ei, dimCst_d_efmit,
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
@@ -151,6 +151,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++)
 for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
   rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t] = rans_Yothsue_fm[ind_f + nbF*ind_m]*reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m]*rnbv[ind_f + nbF*ind_m];
 
+if(VERBOSE){Rprintf("Dyna sp");}
 if (nbE>0) {
 //Rprintf("H1\n");fichier << "H1" << endl;
 
@@ -858,13 +859,13 @@ if (nbE>0) {
 
                     }
 
-                        if (Svec[e]==0) {
-                                SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 30, v_wL_ei);
-                                } else {
-                                    SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 244, v_wL_ei_G1);
-                                    SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 245, v_wL_ei_G2);
-                                }
-                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 31, cFACT5);
+                    if (Svec[e]==0) {
+                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 30, v_wL_ei);
+                    } else {
+                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 244, v_wL_ei_G1);
+                        SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 245, v_wL_ei_G2);
+                    }
+                    SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 31, cFACT5);
 
 
                         /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2152,7 +2153,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
 }
 //on passe aux esp�ces statiques
-
+if(VERBOSE){Rprintf(" . Static sp");}
 if (nbEstat>0) {
 
 //Rprintf("H8\n");fichier << "H8" << endl;
@@ -2534,6 +2535,7 @@ UNPROTECT(3);
 //PrintValue(out_Fbar_et);
 
 } else {
+    if(VERBOSE){Rprintf("cUpdate : ");}
 //fichier << "cUpdate = " << cUpdate << endl;
 //fichier << "ind_t = " << ind_t << endl;
 
@@ -2547,6 +2549,7 @@ for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
   if (ISNA(rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t])) rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t] = 0.0;
 }
 
+if(VERBOSE){Rprintf("Dyna sp");}
 if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
@@ -4097,9 +4100,8 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 //Rprintf("H20\n");fichier << "H20" << endl;
     }
 }
-
 //on passe aux esp�ces statiques //??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
+if(VERBOSE){Rprintf(" . Static sp");}
 if (nbEstat>0) {
 
 //Rprintf("H21\n");fichier << "H21" << endl;
@@ -4294,7 +4296,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
 }
 
-
+if(VERBOSE){Rprintf(" . ");}
 
 
 }

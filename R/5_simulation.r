@@ -22,6 +22,8 @@ setGeneric("IAM.model", function(objArgs, objInput, ...){ #  Generic model####
 )
 
 #' @rdname IAM.model-methods
+#'
+#' @param verbose Show messages to follow the process. Mainly used for debug process.
 setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInput, desc=as.character(NA), mOTH=0, updateE=0,
                   TACbyF=NULL, TACtot=NULL, Ftarg=NULL, W_Ftarg=NULL, MeanRec_Ftarg=NULL,#sont g?n?r?s en interne Ztemp, SPPstatOPT, SPPspictOPT et SPPdynOPT, qui sont ins?r?s dans l'export tacCTRL
                   TACbyFoptimCTRL=list(maxIter = as.integer(7), diffZmax = 0.0001, lambda = 0.9, t_stop = 0),
@@ -33,9 +35,9 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   stochPrice=list(), #liste d'?l?ments nomm?s par esp?ce consid?r?e, chaque ?l?ment ?tant une liste selon le sch?ma :
                                 #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA))
                   parOQD=list(activeQR=as.integer(0),listQR=NULL,listQR_f=NULL),      #10/07/17   activeQR=0 => d?sactiv?, sinon, commence ? l'instant sp?cifi?
-                  ...){
+                  verbose = FALSE, ...){
 
-
+verbose <- verbose || app_dev()
 #Ajout 20/09/2018
 nT <- objInput@specific$NbSteps
 nF <- length(objInput@specific$Fleet)
@@ -69,7 +71,7 @@ if (!is.null(Ftarg) & !is.null(W_Ftarg)) {
   Ftarg <- W_Ftarg <- MeanRec_Ftarg <- NULL
 }
 
-if (!is.null(MeanRec_Ftarg)){
+if (!is.null(MeanRec_Ftarg)){ # ajout Florence
   MeanRec_Ftarg <- lapply(MeanRec_Ftarg,function(x) if (length(x)==1) {
     return(as.integer(x))    #moyenne mobile sur d?lai=n
   } else {
@@ -265,7 +267,7 @@ mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
 if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
 
-cat('Everything is fine before the C\n')
+if(verbose) cat('\n ---- C++ node begin ----\n')
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
                     as.integer(objArgs@arguments$Scenario$active), as.integer(objArgs@arguments$Replicates$active),
@@ -309,7 +311,8 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                                          #de format d?crit par la ligne de code de construction de 'newStochPrice'
                     as.integer(updateE),
                     newParOQD,                                                  #10/07/17
-                    as.character(objArgs@arguments$Replicates$SELECTvar)
+                    as.character(objArgs@arguments$Replicates$SELECTvar),
+                    as.integer(verbose)
               )
 
 

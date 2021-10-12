@@ -140,7 +140,7 @@ SEXP    ZtempList;
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                 SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                 SEXP parBHV, SEXP parQEX,
-                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD);
+                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE);
 
 	//destructeur
     ~BioEcoPar();
@@ -187,7 +187,7 @@ SEXP    ZtempList;
     void DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality);
 
     // Module 'Captures, rejets et d�barquements'
-	void CatchDL(SEXP list, int ind_t, SEXP EVAR);
+    void CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE);
 
     // Module 'March�' : 'modCatch'
     void Marche(SEXP list, int ind_t);

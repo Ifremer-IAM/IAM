@@ -32,6 +32,7 @@ IAM.model(objArgs, objInput, ...)
     corVarTACnby = 2, Blim = NA, Bmax = NA, BlimTrigger = as.integer(0), typeMng = NA),
   stochPrice = list(),
   parOQD = list(activeQR = as.integer(0), listQR = NULL, listQR_f = NULL),
+  verbose = FALSE,
   ...
 )
 }
@@ -41,6 +42,8 @@ IAM.model(objArgs, objInput, ...)
 \item{objInput}{output from \code{\link[IAM]{IAM.input}}}
 
 \item{...}{there is so much more arg.... # TODO}
+
+\item{verbose}{Show messages to follow the process. Mainly used for debug process.}
 }
 \description{
 Modelization method
