@@ -943,7 +943,7 @@ free_vector(multFOTHinterm_e,1,nbE);
 //Rprintf("K2\n");fichier << "K2" << endl;
 //UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajout�s apr�s int�gration de 'parOQD'
 //if (nbEstat>0) UNPROTECT(nbEstat);
-if(pUpdate) UNPROTECT(2);
+if (pUpdate){ UNPROTECT(2); } else {UNPROTECT(1);}
 UNPROTECT(30);
 UNPROTECT(17+20+4+16*6+8+9);//out_
 UNPROTECT(14);

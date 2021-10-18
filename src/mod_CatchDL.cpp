@@ -54,7 +54,7 @@ double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
 
 if (cUpdate) {
-if(VERBOSE){Rprintf(" pUpdate : ");}
+if(VERBOSE){Rprintf(" pUpdate :");}
 
     SEXP    elmt, dimCst, Dim, dimCst_F_efmit, dimCst_N_eit, dimCst_Z_eit, dimCst_wL_ei, dimCst_wD_ei, dimCst_d_efmit,
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
@@ -2153,7 +2153,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
 }
 //on passe aux esp�ces statiques
-if(VERBOSE){Rprintf(" . Static sp");}
+if(VERBOSE){Rprintf(" Static sp");}
 if (nbEstat>0) {
 
 //Rprintf("H8\n");fichier << "H8" << endl;
@@ -2535,7 +2535,7 @@ UNPROTECT(3);
 //PrintValue(out_Fbar_et);
 
 } else {
-    if(VERBOSE){Rprintf("cUpdate : ");}
+    if(VERBOSE){Rprintf(" cUpdate :");}
 //fichier << "cUpdate = " << cUpdate << endl;
 //fichier << "ind_t = " << ind_t << endl;
 
@@ -2549,7 +2549,7 @@ for (int ind_m = 0 ; ind_m < nbM ; ind_m++) {
   if (ISNA(rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t])) rans_Ytot_fm[ind_f + nbF*ind_m + nbF*nbM*ind_t] = 0.0;
 }
 
-if(VERBOSE){Rprintf("Dyna sp");}
+if(VERBOSE){Rprintf(" Dyna sp");}
 if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
@@ -4101,7 +4101,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     }
 }
 //on passe aux esp�ces statiques //??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-if(VERBOSE){Rprintf(" . Static sp");}
+if(VERBOSE){Rprintf(" Static sp");}
 if (nbEstat>0) {
 
 //Rprintf("H21\n");fichier << "H21" << endl;

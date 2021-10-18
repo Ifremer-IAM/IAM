@@ -48,3 +48,4 @@ Suggests:
     rmarkdown,
     knitr
 VignetteBuilder: knitr
+Encoding: UTF-8

@@ -69,11 +69,6 @@ for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
 or use e.g. the RStudio graphical interface
 -->
 
-## See the Wiki section for more support
-
-If you want to contribute code, please email Mathieu.Merzereaud[at]ifremer.fr 
-
-
 
 <!-- Not working because private repo
 
@@ -90,3 +85,8 @@ remotes::install_gitlab("gitlab.ifremer.fr/iam/iam")
 ```
 
 -->
+
+
+## See the Wiki section for more support
+
+If you want to contribute code, please email Mathieu.Merzereaud[at]ifremer.fr

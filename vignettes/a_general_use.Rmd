@@ -90,11 +90,14 @@ stripe <- IAM::IAM.model(args, input, verbose = TRUE)
 ```
 
 
-```{r}
+```{r, eval = FALSE, include = FALSE}
 all.equal(mod@arguments, stripe@arguments)
 all.equal(mod@specific, stripe@specific)
-all.equal(mod@outputSp, stripe@outputSp)
-all.equal(mod@output, stripe@output)
+all.equal(mod@outputSp, stripe@outputSp) # pas la meme longueur lol !!!
+all.equal(mod@output, stripe@output) # pas la meme longueur lol !!!
+
+names(stripe@output[! names(stripe@output) %in% names(mod@output)])
+names(stripe@outputSp[! names(stripe@outputSp) %in% names(mod@outputSp)])
 ```
 
 
