@@ -650,7 +650,8 @@ REPROTECT(fVar_copy = duplicate(fVar),ipx_fVar_copy);//Rprintf("intro0.5\n");fic
 
 
 //Rprintf("intro2\n");fichier << "intro2" << endl;
-if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
+// this function is only present in IAM20 and florence work...where does it comes from ?
+if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it)) ) {
     if(VERBOSE){Rprintf(" | EstimationTACfromF");}
    int oooo = EstimationTACfromF(it) ;
    oooo = oooo * 2;

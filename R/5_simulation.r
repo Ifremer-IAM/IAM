@@ -83,7 +83,7 @@ if (!is.null(MeanRec_Ftarg)){ # ajout Florence
   })
 }
 
-#Ajout 27/03/2018 ----------------
+#Ajout 27/03/2018 ---------------- # TODO replace objArgs@specific with objInput@specific
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
 if ((length(TACbyF)==0) | (length(TACtot)==0)) {
  warning("Pas d'ajustement TAC opere car 'TACbyF' ou 'TACtot' est manquant!!")
@@ -111,8 +111,8 @@ if ((length(TACbyF)==0) | (length(TACtot)==0)) {
 #Ajout 19/11/2014 ----------------
 #on garde une trace de l'objet Arguments initial, car il faudra enrichir l'argument envoy? sous C++ des ?l?ments 'Recrutements' se rapportant aux esp?ces SS3
 objArgsIni <- objArgs
-#...et on compl?te si besoin
-if (any(objArgs@specific$Q%in%1)) {
+#...et on compl?te si besoin # TODO replace objArgs@specific with objInput@specific
+if (any(objArgs@specific$Q%in%1)) { # TODO : non mais non c'est pas possible ca...
 
    listType <- list(modSRactive=as.integer(0),typeMODsr="Mean",parAmodSR=as.double(NA),parBmodSR=as.double(0),parCmodSR=as.double(0),
                     wnNOISEmodSR=as.double(0),noiseTypeSR=as.integer(1),simuSTOCHactive=as.integer(0),typeSIMUstoch=as.integer(1))
@@ -212,6 +212,7 @@ if (length(ParamSPMList)>0) {
 }
 
 #on ?tend les listes 'parOQD' ? l'ensemble des esp?ces mod?lis?es                                          #10/07/17
+# TODO replace objArgs@specific with objInput@specific
 allSpp <- c(objArgs@specific$Species,objArgs@specific$StaticSpp)                                           #10/07/17
 listQR_TMP <- lapply(parOQD$listQR,function(z) rep(z,length=nT)) ; names(listQR_TMP) <- names(parOQD$listQR) ; parOQD$listQR <- listQR_TMP      #10/07/17
 listQR_f_TMP <- lapply(parOQD$listQR_f,function(z) if ((nrow(z)!=nF) & (ncol(z)!=nT)) return(NULL) else return(z)) ; names(listQR_f_TMP) <- names(parOQD$listQR_f) ; parOQD$listQR_f <- listQR_f_TMP    #10/07/17
@@ -280,7 +281,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
-                                 upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)),
+                                 upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)), # eointeger TODO : move this out
                     as.integer(objArgs@arguments$Eco$type-1),
                     as.integer(c(adj = objArgs@arguments$Eco$adj,
                                  lev = objArgs@arguments$Eco$lev,

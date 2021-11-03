@@ -14,7 +14,7 @@
 #' # TODO
 #'
 #' @slot desc Short description of the object. chr.
-#' @slot specific structurak dimension
+#' @slot specific structural dimension
 #' \describe{
 #'   \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
 #'   \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.

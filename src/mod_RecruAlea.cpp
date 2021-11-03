@@ -39,7 +39,7 @@ if (type<3) {
 
     for (int e = 0 ; e < nbE ; e++) {
 
-                    if (recTyp[e]==1) {
+                    if (recTyp[e]==1) { // TODO : equivalent to recTyp[e] because come from logical as num
 
                         PROTECT(elmtIn = getListElement(list, CHAR(STRING_ELT(sppList,e))));
                         if (type==1) {

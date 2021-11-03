@@ -1,3 +1,18 @@
+#' Impact Assesment Model
+#'
+#' IAM (Impact Assessment Model) is a bio-economic model
+#' for the simulation of fisheries dynamics,
+#' integrating specific decision support tools within the
+#' framework of the theoretical implementation of management measures
+#' It is a discrete time, multi-fleet, multi-trade, multi-species annual
+#' bio-economic model with "age" components for the biological part,
+#' and "commercial category" components for the economic part.
+#'
+#' @docType package
+#' @name IAM
+NULL
+
+
 #' If x is `NULL`, return y, otherwise return x
 #'
 #' from ThinkR style
