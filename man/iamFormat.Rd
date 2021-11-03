@@ -15,7 +15,7 @@ iamFormat(
 )
 }
 \arguments{
-\item{object}{An "iamOutput" or "iamOutputRep" object. # TODO link here}
+\item{object}{An \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} object.}
 
 \item{elmt}{Name of the operating variable. chr (1).}
 

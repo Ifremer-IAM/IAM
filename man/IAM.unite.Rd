@@ -10,7 +10,7 @@ IAM.unite(listObj, ...)
 \S4method{IAM.unite}{list}(listObj, ...)
 }
 \arguments{
-\item{listObj}{A list containing "iamOutput" OR "iamOutputRep" objects. Mixed lists are not allowed.}
+\item{listObj}{A list containing \code{\link[IAM]{iamOutput-class}} OR \code{\link[IAM]{iamOutputRep-class}} objects. Mixed lists are not allowed.}
 
 \item{...}{Further arguments :
 \describe{

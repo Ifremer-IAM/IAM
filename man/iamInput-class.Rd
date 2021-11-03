@@ -16,7 +16,7 @@ a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
 \describe{
 \item{\code{desc}}{Short description of the object. chr.}
 
-\item{\code{specific}}{structurak dimension
+\item{\code{specific}}{structural dimension
 \describe{
   \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
   \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.

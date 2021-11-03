@@ -13,7 +13,7 @@
 #' fonction interne d'agregation et de formatage de la donnee a representer
 #' selon divers parametres
 #'
-#' @param object An "iamOutput" or "iamOutputRep" object. # TODO link here
+#' @param object An \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} object.
 #' @param elmt Name of the operating variable. chr (1).
 #' @param spp Name of the considered species (relevant only for some variables). chr (1).
 #' @param agg Index(es) describing dimensions on which agregation must be done,
@@ -145,7 +145,7 @@ if (!is.null(dim(vrbl))) {
 
 #' Formating method
 #'
-#' @param object An "iamOutput" or "iamOutputRep" object. # TODO link here
+#' @param object An \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} object.
 #' @param ... Further arguments :
 #' \describe{
 #' \item{elmt}{ Name of the operating variable. chr.}
@@ -211,9 +211,9 @@ setMethod("IAM.format", signature("iamOutputRep"),function(object, ...){ ## iamO
 # Methode composite issue de IAM.format, ajoutant le regroupement des
 # scenarii --> input des m?thodes graphiques
 
-#' Formating method for grouping various iamOutput or iamOutputRep objects
+#' Formating method for grouping various \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} objects
 #'
-#' @param listObj A list containing "iamOutput" OR "iamOutputRep" objects. Mixed lists are not allowed.
+#' @param listObj A list containing \code{\link[IAM]{iamOutput-class}} OR \code{\link[IAM]{iamOutputRep-class}} objects. Mixed lists are not allowed.
 #' @param ... Further arguments :
 #' \describe{
 #' \item{elmt}{ Name of the operating variable. chr.}

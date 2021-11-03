@@ -13,7 +13,7 @@ IAM.format(object, ...)
 \S4method{IAM.format}{iamOutputRep}(object, ...)
 }
 \arguments{
-\item{object}{An "iamOutput" or "iamOutputRep" object. # TODO link here}
+\item{object}{An \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} object.}
 
 \item{...}{Further arguments :
 \describe{
