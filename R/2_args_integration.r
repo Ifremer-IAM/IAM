@@ -36,7 +36,7 @@ if (classInp=="args") {
   SELECTscen <- input$Scen$SELECTscen
   SELECTvar <- input$Rep$SELECTvar         #character avec intitul?s des variables
   tacfbar <- rbind(TAC=input$Gest$tac,Fbar=input$Gest$fbar)
-  typeG <- input$Gest$typeG
+  typeG <- input$Gest$typeG  # TODO : unused variable ?
   matFM <- input$Gest$mfm
   tacOth <- matrix(as.numeric(NA),nrow=length(sppStat)+length(spp),ncol=length(years),dimnames=list(c(spp,sppStat),years))
   if (!is.null(input$Gest$othSpSup)) {
@@ -1031,6 +1031,9 @@ setMethod("IAM.args", signature("character","character"),function(object, specif
 
 
   # ?tape de modification
+#' To update an iamArgs object, the function require to have original
+#' information about input. This is why at the end of initialization
+#' the specific slot is copied from iamInput to iamArgs
 #' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.character(NA), ...){
 

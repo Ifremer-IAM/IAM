@@ -2,6 +2,7 @@ library(shiny)
 library(shiny.i18n)
 library(shinyWidgets)
 library(shinythemes)
+library(shinyjs)
 
 
 a <- c(
@@ -13,181 +14,131 @@ a <- c(
 
 sp <- c("HKE" = "HKE", "MUT" = "MUT")
 
+ALLVarRep <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth","mu_nbds","mu_nbv","N","Ystat","Lstat","Dstat","Eff",
+               "GVL_fme","StatGVL_fme","GVLtot_fm","GVLav_f","vcst_fm","vcst_f","rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
+               "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f","GVLtot_f","wagen_f","L_efmit","D_efmit",
+               "Fr_fmi","C_efmit","P","Pstat")
+
+mod_spInput <- function(id){
+  ns <- NS(id)
+  tagList(
+    fluidRow(
+      # radioGroupButtons(
+      #   inputId = "recu_mod",
+      #   choices = c("Stock Recrutement Model", "StockSim"),
+      #   justified = TRUE
+      # ),
+      column(
+        width = 8,
+        checkboxInput(ns("sr_mod"), "Stock Recrutement Model", value = TRUE),
+        selectInput(ns("rec_typ"), "Type",
+                    c(
+                      "Mean" = "mean",
+                      "Hockey-Stick" = "Hockey-Stick",
+                      "Beverton-Holt" = "Beverton-Holt",
+                      "Ricker" = "Ricker",
+                      "Shepherd" = "Shepherd",
+                      "Quadratic-HS" = "Quadratic-HS",
+                      "Smooth-HS" = "Smooth-HS"
+                    ),
+                    selectize = FALSE
+        ),
+        numericInput(ns("a"), label = "a parameter", value = 1),
+        numericInput(ns("b"), label = "b parameter", value = 0),
+        numericInput(ns("c"), label = "c parameter", value = 0),
+        awesomeRadio(
+          inputId = ns("Noise_dist"), label = "Noise dist.",
+          choices = c("Norm","LogN"), selected = "Norm", inline = TRUE
+        ),
+        numericInput(ns("noise_dev"), label = "Noise st.dev.", value = 0)
+      ),
+      column(
+        width = 4,
+        checkboxInput(ns("stocksim"), "StockSim", value = FALSE),
+        awesomeRadio(inputId = ns("sim_typ"), label = "Type",
+                     choices = c("1","2","3"), selected = "1"
+        )
+      )
+    )
+  )
+}
+
 # Define UI
 ui <- fluidPage(
+  useShinyjs(),
   fluidRow(
     column(
-      width = 3,
-      div(
+      width = 4,
+      div( # Recruitement panels ####
         class = "option-group",
-        radioButtons(
-          "recrut", "Recruitement",
-          choices = c("SP1", "SP2", "SP3"), inline = TRUE
-        ),
-        radioButtons(
-          "noise", "Noise dist.",
-          choices = c("Norm", "LogN"), inline = TRUE
-        ),
-        radioButtons(
-          "plot_type", "Plot type",
-          c("base", "ggplot2"),
-          inline = TRUE
-        ),
-        conditionalPanel(
-          "input.plot_type === 'base'",
-          selectInput("plot_scaletype", "Scale type",
-            c(
-              "normal" = "normal",
-              "log" = "log",
-              "x factor" = "x_factor",
-              "datetime" = "datetime"
-            ),
-            selectize = FALSE
-          )
-        ),
-        conditionalPanel(
-          "input.plot_type === 'ggplot2'",
-          selectInput(
-            "ggplot_scaletype", "Scale type",
-            c(
-              "normal" = "normal",
-              "reverse (scale_*_reverse())" = "reverse",
-              "log10 (scale_*_log10())" = "log10",
-              "log2 (scale_*_continuous( trans=log2_trans()))" = "log2",
-              "log10 (coord_trans())" = "log10_trans",
-              "log2 (coord_trans())" = "log2_trans",
-              "coord_cartesian()" = "coord_cartesian",
-              "coord_flip()" = "coord_flip",
-              "coord_fixed()" = "coord_fixed",
-              "coord_polar() (doesn't work)" = "coord_polar",
-              "x factor" = "x_factor",
-              "date and time" = "datetime"
-            ),
-            selectize = FALSE
-          ),
-          selectInput(
-            "ggplot_facet", "Facet",
-            c(
-              "none" = "none",
-              "wrap" = "wrap",
-              "grid x" = "grid_x",
-              "grid y" = "grid_y",
-              "grid xy" = "grid_xy",
-              "grid xy free" = "grid_xy_free"
-            ),
-            selectize = FALSE
-          )
-        )
+        tabsetPanel(id = "tabs")
       ),
-      div(
+      div( # Iterative panel ####
         class = "option-group",
-        checkboxInput(
-          "iter", "Iterative",
-          value = FALSE
-        ),
-        conditionalPanel(
-          "input.iter",
-          selectInput("n_iter", "Number of iterations",
-            c(
-              "dix" = "10",
-              "cent" = "100",
-              "mille" = "1000"
-            ),
-            selectize = FALSE
-          ),
-          selectInput("variables", "Output variables",
-            c(
-              "normal" = "B",
-              "r" = "SSB",
-              "log10" = "log10",
-              "log2" = "Ctot",
-              "log10)" = "ytot"
-            ),
-            selectize = FALSE
-          )
+        checkboxInput("iter", "Iterative", value = FALSE),
+        numericInput("niter", label = "Number of iteration", value = 500),
+        multiInput(
+          inputId = "var_rep",
+          label = "Output variables",
+          choices = NULL,
+          choiceNames = ALLVarRep,
+          choiceValues = ALLVarRep
         )
       )
     ),
     column(
-      width = 6,
+      width = 8,
       fluidRow(
         column(
-          width = 3,
-          div(
+          width = 6,
+          div( # Management panel ####
             class = "option-group",
             checkboxInput("manag", "Management", value = FALSE),
-            conditionalPanel(
-              "input.iter",
-              selectInput("n_iter", "Number of iterations",
-                c(
-                  "dix" = "10",
-                  "cent" = "100",
-                  "mille" = "1000"
-                ),
-                selectize = FALSE
-              ),
-              selectInput("variables", "Output variables",
-                c(
-                  "normal" = "B",
-                  "r" = "SSB",
-                  "log10" = "log10",
-                  "log2" = "Ctot",
-                  "log10)" = "ytot"
-                ),
-                selectize = FALSE
-              )
-            )
+            selectInput("man_contr", "Control",
+                        c("Nb vessels"="Nb vessels","Nb trips"="Nb trips"),
+                        selectize = FALSE
+            ),
+            selectInput("variables", "Output variables",
+                        c("TAC"="TAC","Fbar"="Fbar","TAC->Fbar"="TAC->Fbar"),
+                        selectize = FALSE
+            ),
+            awesomeRadio(
+              inputId = "man_typ", label = "Type",choices = c("+","x"),
+              selected = "+", inline = TRUE
+            ),
+            awesomeRadio(
+              inputId = "man_upd", label = "Update",choices = c("Yes","No"),
+              selected = "Yes", inline = TRUE
+            ),
+            numericInput("up_bound", label = "Upper bound", value = 0),
+            numericInput("low_bound", label = "Lower boun", value = 0)
           )
         ),
         column(
-          width = 3,
-          div(
+          width = 6,
+          div( # Economic panel ####
             class = "option-group",
             checkboxInput("eco", "Economic", value = FALSE),
-
             # conditionalPanel("input.eco",
             radioGroupButtons(
-              inputId = "Id066",
-              label = "Label",
-              choices = c(
-                "Complete",
-                "DCF"
-              ),
+              inputId = "Eco_typ", choices = c("Complete","DCF"),
               justified = TRUE
             ),
             awesomeRadio(
-              inputId = "cc",
-              label = "Adj",
-              choices = c(
-                "1",
-                "2"
-              ),
-              selected = "1",
-              inline = TRUE
+              inputId = "cc", label = "Adj", choices = c("1","2"),
+              selected = "1", inline = TRUE
             ),
             awesomeRadio(
-              inputId = "ss",
-              label = "ue_choice",
-              choices = c(
-                "1",
-                "2"
-              ),
-              selected = "1",
-              inline = TRUE
+              inputId = "ss", label = "ue_choice", choices = c("1","2"),
+              selected = "1", inline = TRUE
             ),
             awesomeRadio(
-              inputId = "ii",
-              label = "oths",
-              choices = c("0", "1"),
-              selected = "1",
-              inline = TRUE
+              inputId = "ii", label = "oths", choices = c("0", "1"),
+              selected = "1", inline = TRUE
             ),
             awesomeRadio(
-              inputId = "kk",
-              label = "othsFM",
-              choices = c("0", "1"),
-              selected = "1",
-              inline = TRUE
+              inputId = "kk", label = "othsFM", choices = c("0", "1"),
+              selected = "1", inline = TRUE
             )
             # )
           )
@@ -196,22 +147,53 @@ ui <- fluidPage(
       div(
         class = "option-group",
         checkboxInput("scenar", "Scenario", value = FALSE),
-
-        # conditionalPanel("input.scenar",
-        selectInput("variables", "Output variables",
+        selectInput("scen_var", "Output variables",
           a,
           selectize = FALSE
         )
-        # )
       )
-    ),
+    )
   )
 )
 
 # Define server function
 server <- function(input, output) {
 
+  for( i in sp){
+    appendTab(inputId = "tabs",
+              tabPanel(i, mod_spInput(i)) # TODO : need to reload interface with default once tab is changed
+    )
+  }
+
+
+  observeEvent(input$iter, {
+    toggleState(id = "niter")
+    toggleState(id = "var_rep")
+  })
+
+  observeEvent(input$eco, {
+    toggleState(id = "Eco_typ")
+    toggleState(id = "cc")
+    toggleState(id = "ss")
+    toggleState(id = "ii")
+    toggleState(id = "kk")
+  })
+
+  observeEvent(input$manag, {
+    toggleState(id = "man_contr")
+    toggleState(id = "variables")
+    toggleState(id = "man_typ")
+    toggleState(id = "man_upd")
+    toggleState(id = "up_bound")
+    toggleState(id = "low_bound")
+  })
+
+  observeEvent(input$scenar, {
+    toggleState(id = "scen_var")
+  })
 }
+
+
 
 # Create Shiny object
 shinyApp(ui = ui, server = server)
