@@ -36,7 +36,6 @@ int BioEcoPar::GestionF2(int ind_t)
 //
 //std::stringstream ss, mp;
 //mp << ind_t;
-//ss << EcoIndCopy[0];
 //str1 = str1 + mp.str()+ str3 + ss.str() + str2;
 //
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test_GestionF2.txt", ios::out | ios::trunc);

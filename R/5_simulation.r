@@ -271,49 +271,51 @@ if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
 if(verbose) cat('\n ---- C++ node begin ----\n')
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
-                    as.integer(objArgs@arguments$Scenario$active), as.integer(objArgs@arguments$Replicates$active),
-                    as.integer(objArgs@arguments$Replicates$nbIter), as.integer(objArgs@arguments$Gestion$active),
-                    as.double(mOth),
-                    as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
-                    TACtot,as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
-                    objArgs@arguments$Gestion$othSpSup,as.double(objArgs@arguments$Gestion$effSup),
-                    as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(objArgs@specific$Species,objArgs@specific$StaticSpp))-1,
+                    Scenarii = as.integer(objArgs@arguments$Scenario$active), Bootstrp = as.integer(objArgs@arguments$Replicates$active),
+                    nbBoot = as.integer(objArgs@arguments$Replicates$nbIter),
+                    GestInd = as.integer(objArgs@arguments$Gestion$active),
+                    mOth = as.double(mOth),
+                    bounds = as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
+                    TAC = TACtot, FBAR = as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
+                    othSpSup = objArgs@arguments$Gestion$othSpSup, effSup = as.double(objArgs@arguments$Gestion$effSup),
+                    GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(objArgs@specific$Species,objArgs@specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
                                  upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)), # eointeger TODO : move this out
-                    as.integer(objArgs@arguments$Eco$type-1),
-                    as.integer(c(adj = objArgs@arguments$Eco$adj,
-                                 lev = objArgs@arguments$Eco$lev,
-                                 ue_choice = objArgs@arguments$Eco$ue_choice,
-                                 oths = objArgs@arguments$Eco$oths,
-                                 othsFM = objArgs@arguments$Eco$othsFM,
-                                 perscCalc = objArgs@arguments$Eco$perscCalc,
-                                 report = objArgs@arguments$Eco$report)),
-                    as.double(objArgs@arguments$Eco$dr),
-                    as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),
-                    lapply(objArgs@arguments$Recruitment,function(x) as.double(c(rep(x$parAmodSR,length=nT),rep(x$parBmodSR,length=nT),
+                    EcoDcf = as.integer(objArgs@arguments$Eco$type-1),
+                    persCalc = as.integer(c(# adj = objArgs@arguments$Eco$adj,
+                                 # lev = objArgs@arguments$Eco$lev,
+                                 # ue_choice = objArgs@arguments$Eco$ue_choice,
+                                 # oths = objArgs@arguments$Eco$oths,
+                                 # othsFM = objArgs@arguments$Eco$othsFM,
+                                 perscCalc = objArgs@arguments$Eco$perscCalc # ,
+                                 # report = objArgs@arguments$Eco$report
+                                 )),
+                    dr = as.double(objArgs@arguments$Eco$dr),
+                    SRind = as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),
+                    listSR = lapply(objArgs@arguments$Recruitment,function(x) as.double(c(rep(x$parAmodSR,length=nT),rep(x$parBmodSR,length=nT),
                             rep(x$parCmodSR,length=nT),rep(x$wnNOISEmodSR,length=nT),rep(x$noiseTypeSR,length=nT)))),#modif MM 27/08/2013 : permet de d?finir un jeu de param?tres SR par ann?e en vectorisant (? la main) chaque composante
-                    lapply(objArgs@arguments$Recruitment,function(x)
+                    TypeSR = lapply(objArgs@arguments$Recruitment,function(x)
                                 as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))),
-                    as.double(objArgs@arguments$Gestion$mfm),
-                    TACbyF, #as.double(objArgs@arguments$Gestion$TACbyF),
-                    Ftarg, W_Ftarg, MeanRec_Ftarg,
-                    parBehav,
-                    list(active=as.integer(parOptQuot$active),pxQuIni=parOptQuot$pxQuIni, pxQuMin=parOptQuot$pxQuMin,
+                    mFM = as.double(objArgs@arguments$Gestion$mfm),
+                    TACbyF = TACbyF, #as.double(objArgs@arguments$Gestion$TACbyF),
+                    Ftarg = Ftarg, W_Ftarg = W_Ftarg, MeanRec_Ftarg = MeanRec_Ftarg,
+                    parBHV = parBehav,
+                    parQEX = list(active=as.integer(parOptQuot$active),pxQuIni=parOptQuot$pxQuIni, pxQuMin=parOptQuot$pxQuMin,
                           pxQuMax=parOptQuot$pxQuMax, lambda=as.double(parOptQuot$lambda),sdmax=as.double(parOptQuot$sdmax), ftol=as.double(parOptQuot$ftol), itmax = as.integer(parOptQuot$itmax),
                          holdings = parOptQuot$holdings),                           #fonctionne en conjugaison avec TACbyF
-                    list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
+                    tacCTRL = list(tolVarTACinf=as.double(tacControl$tolVarTACinf),tolVarTACsup=as.double(tacControl$tolVarTACsup),
                           corVarTACval=as.double(tacControl$corVarTACval),corVarTACnby=as.integer(tacControl$corVarTACnby),
                           Blim=as.double(tacControl$Blim),Bmax=as.double(tacControl$Bmax),BlimTrigger=as.integer(tacControl$BlimTrigger),typeMng=as.integer(tacControl$typeMng),
                           maxIter=as.integer(TACbyFoptimCTRL$maxIter),diffZmax=as.double(TACbyFoptimCTRL$diffZmax),lambda=as.double(TACbyFoptimCTRL$lambda),t_stop=as.integer(TACbyFoptimCTRL$t_stop),
                           Ztemp=Ztemp, SPPstatOPT=SPPstatOPT, SPPspictOPT=SPPspictOPT, SPPdynOPT=SPPdynOPT, recList=recList, recParamList=recParamList, ParamSPMList=ParamSPMList), #for?age recrutements ins?r?
-                    newStochPrice,       #liste d'?l?ments esp?ce (pas forc?ment toutes pr?sentes, liste vide aussi possible)
+                    stochPrice = newStochPrice,       #liste d'?l?ments esp?ce (pas forc?ment toutes pr?sentes, liste vide aussi possible)
                                          #de format d?crit par la ligne de code de construction de 'newStochPrice'
-                    as.integer(updateE),
-                    newParOQD,                                                  #10/07/17
-                    as.character(objArgs@arguments$Replicates$SELECTvar),
-                    as.integer(verbose)
+                    updateE = as.integer(updateE),
+                    parOQD = newParOQD,                                                  #10/07/17
+                    bootVar = as.character(objArgs@arguments$Replicates$SELECTvar),
+                    verbose = as.integer(verbose)
               )
 
 

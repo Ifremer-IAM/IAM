@@ -657,7 +657,7 @@ void BioEcoPar::QuotaMarket(SEXP list, SEXP pQuotaIni, SEXP pQuotaMin, SEXP pQuo
     while(GoOn && (itQ<10)){
 //            fichier << "itQ = " << itQ << endl;
 
-        EcoDCF(listTemp, ind_t, EcoIndCopy[4], drCopy);
+        EcoDCF(listTemp, ind_t, persCalc, drCopy);
 
         PROTECT(GOS_f = VECTOR_ELT(out_EcoDCF, 35));
         r_GOS_f = REAL(GOS_f);

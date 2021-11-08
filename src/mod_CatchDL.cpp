@@ -34,7 +34,6 @@ void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE = 0)
 //
 //        std::stringstream ssi, ssy;
 //        ssi << ind_t;
-//        ssy << EcoIndCopy[0];
 //        str1b = str1b + ssi.str() + str3b + ssy.str() + str2b;
 //
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Catch_DL.txt" , ios::out | ios::trunc);

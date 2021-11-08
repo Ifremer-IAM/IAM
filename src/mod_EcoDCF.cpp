@@ -9,7 +9,7 @@
 
 extern "C" {
 
-void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
+void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
 {
 
 //ofstream fichier;
@@ -1361,13 +1361,13 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 
             }
 
-            if (perscCalc<2) {
+            if (persCalc<2) {
 
                 r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
                     r_rtbs_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]];
 
-            } else if (perscCalc==5){
+            } else if (persCalc==5){
 
                 r_cshrT_f_m_out[ind_f*eF_fm[0] + ind_m*eF_fm[1] + 0*eF_fm[2] + ind_t*eF_fm[3]] =
                     0.01 * r_cshr_f_m[ind_f*dim_cshr_f_m[0] + ind_m*dim_cshr_f_m[1] + 0*dim_cshr_f_m[2] + ind_t*dim_cshr_f_m[3]] *
@@ -1415,7 +1415,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
             //-- 14. cshrT_f
 
 
-        if (perscCalc==0) {  //salaires par marin fixes
+        if (persCalc==0) {  //salaires par marin fixes
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -1424,7 +1424,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 
         }
 
-        if (perscCalc==1) {  //part equipage constante (RAP)
+        if (persCalc==1) {  //part equipage constante (RAP)
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -1432,7 +1432,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 
         }
 
-        if (perscCalc==2) {  //part equipage constante calculee (RAP) - ccwr
+        if (persCalc==2) {  //part equipage constante calculee (RAP) - ccwr
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_ccwr_f2[ind_f] *
@@ -1441,7 +1441,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
         }
 
 
-        if (perscCalc==3) {  //part equipage constante (RAP) + salaire marin supplementaire fixe
+        if (persCalc==3) {  //part equipage constante (RAP) + salaire marin supplementaire fixe
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -1453,7 +1453,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
         }
 
 
-        if (perscCalc==4) {  //part equipage constante calculee (RAP)- salaires marin supplementaire fixe
+        if (persCalc==4) {  //part equipage constante calculee (RAP)- salaires marin supplementaire fixe
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_ccwr_f2[ind_f] *
@@ -1464,7 +1464,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
 
         }
 
-        if (perscCalc==5) {  //part equipage constante (GVL)
+        if (persCalc==5) {  //part equipage constante (GVL)
 
             r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 0.01*r_cshr_f[ind_f*dim_cshr_f[0] + 0*dim_cshr_f[1] + 0*dim_cshr_f[2] + ind_t*dim_cshr_f[3]] *
@@ -1535,7 +1535,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int perscCalc, double dr)
         r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
            r_cshrT_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]];
 
-        if ( (perscCalc==0) | (perscCalc==1) | (perscCalc==3) ) {
+        if ( (persCalc==0) | (persCalc==1) | (persCalc==3) ) {
 
             r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
                 r_ccw_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] + r_opersc_f2[ind_f];

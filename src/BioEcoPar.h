@@ -112,10 +112,10 @@ SEXP Qholdings;
 
 int     nbT, nbF, nbM, nbMe, nbE, nbEstat, nbP,nbEall,nbEQuota,nbEQuotaMarket, nbEQuotaMarket_dyn,//dimensions
         curQ, spQ, scen, //application du sc�nario??
-        bhv_active /*application du module report d'effort*/, type, boot, nbBoot, ecodcf, typeGest, //special request ICES 2013 : pistage des r�gles de sc�nario int�gr� dans la variable out_typeGest
+        bhv_active /*application du module report d'effort*/, type, /*boot, nbBoot,*/ ecodcf, typeGest, //special request ICES 2013 : pistage des r�gles de sc�nario int�gr� dans la variable out_typeGest
         var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
         IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'esp�ces et de flottilles consid�r�s*/, corVarTACnby_CPP, Blim_trigger, maxIter, t_stop,
-        *SRInd, *EcoIndCopy, *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement al�atoire d�fini par la m�thode impl�ment�e RecAlea
+        *SRInd, /**EcoIndCopy,*/ *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement al�atoire d�fini par la m�thode impl�ment�e RecAlea
 
 
 double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de mod�le de prix
@@ -136,9 +136,9 @@ SEXP    ZtempList;
 
 	//constructeur
     BioEcoPar(SEXP list, SEXP listSpec, SEXP listStochastic, SEXP listScen,
-                SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
+                SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp , */ // TODO : remove unused arg
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
-                SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
+                SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                 SEXP parBHV, SEXP parQEX,
                 SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE);
 
@@ -193,7 +193,7 @@ SEXP    ZtempList;
     void Marche(SEXP list, int ind_t);
 
     // Module 'Economie' DCF
-    void EcoDCF(SEXP list, int ind_t,int perscCalc,double dr);
+    void EcoDCF(SEXP list, int ind_t,int persCalc,double dr);
 
     // Module Gestion
     //double fxTAC_glob(double mult);

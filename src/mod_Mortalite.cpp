@@ -38,7 +38,6 @@ PROTECT(Flist = getListElement(list, "Fleet"));
 //
 //        std::stringstream ssj, ssz;
 //        ssj << ind_t;
-//        ssz << EcoIndCopy[0];
 //        str1c = str1c + ssj.str() + str3c + ssz.str() + str2c;
 //
 //        ofstream fichier2(str1c.c_str() , ios::out | ios::trunc);

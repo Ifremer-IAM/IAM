@@ -23,9 +23,9 @@
 //------------------------------------------------------------------------------------
 
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
-                     SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBootstrp,
+                     SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp, */ // TODO : remove unused arg
                      SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
-                     SEXP EcoInd, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
+                     SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                      SEXP parBHV, SEXP parQEX,
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE)
 {
@@ -93,7 +93,6 @@ nbEstat = length(sppListStat);
 nbP = 0;
 
 ecodcf = INTEGER(EcoDcf)[0];
-EcoIndCopy = INTEGER(EcoInd);
 drCopy = REAL(dr)[0];
 
 //int conform = 0;
@@ -103,8 +102,8 @@ SEXP FList_copy, list_copy, eVar_copy, eStatVar_copy, fVar_copy;
 recType1 = INTEGER(RecType1);//vecteur d'entiers de longueur nbE
 recType2 = INTEGER(RecType2);//vecteur d'entiers de longueur nbE
 recType3 = INTEGER(RecType3);//vecteur d'entiers de longueur nbE
-boot = INTEGER(Bootstrp)[0];
-nbBoot = INTEGER(nbBootstrp)[0];
+// boot = INTEGER(Bootstrp)[0]; // TODO : remove unused arg
+// nbBoot = INTEGER(nbBootstrp)[0];
 boolQ = true;// param�tre vou� � rester fixe -> on calculera toujours la capturabilit� afin de moduler la mortalit� en fonction de l'effort de p�che
 constMM = true; //on calcule la capturabilit� via l'effort par flottille (incompatibilit� des niveaux m�tiers entre bio et �co)
 fUpdate = true;    // � t=0, on remet � jour
@@ -660,7 +659,7 @@ if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | 
 
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
    if(VERBOSE){Rprintf("QuotaMarket");}
-   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(EcoInd)[4]);
+   QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(persCalc)[0]);
    if(VERBOSE){Rprintf(" | ");}
 }
 
@@ -910,7 +909,7 @@ if(VERBOSE){Rprintf("Marche | ");}
 Marche(list, it);
 
 if(VERBOSE){Rprintf("EcoDCF \n");}
-EcoDCF(list, it, INTEGER(EcoInd)[4], REAL(dr)[0]);
+EcoDCF(list, it, INTEGER(persCalc)[0], REAL(dr)[0]);
 
 }
 ////Rprintf("K");
