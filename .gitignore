@@ -12,3 +12,4 @@ src/*.o
 inst/doc
 inst/extdata
 .vscode/
+dev/raw_data
