@@ -1,6 +1,6 @@
 
 
-
+#' @importFrom tidyr pivot_longer pivot_wider
 #' @param file filepath with an .xlsx extention.
 #' @param sheet sheet name.
 # TODO : is this very usefull since we always load specific one ?
