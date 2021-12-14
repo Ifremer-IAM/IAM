@@ -2,25 +2,28 @@
 
 #' convertInput
 #'
-#' # TODO
+#' Fonction de ventilation du jeu de donnee
 #'
 #' @param inp # TODO
 #' @param Fq_fmi # TODO
 #' @param Fg_fmi # TODO
+#' @param verbose TRUE will print information about the function process.
+#' Implemented for debug purpose only.
 #'
 #' @importFrom abind adrop
 #'
-convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
+convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
 
   namF <- inp@specific$Fleet ; nF <- length(namF)
   namM <- inp@specific$Metier ; nM <- length(namM)
-  llF <- list()
+  llF <- list() # TODO : initialise with good length and names
 
   #1ere etape : ventilation de la mortalite (ATTENTION : ici, la ventilation sur indices non communs n'est pas envisag?e)
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   for (i in inp@specific$Species) {
+    if(verbose) cat("--", i, ' :')
     if (inp@specific$Q[i]==0 & inp@specific$S[i]==0) {
-
+      if(verbose) cat(' is XSA')
       namI <- inp@specific$Ages[[i]] ; nI <- length(namI)
 
       Fini <- inp@input[[i]]$F_fmi
@@ -42,13 +45,15 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
         if (attributes(Fini)$DimCst[2]==0) {                                         #ie F = Fi (cas 1, 2)
           if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[2:3]>0) & attributes(Ci)$DimCst[3]>0) {   #ie C_mi renseign? avec composante m?tier et ?ge, et C_i renseign? avec composante ?ge -> cas 1 ou 2
             if (attributes(Cmi)$DimCst[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
-              Ffmi[] <- Cmi[]
+              Ffmi[] <- Cmi[] # TODO : is it usefull ? add some time.
               aggCmi <- apply(Cmi,3,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]  #on remplace dans Ci les valeurs agr?g?es issues de C_mi sup?rieures
               Ffmi <- Ffmi*rep(Fini/Ci,each=nF*nM)
             } else {                                                                  #ie C_mi = Cmi (cas 1)
-              Fmi[] <- Cmi[]
-              aggCmi <- apply(Cmi,2,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]
+              Fmi[] <- Cmi[] # TODO : useless line, write Fmi as Cmi below
+              aggCmi <- apply(Cmi,2,sum,na.rm=TRUE) # TODO : colSums
+              Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]
               Fmi <- Fmi*rep(Fini/Ci,each=nM)
+              # TODO : replace by Fmi*matrix(Fini/Ci, ncol = nI, nrow = nM, byrow = TRUE)
             }
           } else { if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(attributes(Ymi)$DimCst[2:3]>0) & attributes(Yi)$DimCst[3]>0) {   #ie Y_mi renseign? avec composante m?tier et ?ge, et Y_i renseign? avec composante ?ge -> cas 1 ou 2
             if (attributes(Ymi)$DimCst[1]>0) {                                #ie Y_mi = Yfmi  (cas 2)
@@ -65,7 +70,7 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
           }                          #
           }
         } else {
-          Fmi[] <- Fini[]
+          Fmi[] <- Fini[] # TODO : remonter ce cas dans le premier if.
         }
 
         #on poursuit avec la ventilation flottille si Ffmi non compl?t? (on suppose ? ce stade que Fmi a ?t? compl?t?)
@@ -82,7 +87,7 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
               Ffmi <- Ffmi*rep(Fmi/Yi,each=nF)
             } else {                                                                # il faut alors utiliser les donn?es de d?barquements des feuillets Eco, redistribu?es par m?tierBio via la matrice fm
               if (!all(is.na(Lref)) & !all(is.na(FM)) & attributes(Ymi)$DimCst[1]==0 & attributes(Ymi)$DimCst[2]>0) { #cas 3 avec Ctot_m calcul? ? partir de Y_mi
-                CtotM <- apply(Ymi,1,sum,na.rm=TRUE)
+                CtotM <- apply(Ymi,1,sum,na.rm=TRUE) # TODO : rowSums
                 Cfm <- FM*as.vector(Lref)
                 aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
                 Ffmi[] <- Cfm/rep(CtotM,each=nF)
@@ -106,16 +111,17 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL) {
       }
 
       # ici, Ffmi devrait etre dispo
-
+      if(verbose) cat(' check')
       if (all(is.na(Ffmi))) stop("wrong or missing data for F allocation! Check C_mi, C_i, Y_mi, Y_i, or Lref_f_m inputs!!")
 
       llF[[i]] <- Ffmi
 
-    } else { if (inp@specific$Q[i]==1 & inp@specific$Q[i]==0){
+    } else if (inp@specific$Q[i]==1 & inp@specific$S[i]==0){
+      if(verbose) cat(' is SS3')
       llF[[i]] <- adrop(Fq_fmi[[i]][1,1,,,,drop=FALSE],1:2)
     } else if (inp@specific$Q[i]==0 & inp@specific$S[i]==1){
+      if(verbose) cat(' is SEX')
       llF[[i]] <- adrop(Fg_fmi[[i]][1,,,,drop=FALSE],1)
-    }
     }
   }
 
@@ -668,15 +674,18 @@ result_filtre <- function(result, indEmpt){
   #r?gles des tables 1d :
   #une seule colonne de num?riques
 
-  if (length(tbl1D)>0) {tbl1D <- lapply(tbl1D,function(x) x[,1:((1:ncol(x))[!substring(as.matrix(x[1,]),1,3) %in% prefix][1])])
-  invisible(lapply(1:length(tbl1D),function(x) tbl1D[[x]][tbl1D[[x]]==-1] <<- as.numeric(NA)))}
+  if (length(tbl1D)>0) {
+    tbl1D <- lapply(tbl1D,function(x) x[,1:((1:ncol(x))[!substring(as.matrix(x[1,]),1,3) %in% prefix][1])])
+    invisible(lapply(1:length(tbl1D),function(x) tbl1D[[x]][tbl1D[[x]]==-1] <<- as.numeric(NA))) # TODO : quel est le but de cette ligne ? pkoi value == -1 ?
+  }
 
   #r?gles des tables 2d :
   #une colonne de num?rique doit ?tre pr?c?d?e d'une variable
 
-  if (length(tbl2D)>0) {tbl2D <- lapply(tbl2D,function(x) x[,apply(x,2,function(y) any(substring(as.matrix(y),1,3) %in% prefix))])
-  invisible(lapply(1:length(tbl2D),function(x) tbl2D[[x]][tbl2D[[x]]==-1] <<- as.numeric(NA)))}
-
+  if (length(tbl2D)>0) {
+    tbl2D <- lapply(tbl2D,function(x) x[,apply(x,2,function(y) any(substring(as.matrix(y),1,3) %in% prefix))])
+    invisible(lapply(1:length(tbl2D),function(x) tbl2D[[x]][tbl2D[[x]]==-1] <<- as.numeric(NA)))
+  }
   #on peut maintenant s?parer les variables
   #pour cela, il faut tout mettre sous forme 1D
   if (length(tbl2D)>0) tbl2 <- lapply(tbl2D,IAM:::twoDto1D,"2D") else tbl2 <- NULL
@@ -785,7 +794,7 @@ init_listHisto <- function(List, t_init, t_hist_max, nbStep){
 #' @importFrom methods rbind2 new
 #' @importFrom utils read.table
 read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
-                       desc = "My input", folderFleet = NULL) {
+                       desc = "My input", folderFleet = NULL, verbose = FALSE ) {
   if(!is.null(getOption("dev"))){ # will be triggered if option(dev = TRUE)
     rm(list = ls())
     library(openxlsx)
@@ -808,6 +817,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   }
 
   namList <- gsub("Stock__","",nam_stock) # extract species names
+  if(verbose) cat('Species :', namList, '\n')
 
   #LL <- list(historique=list(),input=list(),scenario=list()) ; LL$historique <- LL$input <- vector("list", length(namList))
   #names(LL$historique) <- names(LL$input) <- namList
@@ -916,6 +926,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   Fleet <- Fleet[Fleet[,4]=="",] ### End Fleet ####
   # ici ressort Fleet, Fstock, MOD, modF, modMbio, modMeco
   rm(folderFleet)
+  if(verbose) cat('Fleet done \n')
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   ## Init LL ####
@@ -929,6 +940,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   ##Scenarii ####
   ListS <- read.Scenar(file)
+  if(verbose) cat('read.Scenar \n')
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   ## Market sheet ####
@@ -938,7 +950,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   Market <- as.matrix(rbind2("",Market))
 
   Market[is.na(Market)] <- ""
-
+  if(verbose) cat('Market read \n')
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   ## Stock Param ####
   #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -947,6 +959,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   if (n_stock>0) {
     ### Dyna Sp ####
     for (k in 1:n_stock) {
+      if(verbose) cat('begin ', namList[k], ' -')
 
       result <- read.sheet(file = file, sheet = nam_stock[k])
 
@@ -962,7 +975,6 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       vec <- vec[vec!=""]
       #MOD <- lapply(c("i__","l__","c__"),function(x) {gsub(x,"",unique(vec[grepl(x,vec)]))})
       MOD <- lapply(c("i__","l__"),function(x) {gsub(x,"",unique(vec[sapply(vec,function(y) substring(y,1,3)==x)]))})
-
 
       if (k==1) {            #on insere les variables 'fm' et 'icat' et marche
 
@@ -984,7 +996,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
                          eval(parse('',text=paste("cbind(",paste(c("tabicat",rep("\"\"",ncolMax-ncol(tabicat))),collapse=","),")",sep=""))))
 
       }
-
+      if(verbose) cat(' matrix')
       result[is.na(result)] <- "NA"
 
       #on termine en analysant les modalit?s de la derni?re variable (cat?gorie)
@@ -1014,7 +1026,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       #  List[[i]] <- tempMM[apply(tempMM,1,function(x) !any(is.na(x))),]
       #  }            #modif 17/04/2013
 
-
+      if(verbose) cat(' insert_mat')
       #si k==1, on n'oublie pas d'extraire les donn?es "fm" et "mm" pour les ins?rer avec les donn?es flottille par esp?ce
       if (k==1) {
         TAB_FM <- do.call("rbind",lapply(List,function(x) if ("v__fm"%in%x$v) {x$e <- gsub("e__","",x$e) ; x$v <- gsub("v__","",x$v) ; return(x[x$v%in%"fm",names(Fstock)]) } else NULL))
@@ -1035,20 +1047,21 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       #on peut int?grer ici les tables de sc?narios
 
       #test pour savoir quelles tables int?grer dans la liste d?j? construite
-      testS <- lapply(ListS,function(x) { tst <- FALSE
-      if ((as.character(x$v[1])%in%paste("v__",as.character(rec$Alias),sep="")) & !"e"%in%names(x)) {
-        tst <- TRUE
-      } else {
-        if ("e"%in%names(x)) {
-          if (namList[k]%in%gsub("e__","",as.character(x$e))) tst <- TRUE
+      testS <- lapply(ListS,function(x) {
+        tst <- FALSE # TODO : single if statement here
+        if ((as.character(x$v[1])%in%paste("v__",as.character(rec$Alias),sep="")) & !"e"%in%names(x)) {
+          tst <- TRUE
+        } else {
+          if ("e"%in%names(x)) {
+            if (namList[k]%in%gsub("e__","",as.character(x$e))) tst <- TRUE
+          }
         }
-      }
-      return(tst)})
+        return(tst)
+        })
 
       #test de donn?e flottille (? n'op?rer que lors de la premi?re it?ration)
       if (k==1) testF <- lapply(ListS,function(x) { (!as.character(x$v[1])%in%paste("v__",as.character(rec$Alias),sep="")) &
           (!"e"%in%names(x)) })
-
 
       ListStemp <- lapply(ListS,function(x) {x$v <- paste(x$v,x$s,sep="") ; return(x)})
       keep <- ListStemp[unlist(testS)]
@@ -1063,7 +1076,6 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(keep)>0) List <- c(List,keep)
 
 
-
       List <- lapply(List,function(x) split(x[,-match("v",names(x)),drop=FALSE],as.character(x[,match("v",names(x))])))
       namL <- gsub("v__","",unlist(lapply(List,names)))
       List <- unlist(List,recursive=FALSE,use.names = FALSE)
@@ -1076,7 +1088,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       return(tt)})
       names(List) <- Nam
 
-
+      if(verbose) cat(' histo')
       #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
       #il faut consid?rer l'historique... (t<=t_init)
       res <- IAM:::init_listHisto(List, t_init, t_hist_max, nbStep)
@@ -1084,6 +1096,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       rm(res)
 
       #on recode les noms de variables conform?ment ? 'rec' (on ajoute les variables SS3 et Sex-based pilotables par le module scenario)
+      # TODO : use paste0 here for god sake !
       SS3nam_N <- paste("Ni0_S",1:4,sep="")
       SS3nam_F <- paste("Ffmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
       SS3nam_Flanwt <- paste("FLWfmi_",as.vector(t(outer(paste("S",1:4,sep=""),paste("M",1:4,sep=""),paste,sep=""))),sep="")
@@ -1101,11 +1114,13 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       Sexnam_doth <- paste("doth_i_G",1:2,sep="")
       Sexnam_d <- paste("d_i_G",1:2,sep="")
       Sexnam_Fbar <- paste("Fbar_G",1:2,sep="")
-
+      # TODO : why twice variable here ?
       renam <- c(as.character(rec$Variable),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
-                 Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar) ;
+                 Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar) ; # TODO : why ??
+      # TODO : why not use renam simply ?
       names(renam) <- c(as.character(rec$Alias),as.character(rec$Variable),c("OD_e","theta_e","Pst_e"),SS3nam_N,SS3nam_F,SS3nam_Flanwt,SS3nam_Fdiswt,
                         Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar)
+      # TODO : same as before...use renam
       renam <- renam[!duplicated(names(renam))]
       names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)]
       #et on applique le multiplicateur ? chaque variable dans les deux listes
@@ -1172,7 +1187,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       indEc <- apply(do.call("rbind",lapply(c("nbv_f_m","cnb_f_m","nbds_f_m","effort1_f_m","effort2_f_m","Lref_f_m","Lref_f_m_e","Lref_f_m_e","Lref_f_m_e","GVLref_f_m",
                                               "GVLref_f_m_e","GVLref_f_m_e","GVLref_f_m_e","gc_f_m","nbh_f_m","nbtrip_f_m","fc_f_m","vf_f_m",
                                               "ovc_f_m","oilc_f_m","bc_f_m","foc_f_m","icec_f_m","cshr_f_m"),function(x) grepl(x,names(listScenar)))),2,any)
-
+      if(verbose) cat(' eco')
       listScenarBio <- lapply(listScenar[!indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
       listScenarEco <- lapply(listScenar[indEc],standFormat,nbStep,paste("f__",modF,sep=""),paste("m__",modMeco,sep=""),paste("i__",MOD[[1]],sep=""),paste("c__",MOD[[3]],sep=""),ALK,NA)
       listScenar <- c(listScenarBio,listScenarEco)
@@ -1200,6 +1215,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
         names(listScenar)[testSt] <- paste(names(listScenar)[testSt],namList[k],sep="e__")
       }
 
+      # TODO : use a function here !
       #il ne reste plus qu'? transformer les captures en nombres en captures en poids   (on fera de m?me pour la partie historique)
       if (length(listInput$Y_mi)==0) {
         if (length(listInput$C_mi)!=0) {
@@ -1260,6 +1276,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       LL$input[[k]] <- listInput
       LL$scenario <- c(LL$scenario,listScenar)
 
+      if(verbose)cat(namList[k], ' done\n')
     }
 
   } else {
@@ -1626,7 +1643,7 @@ setMethod("IAM.input", signature("character", "missing", "missing", "missing"),
                                     FqLwt_i=NULL,iniFqLwt_i=NULL,FqLwt_fmi=NULL,iniFqLwt_fmi=NULL,
                                     FqDwt_i=NULL,iniFqDwt_i=NULL,FqDwt_fmi=NULL,iniFqDwt_fmi=NULL,
                                     Nt0s1q=NULL,Ni0q=NULL,iniNt0q=NULL,matwt=NULL,
-                                    Fg_fmi=NULL,  dg_fmi=NULL,...) {
+                                    Fg_fmi=NULL,  dg_fmi=NULL, verbose = FALSE, ...) {
                                                                                #Fq_i matrice season*morph*age
                                                                                #Fq_fmi matrice season*morph*flottille*metier*age
                                                                                #Nt0s1q matrice morph*age  (Effectifs initiaux de projection (saison 1 de t=1) par cohorte)
@@ -1640,11 +1657,13 @@ if (!substring(fileIN,nchar(fileIN)-4,nchar(fileIN))%in%".xlsx") stop("'fileIN' 
 #   stop("'fileIN' must be an .xlsx or .xls file!!")
 # }
 #require(abind)
+if(verbose) cat('Highway to hell \n')
+out <- IAM:::read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet, verbose = verbose)
+if(verbose) cat('read.input done \n')
 
-out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet)
-
-
-
+## SS3 init ####
+# TODO : Replace this with a more simpler common check.
+# TODO : maybe group this in a class !
 nmQ <- names(Fq_i) ; nmQ <- names(Fq_fmi)[names(Fq_fmi)%in%nmQ] ; nmQ <- names(Nt0s1q)[names(Nt0s1q)%in%nmQ]
 nmQ <- names(Ni0q)[names(Ni0q)%in%nmQ] ; nmQ <- names(FqLwt_i)[names(FqLwt_i)%in%nmQ] ; nmQ <- names(FqLwt_fmi)[names(FqLwt_fmi)%in%nmQ]
 nmQ <- names(FqDwt_i)[names(FqDwt_i)%in%nmQ] ; nmQ <- names(FqDwt_fmi)[names(FqDwt_fmi)%in%nmQ]
@@ -1653,12 +1672,25 @@ nmQ <- names(iniFqLwt_i)[names(iniFqLwt_i)%in%nmQ] ; nmQ <- names(iniFqLwt_fmi)[
 nmQ <- names(iniFqDwt_i)[names(iniFqDwt_i)%in%nmQ] ; nmQ <- names(iniFqDwt_fmi)[names(iniFqDwt_fmi)%in%nmQ]
 nmQ <- names(iniNt0q)[names(iniNt0q)%in%nmQ] ; nmQ <- names(matwt)[names(matwt)%in%nmQ]
 out@specific$Q[out@specific$Species%in%nmQ] <- as.integer(1)
+# TODO : replace above with out@specific$Q[nmQ] <- 1L
 
-nmS <- names(Fg_fmi) ; nmS <- names(dg_fmi)[names(dg_fmi)%in%nmS] # D'ou ca sort ca la !?
-out@specific$S[out@specific$Species%in%nmS] <- as.integer(1)
+## SEX init ####
+if(!is.null(Fg_fmi) & !is.null(dg_fmi)){
+  nmS <- names(Fg_fmi) ; nmS <- names(dg_fmi)[names(dg_fmi)%in%nmS]
+  out@specific$S[out@specific$Species%in%nmS] <- as.integer(1)
+} else if(is.null(Fg_fmi) & is.null(dg_fmi)){
+  nmS <- NULL
+} else {
+  stop('To add sex to IAM, you need both Fg_fmi and dg_fmi.')
+}
+if(verbose) cat('Initiated SS3 and sex \n')
 
-if (all(is.na(out@specific$Species))) OUT <- out else OUT <- convertInput(out,Fq_fmi=Fq_fmi, Fg_fmi=Fg_fmi)
-
+if (all(is.na(out@specific$Species))){
+  OUT <- out
+}else{
+  OUT <- convertInput(out,Fq_fmi=Fq_fmi, Fg_fmi=Fg_fmi, verbose = verbose)
+}
+if(verbose) cat('convertInput done \n')
 
 #sorting
 ODpar_list <- unlist(lapply(OUT@input,function(x) x$OD_e))
@@ -1683,6 +1715,7 @@ OUT@input$Fleet$sorting <- as.integer(as.character(OD))
 FL <- OUT@specific$Fleet
 ME <- OUT@specific$MetierEco
 
+## edit ss3 ####
 if (length(nmQ)>0) {
    for (i in nmQ) {
       lFq_i <- lFq_fmi <- lFothq_i <- lFqLwt_i <- lFqLwt_fmi <- lFothqLwt_i <- lFqDwt_i <- lFqDwt_fmi <- lFothqDwt_i <- lNt0s1q <- lNi0q <- list()
@@ -1761,7 +1794,7 @@ if (length(nmQ)>0) {
       OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
     }
 }
-
+## edit sex ####
 if (length(nmS)>0) {
   for (i in nmS) {
     lFg_fmi <- ldg_fmi <- list()

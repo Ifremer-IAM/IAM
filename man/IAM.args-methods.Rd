@@ -26,4 +26,8 @@ IAM.args(object, specific, ...)
 }
 \description{
 'iamArgs' objects creator
+
+To update an iamArgs object, the function require to have original
+information about input. This is why at the end of initialization
+the specific slot is copied from iamInput to iamArgs
 }

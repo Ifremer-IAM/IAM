@@ -3,7 +3,7 @@
 \name{IAM.unite}
 \alias{IAM.unite}
 \alias{IAM.unite,list-method}
-\title{Formating method for grouping various iamOutput or iamOutputRep objects}
+\title{Formating method for grouping various \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} objects}
 \usage{
 IAM.unite(listObj, ...)
 
@@ -23,5 +23,5 @@ referring to 'DimCst' attributes (1=fleet, 2=metier, 3=age/category, 4=time). nu
 }}
 }
 \description{
-Formating method for grouping various iamOutput or iamOutputRep objects
+Formating method for grouping various \code{\link[IAM]{iamOutput-class}} or \code{\link[IAM]{iamOutputRep-class}} objects
 }
