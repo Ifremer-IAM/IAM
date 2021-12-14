@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+.Rprofile
 
 data/
 raw_data/
@@ -12,4 +13,7 @@ src/*.o
 inst/doc
 inst/extdata
 .vscode/
+
 dev/raw_data
+dev/data
+dev/dev_cp_datarmor.R
