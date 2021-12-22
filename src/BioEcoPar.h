@@ -181,13 +181,13 @@ SEXP    ZtempList;
     //----------
 
     // Module 'Mortalit� par p�che et survie des rejets'
-    void Mortalite(SEXP list, int ind_t, SEXP EVAR);
+    void Mortalite(SEXP list, int ind_t, SEXP EVAR, int VERBOSE = 0);
 
     // Module 'Dynamique de population'
-    void DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality);
+    void DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE = 0);
 
     // Module 'Captures, rejets et d�barquements'
-    void CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE);
+    void CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE = 0);
 
     // Module 'March�' : 'modCatch'
     void Marche(SEXP list, int ind_t);

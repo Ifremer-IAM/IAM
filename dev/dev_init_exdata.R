@@ -17,7 +17,7 @@
 #'    * 4 icat icat matrix
 #'    * 4 mortality mat
 rm(list = ls())
-library(beepr)
+library(beepr) ; library(praise)
 library(openxlsx)
 if(!require(IAM)) devtools::load_all()
 
@@ -235,6 +235,7 @@ if(tea_br){
       sh <- sub(enigma$origin[place], enigma$code[place], sh)
       save_names[save_names == old] <- names(wb)[names(wb) == old] <- sh
     }
+    removeWorksheet(wb, sh) ; addWorksheet(wb, sheet = sh)
     writeData(wb, sheet = sh, sheet, colNames = F)
     gc()
   }
@@ -244,8 +245,10 @@ if(tea_br){
   ## Export dataset ####
   worksheetOrder(wb) <- match(save_names, names(wb))
   saveWorkbook(wb,"dev/data/inputFile.xlsx",overwrite = TRUE)
+
+  rm(wb, Mbio, Meco, nrep, save_names)
 }
-rm(wb, Mbio, Meco, nrep, save_names, enigmaSp, enigma, rawfilen, sp2rm, enigt)
+rm(enigmaSp, enigma, rawfile, sp2rm, enigt)
 
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Edit SS3 input ####
@@ -265,9 +268,8 @@ with(ss3, {
 })
 rm(ss3, enigmaF, enigmaM)
 
-
-
-
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.input ####
 if(tea_br){
   load("dev/data/inpSS3darwiniana1984.RData")
@@ -277,36 +279,59 @@ if(tea_br){
                               FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
                               Nt0s1q=list(DAR=Nt0s1q),Ni0q=list(DAR=Ni0q),iniNt0q=list(DAR=iniNt0q),matwt=list(DAR=mat_morphage),
                               verbose = TRUE)
-
+  # Clean
+  rm("Fq_fmi", "Fq_i", "FqDwt_fmi", "FqDwt_i", "FqLwt_fmi", "FqLwt_i",
+       "iniFq_fmi", "iniFq_i", "iniFqDwt_fmi", "iniFqDwt_i", "iniFqLwt_fmi",
+       "iniFqLwt_i", "iniNt0q", "mat_morphage", "Ni0q", "Nt0s1q")
   if(exists("input1984")) {
-    beep(5) ; cat("You rock !\n ")
+    beep(5) ; cat("\U0001f947",praise(),"\U0001f947")
     save(input1984, file = "dev/data/inputIFR.RData")
   } else {
-    beep(9) ; cat("Fail \n")
+    beep(9) ; cat("\U0001f624", "Keep trying!", "\U0001f624")
   }
 } else {
   load("dev/data/inputIFR.RData")
 }
 
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# IAM.arg ####
+if(tea_br){
+  argum1984 <- IAM.input2args(input1984)
+  # tmp <- IAM::IAM.args(input1984)
+  # #recrutement corinna 1985 = 16402000
+  #
+  # #module Eco DCF ('active' et 'type' a priori inutiles puisque le code C++ n'integre plus le module complet)
+  argum1984@arguments$Eco$active <- as.integer(1)
+  argum1984@arguments$Eco$type <- as.integer(2)
+  argum1984@arguments$Eco$dr <- 0.04
+  argum1984@arguments$Eco$perscCalc <- as.integer(1)
+  # #Gestion desactive
+  argum1984@arguments$Gestion$active <- as.integer(0)
+  argum1984@arguments$Gestion$delay <- as.integer(1)
+  argum1984@arguments$Gestion$mfm[] <- with(input1984@input$Fleet,{
+    (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
+  })
+  argum1984@arguments$Gestion$mfm[is.na(argum1984@arguments$Gestion$mfm)] <- 0
+  # #Scenario desactive
+  argum1984@arguments$Scenario$active <- as.integer(0)
+  #
+  save(argum1984, file = "dev/data/argumIFR.RData")
+} else {
+  load("dev/data/argumIFR.RData")
+}
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# argumIFR <- IAM.args(inputIFR)
-#
-# #recrutement corinna 1985 = 16402000
-#
-# #module Eco DCF ('active' et 'type' a priori inutiles puisque le code C++ n'int?gre plus le mod?le complet)
-# argumIFR@arguments$Eco$active <- as.integer(1)
-# argumIFR@arguments$Eco$type <- as.integer(2)
-# argumIFR@arguments$Eco$dr <- 0.04
-# argumIFR@arguments$Eco$perscCalc <- as.integer(1)
-# #Gestion d?sactiv?
-# argumIFR@arguments$Gestion$active <- as.integer(0)
-# argumIFR@arguments$Gestion$delay <- as.integer(1)
-# argumIFR@arguments$Gestion$mfm[] <- (inputIFR@input$Fleet$effort1_f_m*inputIFR@input$Fleet$effort2_f_m*inputIFR@input$Fleet$nbv_f_m)/
-#   as.vector(inputIFR@input$Fleet$effort1_f*inputIFR@input$Fleet$effort2_f*inputIFR@input$Fleet$nbv_f)
-# argumIFR@arguments$Gestion$mfm[is.na(argumIFR@arguments$Gestion$mfm)] <- 0
-# #Sc?nario d?sactiv?
-# argumIFR@arguments$Scenario$active <- as.integer(0)
-#
-# save(x=argumIFR,file='Z:/Projet/PG GG/These_Florence/Parametrage_IAM/3.PARAMETRAGE/argumIFR_newStocks_MNZstatic_20yr.RData')
+#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# IAM.model ####
+devtools::load_all()
+load("dev/data/inputIFR.RData")
+load("dev/data/argumIFR.RData")
+devtools::load_all()
+model_SQ <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, verbose = TRUE)
+# ne marche pas depuis Florence et sans doute l'ajout du SEX...Marche sans SS3.
+# marche avec IAM20 !
+
+input1984@input$Fleet$nbds_f
+
 

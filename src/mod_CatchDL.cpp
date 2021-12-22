@@ -24,7 +24,7 @@
 
 extern "C" {
 
-void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE = 0)
+void BioEcoPar::CatchDL(SEXP list, int ind_t, SEXP EVAR, int VERBOSE)
 {
 
 //        string str1b, str2b, str3b;
@@ -2552,6 +2552,7 @@ if(VERBOSE){Rprintf(" Dyna sp");}
 if (nbE>0) {
 
     for (int e = 0 ; e < nbE ; e++) {
+        if(VERBOSE){Rprintf("\n       ");}
 
 //Rprintf("H15\n");fichier << "H15" << endl;
                             int nbI = length(VECTOR_ELT(namDC,e));
@@ -2601,6 +2602,7 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");fichier
 //Rprintf("H16\n");fichier << "H16" << endl;
 
                             if ((Qvec[e]==1) & (Svec[e]==0)) {
+                                if(VERBOSE){Rprintf(" SS3");}
 
                                 PROTECT(v_wD_ei = getListElement(elmt, "wD_i"));
 //double Btemp;
@@ -3309,16 +3311,24 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");fichier
 
 
                             } else if ((Qvec[e]==0) & (Svec[e]==0)){
+                                if(VERBOSE){Rprintf(" XSA");}
                                 PROTECT(v_wD_ei = getListElement(elmt, "wD_i"));
 
 //double Btemp;
+if(VERBOSE){Rprintf(" .");}
                                 rans_C_efmit = REAL(VECTOR_ELT(out_C_efmit,e));
+                                if(VERBOSE){Rprintf(" .");}
                                 rans_C_eit = REAL(VECTOR_ELT(out_C_eit,e));
+                                if(VERBOSE){Rprintf(" .\n");}
+                                PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                 r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.12171), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
-
+if(VERBOSE){Rprintf(" .");}
                                 r_F_efmit = REAL(VECTOR_ELT(out_F_fmi,e));
+                                if(VERBOSE){Rprintf(" .");}
                                 r_N_eit = REAL(VECTOR_ELT(out_N_eit, e));
+                                if(VERBOSE){Rprintf(" .");}
                                 r_Z_eit = REAL(VECTOR_ELT(out_Z_eit, e));
+                                if(VERBOSE){Rprintf(" .");}
 
 
 
@@ -3605,6 +3615,7 @@ if (nbI>1) {
 //---------------
 
                             } else if ((Qvec[e]==0) & (Svec[e]==1)){
+                                if(VERBOSE){Rprintf(" SEX");}
                                 PROTECT(v_wD_ei_G1 = getListElement(elmt, "wD_i_G1"));
                                 PROTECT(v_wD_ei_G2 = getListElement(elmt, "wD_i_G2"));
 
@@ -4081,6 +4092,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     // calcul de L_et
     //---------
+    if(VERBOSE){Rprintf(" L_et");}
     PROTECT(ans_L_eit = VECTOR_ELT(out_L_eit,e));
     PROTECT(nDim = allocVector(INTSXP,4));
     nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;

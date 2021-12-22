@@ -881,17 +881,29 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 //Rprintf("F\n");fichier << "F" << endl;
 
 //3 modules avec pas de temps diff�renci� au niveau trimestre
+
 if (nbE>0) {
-if(VERBOSE){Rprintf("Mortalite");}
- Mortalite(list, it, eVar);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
+if(VERBOSE){Rprintf("\n  Mortalite");}
+ Mortalite(list, it, eVar, VERBOSE);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
  if(VERBOSE){Rprintf(" | ");}
 
-if(VERBOSE){Rprintf("DynamicPop");}
- DynamicPop(list, it, eVar, true);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
+if(VERBOSE){Rprintf("\nFoth and Froth XSA \n");}
+PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 1), 44));
+PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 1), 60));
+if(VERBOSE){Rprintf("\nFoth and Froth SS3 \n");}
+PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 44));
+PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 60));
+
+if(VERBOSE){Rprintf("\n  DynamicPop");}
+ DynamicPop(list, it, eVar, true, 0);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
  if(VERBOSE){Rprintf(" | ");}
 }
-if(VERBOSE){Rprintf("CatchDL");}
-CatchDL(list, it, eVar, VERBOSE);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
+
+if(VERBOSE){Rprintf("\n\nafter dynapop \n");}
+// PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 44));
+// PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 60));
+if(VERBOSE){Rprintf("\n  CatchDL");}
+CatchDL(list, it, eVar, 0);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
 if(VERBOSE){Rprintf(" | ");}
 
 //if (it>0) error("Unexpectedz scondition occurred");

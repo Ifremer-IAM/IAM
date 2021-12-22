@@ -991,21 +991,21 @@ invisible(get("LL",envir=e1))
 #'
 #' @param object TODO
 #' @param specific TODO
-#' @param ... # TODO : is this argument really usefull ?
+#' @param ... # TODO : this is for the specific file.
 #'
 #' @name IAM.args
 #' @rdname IAM.args-methods
 #'
 #'
 #' @export
-setGeneric("IAM.args", function(object, specific, ...){
+setGeneric("IAM.args", function(object, specific,  ...){
 	standardGeneric("IAM.args")
 	}
 )
 
-  # ?tape d'initialisation
-
-#' @param desc Object descriptor (default value : \code{as.character(NA)})
+#' Etape d'initialisation
+#' @param desc Object descriptor (default value : \code{as.character(NA)}).
+#' If not provided, copied the description slot of object.
 #' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
@@ -1013,7 +1013,7 @@ setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.c
 
 })
 
-  # ou...
+#' Etape d'initialisation from txt file.
 #' @rdname IAM.args-methods
 #' @importFrom methods new
 setMethod("IAM.args", signature("character","character"),function(object, specific, desc=as.character(NA), ...){
@@ -1021,8 +1021,9 @@ setMethod("IAM.args", signature("character","character"),function(object, specif
   if (substring(object,nchar(object)-3,nchar(object))!=".txt") stop("'object' must be a .txt file!!")
   if (substring(specific,nchar(specific)-3,nchar(specific))!=".txt") stop("'specific' must be a .txt file!!")
 
-  specif <- .Call("Fun",normalizePath(specific),NULL)
-  argum <- .Call("Fun",normalizePath(object),specif)
+  stop("This depend on deprecated C++ function 'Fun' ")
+  # specif <- .Call("Fun",normalizePath(specific),NULL)
+  # argum <- .Call("Fun",normalizePath(object),specif)
 
   return(new("iamArgs", desc=desc, arguments=argum, specific=specif))
 
@@ -1030,7 +1031,7 @@ setMethod("IAM.args", signature("character","character"),function(object, specif
 
 
 
-  # ?tape de modification
+#' Etape de modification
 #' To update an iamArgs object, the function require to have original
 #' information about input. This is why at the end of initialization
 #' the specific slot is copied from iamInput to iamArgs

@@ -1122,7 +1122,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
                         Sexnam_F,Sexnam_Nt0,Sexnam_Ni0,Sexnam_mat,Sexnam_M,Sexnam_wS,Sexnam_wL,Sexnam_wD,Sexnam_C,Sexnam_doth,Sexnam_d,Sexnam_Fbar)
       # TODO : same as before...use renam
       renam <- renam[!duplicated(names(renam))]
-      names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)]
+      names(listHisto) <- renam[names(listHisto)] ; names(listInput) <- renam[names(listInput)] # TODO : ...used to rm element not in name
       #et on applique le multiplicateur ? chaque variable dans les deux listes
       rec <- rec[suppressWarnings(!is.na(as.numeric(as.character(rec$Multi)))),]
       invisible(sapply(1:nrow(rec),function(x) if (as.character(rec$Variable)[x]%in%names(listHisto))
@@ -1270,7 +1270,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
         }
       }
 
-      listInput[is.na(names(listInput))] <- NULL
+      listInput[is.na(names(listInput))] <- NULL # TODO : why not the same with listHisto
 
       LL$historique[[k]] <- listHisto
       LL$input[[k]] <- listInput
@@ -1837,8 +1837,9 @@ setMethod("IAM.input", signature("character", "character", "missing", "missing")
 if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".txt") stop("'fileIN' must be a .txt file!!")
 if (substring(fileSPEC,nchar(fileSPEC)-3,nchar(fileSPEC))!=".txt") stop("'fileSPEC' must be a .txt file!!")
 
-specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
-input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
+stop("This depend on deprecated C++ function 'Fun' ")
+# specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
+# input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 
 out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=list())
 return(convertInput(out))
@@ -1857,9 +1858,10 @@ if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".txt") stop("'fileIN' must
 if (substring(fileSPEC,nchar(fileSPEC)-3,nchar(fileSPEC))!=".txt") stop("'fileSPEC' must be a .txt file!!")
 if (substring(fileSCEN,nchar(fileSCEN)-3,nchar(fileSCEN))!=".txt") stop("'fileSCEN' must be a .txt file!!")
 
-specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
-input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
-scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
+stop("This depend on deprecated C++ function 'Fun' ")
+# specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
+# input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
+# scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
 
 out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=list())
 return(convertInput(out))
@@ -1878,9 +1880,10 @@ if (substring(fileIN,nchar(fileIN)-3,nchar(fileIN))!=".txt") stop("'fileIN' must
 if (substring(fileSPEC,nchar(fileSPEC)-3,nchar(fileSPEC))!=".txt") stop("'fileSPEC' must be a .txt file!!")
 if (substring(fileSTOCH,nchar(fileSTOCH)-3,nchar(fileSTOCH))!=".txt") stop("'fileSTOCH' must be a .txt file!!")
 
-specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
-input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
-stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
+stop("This depend on deprecated C++ function 'Fun' ")
+# specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
+# input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
+# stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
 out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=stochastic)
 return(convertInput(out))
@@ -1900,10 +1903,11 @@ if (substring(fileSPEC,nchar(fileSPEC)-3,nchar(fileSPEC))!=".txt") stop("'fileSP
 if (substring(fileSCEN,nchar(fileSCEN)-3,nchar(fileSCEN))!=".txt") stop("'fileSCEN' must be a .txt file!!")
 if (substring(fileSTOCH,nchar(fileSTOCH)-3,nchar(fileSTOCH))!=".txt") stop("'fileSTOCH' must be a .txt file!!")
 
-specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
-input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
-scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
-stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
+stop("This depend on deprecated C++ function 'Fun' ")
+# specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
+# input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
+# scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
+# stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
 out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=stochastic)
 return(convertInput(out))

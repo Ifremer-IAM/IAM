@@ -150,7 +150,8 @@ app_ui <- function() {
 # Define server function
 app_server <- function(input, output, session) {
   sp <- get_golem_options("input")@specific$Species
-  for( i in sp){
+  spDyn <- sp[get_golem_options("input")@specific$Q == 0]
+  for( i in spDyn){
     appendTab(inputId = "tabs",
               tabPanel(i, mod_spInput(i)) # TODO : need to reload interface with default once tab is changed
     )
@@ -214,7 +215,7 @@ run_app <- function(object, AllVarRep) {
 # TODO : what could be very nice is to initialise iam.Args
 # with the gui default and then just write a function that modify it.
 # So we could call it very quickly in script for automated test
-setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
+setMethod("IAM.input2args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
   if(is.null(desc)){ desc <- object@desc }
   # init the arg object with shiny default
@@ -294,6 +295,15 @@ setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.c
   specif <- object@specific
   args <- new("iamArgs", desc = desc, arguments = argum, specific = specif)
 
+  return(args)
+
+})
+
+setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
+
+  if(is.null(desc)){ desc <- object@desc }
+
+  args <- IAM.input2arg(object, desc = desc)
   IAM.args(object = args, desc = desc)
 
 })

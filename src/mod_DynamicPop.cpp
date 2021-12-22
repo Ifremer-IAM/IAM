@@ -24,8 +24,9 @@
 
 extern "C" {
 
-void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality) //Reality : si True, on appelle DynamicPop pour une vraie projection, sinon uniquement utilis� pour estimer TAC comme dans WG
-                                                                           // ~ si True, arbitrage RecParamList VS MeanRec_Ftarg en faveur du premier (ie sinon, en faveur du deuxi�me)
+void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE) 
+//Reality : si True, on appelle DynamicPop pour une vraie projection, sinon uniquement utilis� pour estimer TAC comme dans WG
+// ~ si True, arbitrage RecParamList VS MeanRec_Ftarg en faveur du premier (ie sinon, en faveur du deuxi�me)
 {
 
 ////Rprintf("G0");
@@ -37,6 +38,7 @@ void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality) //Real
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
 
 if (dUpdate) {
+  if(VERBOSE){Rprintf(" dUpdate :");}
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
 //fichier << "dUpdate = " << dUpdate << endl;
 //Rprintf("dUpdate = %f \n" ,dUpdate);
@@ -79,7 +81,7 @@ if (dUpdate) {
           *r_Fr_efmit_G1=&NA_REAL, *r_Fr_efmit_G2=&NA_REAL,
           *r_Fbar_G1=&NA_REAL, *r_Fbar_G2=&NA_REAL, *r_N_ei0_G1=&NA_REAL, *r_N_ei0_G2=&NA_REAL,
           *r_M_ei_G1=&NA_REAL, *r_M_ei_G2=&NA_REAL, *r_w_ei_G1=&NA_REAL, *r_w_ei_G2=&NA_REAL,
-          *r_mat_ei_G1=&NA_REAL, *r_mat_ei_G2=&NA_REAL, *r_r=&NA_REAL, *r_K=&NA_REAL, *r_n=&NA_REAL, *r_B=&NA_REAL;
+          *r_mat_ei_G1=&NA_REAL, *r_mat_ei_G2=&NA_REAL, *r_r=&NA_REAL, *r_K=&NA_REAL, /**r_n=&NA_REAL,*/ *r_B=&NA_REAL;
 
     double delta_r = 0.0, delta_K = 0.0;
 
@@ -164,6 +166,7 @@ if (ind_t==0) {
 
 for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
+if(VERBOSE){Rprintf("\n         ");}
                                     double *Ztemp = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,e))));
 //fichier << "G2one" << endl;
                                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));//Rprintf("g1");fichier << "g1" << endl;
@@ -174,7 +177,9 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
 
                              if ((Qvec[e]==1) & (Svec[e]==0)) {
+                               if(VERBOSE){Rprintf(" SS3");}
 //PrintValue(out_Fr_fmi_S1M1);
+                                    // ces elements sont nuls car non calcules dans Mortalite !!!
                                     PROTECT(v_Fr_efmit = getListElement(out_Fr_fmi, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit = getListElement(out_F_fmi, CHAR(STRING_ELT(sppList,e))));
 
@@ -264,6 +269,7 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
 
                              }  else if ((Qvec[e]==0) & (Svec[e]==0)) {
+                               if(VERBOSE){Rprintf(" XSA");}
 
 
                                     PROTECT(v_r = getListElement(elmt, "r"));//Rprintf("g4");   fichier << "g4" << endl;           //added SPiCT 19/07/2016
@@ -290,6 +296,7 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
 
                              } else if ((Qvec[e]==0) & (Svec[e]==1)){
+                               if(VERBOSE){Rprintf(" SEX");}
                                     PROTECT(v_Fr_efmit_G1 = getListElement(out_Fr_fmi_G1, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_Fr_efmit_G2 = getListElement(out_Fr_fmi_G2, CHAR(STRING_ELT(sppList,e))));
                                     PROTECT(v_F_efmit_G1 = getListElement(out_F_fmi_G1, CHAR(STRING_ELT(sppList,e))));
@@ -329,6 +336,7 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
                                     dim_N_ei0 = INTEGER(dimCst_N_ei0);
                                     dim_N_e0t = INTEGER(dimCst_N_e0t);
 
+                            if(VERBOSE){Rprintf(" age");}
                             if (nbI>1) {
                                     //tests sur les dimensions (pas pour SPiCT) :
 
@@ -414,6 +422,7 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
                                     }
 //Rprintf("G1.63");//Rprintf("%i ",prod);fichier << "G1.63" << endl;
                             if (ind_t==0){
+                              if(VERBOSE){Rprintf(" init_t");}
                                     //on cr�e le tableau r�sultat pour l'esp�ce en question
 
 //Rprintf("G1.7");fichier << "G1.7" << endl;
@@ -478,6 +487,7 @@ for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
                                     }
 
                             } else {
+                              if(VERBOSE){Rprintf(" t");}
 
                                     if ((Qvec[e]==1) & (Svec[e]==0)) {
                                     rans_Z_eit = REAL(VECTOR_ELT(out_Z_eit, e));
@@ -596,6 +606,7 @@ sumWt = 0.0; fmax = 0.0;
 
                                     //---------
                                     // calcul de N_eit
+                                    if(VERBOSE){Rprintf(" N_eit");}
                                     //---------
 
                                     //on d�termine l'attribut Dimension de N_eit
@@ -860,6 +871,7 @@ sumWt = 0.0; fmax = 0.0;
 
                                     //---------
                                     // calcul de N_eit
+                                    if(VERBOSE){Rprintf(" N_eit");}
                                     //---------
 
                                     //on d�termine l'attribut Dimension de N_eit
@@ -1267,6 +1279,7 @@ sumWt = 0.0; fmax = 0.0;
 
                                     double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.6145), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                     double *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
+                                    Rprintf("\ninit r_Foth_i = %d || r_Froth_i = %d\n", *r_Foth_i, *r_Froth_i);
 //Rprintf("G1.19");fichier << "G1.19" << endl;
                                     double *r_Foth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 116));
                                     double *r_Foth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 117));
@@ -1285,6 +1298,7 @@ sumWt = 0.0; fmax = 0.0;
                                     double *r_Foth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 130));
                                     double *r_Foth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 131));
 //Rprintf("G1.20");fichier << "G1.20" << endl;
+if(VERBOSE){Rprintf(" .");}
                                     double *r_Froth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 132));
                                     double *r_Froth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 133));
                                     double *r_Froth_i_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 134));
@@ -1302,6 +1316,7 @@ sumWt = 0.0; fmax = 0.0;
                                     double *r_Froth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 146));
                                     double *r_Froth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 147));
 //Rprintf("G1.21");fichier << "G1.21" << endl;
+if(VERBOSE){Rprintf(" .");}
                                     //�quation
                                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -1672,6 +1687,7 @@ sumWt = 0.0; fmax = 0.0;
 
                                     //---------
                                     // calcul de N_eit
+                                    if(VERBOSE){Rprintf(" N_eit");}
                                     //---------
 
                                     //on d�termine l'attribut Dimension de N_eit
@@ -1830,6 +1846,7 @@ sumWt = 0.0; fmax = 0.0;
                             }
 
 // on peut d�sormais �valuer F, Z et N au niveau annuel et global
+if(VERBOSE){Rprintf(" FZN");}
             for (int ind_f = 0 ; ind_f < (1 + (nbF - 1)*(dim_Fr_efmit[0]>0)) ; ind_f++)
             for (int ind_m = 0 ; ind_m < (1 + (nbM - 1)*(dim_Fr_efmit[1]>0)) ; ind_m++)
             for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
@@ -2090,6 +2107,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
                                     //---------
                                     // calcul de SSB_et
+                                    if(VERBOSE){Rprintf(" SSB");}
                                     //---------
 //Rprintf("Calcul_SSB\n");fichier << "Calcul_SSB" << endl;
                                     //on d�termine l'attribut Dimension de SSB_et
@@ -2248,6 +2266,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
                                     //---------
                                     // calcul de B_et
+                                    if(VERBOSE){Rprintf(" B_et");}
                                     //---------
 //Rprintf("Calcul_B\n");fichier << "Calcul_B" << endl;
 //Rprintf("K700\n");fichier << "K700" << endl;
@@ -2310,7 +2329,7 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                             if (Svec[e]==0){
                                     r_r = REAL(v_r);
                                     r_K = REAL(v_K);
-                                    r_n = REAL(v_n);
+                                    // r_n = REAL(v_n);
                                     r_B = REAL(v_B);
 //Rprintf("K71\n");fichier << "K71" << endl;
                                     //�quation
@@ -2426,12 +2445,19 @@ dUpdate = false;
 UNPROTECT(1);
 //fichier.close();
 
-} else {
+} else { 
+  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  if(VERBOSE){Rprintf(" !pUpdate :");}
 
 //fichier << "dUpdate = " << dUpdate << endl;
 //Rprintf("dUpdate = %f \n" ,dUpdate);
 
 for (int e = 0 ; e < nbE ; e++) {
+  if(VERBOSE){Rprintf("\n         ");}
 //Rprintf("G1");fichier << "G1" << endl;
 
                     SEXP elmt;
@@ -2468,6 +2494,7 @@ for (int e = 0 ; e < nbE ; e++) {
 //Rprintf("G7\n");fichier << "G7" << endl;
 
     if ((Qvec[e]==0) & (Svec[e]==0)) {
+      if(VERBOSE){Rprintf(" XSA");}
     //Rprintf("Start_Annual\n");fichier << "Start_Annual" << endl;
 
             PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
@@ -2485,7 +2512,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
             double  *r_r = REAL(getListElement(elmt, "r"));
             double  *r_K = REAL(getListElement(elmt, "K"));
-            double  *r_n = REAL(getListElement(elmt, "n"));
+            // double  *r_n = REAL(getListElement(elmt, "n"));
 
             double delta_r = 0.0;
             double delta_K = 0.0;
@@ -2729,6 +2756,7 @@ for (int e = 0 ; e < nbE ; e++) {
 //Rprintf("End_Annual\n");fichier << "End_Annual" << endl;
 
     } else if ((Qvec[e]==0) & (Svec[e]==1)) {
+      if(VERBOSE){Rprintf(" SEX");}
     //Rprintf("Start_Sex-based\n");fichier << "Start_Sex-based" << endl;
 
             PROTECT(v_N_e0t_G1 = getListElement(elmt, "N_i0t_G1"));
@@ -2992,6 +3020,7 @@ for (int e = 0 ; e < nbE ; e++) {
 //Rprintf("End_Sex-based\n");fichier << "End_Sex-based" << endl;
 
     } else if ((Qvec[e]==1) & (Svec[e]==0)) {
+      if(VERBOSE){Rprintf(" SS3");}
 //Rprintf("Start_Quarterly\n");fichier << "Start_Quarterly\n" << endl;
 
                     PROTECT(v_N_e0t_S1M1 = getListElement(elmt, "Ni0_S1M1"));
@@ -3057,6 +3086,12 @@ for (int e = 0 ; e < nbE ; e++) {
                     double  *r_M_ei = REAL(getListElement(elmt, "M_i"));
                     double  *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
                     double  *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                    if(VERBOSE){Rprintf("\nthere it is ! Same pointeur for diff table...oh god why ???\n");}
+                    Rprintf("\nr_Foth_i = %d || r_Froth_i = %d\n", *r_Foth_i, *r_Froth_i);
+                    Rprintf("r_M_ei = %d\n", *r_M_ei);
+                    PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
+                    PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
+
                     double  *r_w_ei = REAL(getListElement(elmt, "wStock_i"));
                     double  *r_Fbar = REAL(getListElement(elmt, "Fbar"));
 
