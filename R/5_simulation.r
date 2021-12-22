@@ -269,7 +269,7 @@ TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
 if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
 
 if(verbose) cat('\n ---- C++ node begin ----\n')
-out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
+out <-  IAM_stripe( objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
                     RecType1=as.integer(Rectyp==1), RecType2=as.integer(Rectyp==2), RecType3=as.integer(Rectyp==3),
                     Scenarii = as.integer(objArgs@arguments$Scenario$active), Bootstrp = as.integer(objArgs@arguments$Replicates$active),
                     nbBoot = as.integer(objArgs@arguments$Replicates$nbIter),
