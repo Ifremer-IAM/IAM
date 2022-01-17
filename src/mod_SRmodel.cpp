@@ -29,9 +29,9 @@
 extern "C" {
 
 void BioEcoPar::SRmod(SEXP list, SEXP listSR, int ind_t, SEXP TypeSR, int *srind)
-        //list : liste des param�tres d'entr�e;
-        //listSR : liste des param�tres a,b&c du mod�le SR + e.t bruit normal ou lognormal + type de bruit (1=normal, 2=lognormal) (un vecteur de longueur 5 par esp�ce mod�lis�e contenant des "doubles")
-        //type : type de relation Stock-Recrutement : (liste de longueur "nb d'esp�ces mod�lis�es" contenant des entiers)
+        //list : liste des parametres d'entree;
+        //listSR : liste des parametres a,b&c du modele SR + e.t bruit normal ou lognormal + type de bruit (1=normal, 2=lognormal) (un vecteur de longueur 5 par espece modelisee contenant des "doubles")
+        //type : type de relation Stock-Recrutement : (liste de longueur "nb d'especes modelisees" contenant des entiers)
         //                                              1 -> recrutement constant moyen (rec~a)
         //                                              2 -> Hockey stick (rec ~ (si (ssb<=b) a*ssb sinon a*b))
         //                                              3 -> Beverton & Holt (rec ~ a*ssb/(b+ssb))
@@ -74,7 +74,7 @@ for (int e = 0 ; e < nbE ; e++) {
     fstAge = CHAR(STRING_ELT(VECTOR_ELT(namDC, e),0))[0] - '0'; //++fstAge;
 
     //on en profite pour initialiser l'objet pour les premi�res ann�es pour lesquelles on devra aller chercher l'info dans Ni0
-    if (((typeSR!=1) & (ind_t<fstAge)) | (ind_t==0)) {  //deuxi�me condition : si t initial et recrutement d�duit de la ssb de la m�me ann�e, on part des param�tres initiaux et non de la relation SR
+    if (((typeSR!=1) & (ind_t<fstAge)) | (ind_t==0)) {  //deuxi�me condition : si t initial et recrutement deduit de la ssb de la meme annee, on part des param�tres initiaux et non de la relation SR
 
         rans[ind_t] = NA_REAL;
 
@@ -88,10 +88,11 @@ for (int e = 0 ; e < nbE ; e++) {
                                                         //indices : 0 --> 0*nbT + ind_t
         case 2 :
 
-        if (ssb[ind_t-fstAge] <= paramet[1*nbT + ind_t])
+        if (ssb[ind_t-fstAge] <= paramet[1*nbT + ind_t]){
             rans[ind_t] = paramet[0*nbT + ind_t] * ssb[ind_t-fstAge];
-        else
-            rans[ind_t] = paramet[0*nbT + ind_t] * paramet[1*nbT + ind_t]; break;
+        }else{
+            rans[ind_t] = paramet[0*nbT + ind_t] * paramet[1*nbT + ind_t]; 
+        } break;
 
         case 3 :
 
@@ -107,21 +108,21 @@ for (int e = 0 ; e < nbE ; e++) {
 
         case 6 :
 
-        if (ssb[ind_t-fstAge] <= (paramet[1*nbT + ind_t]*(1-paramet[2*nbT + ind_t])))
+        if (ssb[ind_t-fstAge] <= (paramet[1*nbT + ind_t]*(1-paramet[2*nbT + ind_t]))){
 
             rans[ind_t] = paramet[0*nbT + ind_t] * ssb[ind_t-fstAge];
 
-        else {
+        } else {
 
-            if (ssb[ind_t-fstAge] >= (paramet[1*nbT + ind_t]*(1+paramet[2*nbT + ind_t])))
+            if (ssb[ind_t-fstAge] >= (paramet[1*nbT + ind_t]*(1+paramet[2*nbT + ind_t]))){
 
                 rans[ind_t] = paramet[0*nbT + ind_t] * paramet[1*nbT + ind_t];
 
-            else
+            }else{}
 
                 rans[ind_t] = paramet[0*nbT + ind_t]*(ssb[ind_t-fstAge] - (pow(ssb[ind_t-fstAge] - paramet[1*nbT + ind_t]*(1-paramet[2*nbT + ind_t]),2.0)/(4*paramet[1*nbT + ind_t]*paramet[2*nbT + ind_t])));
-
-            } break;
+            }
+        } break;
 
         case 7 :
 
@@ -132,22 +133,19 @@ for (int e = 0 ; e < nbE ; e++) {
         rans[ind_t] = NA_REAL;
 
     }
-    //il ne reste plus qu'� ajouter le bruit blanc issue de N(0,sigma) avec sigma = paramet[3]
+    //il ne reste plus qu'a ajouter le bruit blanc issue de N(0,sigma) avec sigma = paramet[3]
     double v_alea = 0.0;
 GetRNGstate();
         if (!ISNA(paramet[3*nbT + ind_t])) v_alea = rnorm(0.0,paramet[3*nbT + ind_t]); //////Rprintf("%f ",v_alea);//Rprintf("%f ",rnorm(0.0,0.157));
 PutRNGstate();
-    if (paramet[4*nbT + ind_t]==1)  //bruit de loi normale
-
+    if (paramet[4*nbT + ind_t]==1){  //bruit de loi normale
         rans[ind_t] = rans[ind_t] + v_alea;
-
-    else                //bruit de loi lognormale
-
+    }else{                //bruit de loi lognormale
         rans[ind_t] = rans[ind_t] * exp(v_alea);
-
     }
-
-      if (ind_t==0) UNPROTECT(1);
+    }
+    
+    if (ind_t==0) UNPROTECT(1);
 
     }}
 

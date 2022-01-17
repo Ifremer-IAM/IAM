@@ -22,6 +22,20 @@
 // Module 'Mortalit� par p�che et survie des rejets'
 //------------------------------------------
 
+// TODO : use this function to simplify the code
+void comp_FxWT_SxMx(double *FRWT_SxMx, double *FRWT_efmi_SxMx, 
+                    double *nbv_f, double *nbds_f, double *nbds2_f, 
+                    int ind_f, int ind_i, int ind_m, int ind_t, 
+                    int *fFact1, int *fFact4, int *fFactSup1, int *fFactSup2){
+
+    FRWT_SxMx[ind_f*fFact1[0] + ind_m*fFact1[1] + ind_i*fFact1[2] + ind_t*fFact1[3]] =
+        FRWT_efmi_SxMx[ind_f*fFact4[0] + ind_m*fFact4[1] + ind_i*fFact4[2] + ind_t*fFact4[3]] *
+        nbv_f[ind_f*fFactSup1[0] + ind_m*fFactSup1[1] + ind_i*fFactSup1[2] + ind_t*fFactSup1[3]] *
+        nbds_f[ind_f*fFactSup2[0] + ind_m*fFactSup2[1] + ind_i*fFactSup2[2] + ind_t*fFactSup2[3]]*
+        nbds2_f[ind_f*fFactSup2[0] + ind_m*fFactSup2[1] + ind_i*fFactSup2[2] + ind_t*fFactSup2[3]];
+}
+
+
 extern "C" {
 
 void BioEcoPar::Mortalite(SEXP list, int ind_t, SEXP EVAR, int VERBOSE)
@@ -3036,6 +3050,8 @@ for (int e = 0 ; e < nbE ; e++) {
                     for (int ind_m = 0 ; ind_m < nbM ; ind_m++)
                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
+                    /* comp_FxWT_SxMx(rans_11_S1M1, r_F_efmi_S1M1, r_nbv_f, r_nbds_f, r_nbds_f, 
+                                   ind_f, ind_i, ind_m, ind_t, fFact1, fFact4, fFactSup1, fFactSup2); */
                     rans_11_S1M1[ind_f*fFact1[0] + ind_m*fFact1[1] + ind_i*fFact1[2] + ind_t*fFact1[3]] =
                         r_F_efmi_S1M1[ind_f*fFact4[0] + ind_m*fFact4[1] + ind_i*fFact4[2] + ind_t*fFact4[3]] *
                         r_nbv_f[ind_f*fFactSup1[0] + ind_m*fFactSup1[1] + ind_i*fFactSup1[2] + ind_t*fFactSup1[3]] *

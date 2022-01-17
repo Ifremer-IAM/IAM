@@ -13,7 +13,11 @@
 //#include <Rcpp.h>
 
 #include "BioEcoPar.h" // Class is defined in this file.
+#include "utils.h" // small function to get list element or index.
 // #include "Modules.h" // Contient tout les modules
+
+// sub_modul price_flexibility
+double mult_pflex(SEXP *list, int ind_t, int e, SEXP *sppListAll, SEXP *sppList, int nbP, int nbEall, SEXP *out_L_pt, SEXP *multPrice, SEXP *v_ep);
 
 //using namespace Rcpp;
 // using namespace std;
@@ -30,33 +34,26 @@ void BioEcoPar::Marche(SEXP list, int ind_t)
 
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.Marche.txt", ios::out | ios::trunc);
 
-    SEXP    elmt, intC, v_P_fmce, v_icat, v_L_efmit, dimCst_P_fmce, dimCst_L_efmit, dimCst_L_efmct, Dim_L_efmct, //Dim_P_fmce,
+    SEXP    elmt, intC, v_P_fmce, v_icat, v_L_efmit, dimCst_P_fmce, dimCst_L_efmit, dimCst_L_efmct, Dim_L_efmct, /*Dim_P_fmce,*/
             ans_L_efmct = R_NilValue, ans_P_fmce = R_NilValue, dimnames_Lc = R_NilValue, dimnames_P = R_NilValue,
             rnames_Esp, cFACTc, cFACTi, cFACTp, cFACTpini, cFACTpStat, cFACTpStatini,
             ans_DD_efmc = R_NilValue, ans_LD_efmc = R_NilValue, v_DD_efmit, v_LD_efmit;
     SEXP    v_P_eStat, dimCst_P_eStat, dimCst_P_eStatR, ans_P_eStat = R_NilValue, dimnames_Pstat = R_NilValue;
 
-    int *dim_P_fmce, *dim_P_fmcet, *dim_L_efmit, *dim_icat, *dim_L_efmct, *dim_P_eStat, *dim_P_eStat_t, *dim_P_eStat_tR, *dimLc;//, *dimP;
+    int *dim_P_fmce, *dim_P_fmcet, *dim_L_efmit, *dim_icat, *dim_L_efmct, *dim_P_eStat, *dim_P_eStat_t, *dim_P_eStat_tR, *dimLc/*, *dimP */;
 
     int nbI, nbC;
 
     double *rans_L_efmct, *r_L_efmit, *r_P_fmce, *r_icat, *r_Pstat, *r_P_fmceIni, *r_PstatIni,
             *rans_DD_efmc, *rans_LD_efmc, *r_DD_efmit, *r_LD_efmit;
     double mult_p; //multiplicateur de prix (1 par defaut sinon fonction de relation prix quantite
-    SEXP MarketList= R_NilValue, v_ep= R_NilValue, v_beta_pp= R_NilValue;
-    double *r_beta_pp = &NA_REAL;
-    int *r_ep = &NA_INTEGER;
-    int ind_p;
-    SEXP ans_MultPrice;
+    SEXP v_ep= R_NilValue;
 
-
-////Rprintf("CCC1");
 
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 5));////Rprintf("Mort20.2\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 6));////Rprintf("Mort20.3\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 7));////Rprintf("Mort20.4\n");
 //PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 0), 61));////Rprintf("Mort20.5\n");
-
 
 
     if (ind_t==0) {
@@ -72,15 +69,9 @@ void BioEcoPar::Marche(SEXP list, int ind_t)
 
 
 
-if(pUpdate){
+if(pflex){
 
-
-    PROTECT(MarketList = getListElement(list,"Market"));
-    PROTECT(v_ep = getListElement(MarketList,"ep")); //PrintValue(v_ep);
-    PROTECT(v_beta_pp = getListElement(MarketList,"beta_pp")); //PrintValue(v_beta_pp);
-
-    r_beta_pp = REAL(v_beta_pp);
-    r_ep = INTEGER(v_ep);
+    PROTECT(v_ep = getListElement(getListElement(list,"Market"),"ep")); //PrintValue(v_ep);
 
     //---------
     // Calcul debarquements produits
@@ -98,7 +89,7 @@ if(pUpdate){
 
     for (int p = 0; p < nbP; p++) {
 
-            if (ind_t==0) {
+        if (ind_t==0) {
             PROTECT(ans_L_pt = NEW_NUMERIC(nbT));
 
             PROTECT(dimCstL_pt = allocVector(INTSXP, 1));
@@ -110,27 +101,28 @@ if(pUpdate){
             setAttrib(ans_L_pt, R_DimNamesSymbol, dimNamL_pt);
 
             rans_L_pt = REAL(ans_L_pt);
-            } else {
-                rans_L_pt = REAL(VECTOR_ELT(out_L_pt, p));
-                    }
-
-            //Colonne de la matrice ep : 1 si espece correspond au meme produit, 0 sinon
-            L_p = 0.0;
-            for (int k = 0; k < nbEall; k++) {
-                    L_p = L_p + r_ep[p*nbEall + k] * REAL(VECTOR_ELT(out_L_et, k))[ind_t];
-                    //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", k = " << CHAR(STRING_ELT(sppListAll,k)) << ", r_ep = " << r_ep[p*nbEall + k] << ", L_p = " << L_p << endl;
-            }
-
-            rans_L_pt [ind_t] = L_p; //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", rans_L_pt = " << rans_L_pt [ind_t] << endl;
-
-            if (ind_t==0) {
-                SET_VECTOR_ELT(out_L_pt, p, ans_L_pt);
-                SET_STRING_ELT(rnames_p, p, STRING_ELT(pList,p));
-                UNPROTECT(3);
-                }
-
+        } else {
+            rans_L_pt = REAL(VECTOR_ELT(out_L_pt, p));
         }
+
+        //Colonne de la matrice ep : 1 si espece correspond au meme produit, 0 sinon
+        L_p = 0.0;
+        for (int k = 0; k < nbEall; k++) {
+            L_p = L_p + INTEGER(v_ep)[p*nbEall + k] * REAL(VECTOR_ELT(out_L_et, k))[ind_t];
+            //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", k = " << CHAR(STRING_ELT(sppListAll,k)) << ", r_ep = " << r_ep[p*nbEall + k] << ", L_p = " << L_p << endl;
+        }
+
+        rans_L_pt [ind_t] = L_p; //fichier << "p = " << CHAR(STRING_ELT(pList,p)) << ", rans_L_pt = " << rans_L_pt [ind_t] << endl;
+
+        if (ind_t==0) {
+            SET_VECTOR_ELT(out_L_pt, p, ans_L_pt);
+            SET_STRING_ELT(rnames_p, p, STRING_ELT(pList,p));
+            UNPROTECT(3);
+        }
+
     }
+}
+
 
 if (nbE>0) {
 
@@ -179,31 +171,10 @@ if (nbE>0) {
 //        ---------
 //         Ajustement prix avec relation prix/quantite
 //        ---------
-        mult_p = 1.0;
-        if(pUpdate){
-//Rprintf("M5\n");fichier << "M5" << endl;
-                int ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //indice dans matrice ep
-                //fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
-
-                double *r_L_pt;
-
-                //Trouver l'indice du produit correspondant
-                for (ind_p = 0 ; ind_p < nbP ; ind_p++) {if (r_ep[ind_p*nbEall + ind_e] == 1) break;}
-
-                //fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
-
-                for ( int k = 0; k < nbP; k++) {
-
-                    r_L_pt = REAL(VECTOR_ELT(out_L_pt, k));
-                    if (r_L_pt[0]!=0) mult_p = mult_p * pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) ;
-                    //fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
-
-                }
-
-                PROTECT(ans_MultPrice = VECTOR_ELT(multPrice, ind_e));
-                REAL(ans_MultPrice)[ind_t] = mult_p;
-                UNPROTECT(1);
-
+        if(pflex){
+            mult_p = mult_pflex(&list, ind_t, e, &sppListAll, &sppList, nbP, nbEall, &out_L_pt, &multPrice, &v_ep);
+        } else {
+            mult_p = 1.0;
         }
 
 
@@ -402,31 +373,10 @@ if (nbEstat>0) {
 //        ---------
 //         Ajustement prix avec relation prix/quantite
 //        ---------
-        mult_p = 1.0;
-        if(pUpdate){
-//Rprintf("M5\n");fichier << "M5" << endl;
-                int ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //indice dans matrice ep
-                //fichier << "e = " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
-
-                double *r_L_pt;
-
-                //Trouver l'indice du produit correspondant
-                for (ind_p = 0 ; ind_p < nbP ; ind_p++) {if (r_ep[ind_p*nbEall + ind_e] == 1) break;}
-
-                //fichier << "p = " << CHAR(STRING_ELT(pList,ind_p)) << endl;
-
-                for ( int k = 0; k < nbP; k++) {
-
-                    r_L_pt = REAL(VECTOR_ELT(out_L_pt, k));
-                    if (r_L_pt[0]!=0) mult_p = mult_p * pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) ;
-                    //fichier << "k = " << CHAR(STRING_ELT(pList,k)) << ", ratio L = " << r_L_pt[ind_t] / r_L_pt[0] << ", beta = " << r_beta_pp[k*nbP + ind_p] << ", pow = "<<  pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) << ", mult = " << mult_p << endl;
-
-                }
-            PROTECT(ans_MultPrice = VECTOR_ELT(multPrice, ind_e));
-            REAL(ans_MultPrice)[ind_t] = mult_p;
-            UNPROTECT(1);
-
-
+        if(pflex){
+            mult_p = mult_pflex(&list, ind_t, e, &sppListAll, &sppList, nbP, nbEall, &out_L_pt, &multPrice, &v_ep);
+        } else {
+            mult_p = 1.0;
         }
 
 
@@ -518,9 +468,9 @@ UNPROTECT(7);
 
 }
 
-if (pUpdate){
-        if(ind_t == 0) UNPROTECT(1);
-    UNPROTECT(3);
+if (pflex){
+    if(ind_t == 0) UNPROTECT(1);
+    UNPROTECT(1);
 }
 if (ind_t==0) UNPROTECT(1);
 
@@ -528,3 +478,36 @@ if (ind_t==0) UNPROTECT(1);
 //fichier.close();
 
 }}
+
+
+double mult_pflex(SEXP *list, int ind_t, int e, SEXP *sppListAll, SEXP *sppList, int nbP, int nbEall, SEXP *out_L_pt, SEXP *multPrice, SEXP *v_ep){
+
+    int ind_e, ind_p;
+    double *r_L_pt, mult_p;
+    double *r_beta_pp = &NA_REAL;
+    SEXP v_beta_pp = R_NilValue, ans_MultPrice;
+
+    PROTECT(v_beta_pp = getListElement(getListElement(*list,"Market"), "beta_pp"));
+    r_beta_pp = REAL(v_beta_pp);
+
+    ind_e = getVectorIndex(*sppListAll,CHAR(STRING_ELT(*sppList,e))); //indice dans matrice ep
+ 
+    //Trouver l'indice du produit correspondant
+    for (ind_p = 0 ; ind_p < nbP ; ind_p++) {
+        if (INTEGER(*v_ep)[ind_p*nbEall + ind_e] == 1) break;
+    }
+
+    for ( int k = 0; k < nbP; k++) {
+        r_L_pt = REAL(VECTOR_ELT(*out_L_pt, k));
+        if (r_L_pt[0]!=0) {
+            mult_p = pow(r_L_pt[ind_t] / r_L_pt[0], r_beta_pp[k*nbP + ind_p]) ;
+        }
+    }
+
+    PROTECT(ans_MultPrice = VECTOR_ELT(*multPrice, ind_e));
+    REAL(ans_MultPrice)[ind_t] = mult_p;
+
+    UNPROTECT(2);
+
+    return mult_p;
+}

@@ -73,7 +73,7 @@ int BioEcoPar::getVectorIndex(SEXP vect, const char *str) //fonctionne aussi pou
 {
     int i;
 
-    for (i = 0; i < length(list); i++)
+    for (i = 0; i < length(list); i++) // TODO : why is list here ?
         if (strcmp(CHAR(STRING_ELT(vect,i)), str) == 0) break;
 
     return i;

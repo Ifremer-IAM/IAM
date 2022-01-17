@@ -18,6 +18,8 @@
 //using namespace Rcpp;
 // using namespace std;
 
+// TODO : unused module. To remove ?
+
 //------------------------------------------
 // Module 'Report d'effort' selon une pond�ration des ratio profit par m�tier et effort par m�tier anticip�s
 //------------------------------------------
@@ -161,7 +163,7 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
         if (ecodcf==0) {
             PROTECT(RTBS_f_m = VECTOR_ELT(out_Eco,10));
         } else {
-            PROTECT(RTBS_f_m = VECTOR_ELT(out_EcoDCF,44));
+            PROTECT(RTBS_f_m = VECTOR_ELT(out_EcoDCF,44)); // TODO : attention ce n'est plus le 44 mais le 15 !
         }
 
         double *r_RTBS_f_m = REAL(RTBS_f_m), *r_alphaBhv = REAL(alphaBhv);

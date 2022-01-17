@@ -109,11 +109,11 @@ constMM = true; //on calcule la capturabilit� via l'effort par flottille (inco
 fUpdate = true;    // � t=0, on remet � jour
 dUpdate = true;    //
 cUpdate = true;    //
-pUpdate = !isNull(getListElement(list, "Market"));  //Rprintf("pUpdate = %d \n",pUpdate) ; //
+pflex = !isNull(getListElement(list, "Market"));  //Rprintf("pflex = %d \n",pflex) ; //
 eUpdate = true;    //
 
-if (pUpdate) {
-    if(VERBOSE){Rprintf("pUpdate | ");}
+if (pflex) {
+    if(VERBOSE){Rprintf("pflex | ");}
     PROTECT(sppListAll = getListElement(getListElement(list, "Market"),"modE")); //PrintValue(sppListAll);
     PROTECT(pList = getListElement(getListElement(list, "Market"),"modP"));
     nbP = length(pList);
@@ -215,7 +215,7 @@ SRInd = INTEGER(SRind);
 
 //bool door = true;
 
-//il faut initialiser 'eVar' dans lequel on int�grera toutes les variables interm�diaires � d�cliner par esp�ce
+//il faut initialiser 'eVar' dans lequel on integrera toutes les variables intermediaires a decliner par espece
 SEXP eltE;
 PROTECT_WITH_INDEX(eVar = allocVector(VECSXP, nbE),&ipx_eVar);
 if (nbE>0) {
@@ -240,12 +240,10 @@ if (nbEstat>0) {
 PROTECT_WITH_INDEX(eStatVar_copy = duplicate(eStatVar),&ipx_eStatVar_copy); //21
 
 
-if(VERBOSE){Rprintf("Step 0.2 | ");}
-
+if(VERBOSE){Rprintf("Protect out | ");}
+{
 PROTECT_WITH_INDEX(fVar = allocVector(VECSXP, 34),&ipx_fVar); //32= rtbsIni_f & 33=rtbsIni_f_m & 33=ETini_f_m
 PROTECT_WITH_INDEX(fVar_copy = duplicate(fVar),&ipx_fVar_copy);
-
-//////Rprintf("A");
 
 PROTECT(out_F_fmi = allocVector(VECSXP, nbE));
 PROTECT(out_Fr_fmi = allocVector(VECSXP, nbE));
@@ -391,14 +389,13 @@ PROTECT(out_N_eit_S4M4 = allocVector(VECSXP, nbE)); //+64 = 107
 
 PROTECT(out_P_t = allocVector(VECSXP, nbE));
 PROTECT(out_Pstat = allocVector(VECSXP, nbEstat));
-PROTECT(out_Eco = allocVector(VECSXP, 69));
+PROTECT(out_Eco = allocVector(VECSXP, 69)); // TODO useless ?
 PROTECT(out_EcoDCF = allocVector(VECSXP, 60));
 PROTECT(out_effort = allocVector(VECSXP, 6)); //nbv_f, effort1_f, effort2_f, nbv_f_m, effort1_f_m, effort2_f_m
 
 PROTECT(mu_nbds = allocVector(REALSXP, nbT)); //il reste la mise en forme � op�rer
 PROTECT(mu_nbv = allocVector(REALSXP, nbT));
 PROTECT(out_typeGest = allocVector(INTSXP, nbT));
-
 
 PROTECT(out_Ytot_fm = NEW_NUMERIC(nbF*nbMe*nbT));
 PROTECT(out_DD_efmi = allocVector(VECSXP, nbE));
@@ -409,7 +406,7 @@ PROTECT(out_statDD_efm = allocVector(VECSXP, nbEstat));
 PROTECT(out_statLD_efm = allocVector(VECSXP, nbEstat));
 PROTECT(out_statLDst_efm = allocVector(VECSXP, nbEstat));
 PROTECT(out_statLDor_efm = allocVector(VECSXP, nbEstat));
-
+}
 
 if(VERBOSE){Rprintf("Step 0.3 | ");}
 
@@ -547,10 +544,10 @@ if ((nbE+nbEstat)>0) {
  if(VERBOSE){Rprintf(" | ");}
 }
 
-if(VERBOSE){Rprintf("\nLoop : \n");}
+if(VERBOSE){Rprintf("\nLoop :");}
 
 for (int it = 0; it < nbT ; it++) {
-    Rprintf("T = %d => ", it);
+    Rprintf("\n========================== T = %d => \n", it);
 
 //Rprintf("ini1");fichier << "ini1" << endl;
 
@@ -571,12 +568,12 @@ for (int it = 0; it < nbT ; it++) {
 if (nbE>0) {
 
     if (it>=1) {
-        RecAlea(list, listStochastic, it, 1, recType1); //IMPORTANT : � effectuer AVANT la proc�dure d'optimisation
+        RecAlea(list, listStochastic, it, 1, recType1); //IMPORTANT : a effectuer AVANT la procedure d'optimisation
         RecAlea(list, listStochastic, it, 2, recType2);
         RecAlea(list, listStochastic, it, 3, recType3);
     }
 
-        SRmod(list, listSR, it, TypeSR, SRInd); //important : � envoyer avant 'DynamicPop'
+        SRmod(list, listSR, it, TypeSR, SRInd); //important : a envoyer avant 'DynamicPop'
 
 }
 //Rprintf("C");fichier << "C" << endl;
@@ -657,6 +654,7 @@ if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | 
    if(VERBOSE){Rprintf(" | ");}
 }
 
+// Florence QuotaMarket avec it > 1
 if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
    if(VERBOSE){Rprintf("QuotaMarket");}
    QuotaMarket(list, VECTOR_ELT(parQEX,1), VECTOR_ELT(parQEX,2), VECTOR_ELT(parQEX,3), REAL(VECTOR_ELT(parQEX,4))[0],REAL(VECTOR_ELT(parQEX,5))[0], REAL(VECTOR_ELT(parQEX,6))[0],INTEGER(VECTOR_ELT(parQEX,7))[0], parBHV, it, INTEGER(persCalc)[0]);
@@ -887,23 +885,13 @@ if(VERBOSE){Rprintf("\n  Mortalite");}
  Mortalite(list, it, eVar, VERBOSE);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
  if(VERBOSE){Rprintf(" | ");}
 
-if(VERBOSE){Rprintf("\nFoth and Froth XSA \n");}
-PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 1), 44));
-PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 1), 60));
-if(VERBOSE){Rprintf("\nFoth and Froth SS3 \n");}
-PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 44));
-PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 60));
-
 if(VERBOSE){Rprintf("\n  DynamicPop");}
- DynamicPop(list, it, eVar, true, 0);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
+ DynamicPop(list, it, eVar, true, VERBOSE);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
  if(VERBOSE){Rprintf(" | ");}
 }
 
-if(VERBOSE){Rprintf("\n\nafter dynapop \n");}
-// PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 44));
-// PrintValue(VECTOR_ELT(VECTOR_ELT(eVar, 2), 60));
 if(VERBOSE){Rprintf("\n  CatchDL");}
-CatchDL(list, it, eVar, 0);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
+CatchDL(list, it, eVar, VERBOSE);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
 if(VERBOSE){Rprintf(" | ");}
 
 //if (it>0) error("Unexpectedz scondition occurred");
@@ -955,7 +943,7 @@ free_vector(multFOTHinterm_e,1,nbE);
 //Rprintf("K2\n");fichier << "K2" << endl;
 //UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajout�s apr�s int�gration de 'parOQD'
 //if (nbEstat>0) UNPROTECT(nbEstat);
-if (pUpdate){ UNPROTECT(2); } else {UNPROTECT(1);}
+if (pflex){ UNPROTECT(2); } else {UNPROTECT(1);}
 UNPROTECT(30);
 UNPROTECT(17+20+4+16*6+8+9);//out_
 UNPROTECT(14);

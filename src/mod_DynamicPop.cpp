@@ -97,6 +97,7 @@ if (dUpdate) {
            *r_Fr_efmit_S2M1=&NA_REAL, *r_Fr_efmit_S2M2=&NA_REAL, *r_Fr_efmit_S2M3=&NA_REAL, *r_Fr_efmit_S2M4=&NA_REAL,
            *r_Fr_efmit_S3M1=&NA_REAL, *r_Fr_efmit_S3M2=&NA_REAL, *r_Fr_efmit_S3M3=&NA_REAL, *r_Fr_efmit_S3M4=&NA_REAL,
            *r_Fr_efmit_S4M1=&NA_REAL, *r_Fr_efmit_S4M2=&NA_REAL, *r_Fr_efmit_S4M3=&NA_REAL, *r_Fr_efmit_S4M4=&NA_REAL,
+           
            *r_F_efmit_S1M1=&NA_REAL, *r_F_efmit_S1M2=&NA_REAL, *r_F_efmit_S1M3=&NA_REAL, *r_F_efmit_S1M4=&NA_REAL,
            *r_F_efmit_S2M1=&NA_REAL, *r_F_efmit_S2M2=&NA_REAL, *r_F_efmit_S2M3=&NA_REAL, *r_F_efmit_S2M4=&NA_REAL,
            *r_F_efmit_S3M1=&NA_REAL, *r_F_efmit_S3M2=&NA_REAL, *r_F_efmit_S3M3=&NA_REAL, *r_F_efmit_S3M4=&NA_REAL,
@@ -1279,7 +1280,6 @@ sumWt = 0.0; fmax = 0.0;
 
                                     double *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.6145), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                     double *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
-                                    Rprintf("\ninit r_Foth_i = %d || r_Froth_i = %d\n", *r_Foth_i, *r_Froth_i);
 //Rprintf("G1.19");fichier << "G1.19" << endl;
                                     double *r_Foth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 116));
                                     double *r_Foth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 117));
@@ -1298,7 +1298,6 @@ sumWt = 0.0; fmax = 0.0;
                                     double *r_Foth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 130));
                                     double *r_Foth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 131));
 //Rprintf("G1.20");fichier << "G1.20" << endl;
-if(VERBOSE){Rprintf(" .");}
                                     double *r_Froth_i_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 132));
                                     double *r_Froth_i_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 133));
                                     double *r_Froth_i_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 134));
@@ -1316,7 +1315,6 @@ if(VERBOSE){Rprintf(" .");}
                                     double *r_Froth_i_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 146));
                                     double *r_Froth_i_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 147));
 //Rprintf("G1.21");fichier << "G1.21" << endl;
-if(VERBOSE){Rprintf(" .");}
                                     //�quation
                                     for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
@@ -2451,7 +2449,7 @@ UNPROTECT(1);
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  if(VERBOSE){Rprintf(" !pUpdate :");}
+  if(VERBOSE){Rprintf(" !dUpdate :");}
 
 //fichier << "dUpdate = " << dUpdate << endl;
 //Rprintf("dUpdate = %f \n" ,dUpdate);
@@ -2597,8 +2595,6 @@ for (int e = 0 ; e < nbE ; e++) {
                                                   r_N_e0t[ind_f*fact6_D[0] + ind_m*fact6_D[1] + ind_i*fact6_D[2] + ind_t*fact6_D[3]];
 
                                             }}
-
-
 
 
                                         } else {
@@ -3086,11 +3082,6 @@ for (int e = 0 ; e < nbE ; e++) {
                     double  *r_M_ei = REAL(getListElement(elmt, "M_i"));
                     double  *r_Froth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
                     double  *r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
-                    if(VERBOSE){Rprintf("\nthere it is ! Same pointeur for diff table...oh god why ???\n");}
-                    Rprintf("\nr_Foth_i = %d || r_Froth_i = %d\n", *r_Foth_i, *r_Froth_i);
-                    Rprintf("r_M_ei = %d\n", *r_M_ei);
-                    PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
-                    PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 60));
 
                     double  *r_w_ei = REAL(getListElement(elmt, "wStock_i"));
                     double  *r_Fbar = REAL(getListElement(elmt, "Fbar"));

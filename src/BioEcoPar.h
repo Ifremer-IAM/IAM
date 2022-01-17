@@ -125,7 +125,7 @@ double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarT
 
 bool    Zoptim_use, FOTHoptim_use, boolQ, ZoptSS3, //indicateur de pr�sence de donn�es d'effort disponible (calcul capturabilit�,...)
         constMM, //indicateur qui d�termine si les niveaux m�tiers de la partie bio et de la partie �co sont les m�mes (utilisation de l'effort par flottille-m�tier pour calculer la capturabilit� dans le module 'Mortalit�')
-        fUpdate, dUpdate, cUpdate, pUpdate, eUpdate; //indicateur de mise � jour des variables de calcul
+        fUpdate, dUpdate, cUpdate, pflex, eUpdate; //indicateur de mise � jour des variables de calcul
 
 
 

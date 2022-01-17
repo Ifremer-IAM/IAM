@@ -53,7 +53,7 @@ double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
 
 if (cUpdate) {
-if(VERBOSE){Rprintf(" pUpdate :");}
+if(VERBOSE){Rprintf(" cUpdate :");}
 
     SEXP    elmt, dimCst, Dim, dimCst_F_efmit, dimCst_N_eit, dimCst_Z_eit, dimCst_wL_ei, dimCst_wD_ei, dimCst_d_efmit,
             dimCst_d_eStat, dimCst_LPUE_eStat, dimCst_eStat, v_d_eStat, v_LPUE_eStat, v_B_et,
@@ -2070,8 +2070,8 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
                         rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] = 0.0;
 
 
-                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
-                                rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
+                    rans_DD_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]] =
+                     rans_D_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
 
                     if (!recal & !ISNA(rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1] + ind_i*fact1_C[2] + ind_t*fact1_C[3]])) {
                         rans_L_eit[ind_i + ind_t*nbI] = rans_L_eit[ind_i + ind_t*nbI] - rans_L_efmit[ind_f*fact1_C[0] + ind_m*fact1_C[1]  + ind_i*fact1_C[2] + ind_t*fact1_C[3]];
@@ -2534,7 +2534,7 @@ UNPROTECT(3);
 //PrintValue(out_Fbar_et);
 
 } else {
-    if(VERBOSE){Rprintf(" cUpdate :");}
+    if(VERBOSE){Rprintf(" !cUpdate :");}
 //fichier << "cUpdate = " << cUpdate << endl;
 //fichier << "ind_t = " << ind_t << endl;
 
@@ -3315,20 +3315,12 @@ double *r_OD_e = REAL(getListElement(elmt, "OD_e"));//Rprintf("H15.5\n");fichier
                                 PROTECT(v_wD_ei = getListElement(elmt, "wD_i"));
 
 //double Btemp;
-if(VERBOSE){Rprintf(" .");}
                                 rans_C_efmit = REAL(VECTOR_ELT(out_C_efmit,e));
-                                if(VERBOSE){Rprintf(" .");}
                                 rans_C_eit = REAL(VECTOR_ELT(out_C_eit,e));
-                                if(VERBOSE){Rprintf(" .\n");}
-                                PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
                                 r_Foth_i = REAL(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44)); //Rprintf("Dans EVAR (l.12171), Fothi = "); PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, e), 44));
-if(VERBOSE){Rprintf(" .");}
                                 r_F_efmit = REAL(VECTOR_ELT(out_F_fmi,e));
-                                if(VERBOSE){Rprintf(" .");}
                                 r_N_eit = REAL(VECTOR_ELT(out_N_eit, e));
-                                if(VERBOSE){Rprintf(" .");}
                                 r_Z_eit = REAL(VECTOR_ELT(out_Z_eit, e));
-                                if(VERBOSE){Rprintf(" .");}
 
 
 
@@ -4306,9 +4298,6 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
          }
 
 }
-
-if(VERBOSE){Rprintf(" . ");}
-
 
 }
 ////PrintValue(out_Ystat);
