@@ -51,6 +51,12 @@ double *reff1 = REAL(getListElement(Flist, "effort1_f_m"));
 double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 double *rnbv = REAL(getListElement(Flist, "nbv_f_m"));
 
+SEXP dimCstT, dimCstF;
+int *dC, *dCF;
+Rf_protect(dimCstT = Rf_allocVector(INTSXP, 4));
+dC = INTEGER(dimCstT) ; dC[0] = 0; dC[1] = 0; dC[2] = 0; dC[3] = nbT;
+Rf_protect(dimCstF = Rf_allocVector(INTSXP, 4));
+dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
 
 if (cUpdate) {
 if(VERBOSE){Rprintf(" cUpdate :");}
@@ -65,7 +71,7 @@ if(VERBOSE){Rprintf(" cUpdate :");}
               v_d_efmit_G2=R_NilValue, v_doth_eit_G2=R_NilValue,
             cFACT1, cFACT2, cFACT3, cFACT4, cFACT5, cFACT6, cFACT7,
             dimYtot, dimCstYtot, dimNamYtot,
-            dimCstOQ_ft, dimCstOQ_t, dimnames_oqD_eft, dimnames_oqD_et, dimCstL_et, dimNamL_et, nDim;
+            dimCstOQ_ft, dimCstOQ_t, dimnames_oqD_eft, dimnames_oqD_et, dimCstL_et, dimNamL_et /*, dimCstT*/;
 
     SEXP ans_C_efmit=R_NilValue, ans_Y_efmit=R_NilValue, ans_D_efmit=R_NilValue, ans_L_efmit=R_NilValue,
          dimnames=R_NilValue, rnames_Esp=R_NilValue, ans_C_eit=R_NilValue, ans_Y_eit=R_NilValue, ans_L_eit=R_NilValue, dimnames2=R_NilValue,
@@ -79,7 +85,7 @@ if(VERBOSE){Rprintf(" cUpdate :");}
          rnames_eAll=R_NilValue, ans_L_et=R_NilValue;
 
     int *dim_F_efmit, *dim_N_eit, *dim_Z_eit, *dim_wL_ei, *dim_wD_ei, *dim_d_efmit, *dimC, *dim, *dim2, *dimcst2,
-            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot, *dimOQ_ft, *dimOQ_t, *nd, *int_dimCstL_et;
+            *dim_d_eStat, *dim_LPUE_eStat, *dim_eStat, *int_dimYtot, *int_dimCstYtot, *dimOQ_ft, *dimOQ_t, *int_dimCstL_et;
     int nbI, ind_e;
 
     double *rans_C_efmit=&NA_REAL, *rans_Y_efmit=&NA_REAL, *rans_D_efmit=&NA_REAL, *rans_L_efmit=&NA_REAL, *r_F_efmit=&NA_REAL, *r_N_eit=&NA_REAL,
@@ -1344,6 +1350,9 @@ if (nbI>1) {
 
                             SET_VECTOR_ELT(out_DD_efmi, e, ans_DD_efmit);
 
+                            setAttrib(ans_oqD_eft, install("DimCst"), dimCstF);
+                            setAttrib(ans_oqD_et, install("DimCst"), dimCstT);
+
                             SET_VECTOR_ELT(out_oqD_eft, e, ans_oqD_eft);
                             SET_VECTOR_ELT(out_oqD_et, e, ans_oqD_et);
 
@@ -2104,8 +2113,6 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     // calcul de L_et
     //---------
-    PROTECT(nDim = allocVector(INTSXP,4));
-    nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
     ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     if (ind_t==0) {
@@ -2118,13 +2125,14 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
             PROTECT( dimNamL_et = allocVector(VECSXP,1));
             SET_VECTOR_ELT(dimNamL_et, 0, times);
             setAttrib(ans_L_et, R_DimNamesSymbol, dimNamL_et);
+            setAttrib(ans_L_et, install("DimCst"), dimCstT);
 
             rans_L_et = REAL(ans_L_et);
-            } else {
-                rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-                    }
+    } else {
+            rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
+    }
 
-            rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << endl;
+    rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,dimCstT))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << endl;
 
     if (ind_t==0) {
             SET_VECTOR_ELT(out_L_et, ind_e, ans_L_et);
@@ -2136,7 +2144,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
 
 
-  UNPROTECT(2+4+4+1+2+1);
+  UNPROTECT(2+4+4+1+2/*+1*/);
   if (Svec[e]==0){
     UNPROTECT(14);
   } else {UNPROTECT(21);}
@@ -2271,6 +2279,7 @@ double *r_dst_efm = REAL(getListElement(elmt, "dst_f_m_e"));
                             SET_VECTOR_ELT(dimnames_oqD_eft, 1, times);
 
                             setAttrib(ans_oqDstat, R_DimNamesSymbol, dimnames_oqD_eft);//Rprintf("EE");
+                            setAttrib(ans_oqDstat, install("DimCst"), dimCstF);
 
                             rans_oqDstat = REAL(ans_oqDstat);// //Rprintf("FF");
                             for (int tt=0; tt<(nbF*nbT); tt++) rans_oqDstat[tt] = 0.0;
@@ -2478,8 +2487,6 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     //  Calcul L_et
     //---------
-    PROTECT(nDim = allocVector(INTSXP,4));
-    nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
     ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     if (ind_t==0) {
@@ -2492,13 +2499,14 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
             PROTECT( dimNamL_et = allocVector(VECSXP,1));
             SET_VECTOR_ELT(dimNamL_et, 0, times);
             setAttrib(ans_L_et, R_DimNamesSymbol, dimNamL_et);
+            setAttrib(ans_L_et, install("DimCst"), dimCstT);
 
             rans_L_et = REAL(ans_L_et);
-            } else {
-                rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-                    }
+    } else {
+            rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
+    }
 
-            rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << endl;
+            rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,dimCstT))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << endl;
 
 
     if (ind_t==0) {
@@ -2517,7 +2525,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 
                     }
 
-                    UNPROTECT(6+1);
+                    UNPROTECT(6/*+1*/);
 
          }
 
@@ -2557,9 +2565,8 @@ if (nbE>0) {
 //Rprintf("H15\n");fichier << "H15" << endl;
                             int nbI = length(VECTOR_ELT(namDC,e));
                             int ind_e;
-                            int *nd;
 
-                            SEXP elmt, nDim, ans_L_eit;
+                            SEXP elmt /*, dimCstT*/, ans_L_eit;
                             PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
 
                             double *rans_C_efmit=&NA_REAL,
@@ -4086,12 +4093,10 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //---------
     if(VERBOSE){Rprintf(" L_et");}
     PROTECT(ans_L_eit = VECTOR_ELT(out_L_eit,e));
-    PROTECT(nDim = allocVector(INTSXP,4));
-    nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
     ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppList,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppList: " << CHAR(STRING_ELT(sppList,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-    rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
+    rans_L_et [ind_t] = REAL(aggregObj(ans_L_eit,dimCstT))[ind_t]; //fichier << "rans_L_et = " << rans_L_et [ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] << endl;
 
 
 
@@ -4099,7 +4104,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
                                     UNPROTECT(1);
                             } else {UNPROTECT(2);}
 
-                            UNPROTECT(1+2);
+                            UNPROTECT(2/*+1*/);
 //Rprintf("H20\n");fichier << "H20" << endl;
     }
 }
@@ -4110,7 +4115,7 @@ if (nbEstat>0) {
 //Rprintf("H21\n");fichier << "H21" << endl;
     for (int e = 0 ; e < nbEstat ; e++) {
 
-                    SEXP elmt, nDim, ans_Ystat;
+                    SEXP elmt /*, dimCstT*/, ans_Ystat;
                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppListStat,e))));
 //Rprintf("H22\n");fichier << "H22" << endl;
                     double *r_LPUE_eStat = REAL(getListElement(elmt, "LPUE_f_m_e"));
@@ -4132,7 +4137,6 @@ if (nbEstat>0) {
                       int *fFactSup1 = INTEGER(iDim(INTEGER(getAttrib(getListElement(Flist, "nbv_f_m"), install("DimCst"))))),
                           *fFactSup2 = INTEGER(iDim(INTEGER(getAttrib(getListElement(Flist, "effort1_f_m"), install("DimCst")))));
                     int ind_e;
-                    int *nd;
 
                     double *rans_Ystat = REAL(VECTOR_ELT(out_Ystat, e));
                     double *rans_Lstat = REAL(VECTOR_ELT(out_Lstat, e));
@@ -4284,16 +4288,14 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
     //  Calcul L_et
     //---------
     PROTECT(ans_Ystat = VECTOR_ELT(out_Ystat, e));
-    PROTECT(nDim = allocVector(INTSXP,4));
-    nd = INTEGER(nDim); nd[0] = 0;  nd[1] = 0; nd[2] = 0; nd[3] = nbT;
     ind_e = getVectorIndex(sppListAll,CHAR(STRING_ELT(sppListStat,e))); //fichier << "e = " << e << ", ind_e = " << ind_e << ", Name in sppListStat: " << CHAR(STRING_ELT(sppListStat,e)) << ", Name in sppListAll: " << CHAR(STRING_ELT(sppListAll,ind_e)) << endl;
 
     rans_L_et = REAL(VECTOR_ELT(out_L_et, ind_e));
-    rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,nDim))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] <<  endl;
+    rans_L_et [ind_t] = REAL(aggregObj(ans_Ystat,dimCstT))[ind_t]; //fichier << "rans_L_et = " << rans_L_et[ind_t] << "out_L_et = " << REAL(VECTOR_ELT(out_L_et, ind_e))[ind_t] <<  endl;
 
 
 
-                   UNPROTECT(1+2);
+                   UNPROTECT(2/*+1*/);
 
          }
 
@@ -4303,6 +4305,7 @@ if (!((r_OD_e[0]>0.5) & (r_OD_e[0]<=(ind_t+1))) & ((activeQR!=0) & (activeQR<=in
 ////PrintValue(out_Ystat);
 
 UNPROTECT(1);
+Rf_unprotect(2);
 //Rprintf("End CatchDL\n");fichier << "End" << endl;
 
 //fichier.close();

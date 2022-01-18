@@ -1767,7 +1767,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
 
 
     if (ind_t==0) Rf_unprotect(67);
-    Rf_unprotect(89);
+    Rf_unprotect(85);
 
     //Rprintf("\nJ2\n");fichier << "J2" << endl;
 

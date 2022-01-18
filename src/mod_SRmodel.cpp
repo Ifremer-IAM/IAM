@@ -118,7 +118,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                 rans[ind_t] = paramet[0*nbT + ind_t] * paramet[1*nbT + ind_t];
 
-            }else{}
+            }else{
 
                 rans[ind_t] = paramet[0*nbT + ind_t]*(ssb[ind_t-fstAge] - (pow(ssb[ind_t-fstAge] - paramet[1*nbT + ind_t]*(1-paramet[2*nbT + ind_t]),2.0)/(4*paramet[1*nbT + ind_t]*paramet[2*nbT + ind_t])));
             }
