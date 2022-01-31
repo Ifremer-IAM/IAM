@@ -26,32 +26,75 @@ List stripe_ecoCDF(List EcoDCF, List Flist, int ind_t){
     NumericVector nbv = Flist["nbv_f"]; 
     NumericVector K = Flist["K_f"];
     NumericVector inv = Flist["inv_f"]; 
+    NumericVector effort1_f = Flist["effort1_f"]; NumericVector effort2_f = Flist["effort2_f"];
+    // NumericVector cshr = Flist["cshr_f"]; 
+    // NumericVector cnb = Flist["cnb_f"]; 
+    // NumericVector persc = Flist["persc_f"]; 
+    // NumericVector eec = Flist["eec_f"]; 
+    // NumericVector mwh = Flist["mwh_f"]; 
+    // // NumericVector rep = Flist["rep_f"]; 
+    // // NumericVector gc = Flist["gc_f"]; 
+    // // NumericVector fixc = Flist["fixc_f"]; 
+    // NumericVector FTE = Flist["FTE_f"]; 
+    // NumericVector dep = Flist["dep_f"]; 
+    // NumericVector ic = Flist["ic_f"]; 
 
-    DataFrame GVLav (EcoDCF["GVLav_f_out"]);     NumericVector GVLav_t = GVLav[ind_t];
-    DataFrame gp (EcoDCF["gp_f_out"]);           NumericVector gp_t = gp[ind_t];
-    DataFrame ncf (EcoDCF["ncf_f_out"]);         NumericVector ncf_t = ncf[ind_t];
-    DataFrame np (EcoDCF["np_f_out"]);           NumericVector np_t = np[ind_t];
+    NumericMatrix cnb_out = EcoDCF["cnb_f_out"];
+    NumericMatrix GVLav = EcoDCF["GVLav_f_out"];
+    NumericMatrix gp = EcoDCF["gp_f_out"];
+    NumericMatrix ncf = EcoDCF["ncf_f_out"];
+    NumericMatrix np = EcoDCF["np_f_out"];
 
-    DataFrame ratio_GVL_K(EcoDCF["ratio_GVL_K_f_out"]);
-    DataFrame ratio_gp_K(EcoDCF["ratio_gp_K_f_out"]);
-    DataFrame RoFTA(EcoDCF["RoFTA_f_out"]);
-    DataFrame ROI(EcoDCF["ROI_f_out"]);
-    DataFrame ratio_np_K(EcoDCF["ratio_np_K_f_out"]);
+    NumericMatrix npmargin = EcoDCF["npmargin_f_out"];
+    NumericMatrix prof = EcoDCF["prof_f_out"];
+    NumericMatrix npmargin_trend = EcoDCF["npmargin_trend_f_out"];
+    NumericMatrix ssTot = EcoDCF["ssTot_f_out"];
+    NumericMatrix ratio_GVL_K = EcoDCF["ratio_GVL_K_f_out"];
+    NumericMatrix ratio_gp_K = EcoDCF["ratio_gp_K_f_out"];
+    NumericMatrix RoFTA = EcoDCF["RoFTA_f_out"];
+    NumericMatrix ROI = EcoDCF["ROI_f_out"];
+    NumericMatrix ratio_np_K = EcoDCF["ratio_np_K_f_out"];
+    NumericMatrix ratio_GVL_cnb_ue = EcoDCF["ratio_GVL_cnb_ue_f_out"]; 
     
+    //-- 32. npmargin_f
+    npmargin( _ , ind_t) = np( _ , ind_t) / GVLav( _ , ind_t);
+    //-- 33. prof_f
+    NumericVector prof_t = npmargin( _ , ind_t);
+    prof_t[prof_t < 0] = -1; prof_t[prof_t > 0.1] = 1; 
+    prof_t[(prof_t >= 0) & (prof_t < 0.1)] = 0;
+    prof( _ , ind_t) = prof_t;
+    //-- 34. npmargin_trend_f
+    NumericVector npmargin_trend_t = npmargin( _ , ind_t);
+    if(ind_t >= 5){
+        NumericMatrix sub_npmargin = npmargin( _ , Range(ind_t-5, ind_t -1));
+        npmargin_trend_t = npmargin_trend_t / (0.2 * rowSums(sub_npmargin));
+
+        npmargin_trend_t[npmargin_trend_t < -0.05] = -1; npmargin_trend_t[npmargin_trend_t > 0.05] = 1; 
+        npmargin_trend_t[(npmargin_trend_t >= -0.05) & (npmargin_trend_t <= 0.05)] = 0; 
+    } else {
+        npmargin_trend_t = rep(-1, npmargin_trend.nrow()); // this is nbF
+    }
+    npmargin_trend( _ , ind_t) = npmargin_trend_t;
+    //-- 35. ssTot_f
+    ssTot( _ , ind_t) = gp( _ , ind_t) * nbv;
     //-- 43. ratio_GVL_K_f
-    ratio_GVL_K[ind_t] = GVLav_t / K;
+    ratio_GVL_K( _ , ind_t) = GVLav( _ , ind_t) / K;
     //-- 44. ratio_gp_K_f
-    ratio_gp_K[ind_t] = gp_t / K;
+    ratio_gp_K( _ , ind_t) = gp( _ , ind_t) / K;
     //-- 45. RoFTA_f
-    RoFTA[ind_t] = ncf_t / K;
+    RoFTA( _ , ind_t) = ncf( _ , ind_t) / K;
     //-- 46. ROI_f
-    ROI[ind_t] = (gp_t - inv) / inv;
+    ROI( _ , ind_t) = (gp( _ , ind_t) - inv) / inv;
     //-- 47. ratio_np_K_f
-    ratio_np_K[ind_t] = np_t / K;
+    ratio_np_K( _ , ind_t) = np( _ , ind_t) / K;
+    //-- 48. ratio_GVL_cnb_ue_f
+    ratio_GVL_cnb_ue( _ , ind_t) = GVLav( _ , ind_t) / (cnb_out( _ , ind_t) * effort1_f * effort2_f);
 
     List res = List::create(
-        Named("nothing") = K,
-        _["ratio_GVL_K"] = ratio_GVL_K, _["ratio_gp_K"] = ratio_gp_K, _["RoFTA"] = RoFTA, _["ROI"] = ROI, _["ratio_np_K"] = ratio_np_K
+        Named("nothing") = K, 
+        _["ssTot"] = ssTot,
+        _["ratio_GVL_K"] = ratio_GVL_K, _["ratio_gp_K"] = ratio_gp_K, _["RoFTA"] = RoFTA, _["ROI"] = ROI, _["ratio_np_K"] = ratio_np_K,
+         _["ratio_GVL_cnb_ue"] = ratio_GVL_cnb_ue
     );
     return(res);
 }
@@ -80,7 +123,6 @@ DataFrame init_dataframe(int nrow, int ncol, List dimnames, IntegerVector DimCst
     }
 
     DataFrame res(result);
-    res.attr("DimCst") = DimCst;
     res.attr("names") = cnms;
     res.attr("row.names") = rnms;
     res.attr("DimCst") = DimCst;
@@ -101,3 +143,56 @@ END_RCPP
 }
 
 
+NumericMatrix init_matrix(int nrow, int ncol, List dimnames, IntegerVector DimCst){
+
+    NumericVector empty = rep(R_NaN, nrow*ncol);
+    CharacterVector cnms = dimnames[1], rnms = dimnames[0];
+
+    NumericMatrix res( nrow , ncol , empty.begin() );
+    rownames(res) = rnms;
+    colnames(res) = cnms;
+    res.attr("DimCst") = DimCst;
+    return(res);
+}
+
+SEXP _BioEcoPar_init_matrix(int nrow, int ncol,  SEXP dimnamesSEXP, SEXP DimCstSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type dimnames(dimnamesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type DimCst(DimCstSEXP);
+    rcpp_result_gen = Rcpp::wrap(init_matrix(nrow, ncol, dimnames, DimCst));
+    return rcpp_result_gen;
+END_RCPP
+}
+
+
+IntegerVector init_DimCst(int nbF, int nbM, int nbI, int nbT){
+    // IntegerVector x = {nbF, nbM, nbI, nbT};
+    IntegerVector x = IntegerVector::create(nbF, nbM, nbI, nbT);
+    return(x);
+}
+
+SEXP _BioEcoPar_init_DimCst(int nbF, int nbM, int nbI, int nbT) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(init_DimCst(nbF, nbM, nbI, nbT));
+    return rcpp_result_gen;
+END_RCPP
+}
+
+IntegerVector n_DimCst(IntegerVector DimCst){
+    IntegerVector res = DimCst[DimCst > 0];
+    return(res);
+}
+
+SEXP _BioEcoPar_n_DimCst(SEXP DimCstSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type DimCst(DimCstSEXP);
+    rcpp_result_gen = Rcpp::wrap(n_DimCst(DimCst));
+    return rcpp_result_gen;
+END_RCPP
+}

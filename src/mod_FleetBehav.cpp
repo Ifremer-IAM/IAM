@@ -160,11 +160,7 @@ void BioEcoPar::FleetBehav(SEXP list, int ind_t, SEXP paramBehav) //ind_t>0
 
     if ((typeBhv==3) & (ind_t>0) & (alphaBhv != NULL)) {
 
-        if (ecodcf==0) {
-            PROTECT(RTBS_f_m = VECTOR_ELT(out_Eco,10));
-        } else {
             PROTECT(RTBS_f_m = VECTOR_ELT(out_EcoDCF,44)); // TODO : attention ce n'est plus le 44 mais le 15 !
-        }
 
         double *r_RTBS_f_m = REAL(RTBS_f_m), *r_alphaBhv = REAL(alphaBhv);
 

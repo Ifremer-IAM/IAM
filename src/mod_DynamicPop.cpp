@@ -1,13 +1,3 @@
-// #include <stdlib.h>
-// #include <stdio.h>
-// #include <time.h>
-// #include <vector>
-// #include <math.h>
-// #include <string>
-// #include <sstream>
-// #include <iostream>
-// #include <fstream>
-// #include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
 //#include <Rcpp.h>
@@ -22,22 +12,10 @@
 // Module 'Dynamique de population' : 'out_F_fmi' = output de la fonction 'Mortalite' MAJ 27/09/2010 ajout de l'output SSB_et
 //------------------------------------------
 
+// First run dor DynamicPop
 extern "C" {
-
-void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE) 
-//Reality : si True, on appelle DynamicPop pour une vraie projection, sinon uniquement utilis� pour estimer TAC comme dans WG
-// ~ si True, arbitrage RecParamList VS MeanRec_Ftarg en faveur du premier (ie sinon, en faveur du deuxi�me)
+void BioEcoPar::up_DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE) 
 {
-
-////Rprintf("G0");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 5));//Rprintf("Mort20.2\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 6));//Rprintf("Mort20.3\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 7));//Rprintf("Mort20.4\n");
-//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 61));//Rprintf("Mort20.5\n");
-
-//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
-
-if (dUpdate) {
   if(VERBOSE){Rprintf(" dUpdate :");}
 //ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
 //fichier << "dUpdate = " << dUpdate << endl;
@@ -167,15 +145,13 @@ if (ind_t==0) {
 
 for (int e = 0 ; e < nbE ; e++) { //Rprintf("G1one");fichier << "G1one" << endl;
 
-if(VERBOSE){Rprintf("\n         ");}
+  if(VERBOSE){Rprintf("\n         ");}
                                     double *Ztemp = REAL(getListElement(ZtempList, CHAR(STRING_ELT(sppList,e))));
 //fichier << "G2one" << endl;
                                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));//Rprintf("g1");fichier << "g1" << endl;
                                     PROTECT(intAge = getListElement(namDC, CHAR(STRING_ELT(sppList,e))));//Rprintf("g2");fichier << "g2" << endl;
 
                                     nbI = length(getListElement(elmt, "modI"));//Rprintf("g3");fichier << "g3" << endl;
-
-
 
                              if ((Qvec[e]==1) & (Svec[e]==0)) {
                                if(VERBOSE){Rprintf(" SS3");}
@@ -326,9 +302,6 @@ if(VERBOSE){Rprintf("\n         ");}
                                     PROTECT(dimCst_mat_ei = getAttrib(v_mat_ei_G1, install("DimCst")));
 
                              }
-
-
-
 
 //Rprintf("G1.4");fichier << "G1.4" << endl;
                                     dim_M_ei = INTEGER(dimCst_M_ei); //fichier << "dim_M_ei =" << dim_M_ei << endl;
@@ -2097,12 +2070,6 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
 
 
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-
                                     //---------
                                     // calcul de SSB_et
                                     if(VERBOSE){Rprintf(" SSB");}
@@ -2254,13 +2221,6 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
                                 if ((Qvec[e]==0) & (Svec[e]==0)) SET_VECTOR_ELT(VECTOR_ELT(EVAR, e), 47, v_mat_ei);
 
 
-
-
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
-                                /////////////////////////////////////////////////////////////////////////////////////////////////
 
                                     //---------
                                     // calcul de B_et
@@ -2438,21 +2398,15 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 
     }
 }
-//PrintValue(out_Fbar_et);
-dUpdate = false;
 UNPROTECT(1);
-//fichier.close();
+}
+}
 
-} else { 
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+extern "C" {
+void BioEcoPar::r_DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE)
+{
   if(VERBOSE){Rprintf(" !dUpdate :");}
-
 //fichier << "dUpdate = " << dUpdate << endl;
-//Rprintf("dUpdate = %f \n" ,dUpdate);
 
 for (int e = 0 ; e < nbE ; e++) {
   if(VERBOSE){Rprintf("\n         ");}
@@ -2462,10 +2416,14 @@ for (int e = 0 ; e < nbE ; e++) {
                     PROTECT(elmt = getListElement(list, CHAR(STRING_ELT(sppList,e))));
 
                     int nbI = length(VECTOR_ELT(namDC, e));
-                    SEXP v_N_e0t, v_N_e0t_S1M1, v_N_e0t_S2M2, v_N_e0t_S3M3, v_N_e0t_S4M4, v_N_e0t_G1, v_N_e0t_G2,
+
+                    SEXP v_N_e0t;
+
+                    SEXP v_N_e0t_G1, v_N_e0t_G2;
+
+                    SEXP v_N_e0t_S1M1, v_N_e0t_S2M2, v_N_e0t_S3M3, v_N_e0t_S4M4, 
                          v_N_ei0_S1M1, v_N_ei0_S1M2, v_N_ei0_S1M3, v_N_ei0_S1M4,
                          v_matwt_M1,v_matwt_M2,v_matwt_M3,v_matwt_M4;
-
 
                     double  *rans_Fbar_et = REAL(VECTOR_ELT(out_Fbar_et,e));//Rprintf("G31");
                     double  *rans_B_et = REAL(VECTOR_ELT(out_B_et,e));//Rprintf("G32");
@@ -2494,6 +2452,8 @@ for (int e = 0 ; e < nbE ; e++) {
     if ((Qvec[e]==0) & (Svec[e]==0)) {
       if(VERBOSE){Rprintf(" XSA");}
     //Rprintf("Start_Annual\n");fichier << "Start_Annual" << endl;
+
+            
 
             PROTECT(v_N_e0t = getListElement(elmt, "N_i0t"));
             double  *r_Fr_efmit = REAL(VECTOR_ELT(out_Fr_fmi, e));//Rprintf("G34");
@@ -2753,6 +2713,8 @@ for (int e = 0 ; e < nbE ; e++) {
 
     } else if ((Qvec[e]==0) & (Svec[e]==1)) {
       if(VERBOSE){Rprintf(" SEX");}
+
+            
     //Rprintf("Start_Sex-based\n");fichier << "Start_Sex-based" << endl;
 
             PROTECT(v_N_e0t_G1 = getListElement(elmt, "N_i0t_G1"));
@@ -3018,6 +2980,8 @@ for (int e = 0 ; e < nbE ; e++) {
     } else if ((Qvec[e]==1) & (Svec[e]==0)) {
       if(VERBOSE){Rprintf(" SS3");}
 //Rprintf("Start_Quarterly\n");fichier << "Start_Quarterly\n" << endl;
+
+
 
                     PROTECT(v_N_e0t_S1M1 = getListElement(elmt, "Ni0_S1M1"));
                     PROTECT(v_N_e0t_S2M2 = getListElement(elmt, "Ni0_S2M2"));
@@ -4095,13 +4059,34 @@ for (int ind_i = 0 ; ind_i < nbI ; ind_i++) {
 //Rprintf("End_Quarterly\n");fichier << "End_Quarterly\n" << endl;
     }
 //Rprintf("K10\n");fichier << "K10" << endl;
-                    UNPROTECT(1);//Rprintf("K11\n");
-                    if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(4+4+4);
-                    if ((Qvec[e]==0) & (Svec[e]==0)) UNPROTECT(1);
-                    if ((Qvec[e]==0) & (Svec[e]==1)) UNPROTECT(2);
+    UNPROTECT(1);//Rprintf("K11\n");
+    if ((Qvec[e]==1) & (Svec[e]==0)) UNPROTECT(4+4+4);
+    if ((Qvec[e]==0) & (Svec[e]==0)) UNPROTECT(1);
+    if ((Qvec[e]==0) & (Svec[e]==1)) UNPROTECT(2);
 
-}}
+}
 
+}
+}
+
+extern "C" {
+void BioEcoPar::DynamicPop(SEXP list, int ind_t, SEXP EVAR, bool Reality, int VERBOSE) 
+//Reality : si True, on appelle DynamicPop pour une vraie projection, sinon uniquement utilis� pour estimer TAC comme dans WG
+// ~ si True, arbitrage RecParamList VS MeanRec_Ftarg en faveur du premier (ie sinon, en faveur du deuxi�me)
+{
+
+//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 5));//Rprintf("Mort20.2\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 6));//Rprintf("Mort20.3\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 7));//Rprintf("Mort20.4\n");
+//PrintValue(VECTOR_ELT(VECTOR_ELT(EVAR, 0), 61));//Rprintf("Mort20.5\n");
+
+//ofstream fichier("C:\\Users\\BRI281\\Dropbox\\These\\IAM_Dvt\\test.DynamicPop.txt", ios::out | ios::trunc);
+  if (dUpdate) {
+    up_DynamicPop(list, ind_t, EVAR, Reality, VERBOSE);
+    dUpdate = false;
+  } else { 
+    r_DynamicPop(list, ind_t, EVAR, Reality, VERBOSE);
+  }
 //Rprintf("End\n");fichier << "End" << endl;
 //fichier.close();
 }

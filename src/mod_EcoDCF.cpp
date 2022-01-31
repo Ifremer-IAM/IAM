@@ -12,7 +12,7 @@
 
 extern "C" {
 
-void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
+void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr, int VERBOSE)
 {
 
 //ofstream fichier;
@@ -30,14 +30,12 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     SEXP eFACTf, eFACTfm, elmt;
 
     SEXP    nbv_f, nbv_f_m, lc_f_m, lcd_f_m, tripLgth_f, tripLgth_f_m, nbTrip_f, nbTrip_f_m, nbds_f, nbds_f_m,
-            effort1_f, effort1_f_m, effort2_f, effort2_f_m, Lref_f_m, cnb_f_m, ovcDCF_f_m, fc_f_m, vf_f_m, cshr_f_m, cshr_f, cnb_f, persc_f,
-            eec_f, mwh_f, rep_f, gc_f, fixc_f, FTE_f, dep_f, ic_f, /*K_f, inv_f,*/ FTE_f_m, GVLref_f_m, ue_f, ue_f_m;
+            /*effort1_f,*/ effort1_f_m, /*effort2_f,*/ effort2_f_m, Lref_f_m, cnb_f_m, ovcDCF_f_m, fc_f_m, vf_f_m, cshr_f_m, cshr_f, cnb_f, persc_f,
+            eec_f, mwh_f, rep_f, gc_f, fixc_f, FTE_f, dep_f, ic_f, /*K_f, inv_f,*/ FTE_f_m, GVLref_f_m, /*ue_f,*/ ue_f_m;
 
     SEXP    dc_nbv_f, dc_nbv_f_m, dc_lc_f_m, dc_lcd_f_m, dc_tripLgth_f, dc_tripLgth_f_m, dc_nbTrip_f, dc_nbTrip_f_m, dc_nbds_f, dc_nbds_f_m,
-            dc_effort1_f, dc_effort1_f_m, dc_effort2_f, dc_effort2_f_m, dc_Lref_f_m, dc_cnb_f_m, dc_ovcDCF_f_m, dc_fc_f_m, dc_vf_f_m, dc_cshr_f_m, dc_cshr_f, dc_cnb_f, dc_persc_f,
-            dc_eec_f, dc_mwh_f, dc_rep_f, dc_gc_f, dc_fixc_f, dc_FTE_f, dc_dep_f, dc_ic_f, /*dc_K_f, dc_inv_f,*/ dc_FTE_f_m, dc_GVLref_f_m, dc_ue_f, dc_ue_f_m;
-
-    int *dCF,*dCFM,*dCFini,*dCFMini,*DF,*DFM, *DFMini;
+            /*dc_effort1_f,*/ dc_effort1_f_m, /*dc_effort2_f,*/ dc_effort2_f_m, dc_Lref_f_m, dc_cnb_f_m, dc_ovcDCF_f_m, dc_fc_f_m, dc_vf_f_m, dc_cshr_f_m, dc_cshr_f, dc_cnb_f, dc_persc_f,
+            dc_eec_f, dc_mwh_f, dc_rep_f, dc_gc_f, dc_fixc_f, dc_FTE_f, dc_dep_f, dc_ic_f, /*dc_K_f, dc_inv_f,*/ dc_FTE_f_m, dc_GVLref_f_m, /*dc_ue_f,*/ dc_ue_f_m;
 
     int     *dim_nbv_f, *dim_nbv_f_m, *dim_lc_f_m, *dim_tripLgth_f_m, *dim_nbTrip_f_m,
             *dim_Lref_f_m, *dim_cnb_f_m, *dim_ovcDCF_f_m, *dim_fc_f_m, *dim_vf_f_m, *dim_cshr_f_m, *dim_cshr_f, *dim_persc_f,
@@ -53,9 +51,9 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
             *r_GVLav_f_out, *r_NGVLav_f_m_out, *r_NGVLav_f_out, *r_cnb_f_m_out, *r_cnb_f_out,
             *r_rtbs_f_m_out, *r_rtbs_f_out, *r_cshrT_f_m_out, *r_cshrT_f_out, *r_ncshr_f_out, *r_ocl_f_out, *r_cs_f_out, *r_csTot_f_out, *r_gva_f_out, *r_gvamargin_f_out,
             *r_gva_FTE_f_out, *r_ccw_f_out, *r_ccwCr_f_out, *r_wageg_f_out, *r_wagen_f_out, *r_wageg_FTE_f_out, *r_wageg_h_f_out, *r_gp_f_out, *r_gpmargin_f_out,
-            *r_ncf_f_out, *r_np_f_out, *r_npmargin_f_out, *r_prof_f_out, *r_npmargin_trend_f_out, *r_ssTot_f_out, *r_ps_f_out, *r_sts_f_out, *r_BER_f_out, *r_CR_BER_f_out,
+            *r_ncf_f_out, *r_np_f_out, *r_npmargin_f_out, *r_prof_f_out, *r_npmargin_trend_f_out, /**r_ssTot_f_out,*/ *r_ps_f_out, *r_sts_f_out, *r_BER_f_out, *r_CR_BER_f_out,
             *r_fuelEff_f_out, *r_ratio_fvol_gva_f_out, *r_ratio_gp_gva_f_out, /* *r_ratio_GVL_K_f_out, *r_ratio_gp_K_f_out, *r_RoFTA_f_out, *r_ROI_f_out, */
-            /* *r_ratio_np_K_f_out,*/ *r_ratio_GVL_cnb_ue_f_out,
+            /* *r_ratio_np_K_f_out, *r_ratio_GVL_cnb_ue_f_out, */
             *r_rtbsAct_f_out, *r_csAct_f_out, *r_gvaAct_f_out, *r_gpAct_f_out, *r_psAct_f_out, *r_stsAct_f_out, *r_QuotaExp_f_out;
 
 
@@ -71,37 +69,18 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     SET_VECTOR_ELT(dimnamesFM, 0, fleetList); SET_VECTOR_ELT(dimnamesFM, 1, metierListEco); SET_VECTOR_ELT(dimnamesFM, 2, times);
     SET_VECTOR_ELT(dimnamesFMini, 0, fleetList); SET_VECTOR_ELT(dimnamesFMini, 1, metierListEco);
 
-
-    Rf_protect(dimCstF = Rf_allocVector(INTSXP, 4));
-    Rf_protect(dimCstFini = Rf_allocVector(INTSXP, 4));
-    Rf_protect(dimCstFM = Rf_allocVector(INTSXP, 4));
-    Rf_protect(dimCstFMini = Rf_allocVector(INTSXP, 4));
-
-
-    dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
-    dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
-    dCFini = INTEGER(dimCstFini) ; dCFini[0] = nbF; dCFini[1] = 0; dCFini[2] = 0; dCFini[3] = 0;
-    dCFMini = INTEGER(dimCstFMini) ; dCFMini[0] = nbF; dCFMini[1] = nbMe; dCFMini[2] = 0; dCFMini[3] = 0;
-
-
-    Rf_protect(DimF = Rf_allocVector(INTSXP, 2));
-    Rf_protect(DimFM = Rf_allocVector(INTSXP, 3));
-    Rf_protect(DimFMini = Rf_allocVector(INTSXP, 2));
-
-    DF = INTEGER(DimF) ; DF[0] = nbF; DF[1] = nbT;
-    DFM = INTEGER(DimFM) ; DFM[0] = nbF; DFM[1] = nbMe; DFM[2] = nbT;
-    DFMini = INTEGER(DimFMini) ; DFMini[0] = nbF; DFMini[1] = nbMe;
+    Rf_protect(dimCstF = _BioEcoPar_init_DimCst(nbF, 0, 0, nbT));
+    Rf_protect(dimCstFini = _BioEcoPar_init_DimCst(nbF, 0, 0, 0));
+    Rf_protect(dimCstFM = _BioEcoPar_init_DimCst(nbF, nbMe, 0, nbT));
+    Rf_protect(dimCstFMini = _BioEcoPar_init_DimCst(nbF, nbMe, 0, 0));
+    Rf_protect(DimF = _BioEcoPar_n_DimCst(dimCstF));
+    Rf_protect(DimFM = _BioEcoPar_n_DimCst(dimCstFM));
+    Rf_protect(DimFMini = _BioEcoPar_n_DimCst(dimCstFMini));
 
     // facteurs des indices generiques F/FM
 
-    Rf_protect(eFACTf = iDim(dCF));
-    Rf_protect(eFACTfm = iDim(dCFM));
-
-    //Rprintf("Eco 3");fichier << "Eco3" << endl;
-    // protect.root -> 14
-
-    // ---> P = 14
-
+    Rf_protect(eFACTf = iDim(INTEGER(dimCstF)));
+    Rf_protect(eFACTfm = iDim(INTEGER(dimCstFM)));
     int *eF_f = INTEGER(eFACTf);
     int *eF_fm = INTEGER(eFACTfm);
 
@@ -115,9 +94,9 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     Rf_protect(nbTrip_f_m = getListElement(Flist, "nbTrip_f_m"));      Rf_protect(dc_nbTrip_f_m = iDim(INTEGER(Rf_getAttrib(nbTrip_f_m, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(nbds_f = getListElement(Flist, "nbds_f"));              Rf_protect(dc_nbds_f = iDim(INTEGER(Rf_getAttrib(nbds_f, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(nbds_f_m = getListElement(Flist, "nbds_f_m"));          Rf_protect(dc_nbds_f_m = iDim(INTEGER(Rf_getAttrib(nbds_f_m, att_dimCstF))));//Rprintf("Eco 31");
-    Rf_protect(effort1_f = getListElement(Flist, "effort1_f"));        Rf_protect(dc_effort1_f = iDim(INTEGER(Rf_getAttrib(effort1_f, att_dimCstF))));//Rprintf("Eco 31");
+    // Rf_protect(effort1_f = getListElement(Flist, "effort1_f"));        Rf_protect(dc_effort1_f = iDim(INTEGER(Rf_getAttrib(effort1_f, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(effort1_f_m = getListElement(Flist, "effort1_f_m"));    Rf_protect(dc_effort1_f_m = iDim(INTEGER(Rf_getAttrib(effort1_f_m, att_dimCstF))));//Rprintf("Eco 31");
-    Rf_protect(effort2_f = getListElement(Flist, "effort2_f"));        Rf_protect(dc_effort2_f = iDim(INTEGER(Rf_getAttrib(effort2_f, att_dimCstF))));//Rprintf("Eco 31");
+    // Rf_protect(effort2_f = getListElement(Flist, "effort2_f"));        Rf_protect(dc_effort2_f = iDim(INTEGER(Rf_getAttrib(effort2_f, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(effort2_f_m = getListElement(Flist, "effort2_f_m"));    Rf_protect(dc_effort2_f_m = iDim(INTEGER(Rf_getAttrib(effort2_f_m, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(Lref_f_m = getListElement(Flist, "Lref_f_m"));          Rf_protect(dc_Lref_f_m = iDim(INTEGER(Rf_getAttrib(Lref_f_m, att_dimCstF))));//Rprintf("Eco 31");
     Rf_protect(cnb_f_m = getListElement(Flist, "cnb_f_m"));            Rf_protect(dc_cnb_f_m = iDim(INTEGER(Rf_getAttrib(cnb_f_m, att_dimCstF))));//Rprintf("Eco 31");
@@ -138,32 +117,32 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     Rf_protect(ic_f = getListElement(Flist, "ic_f"));                  Rf_protect(dc_ic_f = iDim(INTEGER(Rf_getAttrib(ic_f, att_dimCstF))));//Rprintf("Eco 31");
     // Rf_protect(K_f = getListElement(Flist, "K_f"));                    Rf_protect(dc_K_f = iDim(INTEGER(Rf_getAttrib(K_f, att_dimCstF))));//Rprintf("Eco 31");
     // Rf_protect(inv_f = getListElement(Flist, "inv_f"));                Rf_protect(dc_inv_f = iDim(INTEGER(Rf_getAttrib(inv_f, att_dimCstF))));//Rprintf("Eco 31");
-    Rf_protect(FTE_f_m = getListElement(Flist, "FTE_f_m"));            Rf_protect(dc_FTE_f_m = iDim(INTEGER(Rf_getAttrib(FTE_f_m, att_dimCstF))));//Rprintf("Eco 31");
+    Rf_protect(FTE_f_m = getListElement(Flist, "FTE_f_m"));            Rf_protect(dc_FTE_f_m = iDim(INTEGER(Rf_getAttrib(FTE_f_m, att_dimCstF))));//Rprintf("Eco 31"); // TODO : not used
     Rf_protect(GVLref_f_m = getListElement(Flist, "GVLref_f_m"));      Rf_protect(dc_GVLref_f_m = iDim(INTEGER(Rf_getAttrib(GVLref_f_m, att_dimCstF))));//Rprintf("Eco 31");
 
     // ---> P = 14 + 35*2 = 84
     //Rprintf("Eco 4");fichier << "Eco4" << endl;
 
-    Rf_protect(ue_f = Rf_allocVector(REALSXP,nbF));
-    Rf_setAttrib(ue_f, R_DimSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
-    Rf_setAttrib(ue_f, R_DimNamesSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
-    Rf_setAttrib(ue_f, att_dimCstF, Rf_getAttrib(getListElement(Flist, "effort1_f"), att_dimCstF));
+    // Rf_protect(ue_f = Rf_allocVector(REALSXP,nbF));
+    // Rf_setAttrib(ue_f, R_DimSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f"), R_DimSymbol));
+    // Rf_setAttrib(ue_f, R_DimNamesSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f"), R_DimNamesSymbol));
+    // Rf_setAttrib(ue_f, att_dimCstF, Rf_getAttrib(getListElement(Flist, "effort1_f"), att_dimCstF));
 
     Rf_protect(ue_f_m = Rf_allocVector(REALSXP,nbF*nbMe));
     Rf_setAttrib(ue_f_m, R_DimSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f_m"), R_DimSymbol));
     Rf_setAttrib(ue_f_m, R_DimNamesSymbol, Rf_getAttrib(getListElement(Flist, "effort1_f_m"), R_DimNamesSymbol));
     Rf_setAttrib(ue_f_m, att_dimCstF, Rf_getAttrib(getListElement(Flist, "effort1_f_m"), att_dimCstF));
 
-    double *r_ue_f = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
+    // double *r_ue_f = REAL(ue_f); double *reff1_f = REAL(getListElement(Flist, "effort1_f")) ; double *reff2_f = REAL(getListElement(Flist, "effort2_f"));
     double *r_ue_f_m = REAL(ue_f_m); double *reff1 = REAL(getListElement(Flist, "effort1_f_m")) ; double *reff2 = REAL(getListElement(Flist, "effort2_f_m"));
 
     for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
-        r_ue_f[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
+        // r_ue_f[ind_f] = reff1_f[ind_f]*reff2_f[ind_f];
         for (int ind_m = 0 ; ind_m < nbMe ; ind_m++) r_ue_f_m[ind_f + nbF*ind_m] = reff1[ind_f + nbF*ind_m]*reff2[ind_f + nbF*ind_m];
     }
 
     //Rprintf("Eco 5");fichier << "Eco5" << endl;
-    Rf_protect(dc_ue_f = iDim(INTEGER(Rf_getAttrib(ue_f, att_dimCstF))));
+    // Rf_protect(dc_ue_f = iDim(INTEGER(Rf_getAttrib(ue_f, att_dimCstF))));
     Rf_protect(dc_ue_f_m = iDim(INTEGER(Rf_getAttrib(ue_f_m, att_dimCstF))));
     dim_ue_f_m = INTEGER(dc_ue_f_m);
     // ---> P = 84 + 4 = 88
@@ -214,12 +193,14 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
 
         SEXP ETini_f_m, fvolue_f_m, ovcDCFue_f_m, rtbsIni_f, ccwr_f, opersc_f, eco_names,
              GVLcom_f_m_e_out, GVLcom_f_m_eStat_out, GVLcom_f_m_e, GVLst_f_m_e_out, GVLst_f_m_eStat_out, GVLst_f_m_e, GVL_f_m_e_out, GVL_f_m_eStat_out, GVLtot_f_m_e,
-             GVLtot_f_m_out, GVLav_f_m_out, GVLtot_f_out, GVLav_f_out, NGVLav_f_m_out, NGVLav_f_out, ET_f_m_out,
-             cnb_f_m_out, cnb_f_out, rtbs_f_m_out, rtbs_f_out, rtbsAct_f_out, cshrT_f_m_out, cshrT_f_out, ncshr_f_out, ocl_f_out, cs_f_out, csAct_f_out, csTot_f_out,
-             gva_f_out, gvaAct_f_out, gvamargin_f_out, gva_FTE_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, wageg_FTE_f_out, wageg_h_f_out,
-             gp_f_out, gpAct_f_out, gpmargin_f_out, ncf_f_out, np_f_out, npmargin_f_out, prof_f_out, npmargin_trend_f_out,
-             ssTot_f_out, ps_f_out, psAct_f_out, sts_f_out, stsAct_f_out, BER_f_out, CR_BER_f_out, fuelEff_f_out,
-             ratio_fvol_gva_f_out, ratio_gp_gva_f_out, ratio_GVL_K_f_out, ratio_gp_K_f_out, RoFTA_f_out, ROI_f_out, ratio_np_K_f_out, ratio_GVL_cnb_ue_f_out, QuotaExp_f_out;
+             GVLtot_f_m_out, GVLav_f_m_out, /*GVLtot_f_out, GVLav_f_out,*/ NGVLav_f_m_out, /*NGVLav_f_out,*/ ET_f_m_out,
+             cnb_f_m_out, /*cnb_f_out,*/ rtbs_f_m_out, /*rtbs_f_out, rtbsAct_f_out,*/ cshrT_f_m_out, 
+            //  cshrT_f_out, ncshr_f_out, ocl_f_out, cs_f_out, csAct_f_out, csTot_f_out,
+            //  gva_f_out, gvaAct_f_out, gvamargin_f_out, gva_FTE_f_out, ccw_f_out, ccwCr_f_out, wageg_f_out, wagen_f_out, wageg_FTE_f_out, wageg_h_f_out,
+            //  gp_f_out, gpAct_f_out, gpmargin_f_out, ncf_f_out, np_f_out, npmargin_f_out, prof_f_out, npmargin_trend_f_out, 
+            //  ssTot_f_out, ps_f_out, psAct_f_out, sts_f_out, stsAct_f_out, BER_f_out, CR_BER_f_out, fuelEff_f_out, 
+            //  ratio_fvol_gva_f_out, ratio_gp_gva_f_out, ratio_GVL_K_f_out, ratio_gp_K_f_out, RoFTA_f_out, ROI_f_out, ratio_np_K_f_out, ratio_GVL_cnb_ue_f_out,
+             QuotaExp_f_out;
 
         double  *r_ETini_f_m, *r_fvolue_f_m, *r_ovcDCFue_f_m, *r_rtbsIni_f, *r_ccwr_f, *r_opersc_f;
 
@@ -227,7 +208,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         // Stade preliminaire (temps initial)
         //-------------------------
 
-            Rf_protect(ETini_f_m = Rf_allocVector(REALSXP,nbF*nbMe));                 r_ETini_f_m = REAL(ETini_f_m);
+            Rf_protect(ETini_f_m = Rf_allocVector(REALSXP,nbF*nbMe));                 r_ETini_f_m = REAL(ETini_f_m);  // TODO : numericMatrix here
             Rf_protect(fvolue_f_m = Rf_allocVector(REALSXP,nbF*nbMe));                r_fvolue_f_m = REAL(fvolue_f_m);
             Rf_protect(ovcDCFue_f_m = Rf_allocVector(REALSXP,nbF*nbMe));              r_ovcDCFue_f_m = REAL(ovcDCFue_f_m);
             Rf_protect(rtbsIni_f = Rf_allocVector(REALSXP,nbF));                      r_rtbsIni_f = REAL(rtbsIni_f);
@@ -531,19 +512,17 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         Rf_setAttrib(GVLav_f_m_out, att_dimCstF, dimCstFM);
         SET_VECTOR_ELT(out_EcoDCF, 7, GVLav_f_m_out);//Rprintf("Eco 20\n");
 
-        // TODO : use for loop here for all dataframe format !
-        Rf_protect(GVLtot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(GVLtot_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(GVLtot_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(GVLtot_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 8, GVLtot_f_out);//Rprintf("Eco 20\n");
-        // SET_VECTOR_ELT(out_EcoDCF, 8, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
+        // Rf_protect(GVLtot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(GVLtot_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(GVLtot_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(GVLtot_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 8, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
-        Rf_protect(GVLav_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(GVLav_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(GVLav_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(GVLav_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 9, GVLav_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(GVLav_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(GVLav_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(GVLav_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(GVLav_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 9, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
         Rf_protect(NGVLav_f_m_out = Rf_allocVector(REALSXP,nbF*nbMe*nbT));
         Rf_setAttrib(NGVLav_f_m_out, R_DimSymbol, DimFM);
@@ -551,11 +530,11 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         Rf_setAttrib(NGVLav_f_m_out, att_dimCstF, dimCstFM);
         SET_VECTOR_ELT(out_EcoDCF, 10, NGVLav_f_m_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(NGVLav_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(NGVLav_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(NGVLav_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(NGVLav_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 11, NGVLav_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(NGVLav_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(NGVLav_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(NGVLav_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(NGVLav_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 11, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
         Rf_protect(ET_f_m_out = Rf_allocVector(REALSXP,nbF*nbMe*nbT));
         Rf_setAttrib(ET_f_m_out, R_DimSymbol, DimFM);
@@ -569,11 +548,11 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         Rf_setAttrib(cnb_f_m_out, att_dimCstF, dimCstFM);
         SET_VECTOR_ELT(out_EcoDCF, 13, cnb_f_m_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(cnb_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(cnb_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(cnb_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 14, cnb_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(cnb_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(cnb_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(cnb_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(cnb_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 14, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
         Rf_protect(rtbs_f_m_out = Rf_allocVector(REALSXP,nbF*nbMe*nbT));
         Rf_setAttrib(rtbs_f_m_out, R_DimSymbol, DimFM);
@@ -581,17 +560,17 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         Rf_setAttrib(rtbs_f_m_out, att_dimCstF, dimCstFM);
         SET_VECTOR_ELT(out_EcoDCF, 15, rtbs_f_m_out);
 
-        Rf_protect(rtbs_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(rtbs_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(rtbs_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 16, rtbs_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(rtbs_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(rtbs_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(rtbs_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(rtbs_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 16, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
-        Rf_protect(rtbsAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(rtbsAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 17, rtbsAct_f_out);
+        // Rf_protect(rtbsAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(rtbsAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(rtbsAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(rtbsAct_f_out, att_dimCstF, dimCstF);
+        SET_VECTOR_ELT(out_EcoDCF, 17, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));
 
         Rf_protect(cshrT_f_m_out = Rf_allocVector(REALSXP,nbF*nbMe*nbT));
         Rf_setAttrib(cshrT_f_m_out, R_DimSymbol, DimFM);
@@ -599,254 +578,252 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
         Rf_setAttrib(cshrT_f_m_out, att_dimCstF, dimCstFM);
         SET_VECTOR_ELT(out_EcoDCF, 18, cshrT_f_m_out);
 
-        Rf_protect(cshrT_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(cshrT_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(cshrT_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 19, cshrT_f_out);//Rprintf("Eco 20\n");
+        // TODO : rcpp replace loop from here !
+        {
+        // Rf_protect(cshrT_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(cshrT_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(cshrT_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(cshrT_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 19, cshrT_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(ncshr_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ncshr_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ncshr_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 20, ncshr_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(ncshr_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ncshr_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ncshr_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ncshr_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 20, ncshr_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(ocl_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ocl_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ocl_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 21, ocl_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(ocl_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ocl_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ocl_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ocl_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 21, ocl_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(cs_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(cs_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(cs_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 22, cs_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(cs_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(cs_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(cs_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(cs_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 22, cs_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(csAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(csAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(csAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 23, csAct_f_out);
+        // Rf_protect(csAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(csAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(csAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(csAct_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 23, csAct_f_out);
 
-        Rf_protect(csTot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(csTot_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(csTot_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(csTot_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 24, csTot_f_out);
+        // Rf_protect(csTot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(csTot_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(csTot_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(csTot_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 24, csTot_f_out);
 
-        Rf_protect(gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gva_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gva_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 25, gva_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gva_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gva_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gva_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 25, gva_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gvaAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gvaAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 26, gvaAct_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gvaAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gvaAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gvaAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gvaAct_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 26, gvaAct_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gvamargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gvamargin_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gvamargin_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gvamargin_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 27, gvamargin_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gvamargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gvamargin_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gvamargin_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gvamargin_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 27, gvamargin_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gva_FTE_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gva_FTE_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gva_FTE_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gva_FTE_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 28, gva_FTE_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gva_FTE_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gva_FTE_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gva_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gva_FTE_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 28, gva_FTE_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(ccw_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ccw_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ccw_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 29, ccw_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(ccw_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ccw_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ccw_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ccw_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 29, ccw_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(ccwCr_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ccwCr_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 30, ccwCr_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(ccwCr_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ccwCr_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ccwCr_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ccwCr_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 30, ccwCr_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(wageg_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(wageg_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(wageg_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 31, wageg_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(wageg_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(wageg_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(wageg_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(wageg_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 31, wageg_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(wagen_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(wagen_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(wagen_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 32, wagen_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(wagen_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(wagen_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(wagen_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(wagen_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 32, wagen_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(wageg_FTE_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(wageg_FTE_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(wageg_FTE_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(wageg_FTE_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 33, wageg_FTE_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(wageg_FTE_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(wageg_FTE_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(wageg_FTE_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(wageg_FTE_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 33, wageg_FTE_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(wageg_h_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(wageg_h_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(wageg_h_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(wageg_h_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 34, wageg_h_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(wageg_h_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(wageg_h_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(wageg_h_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(wageg_h_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 34, wageg_h_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gp_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gp_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gp_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 35, gp_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gp_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gp_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gp_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gp_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 35, gp_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gpAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gpAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gpAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gpAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 36, gpAct_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gpAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gpAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gpAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gpAct_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 36, gpAct_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(gpmargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(gpmargin_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(gpmargin_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(gpmargin_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 37, gpmargin_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(gpmargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(gpmargin_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(gpmargin_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(gpmargin_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 37, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));//Rprintf("Eco 20\n");
 
-        Rf_protect(ncf_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ncf_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ncf_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ncf_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 38, ncf_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(ncf_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ncf_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ncf_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ncf_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 38, ncf_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(np_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(np_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(np_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(np_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 39, np_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(np_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(np_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(np_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(np_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 39, np_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(npmargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(npmargin_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(npmargin_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(npmargin_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 40, npmargin_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(npmargin_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(npmargin_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(npmargin_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(npmargin_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 40, npmargin_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(prof_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(prof_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(prof_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(prof_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 41, prof_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(prof_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(prof_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(prof_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(prof_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 41, prof_f_out);//Rprintf("Eco 20\n");
 
-        Rf_protect(npmargin_trend_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(npmargin_trend_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(npmargin_trend_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(npmargin_trend_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 42, npmargin_trend_f_out);//Rprintf("Eco 20\n");
+        // Rf_protect(npmargin_trend_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(npmargin_trend_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(npmargin_trend_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(npmargin_trend_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 42, npmargin_trend_f_out);//Rprintf("Eco 20\n");
+    
+        // Rf_protect(ssTot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ssTot_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ssTot_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ssTot_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 43, ssTot_f_out);
+        // SET_VECTOR_ELT(out_EcoDCF, 43, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(ssTot_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ssTot_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ssTot_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ssTot_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 43, ssTot_f_out);
+        // Rf_protect(ps_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ps_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ps_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 44, ps_f_out);
 
-        Rf_protect(ps_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ps_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ps_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ps_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 44, ps_f_out);
+        // Rf_protect(psAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(psAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(psAct_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 45, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(psAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(psAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(psAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(psAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 45, psAct_f_out);
+        // Rf_protect(sts_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(sts_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(sts_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 46, sts_f_out);
 
-        Rf_protect(sts_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(sts_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(sts_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(sts_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 46, sts_f_out);
+        // Rf_protect(stsAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(stsAct_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(stsAct_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 47, stsAct_f_out);
 
-        Rf_protect(stsAct_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(stsAct_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(stsAct_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(stsAct_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 47, stsAct_f_out);
+        // Rf_protect(BER_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(BER_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(BER_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(BER_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 48, BER_f_out);
 
-        Rf_protect(BER_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(BER_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(BER_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(BER_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 48, BER_f_out);
+        // Rf_protect(CR_BER_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(CR_BER_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(CR_BER_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(CR_BER_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 49, CR_BER_f_out);
 
-        Rf_protect(CR_BER_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(CR_BER_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(CR_BER_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(CR_BER_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 49, CR_BER_f_out);
+        // Rf_protect(fuelEff_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(fuelEff_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(fuelEff_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(fuelEff_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 50, fuelEff_f_out);
 
-        Rf_protect(fuelEff_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(fuelEff_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(fuelEff_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(fuelEff_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 50, fuelEff_f_out);
+        // Rf_protect(ratio_fvol_gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ratio_fvol_gva_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 51, ratio_fvol_gva_f_out);
 
-        Rf_protect(ratio_fvol_gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ratio_fvol_gva_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ratio_fvol_gva_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ratio_fvol_gva_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 51, ratio_fvol_gva_f_out);
+        // Rf_protect(ratio_gp_gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_gp_gva_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ratio_gp_gva_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ratio_gp_gva_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 52, ratio_gp_gva_f_out);
 
-        Rf_protect(ratio_gp_gva_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ratio_gp_gva_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ratio_gp_gva_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ratio_gp_gva_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 52, ratio_gp_gva_f_out);
-
-        Rf_protect(ratio_GVL_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        {// Rf_setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
+        // Rf_protect(ratio_GVL_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_GVL_K_f_out, R_DimSymbol, DimF);
         // Rf_setAttrib(ratio_GVL_K_f_out, R_DimNamesSymbol, dimnamesF);
         // Rf_setAttrib(ratio_GVL_K_f_out, att_dimCstF, dimCstF);
         // SET_VECTOR_ELT(out_EcoDCF, 53, ratio_GVL_K_f_out);
-        }
-        SET_VECTOR_ELT(out_EcoDCF, 53, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(ratio_gp_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        {// Rf_setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
+        // Rf_protect(ratio_gp_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_gp_K_f_out, R_DimSymbol, DimF);
         // Rf_setAttrib(ratio_gp_K_f_out, R_DimNamesSymbol, dimnamesF);
         // Rf_setAttrib(ratio_gp_K_f_out, att_dimCstF, dimCstF);
         // SET_VECTOR_ELT(out_EcoDCF, 54, ratio_gp_K_f_out);
-        }
-        SET_VECTOR_ELT(out_EcoDCF, 54, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(RoFTA_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        {// Rf_setAttrib(RoFTA_f_out, R_DimSymbol, DimF);
+        // Rf_protect(RoFTA_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(RoFTA_f_out, R_DimSymbol, DimF);
         // Rf_setAttrib(RoFTA_f_out, R_DimNamesSymbol, dimnamesF);
         // Rf_setAttrib(RoFTA_f_out, att_dimCstF, dimCstF);
         // SET_VECTOR_ELT(out_EcoDCF, 55, RoFTA_f_out);
-        }
-        SET_VECTOR_ELT(out_EcoDCF, 55, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(ROI_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        {// Rf_setAttrib(ROI_f_out, R_DimSymbol, DimF);
+        // Rf_protect(ROI_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ROI_f_out, R_DimSymbol, DimF);
         // Rf_setAttrib(ROI_f_out, R_DimNamesSymbol, dimnamesF);
         // Rf_setAttrib(ROI_f_out, att_dimCstF, dimCstF);
         // SET_VECTOR_ELT(out_EcoDCF, 56, ROI_f_out);
-        }
-        SET_VECTOR_ELT(out_EcoDCF, 56, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(ratio_np_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        {// Rf_setAttrib(ratio_np_K_f_out, R_DimSymbol, DimF);
+        // Rf_protect(ratio_np_K_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_np_K_f_out, R_DimSymbol, DimF);
         // Rf_setAttrib(ratio_np_K_f_out, R_DimNamesSymbol, dimnamesF);
         // Rf_setAttrib(ratio_np_K_f_out, att_dimCstF, dimCstF);
-        }
-        SET_VECTOR_ELT(out_EcoDCF, 57, _BioEcoPar_init_dataframe(nbF, nbT,  dimnamesF, dimCstF));
 
-        Rf_protect(ratio_GVL_cnb_ue_f_out = Rf_allocVector(REALSXP,nbF*nbT));
-        Rf_setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
-        Rf_setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
-        Rf_setAttrib(ratio_GVL_cnb_ue_f_out, att_dimCstF, dimCstF);
-        SET_VECTOR_ELT(out_EcoDCF, 58, ratio_GVL_cnb_ue_f_out);
+        // Rf_protect(ratio_GVL_cnb_ue_f_out = Rf_allocVector(REALSXP,nbF*nbT));
+        // Rf_setAttrib(ratio_GVL_cnb_ue_f_out, R_DimSymbol, DimF);
+        // Rf_setAttrib(ratio_GVL_cnb_ue_f_out, R_DimNamesSymbol, dimnamesF);
+        // Rf_setAttrib(ratio_GVL_cnb_ue_f_out, att_dimCstF, dimCstF);
+        // SET_VECTOR_ELT(out_EcoDCF, 58, ratio_GVL_cnb_ue_f_out);
+    }
+
+        for (int rcpp = 19; rcpp < 59; rcpp++){
+            SET_VECTOR_ELT(out_EcoDCF, rcpp, _BioEcoPar_init_matrix(nbF, nbT,  dimnamesF, dimCstF));
+        }
 
         Rf_protect(QuotaExp_f_out = Rf_allocVector(REALSXP,nbF*nbT));
         Rf_setAttrib(QuotaExp_f_out, R_DimSymbol, DimF);
@@ -927,7 +904,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     r_npmargin_f_out = REAL(VECTOR_ELT(out_EcoDCF, 40));//Rprintf("Eco 20\n");
     r_prof_f_out = REAL(VECTOR_ELT(out_EcoDCF, 41));//Rprintf("Eco 20\n");
     r_npmargin_trend_f_out = REAL(VECTOR_ELT(out_EcoDCF, 42));//Rprintf("Eco 20\n");
-    r_ssTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 43));
+    // r_ssTot_f_out = REAL(VECTOR_ELT(out_EcoDCF, 43));
     r_ps_f_out = REAL(VECTOR_ELT(out_EcoDCF, 44));
     r_psAct_f_out = REAL(VECTOR_ELT(out_EcoDCF, 45));
     r_sts_f_out = REAL(VECTOR_ELT(out_EcoDCF, 46));
@@ -942,7 +919,7 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
     // r_RoFTA_f_out = REAL(VECTOR_ELT(out_EcoDCF, 55));
     // r_ROI_f_out = REAL(VECTOR_ELT(out_EcoDCF, 56));
     // r_ratio_np_K_f_out = REAL(VECTOR_ELT(out_EcoDCF, 57));
-    r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF, 58));
+    // r_ratio_GVL_cnb_ue_f_out = REAL(VECTOR_ELT(out_EcoDCF, 58));
     r_QuotaExp_f_out = REAL(VECTOR_ELT(out_EcoDCF, 59));
 
     // Rprintf("Eco 22\n");fichier << "Eco22" << endl;
@@ -1643,8 +1620,8 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
 
         //-- 35. ssTot_f
 
-        r_ssTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-            r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
+        // r_ssTot_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+        //     r_gp_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * rnbv_f[ind_f];
 
         //-- 36. ps_f
 
@@ -1747,27 +1724,29 @@ void BioEcoPar::EcoDCF(SEXP list, int ind_t, int persCalc, double dr)
 
         //-- 48. ratio_GVL_cnb_ue_f
 
-        r_ratio_GVL_cnb_ue_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
-            r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
-            (r_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * r_ue_f[ind_f] );
+        // r_ratio_GVL_cnb_ue_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] =
+        //     r_GVLav_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] /
+        //     (r_cnb_f_out[ind_f*eF_f[0] + 0*eF_f[1] + 0*eF_f[2] + ind_t*eF_f[3]] * r_ue_f[ind_f] );
 
 
     }
 
     SEXP out_stripe;
     Rf_protect(out_stripe = _BioEcoPar_stripe_ecoCDF(out_EcoDCF, Flist, ind_t));
+    SEXP ssTot = getListElement(out_stripe, "ssTot");                          SET_VECTOR_ELT(out_EcoDCF, 43, ssTot);
     SEXP ratio_GVL_K = getListElement(out_stripe, "ratio_GVL_K");              SET_VECTOR_ELT(out_EcoDCF, 53, ratio_GVL_K);
     SEXP ratio_gp_K = getListElement(out_stripe, "ratio_gp_K");                SET_VECTOR_ELT(out_EcoDCF, 54, ratio_gp_K);
     SEXP RoFTA = getListElement(out_stripe, "RoFTA");                          SET_VECTOR_ELT(out_EcoDCF, 55, RoFTA);
     SEXP ROI = getListElement(out_stripe, "ROI");                              SET_VECTOR_ELT(out_EcoDCF, 56, ROI);
     SEXP ratio_np_K = getListElement(out_stripe, "ratio_np_K");                SET_VECTOR_ELT(out_EcoDCF, 57, ratio_np_K);
+    SEXP ratio_GVL_cnb_ue = getListElement(out_stripe, "ratio_GVL_cnb_ue");    SET_VECTOR_ELT(out_EcoDCF, 58, ratio_GVL_cnb_ue);
     
     // static SEXP att_dimCstF = att_dimCstF;
     Rf_unprotect(1);
 
 
-    if (ind_t==0) Rf_unprotect(67);
-    Rf_unprotect(85);
+    if (ind_t==0) Rf_unprotect(67-46);
+    Rf_unprotect(85-6);
 
     //Rprintf("\nJ2\n");fichier << "J2" << endl;
 

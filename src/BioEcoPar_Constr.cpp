@@ -9,7 +9,7 @@
 // #include <fstream>
 // #include <R.h>
 #include <Rdefines.h>
-// #include <Rmath.h>
+#include <Rmath.h>
 //#include <Rcpp.h>
 
 #include "BioEcoPar.h" // Class is defined in this file.
@@ -92,10 +92,17 @@ nbE = length(sppList);
 nbEstat = length(sppListStat);
 nbP = 0;
 
-ecodcf = INTEGER(EcoDcf)[0];
+SEXP dimCstF, dimCstFM;
+int *dCF, *dCFM;
+Rf_protect(dimCstF = Rf_allocVector(INTSXP, 4));
+Rf_protect(dimCstFM = Rf_allocVector(INTSXP, 4));
+
+dCF = INTEGER(dimCstF) ; dCF[0] = nbF; dCF[1] = 0; dCF[2] = 0; dCF[3] = nbT;
+dCFM = INTEGER(dimCstFM) ; dCFM[0] = nbF; dCFM[1] = nbMe; dCFM[2] = 0; dCFM[3] = nbT;
+
 drCopy = REAL(dr)[0];
 
-//int conform = 0;
+int conform = 0;
 typeGest = 0;
 SEXP FList_copy, list_copy, eVar_copy, eStatVar_copy, fVar_copy;
 
@@ -146,10 +153,11 @@ PROTECT(m_oth = duplicate(mOth)); if (length(m_oth)!=nbE) error("Check dimension
 X1 = REAL(bounds)[0];
 X2 = REAL(bounds)[1];
 
-//TAC_glob = REAL(TAC);  //� corriger
+// TAC_glob = REAL(TAC);  //� corriger
 Fbar_trgt = REAL(FBAR);  //� corriger
 PROTECT(TACbyF = TACbyFL);  //� corriger
 PROTECT(TAC = TACL); // TODO :pourquoi juste un changement de nom la en fait ?
+// TAC_glob = REAL(TAC);  // TODO : etait commente dieu sait pourquoi ! mais NULL si pas de tac input in func argums
 
 PROTECT(inpFtarg = Ftarg);
 PROTECT(inpW_Ftarg = W_Ftarg);
@@ -209,11 +217,10 @@ SET_STRING_ELT(reconcilSPP_copy, ind_f + nbF*ind_m + nbF*nbMe*ind_t, NA_STRING);
 }
 PROTECT(ZtempList = getListElement(tacCTRL, "Ztemp"));
 
-//int DCFok = INTEGER(EcoDcf)[0];
 
 SRInd = INTEGER(SRind);
 
-//bool door = true;
+bool door = true;
 
 //il faut initialiser 'eVar' dans lequel on integrera toutes les variables intermediaires a decliner par espece
 SEXP eltE;
@@ -389,7 +396,7 @@ PROTECT(out_N_eit_S4M4 = allocVector(VECSXP, nbE)); //+64 = 107
 
 PROTECT(out_P_t = allocVector(VECSXP, nbE));
 PROTECT(out_Pstat = allocVector(VECSXP, nbEstat));
-PROTECT(out_Eco = allocVector(VECSXP, 69)); // TODO useless ?
+// PROTECT(out_Eco = allocVector(VECSXP, 69)); // TODO useless ?
 PROTECT(out_EcoDCF = allocVector(VECSXP, 60));
 PROTECT(out_effort = allocVector(VECSXP, 6)); //nbv_f, effort1_f, effort2_f, nbv_f_m, effort1_f_m, effort2_f_m
 
@@ -1047,9 +1054,9 @@ if(VERBOSE){Rprintf("after Module");}
 // this function is only present in IAM20 and florence work...where does it comes from ?
 if ( (delay<=it) & !isNull(Ftarg) & !isNull(W_Ftarg) & (it>=1) & ((t_stop==0) | (t_stop>it)) ) {
     if(VERBOSE){Rprintf(" | EstimationTACfromF");}
-   int oooo = EstimationTACfromF(it) ;
-   oooo = oooo * 2;
-   if(VERBOSE){Rprintf(" | ");}
+    int oooo = EstimationTACfromF(it) ;
+    oooo = oooo * 2;
+    if(VERBOSE){Rprintf(" | ");}
 }
 
 // Florence QuotaMarket avec it > 1
@@ -1063,8 +1070,7 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isN
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activ�e si au moins un �l�ment de TACbyF est renseign�
 if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
     if(VERBOSE){Rprintf("GestionF2 | ");}
-
-//Rprintf("adjust\n");
+    // abv_GestionF2(it);
 
 //Rprintf("introOPT\n");fichier << "introOPT" << endl;
 
@@ -1077,8 +1083,10 @@ if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_
         N_SPPspictOPT = length(getListElement(tacCTRL, "SPPspictOPT"));
         N_SPPdynOPT = length(getListElement(tacCTRL, "SPPdynOPT"));
 
-        if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort au niveau de l'instant initial
+        Rprintf("%d, %d %d", (delay<=it), (gestInd==1), (DELAY>0));
 
+        if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort au niveau de l'instant initial
+            Rprintf("This run ?");
         //on remet au niveau de l'instant pr�c�dent la mise en action du module Gestion
 
             double *nbdsFM3 = REAL(getListElement(FList, "effort1_f_m"));
@@ -1109,6 +1117,7 @@ if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_
 //            //PrintValue(getListElement(FList, "effort1_f_m"));
 
         if (N_SPPspictOPT>0) { //si esp�ce dynamique SPICT
+            Rprintf(" SPICT ");
 
          for (int i = 0; i < N_SPPspictOPT; i++){
 
@@ -1121,6 +1130,7 @@ if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_
         }
 
         if (N_SPPdynOPT>0) { //si esp�ce dynamique XSA ou SS3
+            Rprintf(" XSA & SS3 ");
 
             for (int i = 0; i < N_SPPdynOPT; i++){
 
@@ -1229,8 +1239,8 @@ if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_
 
 
      //Rprintf("call.GestionF2\n");fichier << "call.GestionF2" << endl;
-     int ooo = GestionF2(it);
-     ooo = ooo * 2;
+     /*int ooo =*/ GestionF2(it);
+    //  ooo = ooo * 2;
      //Rprintf("end.GestionF2\n");fichier << "end.GestionF2" << endl;
 
   //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
@@ -1280,16 +1290,16 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
 if (nbE>0) {
 if(VERBOSE){Rprintf("\n  Mortalite");}
- Mortalite(list, it, eVar, VERBOSE);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
+ Mortalite(list, it, eVar, 0);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
  if(VERBOSE){Rprintf(" | ");}
 
 if(VERBOSE){Rprintf("\n  DynamicPop");}
- DynamicPop(list, it, eVar, true, VERBOSE);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
+ DynamicPop(list, it, eVar, true, 0);//Rprintf("\nH");fichier << "H" << endl;////PrintValue(out_Z_eit);//PrintValue(out_N_eitQ);//PrintValue(out_N_eit);
  if(VERBOSE){Rprintf(" | ");}
 }
 
 if(VERBOSE){Rprintf("\n  CatchDL");}
-CatchDL(list, it, eVar, VERBOSE);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
+CatchDL(list, it, eVar, 0);//Rprintf("\nI");fichier << "I" << endl;////PrintValue(out_Y_eit);
 if(VERBOSE){Rprintf(" | ");}
 
 //-----------------------------------------------------------------------------
@@ -1663,11 +1673,18 @@ if(VERBOSE){Rprintf(" done");}
 
 
 
-if(VERBOSE){Rprintf("Marche | ");}
+if(VERBOSE){Rprintf("\nMarche | ");}
 Marche(list, it);
 
 if(VERBOSE){Rprintf("EcoDCF \n");}
-EcoDCF(list, it, INTEGER(persCalc)[0], REAL(dr)[0]);
+EcoDCF(list, it, INTEGER(persCalc)[0], REAL(dr)[0], VERBOSE);
+
+//module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt � 2
+if (eTemp<nbE) {
+  if ((delay<=it) & (gestInd==1) & (trgt==3) & (REAL(VECTOR_ELT(out_Fbar_et, eTemp))[it] <= Fbar_trgt[it]))  trgt=2;    //????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+}
+//remise � l'�tat initial des param�tres du module Gestion si n�cessaire (ATTENTION : implique qu'on n'atteint jamais l'effort nul quelle que soit la flottille
+//                                                                                 dans le cas contraire, fixer upd=2)
 
 }
 ////Rprintf("K");
@@ -1703,9 +1720,10 @@ free_vector(multFOTHinterm_e,1,nbE);
 //if (nbEstat>0) UNPROTECT(nbEstat);
 if (pflex){ UNPROTECT(2); } else {UNPROTECT(1);}
 UNPROTECT(30);
-UNPROTECT(17+20+4+16*6+8+9);//out_
+UNPROTECT(17+20+4+16*6+8-1+9);//out_
 UNPROTECT(14);
 UNPROTECT(10); // PROTECT_WITH_INDEX
+Rf_unprotect(2); // DimCst
 
 //fichier.close();
 }

@@ -339,43 +339,43 @@ int force_T = INTEGER(force_t)[0];
 
             if (isCharIn(bootVar, "Eff")) SET_VECTOR_ELT(VECTOR_ELT(output, 12), it, object->out_effort);
 
-            if (INTEGER(EcoDcf)[0]==0) {
-                if (isCharIn(bootVar, "GVL_fme")) {
-                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_Eco,1));
-                } else {
-                    SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, emptyObj);
-                }
+            // if (INTEGER(EcoDcf)[0]==0) { // TODO : remove because out_Eco is not longer in the model
+            //     if (isCharIn(bootVar, "GVL_fme")) {
+            //         SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_Eco,1));
+            //     } else {
+            //         SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, emptyObj);
+            //     }
 
-                if (isCharIn(bootVar, "GVLtot_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_Eco,2));
-                if (isCharIn(bootVar, "GVLav_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_Eco,5));
-                if (isCharIn(bootVar, "rtbs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_Eco,11));
-                if (isCharIn(bootVar, "gp_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_Eco,27));
-                if (isCharIn(bootVar, "ps_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_Eco,29));
-                if (isCharIn(bootVar, "gcf_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_Eco,25));
-                if (isCharIn(bootVar, "gva_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_Eco,20));
-                if (isCharIn(bootVar, "cs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_Eco,18));
-                if (isCharIn(bootVar, "sts_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_Eco,30));
-                if (isCharIn(bootVar, "rtbsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_Eco,54));
-                if (isCharIn(bootVar, "csAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_Eco,55));
-                if (isCharIn(bootVar, "gvaAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_Eco,56));
-                if (isCharIn(bootVar, "gcfAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_Eco,57));
-                if (isCharIn(bootVar, "psAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_Eco,58));
-                if (isCharIn(bootVar, "stsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_Eco,59));
-                if (isCharIn(bootVar, "ccwCr_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_Eco,22));
-                if (isCharIn(bootVar, "GVLtot_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_Eco,4));
-                if (isCharIn(bootVar, "wagen_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_Eco,24));
-                if (isCharIn(bootVar, "vcst_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 36), it, VECTOR_ELT(object->out_Eco,9));
-                if (isCharIn(bootVar, "vcst_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 37), it, VECTOR_ELT(object->out_Eco,8));
+            //     if (isCharIn(bootVar, "GVLtot_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 14), it, VECTOR_ELT(object->out_Eco,2));
+            //     if (isCharIn(bootVar, "GVLav_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 15), it, VECTOR_ELT(object->out_Eco,5));
+            //     if (isCharIn(bootVar, "rtbs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 16), it, VECTOR_ELT(object->out_Eco,11));
+            //     if (isCharIn(bootVar, "gp_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 17), it, VECTOR_ELT(object->out_Eco,27));
+            //     if (isCharIn(bootVar, "ps_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 18), it, VECTOR_ELT(object->out_Eco,29));
+            //     if (isCharIn(bootVar, "gcf_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 19), it, VECTOR_ELT(object->out_Eco,25));
+            //     if (isCharIn(bootVar, "gva_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 20), it, VECTOR_ELT(object->out_Eco,20));
+            //     if (isCharIn(bootVar, "cs_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 21), it, VECTOR_ELT(object->out_Eco,18));
+            //     if (isCharIn(bootVar, "sts_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 22), it, VECTOR_ELT(object->out_Eco,30));
+            //     if (isCharIn(bootVar, "rtbsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 23), it, VECTOR_ELT(object->out_Eco,54));
+            //     if (isCharIn(bootVar, "csAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 24), it, VECTOR_ELT(object->out_Eco,55));
+            //     if (isCharIn(bootVar, "gvaAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 25), it, VECTOR_ELT(object->out_Eco,56));
+            //     if (isCharIn(bootVar, "gcfAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 26), it, VECTOR_ELT(object->out_Eco,57));
+            //     if (isCharIn(bootVar, "psAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 27), it, VECTOR_ELT(object->out_Eco,58));
+            //     if (isCharIn(bootVar, "stsAct_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 28), it, VECTOR_ELT(object->out_Eco,59));
+            //     if (isCharIn(bootVar, "ccwCr_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 29), it, VECTOR_ELT(object->out_Eco,22));
+            //     if (isCharIn(bootVar, "GVLtot_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 30), it, VECTOR_ELT(object->out_Eco,4));
+            //     if (isCharIn(bootVar, "wagen_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 31), it, VECTOR_ELT(object->out_Eco,24));
+            //     if (isCharIn(bootVar, "vcst_f")) SET_VECTOR_ELT(VECTOR_ELT(output, 36), it, VECTOR_ELT(object->out_Eco,9));
+            //     if (isCharIn(bootVar, "vcst_fm")) SET_VECTOR_ELT(VECTOR_ELT(output, 37), it, VECTOR_ELT(object->out_Eco,8));
 
-                if (isCharIn(bootVar, "StatGVL_fme")) {
-                    SET_VECTOR_ELT(VECTOR_ELT(output, 43), it, VECTOR_ELT(object->out_Eco,60));
-                } else {
-                    SET_VECTOR_ELT(VECTOR_ELT(output, 43), it, emptyObj);
-                }
+            //     if (isCharIn(bootVar, "StatGVL_fme")) {
+            //         SET_VECTOR_ELT(VECTOR_ELT(output, 43), it, VECTOR_ELT(object->out_Eco,60));
+            //     } else {
+            //         SET_VECTOR_ELT(VECTOR_ELT(output, 43), it, emptyObj);
+            //     }
 
 
 
-            } else {
+            // } else {
 
                 if (isCharIn(bootVar, "GVL_fme")) {
                     SET_VECTOR_ELT(VECTOR_ELT(output, 13), it, VECTOR_ELT(object->out_EcoDCF,0));
@@ -409,7 +409,7 @@ int force_T = INTEGER(force_t)[0];
                 }
 
 
-            }
+            // }
 
             if (isCharIn(bootVar, "L_efmit")) {
                 SET_VECTOR_ELT(VECTOR_ELT(output, 32), it, object->out_L_efmit);
