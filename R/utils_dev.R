@@ -127,3 +127,134 @@ IAM.dev <- function(project = "Workgroup", file = "analysis.R"){
     if(rstudioapi::isAvailable()) {rstudioapi::navigateToFile(file)}
   }
 }
+
+
+#' @importFrom tidyr pivot_longer
+#' @importFrom tibble rownames_to_column, add_column, as_tibble
+#'
+#' @author Maxime Jaunatre
+#'
+#' @export
+format_vareco <- function(name, object){
+
+  var = object@output[[name]]
+
+  cols <- c(fleet = NA_character_, metier = NA_character_,
+            age = NA_character_, year = NA_character_)
+
+  if(!is.null(var)){
+    att <- attributes(var)$DimCst
+    nam_to <- c("fleet","metier","age","year")[att>0]
+
+    if(sum(att > 1) > 2 ){ # case with multiple dimensions
+
+      res <- as_tibble(ftable(var))
+      names(res) = c(nam_to, "value")
+
+    } else { # double dimension
+
+      res <- as.data.frame(var) %>%
+        rownames_to_column(var = nam_to[1]) %>%
+        pivot_longer( !nam_to[1], names_to = nam_to[2])
+    }
+
+    res <- res %>%
+      add_column(., !!!cols[setdiff(names(cols), names(.))]) %>%
+      .[, c("fleet", "metier", "age", "year", "value")] %>%
+      add_column(variable = name, .before = "fleet")
+
+  } else {
+    res <- NULL
+  }
+
+  res <- res  %>%
+    mutate( value = as.numeric(value),year = as.numeric(year) )
+  return(res)
+}
+
+#' @importFrom tidyr pivot_longer
+#' @importFrom tibble rownames_to_column, add_column, as_tibble
+#'
+#' @author Maxime Jaunatre
+#'
+#' @export
+format_varsp <- function(name, object){
+
+  var = object@outputSp[[name]]
+
+  cols <- c(fleet = NA_character_, metier = NA_character_,
+            age = NA_character_, year = NA_character_)
+
+  len <- length(var)
+  if(len == 0){ return(NULL)}
+
+  tmp <- vector(mode = "list", length = len)
+  simple <- FALSE
+
+  for(sp in 1:len){
+    x <- var[[sp]]
+    if(!is.null(x)){
+      att <- attributes(x)$DimCst
+      if(sum(att > 1) > 1 ){ # case with multiple dimensions
+
+        tmp[[sp]] <- as_tibble(ftable(x))
+        names(tmp[[sp]]) = c(c("fleet","metier","age","year")[att>0], "value")
+
+        tmp[[sp]] <- tmp[[sp]] %>%
+          add_column(., !!!cols[setdiff(names(cols), names(.))]) %>%
+          .[, c("fleet", "metier", "age", "year", "value")] %>%
+          add_column(variable = name, species = names(var)[sp],
+                     .before = "fleet")
+
+      } else { # single dimension
+        simple <- TRUE
+        break()
+      }
+    }
+  }
+
+  if(!simple){ # case with multiple dimensions
+
+    res <- do.call(rbind, tmp)
+
+  } else { # single dimension
+
+    att <- attributes(var[[1]])$DimCst
+    res <- do.call(rbind, var) %>%
+      as.data.frame() %>%
+      rownames_to_column(var = "species") %>%
+      pivot_longer(!"species",
+                   names_to = switch(which(att > 1),
+                                     "fleet","metier","age","year")) %>%
+      add_column(variable = name, .before = "species") %>%
+      add_column(., !!!cols[setdiff(names(cols), names(.))]) %>%
+      .[, c("variable", "species", "fleet", "metier", "age", "year", "value")]
+
+  }
+
+  res <- res  %>%
+    mutate( value = as.numeric(value),year = as.numeric(year) )
+  return(res)
+}
+
+#' @author Maxime Jaunatre
+#'
+#' @export
+format_var <- function(name, object){
+
+  nsp <- names(object@outputSp)
+  ns <- names(object@output)
+
+
+  if(name %in% ns){
+    res <- format_vareco(name, object)
+  } else if(name %in% nsp){
+    res <- format_varsp(name, object)
+  } else {
+    warning(paste(name,"variable does not exist in an IAM output."),
+            call. = FALSE)
+    res <- NULL
+  }
+
+  return(res)
+}

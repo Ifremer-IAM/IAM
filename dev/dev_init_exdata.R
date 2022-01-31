@@ -273,7 +273,7 @@ rm(ss3, enigmaF, enigmaM)
 # IAM.input ####
 if(tea_br){
   load("dev/data/inpSS3darwiniana1984.RData")
-  input1984 <- IAM::IAM.input(fileIN = "dev/data/inputFile.xlsx",t_init=1984,nbStep=2,folderFleet="dev/data/fleets",
+  input1984 <- IAM::IAM.input(fileIN = "dev/data/inputFile.xlsx",t_init=1984,nbStep=12,folderFleet="dev/data/fleets",
                               Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
                               FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
                               FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
@@ -328,10 +328,26 @@ devtools::load_all()
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
 devtools::load_all()
-model_SQ <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, verbose = TRUE)
+sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, verbose = TRUE)
 # ne marche pas depuis Florence et sans doute l'ajout du SEX...Marche sans SS3.
 # marche avec IAM20 !
 
-input1984@input$Fleet$nbds_f
+sim1984@output$RoFTA_f
 
+sim1984@output$NGVLav_f_m
 
+sim1984@output$ratio_GVL_K_f
+attributes(sim1984@output$ratio_GVL_K_f)
+sim1984@output$np_f
+input1984@input$Fleet$K_f
+
+attributes(input1984@input$Fleet$GVLref_f_m)
+class(input1984@input$Fleet$GVLref_f_m)
+
+names(sim1984@outputSp$F_S1M1)
+
+lapply(argum1984@arguments$Recruitment,function(x) as.double(
+  c(rep(x$parAmodSR,length=2),rep(x$parBmodSR,length=2), rep(x$parCmodSR,length=2),rep(x$wnNOISEmodSR,length=2),rep(x$noiseTypeSR,length=2))))
+sim1984@outputSp$N$ARC
+
+argum1984@arguments$Recruitment$ARC

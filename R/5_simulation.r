@@ -35,13 +35,18 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
                   stochPrice=list(), #liste d'?l?ments nomm?s par esp?ce consid?r?e, chaque ?l?ment ?tant une liste selon le sch?ma :
                                 #list(type=NA (ou 1 ou 2,...), distr=c("norm",NA,NA,NA) (ou "exp" ou...), parA=c(0,NA,NA,NA), parB=c(1,NA,NA,NA), parC=c(NA,NA,NA,NA))
                   parOQD=list(activeQR=as.integer(0),listQR=NULL,listQR_f=NULL),      #10/07/17   activeQR=0 => d?sactiv?, sinon, commence ? l'instant sp?cifi?
-                  verbose = FALSE, ...){
+                  verbose = FALSE, force_t = NULL, ...){
+
+
+specific <- objInput@specific
+if(is.null(force_t)){force_t = specific$nbStep}
+
 
 verbose <- verbose || app_dev()
 #Ajout 20/09/2018
-nT <- objInput@specific$NbSteps
-nF <- length(objInput@specific$Fleet)
-ni <- lapply(objInput@specific$Ages,length)
+nT <- specific$NbSteps
+nF <- length(specific$Fleet)
+ni <- lapply(specific$Ages,length)
 
 #on compl?te MeanRec_Ftarg avec une potentielle esp?ce Spict
 NamSpict = intersect(intersect(names(ni[ni==1]),names(Ftarg)),names(W_Ftarg))
@@ -51,87 +56,84 @@ if (length(NamSpict >0) ){
 }
 
 #validation doublet arguments Ftarg/W_Ftarg
-if (!is.null(Ftarg) & !is.null(W_Ftarg)) {
-    intrs <- intersect(names(Ftarg),names(W_Ftarg))
-    if (length(intrs)>0) {
-       Ftarg <- Ftarg[intrs] ; W_Ftarg <- W_Ftarg[intrs] ; MeanRec_Ftarg <- MeanRec_Ftarg[intrs]
-       Ftarg <- lapply(Ftarg,function(x) rep(as.double(x),length=nT))
-       empty <- lapply(W_Ftarg,function(x) if ((nrow(x)!=(nF+1)) | (ncol(x)!=nT)) stop("Check your 'W_Ftarg' input !!!"))
+intrs <- intersect(names(Ftarg),names(W_Ftarg))
+if (!is.null(Ftarg) & !is.null(W_Ftarg) & length(intrs)>0) {
+  Ftarg <- Ftarg[intrs] ; W_Ftarg <- W_Ftarg[intrs] ; MeanRec_Ftarg <- MeanRec_Ftarg[intrs]
+  Ftarg <- lapply(Ftarg,function(x) rep(as.double(x),length=nT))
+  empty <- lapply(W_Ftarg,function(x) if ((nrow(x)!=(nF+1)) | (ncol(x)!=nT)) stop("Check your 'W_Ftarg' input !!!"))
 
-       W_Ftarg = rapply( W_Ftarg, f=function(x) ifelse(is.na(x),0,x), how="replace" )
+  W_Ftarg = rapply( W_Ftarg, f=function(x) ifelse(is.na(x),0,x), how="replace" )
 
-       #names(Ftarg) <- names(MeanRec_Ftarg) <- intrs
-       TACbyF <- lapply(Ftarg,function(x) matrix(as.double(NA),nrow=nF,ncol=nT,dimnames=list(objInput@specific$Fleet,objInput@specific$times)))
-       TACtot <- lapply(Ftarg,function(x) {tmp <- rep(as.double(NA),length=nT) ; names(tmp) <- objInput@specific$times ; return(tmp)})
-
-} else {
-  Ftarg <- W_Ftarg <- MeanRec_Ftarg <- NULL
-}
+  #names(Ftarg) <- names(MeanRec_Ftarg) <- intrs
+  TACbyF <- lapply(Ftarg,function(x) matrix(as.double(NA),nrow=nF,ncol=nT,dimnames=list(specific$Fleet,specific$times)))
+  TACtot <- lapply(Ftarg,function(x) {tmp <- rep(as.double(NA),length=nT) ; names(tmp) <- specific$times ; return(tmp)})
 } else {
   Ftarg <- W_Ftarg <- MeanRec_Ftarg <- NULL
 }
 
 if (!is.null(MeanRec_Ftarg)){ # ajout Florence
-  MeanRec_Ftarg <- lapply(MeanRec_Ftarg,function(x) if (length(x)==1) {
-    return(as.integer(x))    #moyenne mobile sur d?lai=n
-  } else {
-    if ((is.null(nrow(x)) & (length(x)==nT)) | (is.matrix(x) && (nrow(x)==4) && (ncol(x)==nT)) | (is.matrix(x) && (nrow(x)==2) && (ncol(x)==nT))){
-      return(as.double(x))    #for?age recrutement XSA(vec:length=nT) ou SS3(mat:dim=4*nT) ou sex-based(mat:dim=2*nT)
+  MeanRec_Ftarg <- lapply(MeanRec_Ftarg,function(x){
+    if (length(x)==1) {
+      return(as.integer(x))    #moyenne mobile sur d?lai=n
     } else {
-      stop("Check your 'MeanRec_Ftarg' input !!!")
+      if ((is.null(nrow(x)) & (length(x)==nT)) | (is.matrix(x) && (nrow(x)==4) && (ncol(x)==nT)) | (is.matrix(x) && (nrow(x)==2) && (ncol(x)==nT))){
+        return(as.double(x))    #for?age recrutement XSA(vec:length=nT) ou SS3(mat:dim=4*nT) ou sex-based(mat:dim=2*nT)
+      } else {
+        stop("Check your 'MeanRec_Ftarg' input !!!")
+      }
     }
   })
 }
-
-#Ajout 27/03/2018 ---------------- # TODO replace objArgs@specific with objInput@specific
+# browser()
+#Ajout 27/03/2018 ----------------
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
 if ((length(TACbyF)==0) | (length(TACtot)==0)) {
  warning("Pas d'ajustement TAC opere car 'TACbyF' ou 'TACtot' est manquant!!")
  TACbyF <- TACtot <- NULL
  SPPstatOPT <- SPPspictOPT <- SPPdynOPT <- integer(0)
- SPPdyn <- unlist(lapply(objArgs@specific$Ages,length))
- Ztemp <- lapply(objArgs@specific$Species,function(x) if (objInput@specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
- names(Ztemp) <- objArgs@specific$Species
+ SPPdyn <- unlist(lapply(specific$Ages,length))
+ Ztemp <- lapply(specific$Species,function(x) if (specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
+ names(Ztemp) <- specific$Species
 } else {
  #if (length(TACtot)==0) TACtot <- list()
- TACtot <- TACtot[names(TACbyF)] ; names(TACtot) <- names(TACbyF)     #TACbyF et TACtot listes de structure similaire
- SPPstatOPT <- match(names(TACbyF),objArgs@specific$StaticSpp) ; SPPstatOPT <- SPPstatOPT[!is.na(SPPstatOPT)] ; if (length(SPPstatOPT)==0) SPPstatOPT <- integer(0)
- SPPdyn <- unlist(lapply(objArgs@specific$Ages,length))
- SPPspictOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn==1])],objArgs@specific$Species) ; SPPspictOPT <- SPPspictOPT[!is.na(SPPspictOPT)]
+ TACtot <- TACtot[names(TACbyF)] ; names(TACtot) <- names(TACbyF)     #TACbyF et TACtot listes de structure similaire # TODO : why second statment ?
+
+ SPPstatOPT <- match(names(TACbyF),specific$StaticSpp) ; SPPstatOPT <- SPPstatOPT[!is.na(SPPstatOPT)] ; if (length(SPPstatOPT)==0) SPPstatOPT <- integer(0)
+
+ SPPdyn <- unlist(lapply(specific$Ages,length))
+ SPPspictOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn==1])],specific$Species) ; SPPspictOPT <- SPPspictOPT[!is.na(SPPspictOPT)]
  if (length(SPPspictOPT)==0) SPPspictOPT <- integer(0)
- SPPdynOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn>1])],objArgs@specific$Species) ; SPPdynOPT <- SPPdynOPT[!is.na(SPPdynOPT)]
+
+ SPPdynOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn>1])],specific$Species) ; SPPdynOPT <- SPPdynOPT[!is.na(SPPdynOPT)]
  if (length(SPPdynOPT)==0) SPPdynOPT <- integer(0)
- Ztemp <- lapply(objArgs@specific$Species,function(x) if (objInput@specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else if (objInput@specific$S[x]==1) rep(as.numeric(0),2*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
- names(Ztemp) <- objArgs@specific$Species
+
+ Ztemp <- lapply(specific$Species,function(x) if (specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else if (specific$S[x]==1) rep(as.numeric(0),2*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
+ names(Ztemp) <- specific$Species
 
  for(i in 1:length(TACbyF)) attributes(TACbyF[[i]])$DimCst <- as.integer(c(nF,0,0,nT))
 }
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-#Ajout 19/11/2014 ----------------
-#on garde une trace de l'objet Arguments initial, car il faudra enrichir l'argument envoy? sous C++ des ?l?ments 'Recrutements' se rapportant aux esp?ces SS3
+# Add SR info for SS3 species 19/11/2014
 objArgsIni <- objArgs
-#...et on compl?te si besoin # TODO replace objArgs@specific with objInput@specific
-if (any(objArgs@specific$Q%in%1)) { # TODO : non mais non c'est pas possible ca...
-
+if (any(specific$Q == 1)) {
    listType <- list(modSRactive=as.integer(0),typeMODsr="Mean",parAmodSR=as.double(NA),parBmodSR=as.double(0),parCmodSR=as.double(0),
                     wnNOISEmodSR=as.double(0),noiseTypeSR=as.integer(1),simuSTOCHactive=as.integer(0),typeSIMUstoch=as.integer(1))
-   namQ <- names(objArgs@specific$Q)[objArgs@specific$Q%in%1]
+   namQ <- names(specific$Q)[specific$Q == 1]
    lll <- lapply(namQ,function(z) return(listType))
    names(lll) <- namQ
    newL <- c(objArgs@arguments$Recruitment,lll)
-   objArgs@arguments$Recruitment <- newL[objArgs@specific$Species]
-
-}
+   objArgs@arguments$Recruitment <- newL[specific$Species]
+} # Eof SS3 SR
 
 
 
 #on v?rifie le formatage des ?l?ments de recList
 if (length(recList)>0) {
- devRecL <- recList[objInput@specific$Species]   #devRecL -> liste de taille nbE et avec NULL si pas d'info dans recList
+ devRecL <- recList[specific$Species]   #devRecL -> liste de taille nbE et avec NULL si pas d'info dans recList
  for (elem in 1:length(devRecL)) {
     if (!is.null(devRecL[[elem]])) {
-      if(objInput@specific$Q[elem]==1){
+      if(specific$Q[elem]==1){
         if (!is.matrix(devRecL[[elem]])) {
           devRecL[[elem]] <- matrix(rep(devRecL[[elem]],length=nT*4),ncol=nT)    #vecteur ? r?pliquer dans une matrice au format convenable
         } else {
@@ -140,7 +142,7 @@ if (length(recList)>0) {
           devRecL[[elem]] <- matTMP
         }
       }
-      else if (objInput@specific$S[elem]==1){
+      else if (specific$S[elem]==1){
         if (!is.matrix(devRecL[[elem]])) {
           devRecL[[elem]] <- matrix(rep(devRecL[[elem]],length=nT*2),ncol=nT)    #vecteur ? r?pliquer dans une matrice au format convenable
         } else {
@@ -160,26 +162,26 @@ recList <- devRecL #on remplace l'argument initial par l'argument format?
 
 #on v?rifie le formatage des ?l?ments de recParamList
 if (length(recParamList)>0) {
- devRecParamL <- recParamList[objInput@specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
+ devRecParamL <- recParamList[specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
  for (elem in 1:length(devRecParamL)) {
     if (!is.null(devRecParamL[[elem]])) {
-        if (objInput@specific$Q[elem]==0 & objInput@specific$S[elem]==0 & length(objInput@specific$Ages[[elem]])>1) {#XSA
-         del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
+        if (specific$Q[elem]==0 & specific$S[elem]==0 & length(specific$Ages[[elem]])>1) {#XSA
+         del <- as.integer(as.character(specific$Ages[[elem]][1]))
          devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
                                       delay=del,
                                       type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
          devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
-        } else if (objInput@specific$Q[elem]==0 & objInput@specific$S[elem]==1 & length(objInput@specific$Ages[[elem]])>1){ #sex-based
+        } else if (specific$Q[elem]==0 & specific$S[elem]==1 & length(specific$Ages[[elem]])>1){ #sex-based
           Nze <- c(objInput@input[[elem]]$N_i0t_G1[1],objInput@input[[elem]]$N_i0t_G2[1])
-          del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
+          del <- as.integer(as.character(specific$Ages[[elem]][1]))
           devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
                                        delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
                                        type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
           devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
 
-        } else if (objInput@specific$Q[elem]==1) { #SS3
+        } else if (specific$Q[elem]==1) { #SS3
             Nze <- c(objInput@input[[elem]]$Ni0_S1M1,objInput@input[[elem]]$Ni0_S2M2,objInput@input[[elem]]$Ni0_S3M3,objInput@input[[elem]]$Ni0_S4M4)
-            del <- as.integer(as.character(objInput@specific$Ages[[elem]][1]))
+            del <- as.integer(as.character(specific$Ages[[elem]][1]))
             devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
                                          delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
                                          type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
@@ -191,13 +193,13 @@ if (length(recParamList)>0) {
 
     }
 
- names(devRecParamL) <- objInput@specific$Species
+ names(devRecParamL) <- specific$Species
  recParamList <- devRecParamL
 }
 
 #on v?rifie le formatage des ?l?ments de ParamSPMList
 if (length(ParamSPMList)>0) {
-  devParamSPMList <- ParamSPMList[objInput@specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
+  devParamSPMList <- ParamSPMList[specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
   for (elem in 1:length(devParamSPMList)) {
     if (!is.null(devParamSPMList[[elem]])) {
       devParamSPMList[[elem]][] = as.numeric(devParamSPMList[[elem]][1:nT,])
@@ -207,13 +209,12 @@ if (length(ParamSPMList)>0) {
 
   }
 
-  names(devParamSPMList) <- objInput@specific$Species
+  names(devParamSPMList) <- specific$Species
   ParamSPMList <- devParamSPMList
 }
 
 #on ?tend les listes 'parOQD' ? l'ensemble des esp?ces mod?lis?es                                          #10/07/17
-# TODO replace objArgs@specific with objInput@specific
-allSpp <- c(objArgs@specific$Species,objArgs@specific$StaticSpp)                                           #10/07/17
+allSpp <- c(specific$Species,specific$StaticSpp)                                           #10/07/17
 listQR_TMP <- lapply(parOQD$listQR,function(z) rep(z,length=nT)) ; names(listQR_TMP) <- names(parOQD$listQR) ; parOQD$listQR <- listQR_TMP      #10/07/17
 listQR_f_TMP <- lapply(parOQD$listQR_f,function(z) if ((nrow(z)!=nF) & (ncol(z)!=nT)) return(NULL) else return(z)) ; names(listQR_f_TMP) <- names(parOQD$listQR_f) ; parOQD$listQR_f <- listQR_f_TMP    #10/07/17
 newParOQD <- list(activeQR=parOQD$activeQR,listQR=parOQD$listQR[allSpp],listQR_f=parOQD$listQR_f[allSpp])  #10/07/17
@@ -243,7 +244,7 @@ if (is.null(tacControl$Blim)) tacControl$Blim <- NA
 if (is.null(tacControl$Bmax)) tacControl$Bmax <- NA
 if (is.null(tacControl$BlimTrigger)) tacControl$BlimTrigger <- as.integer(0)   #application de l'ajustement restrictif du Fmsy en fonction de la SSB ???
 
-def_Px <- lapply(TACtot,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- objInput@specific$times ; return(tmp)})
+def_Px <- lapply(TACtot,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- specific$times ; return(tmp)})
 if (is.null(parOptQuot$active)) parOptQuot$active <- as.integer(0)
 if (is.null(parOptQuot$pxQuIni)) parOptQuot$pxQuIni <- def_Px
 if (is.null(parOptQuot$pxQuMin)) parOptQuot$pxQuMin <- def_Px
@@ -252,7 +253,7 @@ if (is.null(parOptQuot$lambda)) parOptQuot$lambda <- 0.1
 if (is.null(parOptQuot$sdmax)) parOptQuot$sdmax <- 0
 if (is.null(parOptQuot$ftol)) parOptQuot$ftol <- 0.0000001
 if (is.null(parOptQuot$itmax)) parOptQuot$itmax <- 500
-def_Holdings <- lapply(parOptQuot$pxQuIni,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- objInput@specific$times ; return(tmp)})
+def_Holdings <- lapply(parOptQuot$pxQuIni,function(x) {tmp <- rep(as.double(0.0),length=nT) ; names(tmp) <- specific$times ; return(tmp)})
 if (is.null(parOptQuot$holdings)) parOptQuot$holdings <- def_Holdings
 
 
@@ -263,10 +264,12 @@ if (is.null(parBehav$MUpos)) parBehav$MUpos <- as.integer(0)
 
 Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHactive * x$typeSIMUstoch))
 
-mOth <- rep(mOTH,length=length(objArgs@specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,objArgs@specific$Species)] <- mOTH
+mOth <- rep(mOTH,length=length(specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,specific$Species)] <- mOTH
 
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
 if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
+
+# browser()
 
 if(verbose) cat('\n ---- C++ node begin ----\n')
 out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, objInput@scenario[[scenar]],
@@ -278,7 +281,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     bounds = as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
                     TAC = TACtot, FBAR = as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
                     othSpSup = objArgs@arguments$Gestion$othSpSup, effSup = as.double(objArgs@arguments$Gestion$effSup),
-                    GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(objArgs@specific$Species,objArgs@specific$StaticSpp))-1,
+                    GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(specific$Species,specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
@@ -295,7 +298,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     dr = as.double(objArgs@arguments$Eco$dr),
                     SRind = as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),
                     listSR = lapply(objArgs@arguments$Recruitment,function(x) as.double(c(rep(x$parAmodSR,length=nT),rep(x$parBmodSR,length=nT),
-                            rep(x$parCmodSR,length=nT),rep(x$wnNOISEmodSR,length=nT),rep(x$noiseTypeSR,length=nT)))),#modif MM 27/08/2013 : permet de d?finir un jeu de param?tres SR par ann?e en vectorisant (? la main) chaque composante
+                            rep(x$parCmodSR,length=nT),rep(x$wnNOISEmodSR,length=nT),rep(x$noiseTypeSR,length=nT)))),#modif MM 27/08/2013 : permet de definir un jeu de parametres SR par annee en vectorisant (a la main) chaque composante
                     TypeSR = lapply(objArgs@arguments$Recruitment,function(x)
                                 as.integer(match(x$typeMODsr,c("Mean","Hockey-Stick","Beverton-Holt","Ricker","Shepherd","Quadratic-HS","Smooth-HS")))),
                     mFM = as.double(objArgs@arguments$Gestion$mfm),
@@ -315,7 +318,8 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     updateE = as.integer(updateE),
                     parOQD = newParOQD,                                                  #10/07/17
                     bootVar = as.character(objArgs@arguments$Replicates$SELECTvar),
-                    verbose = as.integer(verbose)
+                    verbose = as.integer(verbose),
+                    force_t = as.integer(force_t)
               )
 
 
@@ -323,7 +327,7 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
 
   if (is.na(desc)) desc <- "My iamOutputRep object"
 
-  return(new("iamOutputRep", desc=desc, arguments=objArgsIni@arguments, specific=objArgs@specific,
+  return(new("iamOutputRep", desc=desc, arguments=objArgsIni@arguments, specific=objInput@specific,
               outputSp = list(
                     F = out$Ffmi,
                     Fr = out$Fr_fmi,
@@ -375,7 +379,7 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
 
   if (is.na(desc)) desc <- "My iamOutput object"
 
-    return(new("iamOutput", desc=desc, arguments=objArgsIni@arguments, specific=objArgs@specific,
+    return(new("iamOutput", desc=desc, arguments=objArgsIni@arguments, specific=objInput@specific,
 		           outputSp = list(
                     F = out$F,
                     Fr = out$Fr,
@@ -408,13 +412,13 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                      statGVLst_f_m = out$E$GVLst_f_m_eStat_out,
                     PQuot = out$PQuot,
                     TradedQ = out$TradedQ_f,
-                    F_G1 = out$F_G1,F_G2 = out$F_G2,
-                    Fr_G1 = out$Fr_G1,Fr_G2 = out$Fr_G2,
-                    Fothi_G1 = out$Fothi_G1,Fothi_G2 = out$Fothi_G2,
-                    N_G1 = out$N_G1,N_G2 = out$N_G2,
-                    Z_G1 = out$Z_G1,Z_G2 = out$Z_G2,
-                    C_G1 = out$C_G1,C_G2 = out$C_G2,
-                    Ctot_G1 = out$Ctot_G1,Ctot_G2 = out$Ctot_G2,
+                    # F_G1 = out$F_G1,F_G2 = out$F_G2,
+                    # Fr_G1 = out$Fr_G1,Fr_G2 = out$Fr_G2,
+                    # Fothi_G1 = out$Fothi_G1,Fothi_G2 = out$Fothi_G2,
+                    # N_G1 = out$N_G1,N_G2 = out$N_G2,
+                    # Z_G1 = out$Z_G1,Z_G2 = out$Z_G2,
+                    # C_G1 = out$C_G1,C_G2 = out$C_G2,
+                    # Ctot_G1 = out$Ctot_G1,Ctot_G2 = out$Ctot_G2,
                     F_S1M1= out$F_S1M1,F_S1M2= out$F_S1M2,F_S1M3= out$F_S1M3,F_S1M4= out$F_S1M4,
                     F_S2M1= out$F_S2M1,F_S2M2= out$F_S2M2,F_S2M3= out$F_S2M3,F_S2M4= out$F_S2M4,
                     F_S3M1= out$F_S3M1,F_S3M2= out$F_S3M2,F_S3M3= out$F_S3M3,F_S3M4= out$F_S3M4,
@@ -447,7 +451,7 @@ if (objArgs@arguments$Replicates$active==1) {     #objet de classe 'iamOutputRep
                     PQuot_conv = out$PQuot_conv,
                     diffLQ_conv = out$diffLQ_conv),
                 output = list(
-                  typeGest = out$typeGest,
+                  # typeGest = out$typeGest,
                   nbv_f = out$Eff$nbv_f,
                   effort1_f = out$Eff$effort1_f,
                   effort2_f = out$Eff$effort2_f,

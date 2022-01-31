@@ -115,21 +115,24 @@ app_ui <- function() {
             div( # Economic panel ####
                  class = "option-group",
                  h3("Economic"),
-                 radioGroupButtons(
-                   inputId = "Eco_typ", choices = c("Complete","DCF"),
-                   justified = TRUE
-                 ),
+                 # radioGroupButtons(
+                 #   inputId = "Eco_typ", choices = c("Complete","DCF"),
+                 #   justified = TRUE
+                 # ),
                  awesomeRadio(
-                   inputId = "pers", label = "perscCalc", choices = c("0", "1", "2", "3", "4"),
+                   inputId = "pers", label = "perscCalc",
+                   choices = c("0", "1", "2", "3", "4"),
                    selected = "0", inline = TRUE
                  ),
-                 numericInput("disc_rate", label = "Discound rate", value = 0, step = 0.01)
+                 numericInput("disc_rate", label = "Discound rate",
+                              value = 0, step = 0.01)
                  # )
             ),
             div( # Iterative panel ####
                  class = "option-group",
                  checkboxInput("iter", "Iterative", value = FALSE),
-                 numericInput("niter", label = "Number of iteration", value = 500),
+                 numericInput("niter", label = "Number of iteration",
+                              value = 500),
                  multiInput(
                    inputId = "var_rep",
                    label = "Output variables",
@@ -153,7 +156,8 @@ app_server <- function(input, output, session) {
   spDyn <- sp[get_golem_options("input")@specific$Q == 0]
   for( i in spDyn){
     appendTab(inputId = "tabs",
-              tabPanel(i, mod_spInput(i)) # TODO : need to reload interface with default once tab is changed
+              tabPanel(i, mod_spInput(i))
+              # TODO : need to reload interface with default once tab is changed
     )
   }
   updateTabsetPanel(session, "tabs", selected = unname(sp[1]))
@@ -215,89 +219,7 @@ run_app <- function(object, AllVarRep) {
 # TODO : what could be very nice is to initialise iam.Args
 # with the gui default and then just write a function that modify it.
 # So we could call it very quickly in script for automated test
-setMethod("IAM.input2args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
-  if(is.null(desc)){ desc <- object@desc }
-  # init the arg object with shiny default
-  ## Create argum ####
-  # TODO : this is where to modify the default for the GUI now !
-  init_recru <- function(name, input){
-    list(modSRactive = 1,
-         typeMODsr = "Mean",
-         parAmodSR = unname(input@input[[name]]$N_it0[1]),
-         parBmodSR = 0, parCmodSR = 0, wnNOISEmodSR = 0, noiseTypeSR = 1,
-         simuSTOCHactive = 0, typeSIMUstoch = 1
-    )
-  }
-
-  sp <- as.list(input@specific$Species) ; names(sp) <- sp
-  Recruitement <- lapply(sp, function(x) init_recru(name = x, input=input))
-  rm(sp)
-
-  Replicates <- list(active =0, nbIter =500,
-                     SELECTvar = ALLVarRep[c(1:20, 22:38, 43:44)] )
-
-  Scenario <- list(active = 0, ALLscenario = names(input@scenario), SELECTscen = 1)
-
-  Eco <- list(active = 0, type = 1,
-              adj = 1, ue_choice = 1, oths = 0, othsFM = 0, # useless
-              perscCalc = 0,
-              report = 0, # useless
-              dr = 0)
-
-  init_gest <- function(input){
-    years <- input@specific$times
-    fleets <- input@specific$Fleet
-    spp <- c(na.omit(input@specific$Species))
-    sppStat <- c(na.omit(input@specific$StaticSpp))
-    Espece <- c(na.omit(c(spp,sppStat)))[1]
-
-    tacfbar <- matrix(as.numeric(NA),nrow=2,ncol=length(years),
-                      dimnames=list(c("TAC","Fbar"),years))
-    mfm <- input@input$Fleet$nbv_f_m ; mfm[!is.na(mfm)] <- 1
-
-    TACOTH <- matrix(as.numeric(NA),nrow=length(sppStat)+length(spp),
-                     ncol=length(years),dimnames=list(c(spp,sppStat),years))
-    if (nrow(TACOTH)>1) {
-      TACOTH <- as.data.frame(t(TACOTH[rownames(TACOTH)!=Espece,]))
-      tabO <- lapply(TACOTH, function(x) {
-        attributes(x)$DimCst <- as.integer(c(0,0,0,length(x))) ; return(x)})
-    } else {
-      tabO <- NULL
-    }
-
-    Gestion <- list(active = 0, control = "Nb vessels", target = "TAC",
-                    espece = Espece, delay = 2, typeG = 0, upd = 1,
-                    sup = 0, inf =0,
-                    tac = tacfbar["TAC",],
-                    fbar = tacfbar["Fbar",],
-                    othSpSup = tabO,
-                    effSup = matrix(as.numeric(NA),nrow=length(fleets),
-                                    ncol=length(years),dimnames=list(fleets,years)),
-                    mfm = mfm,
-                    TACbyF = matrix(as.numeric(NA),nrow=length(fleets),
-                                    ncol=length(years),dimnames=list(fleets,years)))
-
-    attributes(Gestion$tac)$DimCst <- as.integer(c(0,0,0,length(Gestion$tac)))
-    attributes(Gestion$fbar)$DimCst <- as.integer(c(0,0,0,length(Gestion$fbar)))
-    attributes(Gestion$effSup)$DimCst <- as.integer(c(nrow(Gestion$effSup),0,0,
-                                                      ncol(Gestion$effSup)))
-    attributes(Gestion$mfm)$DimCst <- as.integer(c(dim(Gestion$mfm),0,0))
-    attributes(Gestion$TACbyF)$DimCst <- as.integer(c(nrow(Gestion$TACbyF),0,0,
-                                                      ncol(Gestion$TACbyF)))
-    return(Gestion)
-  }
-  Gestion <- init_gest(input)
-
-  argum <- list(Recruitment = Recruitement, Replicates = Replicates,
-                Scenario = Scenario, Gestion = Gestion, Eco = Eco)
-  ## Copy specific ####
-  specif <- object@specific
-  args <- new("iamArgs", desc = desc, arguments = argum, specific = specif)
-
-  return(args)
-
-})
 
 setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
@@ -329,7 +251,12 @@ ALLVarRep = c(
   "Fr_fmi", "C_efmit", "P", "Pstat"
 )
 
-run_app(args, ALLVarRep)
+
+load("dev/data/argumIFR.RData")
+run_app(argum1984, ALLVarRep)
 
 
+argum1984 <- IAM20::IAM.args(argum1984)
+argum1984@arguments$Eco$active <- 1
+argum1984@arguments$Eco$type <- 2
 

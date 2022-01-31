@@ -1,8 +1,8 @@
 #ifndef PARAM_H_INCLUDED
 #define PARAM_H_INCLUDED
 
-//classe regroupant les param�tres � int�grer dans le mod�le, les variables interm�diaires (discr�tisation du processus),
-//ainsi que les sorties du mod�le
+//classe regroupant les parametres a integrer dans le modele, les variables intermediaires (discretisation du processus),
+//ainsi que les sorties du modele
 class BioEcoPar
 {
 public: //normalement, selon les conventions,  les attributs doivent �tre "private"
@@ -140,7 +140,7 @@ SEXP    ZtempList;
                 SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
                 SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                 SEXP parBHV, SEXP parQEX,
-                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE);
+                SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T);
 
 	//destructeur
     ~BioEcoPar();
@@ -196,12 +196,9 @@ SEXP    ZtempList;
     void EcoDCF(SEXP list, int ind_t,int persCalc,double dr);
 
     // Module Gestion
-    //double fxTAC_glob(double mult);
-
-    //void Gestion(SEXP list, int ind_t);
-
+    double fxTAC_glob(double mult);
+    void Gestion(SEXP list, int ind_t, int VERBOSE = 0);
     double zbrent(BEfn1 fx, double x1, double x2, double tol);
-
     void zbrak(BEfn1 fx, double x1, double x2, int n, double xb1[], double xb2[], int *nb);
 
     double func(double *x);
@@ -236,7 +233,9 @@ SEXP    ZtempList;
 
     int EstimationTACfromF(int ind_t);
 
-    int GestionF2(int ind_t);
+    // Module GestionF2
+    void GestionF2(int ind_t);
+    void abv_GestionF2(int ind_t);
 
     //double fxTAC_F_customCst2(double *x);
 
