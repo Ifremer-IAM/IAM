@@ -39,8 +39,7 @@ setMethod("IAM.model", signature("iamArgs","iamInput"),function(objArgs, objInpu
 
 
 specific <- objInput@specific
-if(is.null(force_t)){force_t = specific$nbStep}
-
+if(is.null(force_t)){force_t = specific$NbSteps}
 
 verbose <- verbose || app_dev()
 #Ajout 20/09/2018
@@ -97,19 +96,14 @@ if ((length(TACbyF)==0) | (length(TACtot)==0)) {
 } else {
  #if (length(TACtot)==0) TACtot <- list()
  TACtot <- TACtot[names(TACbyF)] ; names(TACtot) <- names(TACbyF)     #TACbyF et TACtot listes de structure similaire # TODO : why second statment ?
-
  SPPstatOPT <- match(names(TACbyF),specific$StaticSpp) ; SPPstatOPT <- SPPstatOPT[!is.na(SPPstatOPT)] ; if (length(SPPstatOPT)==0) SPPstatOPT <- integer(0)
-
  SPPdyn <- unlist(lapply(specific$Ages,length))
  SPPspictOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn==1])],specific$Species) ; SPPspictOPT <- SPPspictOPT[!is.na(SPPspictOPT)]
  if (length(SPPspictOPT)==0) SPPspictOPT <- integer(0)
-
  SPPdynOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn>1])],specific$Species) ; SPPdynOPT <- SPPdynOPT[!is.na(SPPdynOPT)]
  if (length(SPPdynOPT)==0) SPPdynOPT <- integer(0)
-
  Ztemp <- lapply(specific$Species,function(x) if (specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else if (specific$S[x]==1) rep(as.numeric(0),2*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
  names(Ztemp) <- specific$Species
-
  for(i in 1:length(TACbyF)) attributes(TACbyF[[i]])$DimCst <- as.integer(c(nF,0,0,nT))
 }
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -286,7 +280,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
                                  upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)), # eointeger TODO : move this out
-                    EcoDcf = as.integer(objArgs@arguments$Eco$type-1),
+                    # EcoDcf = as.integer(objArgs@arguments$Eco$type-1),
                     persCalc = as.integer(c(# adj = objArgs@arguments$Eco$adj,
                                  # lev = objArgs@arguments$Eco$lev,
                                  # ue_choice = objArgs@arguments$Eco$ue_choice,

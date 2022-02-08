@@ -129,10 +129,70 @@ IAM.dev <- function(project = "Workgroup", file = "analysis.R"){
 }
 
 
-#' @importFrom tidyr pivot_longer
-#' @importFrom tibble rownames_to_column, add_column, as_tibble
+#' Format IAM.output variable as a tibble.
+#'
+#' Extract an element from \code{\link[IAM]{iamOutput}} and format this as a
+#' tibble. This tibble is 6 column wide with specified format (see details)
+#'
+#' @param name name of the exported variable from IAM. chr.
+#' @param object \code{\link[IAM]{iamOutput}} object created with
+#' \code{IAM.model()}.
+#'
+#' @details The reconcilSPP variable return character value,
+#' so it can't be binded with other variable which are numeric.
+#'
+#' Format : long format for ggplot and dplyr analysis to facilitate filter and
+#' summary computations. If the variable is not defined for a specific dimension
+#' (column), this column is filled with NA.
+#' \describe{
+#'   \item{variable}{Single value repeated, but is needed if multiple variables
+#'   are assembled with \code{bind_row()}. chr vector}
+#'   \item{species}{Species names, can contain dynamic and static species
+#'   depending on the variable selected.. chr vector}
+#'   \item{fleet}{Fleet names. fct vector}
+#'   \item{metier}{Metier names. fct vector}
+#'   \item{age}{Ages for dynamic species. fct vector}
+#'   \item{year}{year step for the simulation. dbl vector}
+#'   \item{value}{Value of the variable for every column place indicated on the
+#'   same row. dbl vector}
+#' }
+#'
+#'
+#' @name format_var
+#' @rdname format_var
 #'
 #' @author Maxime Jaunatre
+#'
+#' @export
+format_var <- function(name, object){
+
+  nsp <- names(object@outputSp)
+  ns <- names(object@output)
+
+
+  if(name %in% ns){
+    res <- format_vareco(name, object)
+  } else if(name %in% nsp){
+    res <- format_varsp(name, object)
+  } else {
+    warning(paste(name,"variable does not exist in an IAM output."),
+            call. = FALSE)
+    res <- NULL
+  }
+
+  return(res)
+}
+
+
+#' @importFrom stats ftable
+#' @importFrom tidyr pivot_longer
+#' @import dplyr
+#' @import tibble
+#' @importFrom magrittr %>%
+#'
+#'
+#' @name format_var
+#' @rdname format_var
 #'
 #' @export
 format_vareco <- function(name, object){
@@ -161,21 +221,26 @@ format_vareco <- function(name, object){
     res <- res %>%
       add_column(., !!!cols[setdiff(names(cols), names(.))]) %>%
       .[, c("fleet", "metier", "age", "year", "value")] %>%
-      add_column(variable = name, .before = "fleet")
+      add_column(variable = name, species = NA, .before = "fleet") %>%
+      # mutate_if(is.factor, as.character) %>%
+      mutate( value = as.numeric(value),year = as.numeric(year) )
 
   } else {
     res <- NULL
   }
 
-  res <- res  %>%
-    mutate( value = as.numeric(value),year = as.numeric(year) )
   return(res)
 }
 
+#' @importFrom stats ftable
 #' @importFrom tidyr pivot_longer
-#' @importFrom tibble rownames_to_column, add_column, as_tibble
+#' @import dplyr
+#' @import tibble
+#' @importFrom magrittr %>%
 #'
-#' @author Maxime Jaunatre
+#'
+#' @name format_var
+#' @rdname format_var
 #'
 #' @export
 format_varsp <- function(name, object){
@@ -186,7 +251,7 @@ format_varsp <- function(name, object){
             age = NA_character_, year = NA_character_)
 
   len <- length(var)
-  if(len == 0){ return(NULL)}
+  if(len == 0 | any(unlist(lapply(var, is.null)))){ return(NULL)}
 
   tmp <- vector(mode = "list", length = len)
   simple <- FALSE
@@ -233,28 +298,8 @@ format_varsp <- function(name, object){
   }
 
   res <- res  %>%
-    mutate( value = as.numeric(value),year = as.numeric(year) )
-  return(res)
-}
-
-#' @author Maxime Jaunatre
-#'
-#' @export
-format_var <- function(name, object){
-
-  nsp <- names(object@outputSp)
-  ns <- names(object@output)
-
-
-  if(name %in% ns){
-    res <- format_vareco(name, object)
-  } else if(name %in% nsp){
-    res <- format_varsp(name, object)
-  } else {
-    warning(paste(name,"variable does not exist in an IAM output."),
-            call. = FALSE)
-    res <- NULL
-  }
+    # mutate_if(is.factor, as.character) %>%
+    mutate( value = as.numeric(value),year = as.numeric(as.character(year)) )
 
   return(res)
 }

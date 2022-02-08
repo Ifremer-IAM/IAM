@@ -40,7 +40,7 @@ extern "C"
 extern "C" {
 SEXP IAM(SEXP listInput, SEXP listSpec, SEXP listStochastic, SEXP listScen,
             SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, SEXP Bootstrp, SEXP nbBoot,
-            SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
+            SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP TACtot, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
             SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyF, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
             SEXP parBHV, SEXP parQEX,
             SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, SEXP bootVar = R_NilValue, SEXP verbose = 0, SEXP force_t = R_NilValue)
@@ -53,7 +53,7 @@ int force_T = INTEGER(force_t)[0];
         if(VERBOSE){Rprintf("No bootstrap \n");}
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                             RecType1, RecType2, RecType3, Scenarii, /* Bootstrp,  nbBoot, */ // TODO : remove this unused arg
-                                            GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
+                                            GestInd, mOth, bounds, TAC, TACtot,  FBAR, othSpSup, effSup, GestParam, /*EcoDcf,*/
                                             persCalc, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg,
                                             parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE, force_T);
 
@@ -257,14 +257,14 @@ int force_T = INTEGER(force_t)[0];
         if(VERBOSE){Rprintf("Init bootstrap \n");}
         BioEcoPar *object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, /* Bootstrp, nbBoot, */
-                                    GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
+                                    GestInd, mOth, bounds, TAC, TACtot, FBAR, othSpSup, effSup, GestParam, /*EcoDcf,*/
                                     persCalc, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE, force_T);
 
         for (int it = 0 ; it < INTEGER(nbBoot)[0] ; it++) {
             if(VERBOSE && (it % 50) == 0){Rprintf("boot :");}
             if (it>0) object = new BioEcoPar(listInput, listSpec, listStochastic, listScen,
                                     RecType1, RecType2, RecType3, Scenarii, /* Bootstrp, nbBoot, */
-                                    GestInd, mOth, bounds, TAC, FBAR, othSpSup, effSup, GestParam, EcoDcf,
+                                    GestInd, mOth, bounds, TAC, TACtot, FBAR, othSpSup, effSup, GestParam, /*EcoDcf,*/
                                     persCalc, dr, SRind, listSR, TypeSR, mFM, TACbyF, Ftarg, W_Ftarg, MeanRec_Ftarg, parBHV, parQEX, tacCTRL, stochPrice, updateE, parOQD, VERBOSE, force_T);
 
             //objet vide pour garder la structuration malgr� la non-s�lection de la variable en question

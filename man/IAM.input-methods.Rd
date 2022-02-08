@@ -36,6 +36,7 @@ IAM.input(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...)
   matwt = NULL,
   Fg_fmi = NULL,
   dg_fmi = NULL,
+  verbose = FALSE,
   ...
 )
 

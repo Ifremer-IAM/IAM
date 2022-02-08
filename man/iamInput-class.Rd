@@ -30,8 +30,8 @@ a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
   \item{t_init}{Initial year of the model. int}
   \item{NbSteps}{Number of years for the model to be used. Initial year is included as step 0. int vector}
   \item{times}{Years used in the model. Defined with t_init and NbSteps}
-  \item{Q}{# TODO}
-  \item{S}{# TODO}
+  \item{Q}{Status of species. 0 mean XSA dynamic 1 mean SS3 dynamic}
+  \item{S}{Status of species. 0 mean XSA dynamic 1 mean SEX dynamic. A species can't be SS3 and SEX.}
 }}
 
 \item{\code{historical}}{# TODO descr juste pour les graphes.pas utilise dans le modele C++}

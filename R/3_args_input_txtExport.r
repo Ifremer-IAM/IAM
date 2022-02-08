@@ -10,11 +10,11 @@
 
 unlSpec <- function(ll,file="specific.txt") {
   if (is.list(ll)) {  #si c'est un liste...
-    out <- c("list","character",rep("NA",6),names(ll)) ; out[length(out)] <- paste(out[length(out)],"\n",sep="")
+    out <- c("list","character",rep("NA",6),names(ll)) ; out[length(out)] <- paste0(out[length(out)],"\n")
     cat(out,append=TRUE,sep="\t",file=file)
     for (i in 1:length(ll)) unlSpec(ll[[i]],file=file)
   } else {
-    out <- c("var",as.character(typeof(ll)),rep("NA",6),as.character(ll)) ; out[length(out)] <- paste(out[length(out)],"\n",sep="")
+    out <- c("var",as.character(typeof(ll)),rep("NA",6),as.character(ll)) ; out[length(out)] <- paste0(out[length(out)],"\n")
     cat(out,append=TRUE,sep="\t",file=file)
   }
 }
@@ -24,7 +24,7 @@ unlSpec <- function(ll,file="specific.txt") {
 
 unl <- function(ll,file="input.txt",spec=list(),flag=NA) {
   if (is.list(ll)) {  #si c'est une liste...
-    out <- c("list","character",rep("NA",6),names(ll)) ; out[length(out)] <- paste(out[length(out)],"\n",sep="")
+    out <- c("list","character",rep("NA",6),names(ll)) ; out[length(out)] <- paste0(out[length(out)],"\n")
     cat(out,append=TRUE,sep="\t",file=file)
     for (i in 1:length(ll)) {
       if (names(ll)[i]%in%names(spec$Ages)) flag <- names(ll)[i]
@@ -42,7 +42,7 @@ unl <- function(ll,file="input.txt",spec=list(),flag=NA) {
       }
 
     out <- c("var",as.character(typeof(ll)),if(is.null(dimcst)) rep("NA",6) else c(as.character(dimcst),dimMet,dimAC),as.character(ll))
-    out[length(out)] <- paste(out[length(out)],"\n",sep="")
+    out[length(out)] <- paste0(out[length(out)],"\n")
     cat(out,append=TRUE,sep="\t",file=file)
     } else {
     #il faut consid?rer le cas particulier des matrices (ex:'icat') qui n'ont pas d'attributs 'DimCst' mais qui
@@ -53,7 +53,7 @@ unl <- function(ll,file="input.txt",spec=list(),flag=NA) {
       } else {
         out <- c("var",as.character(typeof(ll)),rep("NA",6),as.character(ll))
       }
-      out[length(out)] <- paste(out[length(out)],"\n",sep="")
+      out[length(out)] <- paste0(out[length(out)],"\n")
       cat(out,append=TRUE,sep="\t",file=file)
       }
   }

@@ -454,12 +454,12 @@ IAM.barIC <- function(formula, data,...) {
   allVarCalc <- all.vars(formula)[1:lgth]
   allVarCross <- all.vars(formula)[-(1:lgth)]
 
-  eval(parse('',text=paste("DFmean <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
-                      "),list(",paste(allVarCross,collapse=","),"),mean))",sep="")))
-  eval(parse('',text=paste("DFinf <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
-                      "),list(",paste(allVarCross,collapse=","),"),function(x) quantile(x,probs=0.05)))",sep="")))
-  eval(parse('',text=paste("DFsup <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
-                      "),list(",paste(allVarCross,collapse=","),"),function(x) quantile(x,probs=0.95)))",sep="")))
+  eval(parse('',text=paste0("DFmean <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
+                      "),list(",paste(allVarCross,collapse=","),"),mean))")))
+  eval(parse('',text=paste0("DFinf <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
+                      "),list(",paste(allVarCross,collapse=","),"),function(x) quantile(x,probs=0.05)))")))
+  eval(parse('',text=paste0("DFsup <- with(data,aggregate(list(",paste(allVarCalc,collapse=","),
+                      "),list(",paste(allVarCross,collapse=","),"),function(x) quantile(x,probs=0.95)))")))
 
 
   names(DFmean) <- names(DFinf) <- names(DFsup) <- c(allVarCross,allVarCalc)

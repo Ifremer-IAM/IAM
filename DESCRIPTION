@@ -38,7 +38,14 @@ Imports: utils,
          lattice,
          tcltk, 
          tcltk2,
-         Rcpp (>=  1.0.7)
+         Rcpp (>=  1.0.7),
+         dplyr,
+         tibble,
+         magrittr,
+         tidyr,
+         fs,
+         rstudioapi,
+         usethis
 License: CeCILL-2
 LazyData: true
 NeedsCompilation: yes

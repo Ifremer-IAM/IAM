@@ -28,8 +28,8 @@
 #'   \item{t_init}{Initial year of the model. int}
 #'   \item{NbSteps}{Number of years for the model to be used. Initial year is included as step 0. int vector}
 #'   \item{times}{Years used in the model. Defined with t_init and NbSteps}
-#'   \item{Q}{# TODO}
-#'   \item{S}{# TODO}
+#'   \item{Q}{Status of species. 0 mean XSA dynamic 1 mean SS3 dynamic}
+#'   \item{S}{Status of species. 0 mean XSA dynamic 1 mean SEX dynamic. A species can't be SS3 and SEX.}
 #' }
 #' @slot historical # TODO descr juste pour les graphes.pas utilise dans le modele C++
 #' @slot input # TODO descr
@@ -505,9 +505,18 @@ val.iamArgs <- function(object){
 #'
 #' # TODO
 #'
-#' @slot desc # TODO descr
-#' @slot arguments # TODO descr
-#' @slot specific # TODO descr
+#' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
+#' @slot arguments Arguments set in the GUI window.
+#' \describe{
+#'   \item{Recruitment}{Parameters for dynamic XSA species. Equation and parameters for recruitment.}
+#'   \item{Replicates}{Deprecated. Parameters for replication. Module activation, number of replicates et output variables selected.}
+#'   \item{Scenario}{Scenario selection. Module activation, list of scenario and selected scenario.}
+#'   \item{Gestion}{Gestion module activation. Multiple parameters to select a target species,
+#'   a gestion control (nbv, nbds), bounds of gestion, and if the gestion is by TAC, Fleet etc.
+#'   This is in way of deprecation since TACbyF is directly implemented in IAM.model function.}
+#'   \item{Eco}{Economic module, partially deprecated. Only perscCalc and dr (discount rate) are used.}
+#' }
+#' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
 #'
 #' @details Used by \code{IAM.Args} method that use tcltk package for GUI.
 #'

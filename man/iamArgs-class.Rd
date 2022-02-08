@@ -13,11 +13,11 @@ Used by \code{IAM.Args} method that use tcltk package for GUI.
 \section{Slots}{
 
 \describe{
-\item{\code{desc}}{# TODO descr}
+\item{\code{desc}}{Copy of the desc argument from \code{\link[IAM]{iamInput-class}}}
 
 \item{\code{arguments}}{# TODO descr}
 
-\item{\code{specific}}{# TODO descr}
+\item{\code{specific}}{Copy of the specific argument from \code{\link[IAM]{iamInput-class}}}
 }}
 
 \examples{

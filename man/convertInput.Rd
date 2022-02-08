@@ -4,7 +4,7 @@
 \alias{convertInput}
 \title{convertInput}
 \usage{
-convertInput(inp, Fq_fmi = NULL, Fg_fmi = NULL)
+convertInput(inp, Fq_fmi = NULL, Fg_fmi = NULL, verbose = FALSE)
 }
 \arguments{
 \item{inp}{# TODO}
@@ -12,7 +12,10 @@ convertInput(inp, Fq_fmi = NULL, Fg_fmi = NULL)
 \item{Fq_fmi}{# TODO}
 
 \item{Fg_fmi}{# TODO}
+
+\item{verbose}{TRUE will print information about the function process.
+Implemented for debug purpose only.}
 }
 \description{
-# TODO
+Fonction de ventilation du jeu de donnee
 }

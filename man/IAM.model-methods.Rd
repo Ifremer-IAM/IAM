@@ -33,6 +33,7 @@ IAM.model(objArgs, objInput, ...)
   stochPrice = list(),
   parOQD = list(activeQR = as.integer(0), listQR = NULL, listQR_f = NULL),
   verbose = FALSE,
+  force_t = NULL,
   ...
 )
 }

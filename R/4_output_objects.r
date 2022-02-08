@@ -16,9 +16,9 @@
 #' Class "iamOutput"
 #'
 #'
-#' @slot desc Short description of the object. chr.
-#' @slot arguments # TODO
-#' @slot specific # TODO
+#' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
+#' @slot arguments Copy of the arguments slot from \code{\link[IAM]{iamArgs-class}}
+#' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
 #' @slot outputSp # TODO
 #' @slot output # TODO
 #'
@@ -222,9 +222,9 @@ setClass("iamOutput",
 #' Class "iamOutputRep"
 #'
 #'
-#' @slot desc Short description of the object. chr.
-#' @slot arguments # TODO
-#' @slot specific # TODO
+#' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
+#' @slot arguments Copy of the arguments slot from \code{\link[IAM]{iamArgs-class}}
+#' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
 #' @slot outputSp # TODO
 #' @slot output # TODO
 #'

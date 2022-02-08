@@ -24,7 +24,7 @@
 
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp, */ // TODO : remove unused arg
-                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
+                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP TACtot, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
                      SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                      SEXP parBHV, SEXP parQEX,
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T)
@@ -177,10 +177,10 @@ PROTECT(Qholdings = VECTOR_ELT(parQEX,8));
 recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
 recParamList = getListElement(tacCTRL, "recParamList");
 ParamSPMlist = getListElement(tacCTRL, "ParamSPMList");
-maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0];
+maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0]; // TODO : only used in GestionF2
 diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0];
 lambda = REAL(getListElement(tacCTRL, "lambda"))[0];
-t_stop = INTEGER(getListElement(tacCTRL, "t_stop"))[0];
+int t_stop = INTEGER(getListElement(tacCTRL, "t_stop"))[0];
 ZoptSS3 = false;
 
 eTemp = INTEGER(GestParam)[0];//2;

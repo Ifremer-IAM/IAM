@@ -114,7 +114,7 @@ int     nbT, nbF, nbM, nbMe, nbE, nbEstat, nbP,nbEall,nbEQuota,nbEQuotaMarket, n
         curQ, spQ, scen, //application du sc�nario??
         bhv_active /*application du module report d'effort*/, type, /*boot, nbBoot, ecodcf,*/ typeGest, //special request ICES 2013 : pistage des r�gles de sc�nario int�gr� dans la variable out_typeGest
         var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
-        IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'esp�ces et de flottilles consid�r�s*/, corVarTACnby_CPP, Blim_trigger, maxIter, t_stop,
+        IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'esp�ces et de flottilles consid�r�s*/, corVarTACnby_CPP, Blim_trigger, maxIter,
         *SRInd, /**EcoIndCopy,*/ *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement al�atoire d�fini par la m�thode impl�ment�e RecAlea
 
 
@@ -137,7 +137,7 @@ SEXP    ZtempList;
 	//constructeur
     BioEcoPar(SEXP list, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp , */ // TODO : remove unused arg
-                SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, SEXP EcoDcf,
+                SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP TACtot, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
                 SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                 SEXP parBHV, SEXP parQEX,
                 SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T);
