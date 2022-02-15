@@ -128,7 +128,7 @@ setClass("iamOutput",
                     TACbyF = list(),
 		                PQuot_conv = list(),
 		                diffLQ_conv = list()),
-    output = list(typeGest = integer(),                #type de sc?nario de gestion appliqu?
+    output = list(#typeGest = integer(),                #type de sc?nario de gestion appliqu?
                   nbv_f = numeric(),                   #Nb de navires par flottille
                   effort1_f = numeric(),               #1?re composante d'effort moyen par an et par flottille
                   effort2_f = numeric(),               #2?me composante d'effort moyen par an et par flottille

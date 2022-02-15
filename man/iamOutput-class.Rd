@@ -10,11 +10,11 @@ Class "iamOutput"
 \section{Slots}{
 
 \describe{
-\item{\code{desc}}{Short description of the object. chr.}
+\item{\code{desc}}{Copy of the desc slot from \code{\link[IAM]{iamInput-class}}}
 
-\item{\code{arguments}}{# TODO}
+\item{\code{arguments}}{Copy of the arguments slot from \code{\link[IAM]{iamArgs-class}}}
 
-\item{\code{specific}}{# TODO}
+\item{\code{specific}}{Copy of the specific slot from \code{\link[IAM]{iamInput-class}}}
 
 \item{\code{outputSp}}{# TODO}
 

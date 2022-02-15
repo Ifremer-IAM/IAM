@@ -83,7 +83,7 @@ if (!is.null(MeanRec_Ftarg)){ # ajout Florence
     }
   })
 }
-# browser()
+
 #Ajout 27/03/2018 ----------------
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
 if ((length(TACbyF)==0) | (length(TACtot)==0)) {
@@ -121,11 +121,10 @@ if (any(specific$Q == 1)) {
 } # Eof SS3 SR
 
 
-
 #on v?rifie le formatage des ?l?ments de recList
 if (length(recList)>0) {
- devRecL <- recList[specific$Species]   #devRecL -> liste de taille nbE et avec NULL si pas d'info dans recList
- for (elem in 1:length(devRecL)) {
+  devRecL <- recList[specific$Species]   #devRecL -> liste de taille nbE et avec NULL si pas d'info dans recList
+  for (elem in 1:length(devRecL)) {
     if (!is.null(devRecL[[elem]])) {
       if(specific$Q[elem]==1){
         if (!is.matrix(devRecL[[elem]])) {
@@ -135,8 +134,7 @@ if (length(recList)>0) {
           matTMP[1:min(4,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))] <- as.numeric(devRecL[[elem]][1:min(4,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))])
           devRecL[[elem]] <- matTMP
         }
-      }
-      else if (specific$S[elem]==1){
+      } else if (specific$S[elem]==1){
         if (!is.matrix(devRecL[[elem]])) {
           devRecL[[elem]] <- matrix(rep(devRecL[[elem]],length=nT*2),ncol=nT)    #vecteur ? r?pliquer dans une matrice au format convenable
         } else {
@@ -144,51 +142,50 @@ if (length(recList)>0) {
           matTMP[1:min(2,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))] <- as.numeric(devRecL[[elem]][1:min(2,nrow(devRecL[[elem]])),1:min(nT,ncol(devRecL[[elem]]))])
           devRecL[[elem]] <- matTMP
         }
-        }
-      else {#XSA
-         devRecL[[elem]] <- rep(as.numeric(as.character(c(devRecL[[elem]],rep(rev(devRecL[[elem]])[1],100)))),length=nT)
+      } else {#XSA
+        devRecL[[elem]] <- rep(as.numeric(as.character(c(devRecL[[elem]],rep(rev(devRecL[[elem]])[1],100)))),length=nT)
       }
     }
-   }
-recList <- devRecL #on remplace l'argument initial par l'argument format?
+  }
+  recList <- devRecL #on remplace l'argument initial par l'argument format?
 }
 
 
 #on v?rifie le formatage des ?l?ments de recParamList
 if (length(recParamList)>0) {
- devRecParamL <- recParamList[specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
- for (elem in 1:length(devRecParamL)) {
+  devRecParamL <- recParamList[specific$Species]   #devRecParamL -> liste de taille nbE et avec NULL si pas d'info dans recParamList
+  for (elem in 1:length(devRecParamL)) {
     if (!is.null(devRecParamL[[elem]])) {
-        if (specific$Q[elem]==0 & specific$S[elem]==0 & length(specific$Ages[[elem]])>1) {#XSA
-         del <- as.integer(as.character(specific$Ages[[elem]][1]))
-         devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
-                                      delay=del,
-                                      type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
-         devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
-        } else if (specific$Q[elem]==0 & specific$S[elem]==1 & length(specific$Ages[[elem]])>1){ #sex-based
-          Nze <- c(objInput@input[[elem]]$N_i0t_G1[1],objInput@input[[elem]]$N_i0t_G2[1])
-          del <- as.integer(as.character(specific$Ages[[elem]][1]))
-          devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
-                                       delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
-                                       type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
-          devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
+      if (specific$Q[elem]==0 & specific$S[elem]==0 & length(specific$Ages[[elem]])>1) {#XSA
+        del <- as.integer(as.character(specific$Ages[[elem]][1]))
+        devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                     delay=del,
+                                     type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
+        devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
+      } else if (specific$Q[elem]==0 & specific$S[elem]==1 & length(specific$Ages[[elem]])>1){ #sex-based
+        Nze <- c(objInput@input[[elem]]$N_i0t_G1[1],objInput@input[[elem]]$N_i0t_G2[1])
+        del <- as.integer(as.character(specific$Ages[[elem]][1]))
+        devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                     delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
+                                     type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
+        devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
 
-        } else if (specific$Q[elem]==1) { #SS3
-            Nze <- c(objInput@input[[elem]]$Ni0_S1M1,objInput@input[[elem]]$Ni0_S2M2,objInput@input[[elem]]$Ni0_S3M3,objInput@input[[elem]]$Ni0_S4M4)
-            del <- as.integer(as.character(specific$Ages[[elem]][1]))
-            devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
-                                         delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
-                                         type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
-            devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
-         }
-      }else {
-           devRecParamL[elem] <- list(NULL)
-         }
-
+      } else if (specific$Q[elem]==1) { #SS3
+        Nze <- c(objInput@input[[elem]]$Ni0_S1M1,objInput@input[[elem]]$Ni0_S2M2,objInput@input[[elem]]$Ni0_S3M3,objInput@input[[elem]]$Ni0_S4M4)
+        del <- as.integer(as.character(specific$Ages[[elem]][1]))
+        devRecParamL[[elem]] <- list(param=devRecParamL[[elem]][1:nT,!(colnames(devRecParamL[[elem]])=="type")],
+                                     delay=del,ventil=as.numeric(as.character(Nze/sum(Nze,na.rm=TRUE))),
+                                     type = as.integer(devRecParamL[[elem]][1:nT,"type"]))
+        devRecParamL[[elem]]$param[] <- as.numeric(as.character(unlist(devRecParamL[[elem]]$param[]))) ; devRecParamL[[elem]]$param[1:max(1,del),] <- as.numeric(NA)
+      }
+    }else {
+      devRecParamL[elem] <- list(NULL)
     }
 
- names(devRecParamL) <- specific$Species
- recParamList <- devRecParamL
+  }
+
+  names(devRecParamL) <- specific$Species
+  recParamList <- devRecParamL
 }
 
 #on v?rifie le formatage des ?l?ments de ParamSPMList
@@ -273,8 +270,9 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     GestInd = as.integer(objArgs@arguments$Gestion$active),
                     mOth = as.double(mOth),
                     bounds = as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
-                    TAC = TACtot, FBAR = as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
-                    othSpSup = objArgs@arguments$Gestion$othSpSup, effSup = as.double(objArgs@arguments$Gestion$effSup),
+                    TAC = TACtot, TACtot = as.double(objArgs@arguments$Gestion$tac), FBAR = as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
+                    # othSpSup = objArgs@arguments$Gestion$othSpSup, 
+                    effSup = as.double(objArgs@arguments$Gestion$effSup),
                     GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(specific$Species,specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
