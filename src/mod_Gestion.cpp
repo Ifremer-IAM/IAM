@@ -18,7 +18,6 @@ extern "C" {
 double BioEcoPar::fxTAC_glob(double mult) //par temps IND_T pour une esp�ce donn�e
 {
     SEXP listTemp;
-    Rprintf("Hello ");
     PROTECT(listTemp = duplicate(list));
     PROTECT(eVarCopy = duplicate(eVar));
 ////Rprintf("3");
@@ -45,7 +44,7 @@ double BioEcoPar::fxTAC_glob(double mult) //par temps IND_T pour une esp�ce do
 
             if (var==1) {
                 if (gestyp==1) g_nbdsFM[ind_f+nbF*ind_m] = fmax2(g_nbdsFM[ind_f+nbF*ind_m] + mult*mpond_fm[ind_f+nbF*ind_m],0.0);
-                if (gestyp==2) g_nbdsFM[ind_f+nbF*ind_m] = fmax2(g_nbdsFM[ind_f+nbF*ind_m]*(1 + mult*mpond_fm[ind_f+nbF*ind_m]),0.0);
+                if (gestyp==2) g_nbdsFM[ind_f+nbF*ind_m] = fmax2(g_nbdsFM[ind_f+nbF*ind_m] * (1 + mult*mpond_fm[ind_f+nbF*ind_m]),0.0);
             }
 
             if (var==2) {
@@ -60,7 +59,6 @@ double BioEcoPar::fxTAC_glob(double mult) //par temps IND_T pour une esp�ce do
         if (var==2) g_nbvF[ind_f] = fmax2(countEff/(g_nbdsF[ind_f]*g_eff2F2[ind_f]),0.0);
      }
 
-Rprintf("there ");
     //    for (int e = 0 ; e < nbE ; e++){  // e --> eTemp
 
                 if (Qvec[eTemp]==0) {
@@ -247,7 +245,6 @@ Rprintf("there ");
 
 
         // }
-Rprintf("general ");
 
 if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
 
@@ -257,23 +254,17 @@ if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
 ////PrintValue(getListElement(getListElement(listTemp, "Fleet"), "nbds_f_m"));
 ////PrintValue(getListElement(getListElement(listTemp, "Fleet"), "nbv_f_m"));
 //Rprintf("16");
-Rprintf("le survivant ");
     double *tot ;
     if (trgt==999) {
      Mortalite(listTemp, IND_T+1, eVarCopy);
      DynamicPop(listTemp, IND_T+1, eVarCopy,true);  //� revoir !!!!!!!!!!!!!!!!
      tot = REAL(VECTOR_ELT(out_B_et, eTemp));
-     result = TAC_glob[IND_T+1]-tot[IND_T+1]; //Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T+1],tot[IND_T+1],result);
+     result = TAC_glob[IND_T+1]-tot[IND_T+1]; Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T+1],tot[IND_T+1],result);
     } else {
-Rprintf("de tout les temps ");
      SEXP nDim = allocVector(INTSXP,4);
-Rprintf(". ");
      int *nd = INTEGER(nDim); for (int i = 0; i<3; i++) nd[i] = 0; nd[3] = nbT;
-     Rprintf(". ");
      tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, eTemp),nDim));
-     Rprintf(". ");
-     result = TAC_glob[IND_T]-tot[IND_T]; //Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T],tot[IND_T],result);
-     Rprintf("ouf ");
+     result = TAC_glob[IND_T]-tot[IND_T]; Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T],tot[IND_T],result);
     }
 //Rprintf("fxtac : TAC_glob %f TOT %f\n",TAC_glob[IND_T],tot[IND_T]);
 
@@ -292,7 +283,6 @@ Rprintf(". ");
     //Rprintf("fxtac : FBARtarget %f TOT %f\n",Fbar_trgt[IND_T],tot[IND_T]);
 
 }
-Rprintf("kenobi ");
     UNPROTECT(2);
 
     return result;
@@ -347,7 +337,7 @@ void BioEcoPar::Gestion(SEXP list, int ind_t, int VERBOSE) //param�tres en ent
     xb1 = new double[NBMAX+1];
     xb2 = new double[NBMAX+1];
 //Rprintf("2");
-if(VERBOSE){Rprintf(" zbrak ");}
+if(VERBOSE){Rprintf(" zbrak\n");}
     zbrak(p,X1,X2,NbInter,xb1,xb2,&nb);
     if(VERBOSE){Rprintf("loop zbrent ");}
     for (int i=1;i<=nb;i++) {

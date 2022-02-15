@@ -105,7 +105,7 @@ SEXP    out_F_fmi,  //mortalit� "captures" par p�che (par esp�ce)
 SEXP    FList, sppList, sppListStat, sppListQ,sppListQM,sppListQM_dyn, pList, sppListAll, fleetList, metierList, metierListEco, namDC, t_init, times, Q, S, itListQ,
         NBVF, NBVFM, NBDSF, NBDSFM, EFF2F, EFF2FM, dnmsF, dnmsFM,dnmsIter, nmsEF, mu_nbds, mu_nbv, //mulitplicateurs d'effort
         m_f, m_fm, m_oth, eVar, eVarCopy, eStatVar, //variables interm�diaires par esp�ces
-        fVar /*variable interm�diaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, othSpSupList, effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList, ParamSPMlist;
+        fVar /*variable interm�diaire flottilles*/, list_copy, FList_copy, eVar_copy, fVar_copy, /*othSpSupList,*/ effSupMat, listQR, listQR_f, TACbyF, TAC, reconcilSPP, reconcilSPP_copy, recList, recParamList, ParamSPMlist;
 
 SEXP inpFtarg, inpW_Ftarg, inpMeanRec_Ftarg;
 SEXP Qholdings;
@@ -137,7 +137,7 @@ SEXP    ZtempList;
 	//constructeur
     BioEcoPar(SEXP list, SEXP listSpec, SEXP listStochastic, SEXP listScen,
                 SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp , */ // TODO : remove unused arg
-                SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP TACtot, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
+                SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TAC, SEXP TACtot, SEXP FBAR, /*SEXP othSpSup,*/ SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
                 SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                 SEXP parBHV, SEXP parQEX,
                 SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T);
@@ -237,7 +237,7 @@ SEXP    ZtempList;
 
     // Module GestionF2
     void GestionF2(int ind_t);
-    void abv_GestionF2(int ind_t);
+    void abv_GestionF2(int ind_t, SEXP updateE, SEXP tacCTRL, SEXP FList);
 
     //double fxTAC_F_customCst2(double *x);
 

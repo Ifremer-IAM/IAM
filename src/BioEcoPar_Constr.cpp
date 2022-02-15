@@ -24,7 +24,7 @@
 
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp, */ // TODO : remove unused arg
-                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP TACtot, SEXP FBAR, SEXP othSpSup, SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
+                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP TACtot, SEXP FBAR, /*SEXP othSpSup,*/ SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
                      SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                      SEXP parBHV, SEXP parQEX,
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T)
@@ -144,7 +144,7 @@ Blim_trigger = INTEGER(getListElement(tacCTRL, "BlimTrigger"))[0];
 //if (ISNA(gestyp))
 gestyp = INTEGER(GestParam)[5] + 1; //gestyp=1(+) ou 2(x)
 
-PROTECT(othSpSupList = othSpSup);
+// PROTECT(othSpSupList = othSpSup);
 PROTECT(effSupMat = effSup);
 
 gestInd = INTEGER(GestInd)[0];
@@ -157,7 +157,7 @@ X2 = REAL(bounds)[1];
 Fbar_trgt = REAL(FBAR);  //� corriger
 PROTECT(TACbyF = TACbyFL);  //� corriger
 PROTECT(TAC = TACL); // TODO :pourquoi juste un changement de nom la en fait ?
-// TAC_glob = REAL(TAC);  // TODO : etait commente dieu sait pourquoi ! mais NULL si pas de tac input in func argums
+TAC_glob = REAL(TACtot);  // TODO : TAC est une list alors qu'avant il etait unique.
 
 PROTECT(inpFtarg = Ftarg);
 PROTECT(inpW_Ftarg = W_Ftarg);
@@ -1069,182 +1069,9 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isN
 
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activ�e si au moins un �l�ment de TACbyF est renseign�
 if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
-    if(VERBOSE){Rprintf("GestionF2 | ");}
-    // abv_GestionF2(it);
-
-//Rprintf("introOPT\n");fichier << "introOPT" << endl;
-
-        int DELAY = INTEGER(updateE)[0];
-
-        SPPstatOPT = INTEGER(getListElement(tacCTRL, "SPPstatOPT"));
-        SPPspictOPT = INTEGER(getListElement(tacCTRL, "SPPspictOPT"));
-        SPPdynOPT = INTEGER(getListElement(tacCTRL, "SPPdynOPT"));
-        N_SPPstatOPT = length(getListElement(tacCTRL, "SPPstatOPT"));
-        N_SPPspictOPT = length(getListElement(tacCTRL, "SPPspictOPT"));
-        N_SPPdynOPT = length(getListElement(tacCTRL, "SPPdynOPT"));
-
-        Rprintf("%d, %d %d", (delay<=it), (gestInd==1), (DELAY>0));
-
-        if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort au niveau de l'instant initial
-            Rprintf("This run ?");
-        //on remet au niveau de l'instant pr�c�dent la mise en action du module Gestion
-
-            double *nbdsFM3 = REAL(getListElement(FList, "effort1_f_m"));
-            double *nbdsF3 = REAL(getListElement(FList, "effort1_f"));
-            double *nbTripFM3 = REAL(getListElement(FList, "nbTrip_f_m"));
-            double *nbTripF3 = REAL(getListElement(FList, "nbTrip_f"));
-            double *nbvFM3 = REAL(getListElement(FList, "nbv_f_m"));
-            double *nbvF3 = REAL(getListElement(FList, "nbv_f"));
-
-            if (DELAY>delay) DELAY=delay;
-
-            for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
-
-
-                if (var==1) {nbdsF3[ind_f] = REAL(NBDSF)[ind_f + nbF*(DELAY-1)];
-                             nbTripF3[ind_f] = REAL(NBDSF)[ind_f + nbF*(DELAY-1)];}
-                if (var==2) nbvF3[ind_f] = REAL(NBVF)[ind_f + nbF*(DELAY-1)];
-
-                for (int ind_m = 0 ; ind_m< nbMe ; ind_m++) {
-
-                    if (var==1) {nbdsFM3[ind_f+nbF*ind_m] = REAL(NBDSFM)[ind_f + nbF*ind_m + nbF*nbMe*(DELAY-1)];
-                                 nbTripFM3[ind_f+nbF*ind_m] = REAL(NBDSFM)[ind_f + nbF*ind_m + nbF*nbMe*(DELAY-1)];}
-                    if (var==2) nbvFM3[ind_f+nbF*ind_m] = REAL(NBVFM)[ind_f + nbF*ind_m + nbF*nbMe*(DELAY-1)];
-
-                }
-            }
-//            //Rprintf("AA");
-//            //PrintValue(getListElement(FList, "effort1_f_m"));
-
-        if (N_SPPspictOPT>0) { //si esp�ce dynamique SPICT
-            Rprintf(" SPICT ");
-
-         for (int i = 0; i < N_SPPspictOPT; i++){
-
-            int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPspictOPT[i]))), "modI")); //doit normalement �tre �gal � 1
-            double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, SPPspictOPT[i]), 44));
-            for (int ag = 0; ag < nbi; ag++) Fothi2[ag + it*nbi] = Fothi2[ag + (DELAY-1)*nbi];
-
-         }
-
-        }
-
-        if (N_SPPdynOPT>0) { //si esp�ce dynamique XSA ou SS3
-            Rprintf(" XSA & SS3 ");
-
-            for (int i = 0; i < N_SPPdynOPT; i++){
-
-            int nbi = length(getListElement(getListElement(list, CHAR(STRING_ELT(sppList,SPPdynOPT[i]))), "modI"));
-            int eTmp = SPPdynOPT[i];
-
-            if (Qvec[eTmp]==0) {
-
-                    double *Fothi2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 44));
-
-                    for (int ag = 0; ag < nbi; ag++) Fothi2[ag + it*nbi] = Fothi2[ag + (DELAY-1)*nbi];
-
-
-            } else {
-
-                    double *Fothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 116)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + it*nbi] = Fothi2_S1M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 117)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + it*nbi] = Fothi2_S1M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 118)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M3[ag + it*nbi] = Fothi2_S1M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 119)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M4[ag + it*nbi] = Fothi2_S1M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 120)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M1[ag + it*nbi] = Fothi2_S2M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 121)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M2[ag + it*nbi] = Fothi2_S2M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 122)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M3[ag + it*nbi] = Fothi2_S2M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 123)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M4[ag + it*nbi] = Fothi2_S2M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 124)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M1[ag + it*nbi] = Fothi2_S3M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 125)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M2[ag + it*nbi] = Fothi2_S3M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 126)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M3[ag + it*nbi] = Fothi2_S3M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 127)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M4[ag + it*nbi] = Fothi2_S3M4[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 128)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M1[ag + it*nbi] = Fothi2_S4M1[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 129)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M2[ag + it*nbi] = Fothi2_S4M2[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 130)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M3[ag + it*nbi] = Fothi2_S4M3[ag + (DELAY-1)*nbi];
-                    double *Fothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 131)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M4[ag + it*nbi] = Fothi2_S4M4[ag + (DELAY-1)*nbi];
-
-
-                    double *FRWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 176));
-                    double *FRWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 177));
-                    double *FRWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 178));
-                    double *FRWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 179));
-                    double *FRWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 180));
-                    double *FRWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 181));
-                    double *FRWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 182));
-                    double *FRWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 183));
-                    double *FRWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 184));
-                    double *FRWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 185));
-                    double *FRWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 186));
-                    double *FRWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 187));
-                    double *FRWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 188));
-                    double *FRWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 189));
-                    double *FRWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 190));
-                    double *FRWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 191));
-
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M1[ag + it*nbi] = FRWTothi2_S1M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M2[ag + it*nbi] = FRWTothi2_S1M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M3[ag + it*nbi] = FRWTothi2_S1M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S1M4[ag + it*nbi] = FRWTothi2_S1M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S2M1[ag + it*nbi] = FRWTothi2_S2M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S2M2[ag + it*nbi] = FRWTothi2_S2M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S2M3[ag + it*nbi] = FRWTothi2_S2M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S2M4[ag + it*nbi] = FRWTothi2_S2M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S3M1[ag + it*nbi] = FRWTothi2_S3M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S3M2[ag + it*nbi] = FRWTothi2_S3M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S3M3[ag + it*nbi] = FRWTothi2_S3M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S3M4[ag + it*nbi] = FRWTothi2_S3M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M1[ag + it*nbi] = FRWTothi2_S4M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M2[ag + it*nbi] = FRWTothi2_S4M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M3[ag + it*nbi] = FRWTothi2_S4M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FRWTothi2_S4M4[ag + it*nbi] = FRWTothi2_S4M4[ag + (DELAY-1)*nbi];
-
-                    double *FDWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 208));
-                    double *FDWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 209));
-                    double *FDWTothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 210));
-                    double *FDWTothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 211));
-                    double *FDWTothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 212));
-                    double *FDWTothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 213));
-                    double *FDWTothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 214));
-                    double *FDWTothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 215));
-                    double *FDWTothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 216));
-                    double *FDWTothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 217));
-                    double *FDWTothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 218));
-                    double *FDWTothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 219));
-                    double *FDWTothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 220));
-                    double *FDWTothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 221));
-                    double *FDWTothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 222));
-                    double *FDWTothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTmp), 223));
-
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M1[ag + it*nbi] = FDWTothi2_S1M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M2[ag + it*nbi] = FDWTothi2_S1M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M3[ag + it*nbi] = FDWTothi2_S1M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S1M4[ag + it*nbi] = FDWTothi2_S1M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S2M1[ag + it*nbi] = FDWTothi2_S2M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S2M2[ag + it*nbi] = FDWTothi2_S2M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S2M3[ag + it*nbi] = FDWTothi2_S2M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S2M4[ag + it*nbi] = FDWTothi2_S2M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S3M1[ag + it*nbi] = FDWTothi2_S3M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S3M2[ag + it*nbi] = FDWTothi2_S3M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S3M3[ag + it*nbi] = FDWTothi2_S3M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S3M4[ag + it*nbi] = FDWTothi2_S3M4[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S4M1[ag + it*nbi] = FDWTothi2_S4M1[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S4M2[ag + it*nbi] = FDWTothi2_S4M2[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S4M3[ag + it*nbi] = FDWTothi2_S4M3[ag + (DELAY-1)*nbi];
-                    for (int ag = 0; ag < nbi; ag++) FDWTothi2_S4M4[ag + it*nbi] = FDWTothi2_S4M4[ag + (DELAY-1)*nbi];
-
-            }
-        }}
-
-        }
-
-
-     //Rprintf("call.GestionF2\n");fichier << "call.GestionF2" << endl;
-     /*int ooo =*/ GestionF2(it);
-    //  ooo = ooo * 2;
-     //Rprintf("end.GestionF2\n");fichier << "end.GestionF2" << endl;
-
-  //GestionF(NRmatrix(1,nbF+2,1,nbF+1), NRvector(1,nbF+2), nbF+1, 0.0000001, it);}
-
+    if(VERBOSE){Rprintf("GestionF2");}
+    abv_GestionF2(it, updateE, tacCTRL, FList);
+    if(VERBOSE){Rprintf(" | ");}
 }
 
 
@@ -1673,11 +1500,13 @@ if(VERBOSE){Rprintf(" done");}
 
 
 
-if(VERBOSE){Rprintf("\nMarche | ");}
+if(VERBOSE){Rprintf("\nMarche");}
 Marche(list, it);
+if(VERBOSE){Rprintf(" | ");}
 
-if(VERBOSE){Rprintf("EcoDCF \n");}
+if(VERBOSE){Rprintf("EcoDCF");}
 EcoDCF(list, it, INTEGER(persCalc)[0], REAL(dr)[0], VERBOSE);
+if(VERBOSE){Rprintf(" | ");}
 
 //module gestion : si delay<=it & gestInd==1 & trgt==3 et si Fbar atteint, on rebascule trgt � 2
 if (eTemp<nbE) {

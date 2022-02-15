@@ -23,7 +23,7 @@ List stripe_ecoCDF(List EcoDCF, List Flist, int ind_t){
 
     CharacterVector dimCstF = Rf_install("DimCst");
 
-    NumericVector nbv = Flist["nbv_f"]; 
+    NumericVector nbv = Flist["nbv_f"];
     NumericVector K = Flist["K_f"];
     NumericVector inv = Flist["inv_f"]; 
     NumericVector effort1_f = Flist["effort1_f"]; NumericVector effort2_f = Flist["effort2_f"];
@@ -44,6 +44,7 @@ List stripe_ecoCDF(List EcoDCF, List Flist, int ind_t){
     NumericMatrix gp = EcoDCF["gp_f_out"];
     NumericMatrix ncf = EcoDCF["ncf_f_out"];
     NumericMatrix np = EcoDCF["np_f_out"];
+    NumericMatrix rtbs = EcoDCF["rtbs_f_out"];
 
     NumericMatrix npmargin = EcoDCF["npmargin_f_out"];
     NumericMatrix prof = EcoDCF["prof_f_out"];
@@ -58,23 +59,26 @@ List stripe_ecoCDF(List EcoDCF, List Flist, int ind_t){
     
     //-- 32. npmargin_f
     npmargin( _ , ind_t) = np( _ , ind_t) / GVLav( _ , ind_t);
-    //-- 33. prof_f
-    NumericVector prof_t = npmargin( _ , ind_t);
-    prof_t[prof_t < 0] = -1; prof_t[prof_t > 0.1] = 1; 
-    prof_t[(prof_t >= 0) & (prof_t < 0.1)] = 0;
-    prof( _ , ind_t) = prof_t;
-    //-- 34. npmargin_trend_f
-    NumericVector npmargin_trend_t = npmargin( _ , ind_t);
-    if(ind_t >= 5){
-        NumericMatrix sub_npmargin = npmargin( _ , Range(ind_t-5, ind_t -1));
-        npmargin_trend_t = npmargin_trend_t / (0.2 * rowSums(sub_npmargin));
+    // //-- 33. prof_f
+    // TODO : find a way for NA here
+    // NumericVector prof_t = npmargin( _ , ind_t);
+    // prof_t[prof_t < 0] = -1; prof_t[prof_t > 0.1] = 1; 
+    // prof_t[(prof_t >= 0) & (prof_t < 0.1)] = 0;
+    // prof( _ , ind_t) = prof_t;
+    // //-- 34. npmargin_trend_f
+    // NumericVector npmargin_trend_t = npmargin( _ , ind_t);
+    // if(ind_t >= 5){
+    //     NumericMatrix sub_npmargin = npmargin( _ , Range(ind_t-5, ind_t -1));
+    //     npmargin_trend_t = npmargin_trend_t / (0.2 * rowSums(sub_npmargin));
 
-        npmargin_trend_t[npmargin_trend_t < -0.05] = -1; npmargin_trend_t[npmargin_trend_t > 0.05] = 1; 
-        npmargin_trend_t[(npmargin_trend_t >= -0.05) & (npmargin_trend_t <= 0.05)] = 0; 
-    } else {
-        npmargin_trend_t = rep(-1, npmargin_trend.nrow()); // this is nbF
-    }
-    npmargin_trend( _ , ind_t) = npmargin_trend_t;
+    //     npmargin_trend_t[npmargin_trend_t < -0.05] = -1; npmargin_trend_t[npmargin_trend_t > 0.05] = 1; 
+    //     npmargin_trend_t[(npmargin_trend_t >= -0.05) & (npmargin_trend_t <= 0.05)] = 0; 
+    // } else {
+    //     npmargin_trend_t = rep(-1, npmargin_trend.nrow()); // this is nbF
+    // }
+    // Rprintf("in here ? ");
+
+    // npmargin_trend( _ , ind_t) = npmargin_trend_t;
     //-- 35. ssTot_f
     ssTot( _ , ind_t) = gp( _ , ind_t) * nbv;
     //-- 43. ratio_GVL_K_f
