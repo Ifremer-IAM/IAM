@@ -17,3 +17,5 @@ inst/extdata
 dev/raw_data
 dev/data
 dev/dev_cp_datarmor.R
+/doc/
+/Meta/

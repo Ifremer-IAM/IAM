@@ -4,6 +4,8 @@
 
 * Price flexibility is extracted as a function and is activated only if the input excell file contain the price flexibility sheet.
 
+* Replaced Gestion module after suppresssion.
+
 ## License
 
 * GPL-2 to CeCILL-2

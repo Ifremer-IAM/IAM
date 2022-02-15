@@ -1,0 +1,501 @@
+---
+title: "Utilisation IAM dans R"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+vignette: |
+  %\VignetteIndexEntry{Utilisation IAM dans R} 
+  %\VignetteEncoding{UTF-8} 
+  %\VignetteEngine{knitr::rmarkdown}
+bibliography: vignette.bib
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Le modèle bio-économique IAM a été développé dans l'optique d'être utilisable sous un environnement R [@R-base]. L'outil est ainsi accessible par l'intermédiaire d'un package R intégrant un ensemble de méthodes couvrant toutes les étapes de la modélisation, de la phase de paramétrage à la restitution des sorties du modèle. Cette partie traite des possibilités offertes par les outils du package, et de la manière dont on peut les utiliser pour procéder de manière relativement simple et rapide à des simulations et aux traitements des résultats.
+
+
+
+## Choix d'implémentation
+
+Les choix d'implémentation du modèle IAM ont découlé d'exigences techniques fixées dans le but de maximiser la pérennité et la fonctionnalité du modèle. Elles portaient à la fois sur l'aspect purement technique du programme (rapidité, qualité des algorithmes,...), sur sa flexibilité (généricité et robustesse face à la multiplicité des configurations d'inputs prises en charge, diversité des scénarios proposés, choix des bases de données d'entrée, diversité des outils satellites au modèle proprement dit,...) ou encore sur son accessibilité (simplicité d'utilisation, logiciels gratuits et facilement téléchargeables, installation simple, méthodes à la fois génériques et paramétrables,...).
+
+Le langage R réunit une grande partie de ces caractéristiques. C'est un logiciel libre et gratuit de traitement statistique, largement répandu à l'heure actuelle au sein de la communauté halieutique et qui offre l'avantage d'être relativement simple d'emploi. Il représente un environnement adéquat pour gérer des objets de paramétrage (notamment multidimensionnels, comme le sont ceux du modèle bio-économique). De surcroît, les sorties exportées en tant qu'objets R peuvent bénéficier des nombreuses fonctionnalités proposées par le logiciel (sorties graphiques, traitements statistiques,...).
+
+Toutefois, il est apparu que le modèle deviendrait très rapidement exigent en terme de temps calcul (algorithmes d'optimisation, beaucoup de variables, beaucoup de dimensions,...)  et que l'utilisateur trouverait là la limite des possibilités offertes par `R`. La solution la plus évidente était de programmer le cœur du modèle en `C++`, et de laisser `R` piloter les routines, se contentant ainsi de gérer le paramétrage et le traitement des sorties. Ainsi, le modèle serait aussi simple d'utilisation que possible, sans toutefois que cela se fasse au détriment de ses performances et de sa flexibilité.
+
+
+
+## Le package IAM (version `r packageVersion("IAM") `)
+
+Ce qui suit va être une description par l'exemple des outils contenus dans la version `r packageVersion("IAM")` du package IAM. Il faut garder à l'esprit que ce package étant encore en cours de développement, certains des descriptifs présentés ici pourront devenir obsolètes dans les prochaines versions. Ajoutons que toute cette partie suppose une connaissance minimale du logiciel `R` (installation d'un package, utilisation de la fenêtre de commande,...).
+
+
+
+### Installation et chargement du package
+
+<!--
+
+Le package dépend de plusieurs autres packages R qu'il va falloir au préalable installer sur votre machine. Ces packages sont les suivants : lattice (fonctions graphiques), MASS, tcltk2 (génération de l'interface pour les arguments du modèle), xlsReadWrite et RODBC (importation du fichier de paramétrage). Ne pas oublier de valider l'installation de xlsReadWrite en tapant en session l'instruction xls.getshlib().Les 2 premiers packages sont normalement déjà installés, les 3 autres packages sont disponibles sur le site du CRAN (lien au bas de la page précédente).
+
+-->
+
+::: {#dep .greeting .message style="color: red;"}
+mettre a jour les dependances et leur biblio
+:::
+
+Après avoir installé le package IAM, l'instruction suivante va charger le package en session, donnant accès à tous les outils de modélisation :
+
+```{r library}
+library(IAM)
+```
+
+On peut vérifier que le package est bien installé en tapant :
+```{r help, eval=FALSE, results="hide"}
+help(IAM) # alternative : ?IAM
+help(package = IAM)
+```
+
+Ces commandes permettend d'accéder à l'aide du package, avec une aide détaillée pour chaque fonction. S'y ajoute également l'ensemble des méthodes et des classes d'objets dorénavant accessibles.
+
+
+
+### Importation des paramètres (`IAM.input`)
+
+::: {#simple_example .greeting .message style="color: red;"}
+avoir un example simple sans SS3 et introduire le SS3 dans une autre vignette.
+:::
+
+```{r example_data, include=FALSE, echo = FALSE}
+#' TODO  export the function into the package.
+#' simplified system from {readr} package.
+#' @param file Name of the file. Need to be in inst/extdata/ directory of the package
+IAM_example <- function(file){
+  system.file("extdata", file, package = "IAM", mustWork = TRUE)
+}
+# test basic :
+fileIN <- IAM_example("inputFile.xlsx")
+file.exists(fileIN)
+```
+
+
+```{r, eval = FALSE, include = FALSE}
+fileIN <- IAM_example("inputFile.xlsx") # simplified with only 2 dyn and 2 static
+load("../dev/data/inpSS3darwiniana1984.RData")
+  input1984 <- IAM::IAM.input(fileIN = fileIN,t_init=1984,nbStep=12,folderFleet="../dev/data/fleets",
+                              Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
+                              FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
+                              FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
+                              Nt0s1q=list(DAR=Nt0s1q),Ni0q=list(DAR=Ni0q),iniNt0q=list(DAR=iniNt0q),matwt=list(DAR=mat_morphage),
+                              verbose = TRUE)
+slotNames(input1984)
+```
+
+
+La package intègre un fichier exemple de paramétrage qui va permettre d'illustrer le fonctionnement des procédures d'importation. Ce fichier doit se trouver dans le répertoire "IAM" du dossier "R/R-version/library"..
+La fonction `IAM_example()` renvoie le chemin du fichier d'example choisis dans le package IAM.
+On peut accéder à la liste des fichiers d'examples et leur documentation avec les commandes suivantes :
+
+```{r dataset, results="hide"}
+data(package = "IAM")
+# ?inputFile # TODO : ne marche pas encore car pas de .RData documenté
+IAM_example("inputFile.xlsx") # attention ici il s'agit d'un fichier brut.
+# ce fichier est accessible a cette adresse pour être lu et modifié au besoin
+```
+
+La méthode `IAM.input()` sert à l'importation des paramètres d'entrée du modèle, et retourne un objet de classe `iamInput` regroupant de manière organisée toute ces données. Elle prend pour argument principal le chemin du fichier `.xlsx` à importer, complété par `t_init` l'instant initial, et `nbStep` le nombre de pas de temps désiré pour la simulation. On procède alors à l'importation de la manière suivante :
+
+::: {#exdata .greeting .message style="color: red;"}
+changer le data set example
+:::
+
+```{r inport, eval=FALSE, results="hide"}
+inp1984 <- IAM.input(fileIN = IAM_example("inputFile.xlsx"), t_init=1984, nbStep=12)
+```
+
+
+```{r falseinport, include = FALSE, echo = FALSE, results="hide"}
+load("../dev/data/inputIFR.RData")
+```
+
+
+
+L'objet résultant (ici `input1984`) de classe `iamInput` possède une structure fixe spécifique, composée d'éléments appelés "slots" et que l'on peut distinguer de cette façon :
+
+```{r inpslot, eval= TRUE}
+slotNames(input1984)
+```
+
+Le slot "desc" est un simple descripteur permettant de caractériser l'objet ; c'est un paramètre optionnel de la fonction IAM.input. Le slot "specific" est constitué des descriptifs des dimensions du modèle qui vont conditionner la structure des variables. Le slot "historical" regroupe les données antérieures à l'instant initial `t_init`. Les slots "scenario" et "stochastic" intègrent les paramètres définis dans les feuillets correspondants. Enfin, le slot principal "input" rassemble les données initiales injectées dans le modèle. Il est composé d'un élément "Fleet" et d'un élément par espèce modélisée, ces derniers possédant la même structure. Au final, ce slot rassemble toutes les informations renseignées dans les feuillets "Stock", "Flottille" et "Market", ainsi que les matrices "fm", "mm" et "icat". Voici quelques exemples permettant d'accéder aux données de cet objet (l'accès aux slots se fait par `objet@slot`, l'accès aux éléments d'un slot par `slot$élément`) :
+
+```{r inpnames}
+names(input1984@specific)
+names(input1984@input)
+names(input1984@input$COR)
+input1984@input$COR$wStock_i
+```
+
+On peut ici noter l'attribut `DimCst` associé à la variable `wStock_i` . Chaque variable d'entrée insérée dans le slot `input` est affectée de cet attribut qui définit sa dimension : la première composante est la dimension flottille (0 signifie "pas de dimension"), la seconde est la dimension métier, la troisième est la dimension âge/catégorie, et la quatrième est la dimension temporelle. Dans l'exemple précédent, la variable se décline uniquement suivant la dimension "âge", qui comprend pour l'espèce considérée 9 modalités. Cette attribution systématique permet au modèle de gérer les incompatibilités de dimensions entre les variables et de considérer plusieurs niveaux de définition pour une même variable.
+
+Afin de simplifier l'utilisation de cette classe d'objets, une méthode `summary()` a été implémentée qui permet d'avoir un aperçu rapide :
+
+```{r summaryexp, echo = FALSE}
+#' summary method for iamInput class
+setMethod(
+  f = "summary", signature("iamInput"),
+  function(object, ...) {
+    spe <- object@specific
+    cat(object@desc, "(IAM input) :\n")
+    cat(sprintf(
+      "Simulation of %d dynamic species, %d static species and %d fleet\n",
+      length(spe$Species), length(spe$StaticSpp), length(spe$Fleet) 
+    ))
+    cat(rep("-",35), "\nDynamic Species | Model |     Ages\n", sep = "")
+    cat(sprintf("%15s | %5s | %1s to %3s\n", spe$Species, 
+                ifelse(spe$Q == 0, "XSA", "SS3"), 
+                unlist(lapply(spe$Ages, head, 1)),
+                unlist(lapply(spe$Ages, tail, 1)) ), sep = "")
+    cat(rep("-",35),"\n", sep = "")
+    cat("                  Fleet |  nbv\n", sprintf(
+      "%22s | %4d\n", spe$Fleet, object@input$Fleet$nbv_f
+    ))
+    cat(sprintf("Simulation start in %d and end in %d (%d steps)\n",
+                spe$t_init, tail(spe$times,1), spe$NbSteps ))
+  }
+)
+```
+
+```{r summaryinp}
+summary(input1984)
+```
+
+
+
+### Constitution des arguments (IAM.args)
+
+La méthode `IAM.args()` prend en paramètre un objet de classe `iamInput` et permet à l'utilisateur de fixer les caractéristiques de la simulation à opérer. Une interface de paramétrage s'affiche, et la validation renvoie un objet de classe `iamArgs` définissant les choix de pilotage du modèle.
+
+```{r argum, eval=F}
+argum1984 <- IAM.args(inp)
+```
+
+```{r falseargum, include = FALSE, echo = FALSE, results="hide"}
+load("../dev/data/argumIFR.RData")
+```
+
+
+L'instruction va provoquer l'affichage d'une interface de paramétrage comportant 5 parties distinctes, chacune activant ou/et paramétrant une partie spécifique du modèle.
+
+
+* **Recrutement** : ce panneau de commande de type "tabbed notebook" permet de définir l'intégration de la variabilité dans le modèle en caractérisant le recrutement considéré dans la simulation. Il y a un onglet par espèce modélisée, chacun donnant accès à un choix de paramètres similaires. On pourra soit opter pour un recrutement généré par une relation stock-recrutement (activer alors le panneau en cochant "Model SR", soit simuler un recrutement par tirage aléatoire dans un historique ou une loi de probabilité (cocher "Simu Stoch"). Dans le premier cas, 5 paramètres sont à définir : le type de relation stock-recrutement, les paramètres de la relation (3 au maximum), et l'écart-type du bruit gaussien centré additionnel. Les relations sont décrites dans le tableau suivant :
+
+
+  | Relation <br> Stock-Recrutement | Formulation <br> ($\sigma$ est le bruit gaussien) |
+  |------------------------+----------------------------------|
+  | Mean                   | $rec \sim a + \sigma$ |
+  | Hockey Stick           | si $ssb \leq b$ : $rec \sim a \cdot ssb + \sigma$ <br> sinon : $rec \sim a \cdot b + \sigma$ |
+  | Beverton-Holt          | $rec \sim \frac{ a \cdot ssb }{ b+ssb } + \sigma$ |
+  | Ricker                 | $rec \sim a \cdot ssb \cdot e^{-b \cdot ssb} + \sigma$ |
+  | Shepherd               | $rec \sim \frac{a \cdot ssb}{1+ (\frac{ssb}{b})^{c}} + \sigma$ |
+  | Hockey Stick Quadratic | si $ssb \leq b \cdot (1-c)$ : $rec \sim a \cdot ssb + \sigma$ <br>  si $ssb \geq b \cdot (1+c)$ : $rec \sim a \cdot b + \sigma$  <br> sinon : $rec \sim a \cdot (ssb-\frac{( ssb - b \cdot (1-c))^{2}}{4 \cdot b \cdot c}) + \sigma$ |
+  | Hockey Stick Smooth    | $rec \sim a \cdot \{ssb+ \sqrt{b^{2}+g}-\sqrt{(ssb-b)^{2}+g}\} + \sigma$  avec $g=0.001$ |
+
+  Il est possible d'annuler l'effet aléatoire en mettant la variable $\sigma$ à 0 (pas de variance, donc pas de variabilité). Précisons aussi que le recrutement s'exprime ici en nombre d'individus. La deuxième possibilité est de considérer le recrutement comme étant la réalisation d'un tirage aléatoire. Trois options sont alors envisageables :
+
+  + l'option 1 permet d'effectuer un tirage aléatoire dans l'historique de recrutement renseigné dans le feuillet "Stochasticité" du fichier de paramétrage, de manière indépendante (avec toutefois la pondération des probabilités spécifiée dans le fichier .xlsx).
+
+  + l'option 2 est similaire à l'option 1, à la différence que le tirage ne sera pas indépendant. Pour chaque instant de la simulation, un seul tirage sera effectué pour toutes les espèces d'option 2 de recrutement pour déterminer un instant commun de l'historique à considérer. Notons que ce type de tirage impliquera seulement l'intersection des historiques pour les espèces concernées.
+
+  + enfin, l'option 3 offre la possibilité de simuler le recrutement d'une espèce comme étant la réalisation d'une variable aléatoire de loi prédéterminée. Cette loi devra également être préalablement définie au sein du feuillet "Stochasticité" du fichier de paramètres.
+  
+  <!--   | Hockey Stick Quadratic | si $ssb \leq b \cdot (1-c)$ : $rec \sim a \cdot ssb + \sigma$ <br> si $(b \cdot (1-c) < ssb < b \cdot (1+c)$ : $rec \sim a \cdot (ssb-\frac{( ssb - b \cdot (1-c))^{2}}{4 \cdot b \cdot c}) + \sigma$ <br> sinon : $rec \sim a \cdot b + \sigma$ | -->
+
+* **Bootstrap** : cette partie de l'interface permet de piloter le module de réplication. Pour activer/désactiver le module, cocher  "Bootstrap". Une fois le module activé, on peut paramétrer le nombre d'itérations à opérer, et choisir les variables en sortie. Cette option permet de limiter la taille des résultats de simulations qui peuvent devenir très volumineux si on multiplie inconsidérément le nombre de réplicats. Ce sera surtout le cas avec des variables à haut niveau de précision telles que `L_efmit`.
+
+* **Scénario** : cette partie de l'interface permet de choisir le scénario à simuler, ce dernier étant caractérisé dans le feuillet "Scénario" du fichier de paramétrage. Pour activer/désactiver le module, cocher  "Scénario". Une fois le module activé, un scénario devra être sélectionné dans la liste (par définition, un scénario Statu Quo impliquera la désactivation du module). Afin de simplifier la mise en oeuvre des simulations et la gestion des sorties du modèle, on ne peut simuler qu'un seul scénario par envoi.
+
+
+::: {#i18n .greeting .message style="color: red;"}
+les  noms de gestions sont en anglais maintenant !
+:::
+
+
+* **Gestion** : le module "Gestion" sera piloté intégralement par cette composante de l'interface. Tout comme pour les deux précédents contrôles, on activera  le module en cochant "Gestion", permettant ainsi l'accès aux champs de paramètres à renseigner suivants :
+
+  + *Contrôle* : permet de spécifier sur quelle variable d'effort agir afin d'atteindre les objectifs de gestion (pour le moment, laisse le choix entre le nombre de navires et le nombre de jours de mer).
+
+  + *Cible* : variable sur laquelle porte les objectifs définis (3 options : atteinte du TAC, atteinte du Fbar, ou atteinte du TAC jusqu'à atteindre le Fbar, puis atteinte du Fbar).
+
+  + *Espèce* : espèce sur laquelle porte la mesure de gestion (à choisir entre toutes les espèces modélisées)
+  
+  + *Type* : multiplicatif ou additif. **To explain !**
+
+  + *Delay* : délai d'application de la mesure de gestion (autrement dit, temps d'attente avant la mise en activation du module).
+
+  + *Update* :  définit si l'ajustement s'opère à chaque fois sur les valeurs initiales des variables, ou sur les valeurs mises à jour. (NB: cette option n'impacte que sur la manière de quantifier les ajustements, et ne revêt de l'importance que dans des cadres d'utilisation très spécifiques).
+
+  + *Borne supérieure* / *Borne inférieure* : bornes de l'intervalle d'application de la procédure d'optimisation. Un intervalle restreint permet de maximiser le temps de calcul, mais fait prendre le risque de ne pas trouver de solution. A utiliser avec précaution.
+
+  + Bouton *TAC/Fbar* **devenu T/F**: permet de renseigner les valeurs-objectifs de TAC et de Fbar pour l'espèce en question, sur l'intervalle de temps spécifié dans le paramétrage (une cellule par pas de temps). Il est conseillé de renseigner toutes les cellules de la table, en particulier pour une cible de type 3 (voir plus haut). La validation des valeurs s'opère à la fermeture de la fenêtre.
+  
+  + Bouton *Oth* **deprecated**
+  
+  + Bouton *Eff* **explain**: effort maximum par flottille
+  
+  + Bouton *Tf* **explain**: tac par flottille
+
+  + Bouton *mF* **devenu Wfm**: permet de renseigner les pondérations (décimales) par flottille utilisées durant le processus d'ajustement (une cellule par classe de flottille). Cette pondération permet de paramétrer la distribution d'effort concédée par chaque flottille afin d'atteindre l'objectif désiré. Un poids nul signifiera que la flottille en question conservera son effort initial. Un poids p signifiera que la variation de l'effort consentie par la flottille pour atteindre au final la valeur objectif sera p fois plus importante que celle des flottilles de poids unité (attention : tout ceci s'applique relativement au signe de variation global, qui peut être contrôlé par le biais des bornes supérieures et inférieures préalablement définies). Des poids de signes opposés peuvent être utilisés pour simuler des variations contraires selon les flottilles.
+
+* **Economic** : la dernière phase de paramétrisation concerne le modèle économique. La plupart des paramètres ici décrits peuvent être retrouvés dans le tableau de mise en équation du modèle économique en annexe de ce document.
+
+  + *Type* : **Deprecated**, choix entre la version complète du modèle économique ou la version simplifiée DCF (voir annexe). Chaque modèle nécessitera un ensemble spécifique de paramètres économiques (voir le fichier "FleetSpreadsheet" intégré dans le package pour la liste complète des indicateurs requis par chaque modèle)
+
+  + *adj* : **Deprecated**, voir table 4.1.1.1, variable n°58, en annexe de ce document.
+
+  + *lev* : **Deprecated**, voir table 4.1.1.1, variable n°59, en annexe de ce document.
+
+  + *ue\_choice* : **Deprecated**, voir table 4.1.1.1, variable n°60, en annexe de ce document.
+
+  + *oths* : **Deprecated** voir table 4.1.1.1, variable n°62, en annexe de ce document.
+
+  + *othsFM* : **Deprecated** voir table 4.1.1.1, variable n°64, en annexe de ce document.
+
+  + *perscCalc* : Mode de calcul de la variable "coût du personnel"
+    - 0 : la variable est supposée constante
+    - 1 : relation linéaire avec `rtbs` et donnée `cshr` disponible
+    - 2 : relation linéaire avec `rtbs` et donnée `cshr` indisponible
+
+  + *report* : **Deprecated**, voir table 4.1.1.1, variable n°61, en annexe de ce document.
+
+  + *Taux d'actualisation (dr)* : Attention, le taux est en décimal, pas en pourcentage. Pour 4\% d'actualisation, il faut rentrer la valeur 0,04. Ce taux d'actualisation va s'appliquer en sortie du modèle à une sélection de variables économiques principales, qui seront donc disponibles en 2 versions, actualisée et non actualisée. Ces variables sont les suivantes : `rtbs_f`, `cs_f`, `gva_f`, `gcf_f`, `ps_f` et `sts_f`.
+
+
+Une fois la validation des arguments effectuée en cliquant sur "OK", un objet de classe `iamArgs` est retourné, intégrant tous les arguments qui vont conditionner les processus mis en œuvre pendant la phase de simulation.
+
+
+
+```{r slotargum}
+slotNames(argum1984)
+names(argum1984@arguments)
+```
+
+<!--
+On peut modifier l'objet déjà existant en modifiant directement une ou plusieurs valeurs. Mais ceci suggère une bonne connaissance de R et un risque non négligeable d'entamer la structure de l'objet. Par exemple, pour modifier le nombre d'itérations du module de réplication :
+
+```{r editargum, eval=F}
+names(argum@arguments$Replicates)
+argum@arguments$Replicates$nbIter
+argum@arguments$Replicates$nbIter <- 250
+argum@arguments$Replicates$nbIter
+```
+
+On peut faire de même pour désactiver le module :
+
+```{r editargum2, eval=F}
+argum@arguments$Replicates$active
+argum@arguments$Replicates$active <- 0
+```
+
+-->
+
+Mais la procédure la plus simple pour corriger un objet est de reprendre l'interface au stade de la validation, et d'effectuer directement les corrections. Pour cela, il suffit de rappeler la méthode `IAM.args()`, mais non plus affectée à un objet de paramétrage initial de classe `iamInput`, mais plutôt à l'objet qu'on désire modifier. On tape donc :
+
+```{r editargum3, eval=F}
+argum1984 <- IAM.args(argum1984)
+```
+
+
+Une interface reprenant tous les arguments auparavant validés s'ouvre, permettant la correction, la validation, et ainsi la mise à jour de l'objet `argum1984` en sortie.
+
+
+<!--
+
+### Sauvegarde des deux types d'objets principaux (IAM.export)
+
+
+Pour sauvegarder des objets iamInput et iamArgs, il est bien sûr possible de créer des environnements R (fichiers .Rdata) incluant ces objets. Mais s'affranchir d'un environnement R en sauvegardant ces données au format .txt peut se révéler problématique, notamment en raison de la structure relativement complexe de ces objets. La méthode IAM.export permet, comme son nom l'indique, d'effectuer cet export sous forme de fichiers .txt qui pourront être recomposés en objets R au moyen des procédures IAM.input et IAM.args. Cette méthode prend en entrée l'objet à exporter, ainsi que le chemin du répertoire dans lequel entreposer les fichiers générés.
+
+Essayons par exemple d'exporter l'objet de paramétrage inp  dans un répertoire "folder" placé sur le disque C (cet exemple ne fonctionnera que si le répertoire existe effectivement) :
+
+```{r exportinput, eval=F}
+IAM.export(inp,"C:/folder")
+```
+
+4 fichiers sont créés dans le dossier, chacun correspondant aux 4 slots fonctionnels de l'objet (le slot "historical" n'est pas conservé car il n'intervient pas dans le processus de modélisation ; de futurs développements devraient permettre de rectifier cette limitation) : "specific.txt", "input.txt", "scenario.txt" et "stochastic.txt". Le format de ces fichiers est relativement spécifique, et permet de retracer la structure imbriquée des slots. Sans rentrer dans les détails, les lignes commençant par list décrivent un niveau d'imbrication, et les lignes commençant par var énumèrent le contenu d'une variable.
+
+Pour reconstituer l'objet R de paramétrage, on tape alors :
+
+```{r impinput, eval=F}
+inp2 <- IAM.input(fileIN = "C:/folder/input.txt",
+            fileSPEC = "C:/folder/specific.txt",
+                                     fileSCEN = "C:/folder/scenario.txt",
+                                     fileSTOCH = "C:/folder/stochastic.txt")
+
+```
+
+On procède de la même manière pour l'objet d'arguments :
+
+```{r expargum, eval=F}
+IAM.export(argum,"C:/folder")
+```
+
+
+
+Le message indique que le slot "specific" commun aux deux objets entraîne un conflit de fichiers. Dans le cas où on veut exporter un objet d'arguments dans le même dossier qu'un objet de paramétrage, il est essentiel que le premier ait été généré par le second, sous peine de détruire la compatibilité des fichiers. Ici, pas de problème puisque argum a été généré à partir de inp. 2 fichiers ont ainsi été créés : "args.txt" et "specific.txt" (un troisième fichier "argsCPP.txt" est également généré, mais il entre dans un cadre spécifique d'utilisation qui sort de notre champ d'application). On recrée l'objet de cette façon :
+
+```{r impargum, eval=F}
+argum2 <- IAM.args("C:/folder/args.txt",specific="C:/folder/specific.txt")
+```
+
+-->
+
+<!-- ### Simulation (IAM.model) -->
+<!--
+
+Une fois les deux principaux composants du paramétrage obtenus, la mise en route de la simulation est très simple : la méthode `IAM.model()` appelle l'objet `iamArgs` et l'objet `iamInput` et restitue les résultats de la simulation dans un objet de classe `iamOutput` si le module de réplication est désactivé, de classe `iamOutputRep` dans le cas contraire.
+
+
+```{r simul, eval=F}
+out <- IAM.model(argum,inp)
+class(out)
+```
+
+Toutes les sorties du modèle sont entreposées dans 2 slots de l'objet out. Un slot outputSp réunit toutes les variables définies par espèce modélisée (sorties du modèle biologique principalement), et un autre slot output rassemble les variables sans dimension espèce (les variables économiques). L'accès aux variables est illustré ci-dessous :
+
+```{r slotsim, eval=F}
+slotNames(out)
+names(out@outputSp)
+names(out@outputSp$F)
+names(out@output)
+```
+
+Dans le cas d'un  objet de classe iamOutputRep, chaque variable est une liste de n éléments, avec n le nombre de réplicats.
+
+
+```{r simrep, eval=F}
+class(out)
+length(out@outputSp$F)
+names(out@outputSp$F[[1]])
+names(out@outputSp$F[[500]])
+```
+-->
+
+<!-- ### Mise en forme des sorties (IAM.format \& IAM.unite) -->
+
+<!--
+
+La méthode IAM.format est une fonction de formatage appliquée aux objets iamOutput et iamOutputRep. Elle va permettre la conversion d'une variable multidimensionnelle en une table de type "data.frame" (format facilitant la création de graphiques adaptés à ce type de variables), mais aussi le filtrage et l'agrégation des données. Outre l'objet "output", elle possède les arguments suivants :
+
+* elmt : nom de la variable à formater (type character).
+* spp : nom de l'espèce décrite par la variable (pertinent selon la variable).
+* agg : vecteur numérique indiquant la ou les dimensions sur lesquelles opérer une agrégation (Rappel : 1 pour la dimension "Flottille", 2 pour la dimension "Métier", 3 pour la dimension "Age/Catégorie", 4 pour la dimension temporelle).
+* headers : Optionnel. Dimension qui constituera les en-têtes du tableau (caractère, "f" pour flottille, "m" pour "métier", "a\_c" pour "âge-catégorie" et "t" pour "temps").
+* subs : Optionnel. Expression logique permettant d'effectuer un filtrage des données. Les champs filtrés sont codés dans l'expression par "f", "m", "a\_c" ou "t".
+
+```{r format, eval=F}
+dim(out@outputSp$C$Langoustine)
+IAM.format(out,elmt = "C", spp = "Langoustine", agg = 1:2, headers = "a_c", t%in%(2012:2016))
+IAM.format(out,elmt = "C", spp = "Langoustine", agg = 1:2, headers = NA, t%in%(2012:2013))
+```
+
+Le premier appel prend l'élément "C" de l'objet out pour l'espèce "Langoustine", agrège sur les dimensions "flottilles" et "métiers", ne garde que l'information de 2012 jusqu'à 2016, et formate la table de sorte que les modalités de la dimension "âge" composent les champs. Le second appel ne décline plus de dimension en en-tête, et ne conserve que l'information pour les années 2012 et 2013. Il est important de conserver une certaine cohérence au moment de paramétrer cette fonction : par exemple, la méthode n'acceptera pas en tant que header une dimension incluse dans l'index d'agrégation.
+La fonction prendra aussi en entrée des objets de classe iamOutputRep, mais retournera dans ce cas non plus une simple table, mais une liste de tables.
+On rappelle que la fonction IAM.model ne génère qu'un objet de sortie par scénario. La fonction IAM.unite est une fonction qui hérite de IAM.format et qui gère le regroupement des données de plusieurs objets (et ainsi de plusieurs scénarios). Elle s'utilise de manière similaire à IAM.format, à la différence qu'elle ne prend plus un seul objet en entrée, mais une liste d'objets. La dimension "scénario" est alors intégrée à la table résultante (sous le codage "Scen" utilisable en tant que paramètre headers). Notons que la liste doit contenir des objets de même classe. Une liste peut toutefois ne contenir qu'un seul objet, comme dans l'exemple ci-dessous :
+
+```{r unite, eval=F}
+IAM.unite(list(out), elmt = "C", spp = "Langoustine", agg = 1:2, headers = "a_c", t%in%(2012:2016))
+```
+
+Dans le cas d'une liste d'objets de classe iamOutputRep, la fonction procède en outre à la concaténation de toutes les tables générées par chacune des itérations, et ajoute à la table obtenue un champ iter indiquant l'itération concernée (voir table DFiam\_iter dans le chapitre 3.2.7).
+
+
+-->
+<!-- ### Représentations graphiques des sorties (IAM.plot, IAM.barplot, IAM.barIC, IAM.bwplot, IAM.zone) -->
+
+
+<!--
+Les procédures graphiques intégrées au package héritent des méthodes de représentation de données multivariées du package "lattice". Ainsi, le format de table renvoyé par les fonctions IAM.format et IAM.unite sera requis pour constituer la donnée à représenter, et les formulations seront similaires à celles utilisées de le cadre d'application des fonctions "lattice" (voir xyplot).
+Pour illustrer ceci, deux jeux de données exemples ont été mis à disposition de l'utilisateur du package : une sortie formatée sans réplicats, et une sortie formatée avec réplicats, dont voici un aperçu :
+
+```{r plot, eval=F}
+ #on charge la donnée
+data(iamData)
+ls()
+DFiam
+tail(DFiam_iter)
+```
+
+NB : les deux tables sont des sorties de la fonction IAM.unite, de paramètre headers égal à "a\_c" pour DFiam, et égal à "Scen" pour DFiam\_iter.
+Les paramètres graphiques sont listés dans la feuille d'aide des fonctions graphiques, que l'on peut afficher en tapant :
+
+```{r plotparam, eval=F}
+?IAM.plot
+```
+
+
+
+On notera que ces paramètres sont similaires à ceux utilisés dans les fonctions graphiques du package "lattice" : on pourra se référer à la documentation de ce dernier pour plus de précisions.
+
+Il existe pour le moment 5 fonctions graphiques permettant de retranscrire les sorties du modèle : 2 pour les données sans variabilité issues d'objets de classe iamOutput (IAM.plot et IAM.barplot), et 3 pour les données avec itérations multiples (de classe iamOutputRep), permettant d'illustrer la variabilité de ces résultats (IAM.barIC, IAM.bwplot et IAM.zone). Voici quelques exemples d'applications possibles :
+
+
+```{r barplot, eval=F}
+IAM.barplot(un+deux+trois+quatre+cinq+gp\simt, data=DFiam, txt.leg=c("1yr","2yrs","3yrs","4yrs","5yrs","6yrs"), origin=0)
+```
+
+
+```{r colbarplot, eval=F}
+# on définit deux jeux de couleurs, le premier étant la version ”translucide” du second
+col1 <- c(rgb(t(col2rgb("#E68F6A")/255),alpha=0.7), rgb(t(col2rgb("#35A2F2")/255),alpha=0.2))
+col2 <- c("red","#35A2F2")
+IAM.bwplot(SQ + Scenario \sim t | f, data=DFiam_iter, col=col2, fill=col1,
+           rot.x=90, cex.axis.x=0.7, cex.axis.y=0.8, cex.pch=0.3, pch=15,
+           txt.leg=c("Statu Quo","Scenario"), xlab="Year", ylab="Value", add.h=0)
+
+```
+
+
+L'exemple précédent permet de comprendre la formulation faisant office de paramètre principal. Cette formule permet de distinguer les variables qui seront illustrées au sein de chaque graphique (intra), des variables qui caractériseront chaque graphique (inter). La première partie de la formule (à gauche du \sim) regroupe la ou les variables qui seront représentées en ordonnée (autrement dit les quantités, ici par scénario). C'est ici qu'on énumère les variables "intra", en les séparant d'un signe "+". Les variables "intra" seront le plus souvent les modalités de la dimension choisie en tant que paramètre headers de la fonction de formatage des sorties (voir partie 3.2.6). A droite du signe \sim doit être spécifiée la variable représentée en abscisse (ici, le temps). Si nécessaire, une déclinaison "inter" peut être définie en ajoutant un séparateur "|", et en énumérant les variables caractérisant chacun des graphiques (si on considère plusieurs champs de déclinaison, ils devront être séparés par "*"). Dans notre exemple, on a bien un graphique pour chaque flottille modélisée.
+
+
+```{r zone, eval=F}
+IAM.zone(SQ + Scenario \sim t | f, data=DFiam_iter, col=col2,
+         rot.x=90, cex.axis.x=0.7, cex.axis.y=0.8, cex.pch=0.3, pch=15,
+         txt.leg=c("Statu Quo","Scenario"), xlab="Year", ylab="Value", alpha=0.2)
+```
+
+
+Une troisième manière de présenter des variabilités est d'afficher des barres de valeurs moyennes assorties d'intervalles de confiance.
+
+
+```{r conf, eval=F}
+IAM.barIC(SQ + Scenario \sim t | f, data=subset(DFiam_iter,t%in%(2010:2015)),
+     col=col2, rot.x=90, cex.axis.x=0.7, cex.axis.y=0.8, txt.leg=c("Statu Quo","Scenario"),
+     xlab="Year", ylab="Value", origin=0)
+```
+
+
+L'exemple suivant montre l'application de la fonction IAM.plot à une donnée iamOutputRep réduite à une seule itération, et illustre comment modifier le graphe au même titre que n'importe quel graphique lattice de base, grâce à la fonction update.
+
+```{r repplot, eval=F}
+IAM.plot(SQ + Scenario \sim t | f, data=subset(DFiam_iter, iter==1),
+            col=col2, rot.x=90, cex.axis.x=0.7, cex.axis.y=0.8, cex.pch=0.3, pch=15,
+            txt.leg=c("Statu Quo","Scenario"), xlab="Year", ylab="Value", add.h=0, add.lty=2)
+update(trellis.last.object(), scales=list(alternating=1))
+```
+
+La fonction update ciblant la sortie graphique va permettre d'appliquer des paramètres "lattice" qui n'auraient pas été considérés dans l'implémentation des fonctions graphiques du package "IAM".
+
+-->
+
+## References
+
+<div id="refs"></div>
+
