@@ -1,8 +1,9 @@
 library(shiny)
-library(shiny.i18n)
+# library(shiny.i18n)
 library(shinyWidgets)
-library(shinythemes)
+# library(shinythemes)
 library(shinyjs)
+library(tidyverse)
 
 devtools::load_all()
 load("dev/data/inputIFR.RData")
@@ -58,7 +59,8 @@ app_ui <- function() {
           inputId = "age", label = "Age",
           selected = "Young", choices = "Young", multiple = TRUE,
           options = list(`actions-box` = TRUE)
-        )
+        ),
+        checkboxInput("sumage", "Sum selected ages")
       ),
       useSweetAlert(),
       hidden(
@@ -91,7 +93,7 @@ app_ui <- function() {
 app_server <- function(input, output, session) {
   output$desc <- renderText(get_golem_options("input")@desc)
 
-  x <- reactiveValues(var = NULL, fullvar = NULL)
+  x <- reactiveValues(var = NULL, fullvar = NULL, plot = NULL)
   def <- reactiveValues(specie = NULL, fleet = NULL, metier = NULL, age = NULL)
 
   observeEvent(input$var2rep, {
@@ -107,11 +109,10 @@ app_server <- function(input, output, session) {
     }
     axes <- axes[!axes %in% c("year", "value")]
 
-
     def_axes <- c("species", "fleet", "metier", "age")
     for (axe in def_axes) {
       if (axe %in% axes) {
-        tmp <- unique(var[[axe]])
+        tmp <- as.character(unique(var[[axe]]))
       } else {
         tmp <- switch(axe,
           species = "Fish",
@@ -121,70 +122,21 @@ app_server <- function(input, output, session) {
         )
       }
       updatePickerInput(session, inputId = axe, choices = tmp, selected = tmp)
+
+      if(axe == "age"){
+        updateCheckboxInput(session, "sumage", value = FALSE)
+        toggle("sumage", condition = "age" %in% axes)
+      }
+
       def[[axe]] <- tmp
       toggle(axe, condition = axe %in% axes)
     }
-
-
-    # if("species" %in% axes){
-    #   def$species <- unique(var$species)
-    #   updatePickerInput(
-    #     session, inputId = "species",
-    #     choices = unique(var$species), selected = unique(var$species))
-    #   show("species")
-    # } else {
-    #   # def$species <- NULL
-    #   updatePickerInput(
-    #     session, inputId = "species",
-    #     choices = "Fish", selected = "Fish"
-    #   )
-    #   hide("species")
-    # } # module this part!
-    # if("fleet" %in% axes){
-    #   def$fleet <- unique(var$fleet)
-    #   updatePickerInput(
-    #     session, inputId = "fleet",
-    #     choices = unique(var$fleet), selected = unique(var$fleet))
-    #   show("fleet")
-    # } else {
-    #   def$fleet <- NULL
-    #   updatePickerInput(
-    #     session, inputId = "fleet",
-    #     choices = "Boat", selected = "Boat")
-    #   hide("fleet")
-    # }
-    # if("metier" %in% axes){
-    #   def$metier <- unique(var$metier)
-    #   updatePickerInput(
-    #     session, inputId = "metier",
-    #     choices = unique(var$metier), selected = unique(var$metier))
-    #   show("metier")
-    # } else {
-    #   def$metier <- NULL
-    #   updatePickerInput(
-    #     session, inputId = "metier",
-    #     choices = "Net", selected = "Net")
-    #   hide("metier")
-    # }
-    # if("age" %in% axes){
-    #   def$age <- unique(var$age)
-    #   updatePickerInput(
-    #     session, inputId = "age",
-    #     choices = unique(var$age), selected = unique(var$age))
-    #   show("age")
-    # } else {
-    #   def$age <- NULL
-    #   updatePickerInput(
-    #     session, inputId = "age",
-    #     choices = "Young", selected = "Young")
-    #   hide("age")
-    # }
 
     toggle("missing", condition = is.null(var))
     x$fullvar <- var
   })
 
-  observeEvent(input$missing, {
+  observeEvent(input$missing, {# should not trigger.
     sendSweetAlert(
       session = session,
       title = "Information",
@@ -206,12 +158,15 @@ app_server <- function(input, output, session) {
     N_fl <- !is.null(def$fleet)
     N_me <- !is.null(def$metier)
     N_ag <- !is.null(def$age)
+    N_sumage <- input$sumage
 
     # def$species <- switch(any(def$species == "Fish"),NULL)
     if (any(def$species == "Fish")) def$species <- NULL
     if (any(def$fleet == "Boat")) def$fleet <- NULL
     if (any(def$metier == "Net")) def$metier <- NULL
     if (any(def$age == "Young")) def$age <- NULL
+
+    print(input$sumage)
 
     if (is.null(x$fullvar)) {
       df <- tibble()
@@ -221,33 +176,46 @@ app_server <- function(input, output, session) {
         `if`(N_fl, filter(., fleet %in% def$fleet), .) %>%
         `if`(N_me, filter(., metier %in% def$metier), .) %>%
         `if`(N_ag, filter(., age %in% def$age), .) %>%
+        `if`(N_sumage,
+             group_by(., species, fleet, metier, year) %>%
+             summarise(., value = sum(value), .groups = "keep") %>%
+             ungroup(.), .) %>%
         filter(year >= input$time[1], year <= input$time[2])
+
     }
+
+    x$var <- df
 
     if (nrow(df) > 0) {
       style <- aes(linetype = species, color = age)
-      style <- style[c(N_sp, N_ag)]
+      style <- style[c(N_sp, N_ag & !input$sumage)]
 
       p <- ggplot(df, aes(x = year, y = value)) +
         { if (N_fl & !N_me) facet_grid(fleet ~ .) } +
         { if (!N_fl & N_me) facet_grid(. ~ metier) } +
         { if (N_fl & N_me) facet_grid(fleet ~ metier) } +
-        geom_line(style)
+        geom_line(style) +
+        guides(x = guide_axis(angle = 90)) +
+        ggtitle(paste(input$var2rep)) +
+        NULL
     } else {
       p <- ggplot(NULL)
     }
 
+    x$plot <- p
     output$plot <- renderPlot({
       p
     })
-    x$var <- df
+
   })
 
   # End of app ####
   observeEvent(input$done, {
     cat("You're really not going to like it\n")
     returnValue <- 42
-    # returnValue <- x$var
+    # returnValue <- x$plot
+    returnValue <- x$var
+    # TODO : add a print or attribute that explain the filters !
     stopApp(returnValue)
   })
   observeEvent(input$cancel, {
@@ -258,16 +226,8 @@ app_server <- function(input, output, session) {
 
 run_app <- function(object) {
 
-  # vars <- c("B","SSB","Ctot","Ytot","Yfmi","Ffmi","Zeit","Fbar","Foth",
-  #           "mu_nbds","mu_nbv","N","Eff", "GVL_fme","GVLtot_fm","GVLav_f",
-  #           "rtbs_f","gp_f","ps_f","gcf_f","gva_f","cs_f","sts_f","rtbsAct_f",
-  #           "csAct_f","gvaAct_f","gcfAct_f","psAct_f","stsAct_f","ccwCr_f",
-  #           "GVLtot_f","wagen_f","L_efmit","D_efmit","Fr_fmi","C_efmit",
-  #           "vcst_f","vcst_fm","P", "Ystat","Lstat","Dstat","Pstat",
-  #           "StatGVL_fme")
-
-  Biovars <- c("SSB", "Fbar", "N", "Eff")
-  Ecovars <- c("GVLtot_f_m", "gvaAct_f")
+  Biovars <- c("F","B", "SSB", "L_et", "Ltot", "Fbar", "N")
+  Ecovars <- c("nbv_f", "effort1_f", "effort2_f")
 
   res <- with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server),
@@ -280,6 +240,8 @@ run_app <- function(object) {
   }
 }
 
-run_app(sim1984)
+plot <- run_app(sim1984)
 
+
+format_var("F", sim1984)
 

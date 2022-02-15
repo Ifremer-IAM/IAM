@@ -19,24 +19,36 @@ setGestion_tac <- function(argum, species, delay = 1, bound = c(0,0), tac){
 
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
-argum1984 <- setGestion_tac(argum1984, "COR", 2, c(100, -100),
-                            c(NA, 3000, 3000, 3001, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000))
+argum1984 <- setGestion_tac(argum1984, "COR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+                            c(NA, 3300, 3250, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200))
+#                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
+# argum1984 <- setGestion_tac(argum1984, "DAR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+                            # c(NA, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4))
+#                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
+# argum1984@arguments$Recruitment$ARC$typeMODsr <- "Hockey-Stick"
 
-argum1984@arguments$Recruitment$ARC$typeMODsr <- "Hockey-Stick"
+argum1984@arguments$Gestion$typeG <- 1
 sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984,
-                          verbose = TRUE, force_t = 4)
+                          verbose = TRUE, force_t = 7)
+sim1984@output$nbv_f ; sim1984@output$effort1_f
+
+sim1984@output$nbv_f
+sim1984@outputSp$L_et$COR
+sim1984@outputSp$L_et$DAR
 
 # TACF ####
+devtools::load_all()
+load("dev/data/inputIFR.RData")
+load("dev/data/argumIFR.RData")
 
 nbV <- length(input1984@specific$Fleet)
 nbT <- input1984@specific$NbSteps
 
-input1984@input$COR$Lref_f_e %>%
-  as.data.frame() %>% mutate(perc = ./sum(.), Lref = sum(.)*perc) %>%
-  select(-1) -> TACtmp
+Lref <- input1984@input$COR$Lref_f_e
+percLref <- Lref / sum(Lref)
 
 scenar <- c(1, 0.95, 0.93, 0.90, 1, 1, 1, 1, 1, 1, 1, 1, 1)
-TACtmp <- matrix(TACtmp$Lref, ncol = nbT+1, nrow = nbV, byrow = FALSE)
+TACtmp <- matrix(Lref, ncol = nbT+1, nrow = nbV, byrow = FALSE)
 for(y in 2:(nbT+1)){
   TACtmp[, y] <- TACtmp[, y-1] * scenar[y]
 }
@@ -45,9 +57,7 @@ dimnames(TACf) <- list(input1984@specific$Fleet,input1984@specific$times)
 TACf
 rm(TACtmp, y, nbV, nbT, scenar)
 
-devtools::load_all()
-load("dev/data/inputIFR.RData")
-load("dev/data/argumIFR.RData")
+
 argum1984@arguments$Gestion$espece <- "COR"
 argum1984@arguments$Gestion$inf <- -100
 argum1984@arguments$Gestion$sup <- 100
@@ -56,7 +66,7 @@ argum1984@arguments$Gestion$active <- 1
 TACf <- list(COR = TACf) ; TACtot <- list(COR = TACtot)
 
 sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, TACbyF=TACf, TACtot = TACtot, updateE = 1,
-                          verbose = TRUE, force_t = 4)
+                          verbose = TRUE, force_t = 8)
 
 sim1984@output$effort1_f_m
 sim1984@output$effort2_f_m
@@ -73,7 +83,6 @@ ggplot(., aes(x=year, y=value, color = age)) +
   ggtitle("SSB with mean recrutment drawn in rnorm (sd = 1e6)")
 
 
-
 dim(sim1984@outputSp$GVLcom_f_m_e$COR)
 
 sim1984@output$gpmargin_f
@@ -83,7 +92,7 @@ sim1984@output$ps_f
 sim1984@output$psAct_f
 # Grouping variable for plot ####
 
-
+devtools::load_all()
 # cas vide PQuot
 format_varsp("PQuot", sim1984)
 # cas simple SSB
@@ -142,6 +151,7 @@ format_var(name = "allocEff_f_m", sim1984) %>%
 
 # Testing replication ####
 devtools::load_all()
+library(tidyverse)
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
 
@@ -164,17 +174,50 @@ close(pb)
 pb <- txtProgressBar(min = 0, max = NITER, style = 3)
 res <- lapply(1:NITER,function(k) {
   setTxtProgressBar(pb, k)
-  format_var("SSB", simuls[[k]]) %>%
-    mutate( value = as.numeric(value),year = as.numeric(year) ) %>%
+  format_var("Ltot", simuls[[k]]) %>%
     add_column(sim = k, .before = "variable")
   }) %>%
   do.call(rbind, .) %>%
   filter(species != "DAR")
 close(pb)
 
-# https://stackoverflow.com/questions/34749859/ggplot2-shading-envelope-of-time-series
+
+# Best solution for a plot.
+# loose some info on the way for ages but good enought.
+# Overwise require to produce similar dataset as condquant.
+res %>%
+  # sum ages
+  group_by(sim, variable, species, fleet, metier, year) %>%
+  summarise(value = sum(value, na.rm = TRUE), .groups = "keep") %>%
+  # quantile by sim
+  # https://stackoverflow.com/questions/34749859/ggplot2-shading-envelope-of-time-series
+  ungroup(sim) %>%
+  do(s_sim = (1*.$sim), raw_val = (1 * .$value),
+     quant = quantile(.$value, probs = seq(0,1,.25), na.rm = TRUE),
+     probs = seq(0,1,.25)) %>%
+  unnest(cols = c( quant, probs)) %>% unnest(cols = c(s_sim, raw_val)) %>%
+  mutate(delta = 2*round(abs(.5-probs)*100)) %>%
+  group_by(variable, species, fleet, metier, year, s_sim, raw_val, delta) %>%
+  summarize(quantmin = min(quant), quantmax= max(quant), quantmean  = mean(quant),
+            .groups = "keep") %>%
+  # select only one sim
+  filter( s_sim == 7) %>%
+  # plot
+  ggplot( aes(x = year, y = raw_val)) +
+  geom_line() +
+  geom_ribbon(aes(x = year, ymin = quantmin, ymax = quantmax,
+                                    group = reorder(delta, -delta), fill = as.numeric(delta)),
+              alpha = .5) +
+  scale_fill_continuous( limits = c(50, 100), name = "Density") +
+  guides(x = guide_axis(angle = 90)) +
+  facet_grid(species ~ .) +
+  facet_grid(species ~ .) + ggtitle("Ltot (ages summed) with mean recrutment drawn in rnorm (sd = 1e6)") +
+  NULL
+
+
+
 condquant <- res %>%
-  discard( ~n_distinct(.) == 1) %>%
+  discard( ~n_distinct(.) == 1) %>% # remove column with similar values.
   group_by(year, species) %>%
   do(quant = quantile(.$value, probs = seq(0,1,.25)), probs = seq(0,1,.25)) %>%
   unnest(cols = c(quant, probs)) %>%
@@ -190,8 +233,29 @@ res  %>% filter(sim == 500) %>%
               alpha = .5) +
   scale_fill_continuous( limits = c(50, 100), name = "Density") +
   geom_line() +
+  guides(x = guide_axis(angle = 90)) +
   facet_grid(species ~ .) + ggtitle("SSB with mean recrutment drawn in rnorm (sd = 1e6)")
   #+ theme_dark() +
   # theme(panel.background = element_rect(fill = "steelblue"))
+
+res %>%
+  filter( species == "COR", year >= 1995, sim == 2) %>% mutate(s = sum(value))
+
+
+res %>%
+  filter( species == "COR", year >= 1995, sim <= 3, age %in% c("2", "3")) %>%
+  # sum ages
+  group_by(across(c(-age, -value))) %>%
+  mutate(s_age = sum(value)) %>% ungroup() %>%
+  group_by(across(c(-s_age))) -> tmp
+
+
+res %>%
+  filter( species == "COR", year >= 1995, sim <= 3, age %in% c("2", "3")) %>%
+  # sum ages
+  group_by(across(c(-age, -value))) %>%
+  summarize(value = sum(value)) %>% ungroup() %>%
+  group_by(across(c(-s_age))) -> tmp
+
 
 

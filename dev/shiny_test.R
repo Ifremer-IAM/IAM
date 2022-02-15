@@ -1,7 +1,7 @@
 library(shiny)
-library(shiny.i18n)
+# library(shiny.i18n)
 library(shinyWidgets)
-library(shinythemes)
+# library(shinythemes)
 library(shinyjs)
 
 # Thanks ThinkR for helping me messing some code
