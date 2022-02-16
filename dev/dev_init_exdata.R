@@ -25,11 +25,13 @@ if(!require(IAM)) devtools::load_all()
 #' Modify xlsx with most of RData to obtain a clean file
 
 tea_br <- TRUE # cancel long computations
+# Theses files are not public.
 rawfile <- "dev/raw_data/inputFile.xlsx"
 enigmaF <- read.csv("dev/raw_data/enigmaF.csv")
 enigmaM <- read.csv("dev/raw_data/enigmaM.csv")
 enigmaSp <- read.csv("dev/raw_data/enigmaSp.csv")
 enigt <- enigma <- read.csv("dev/raw_data/enigma.csv")
+
 sp2rm <- enigmaSp$origin[enigmaSp$code=="GAR"]
 
 #' @param sheet an input.xlsx sheet for IAM
@@ -68,20 +70,14 @@ if(tea_br){
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   ## Select and rename fleet ####
   cat("-Fleets \n ")
-  if(!dir.exists("dev/data/fleets")){
-    dir.create("dev/data/fleets")
+  if(!dir.exists("inst/extdata/fleets")){
+    dir.create("inst/extdata/fleets")
+  } else {
+    warning("dev/data/fleets already exists and previous files won't be purged")
   }
-  fleet <- "dev/raw_data/fleets/"
-  if(dir.exists(fleet)) {
-    warning(paste(fleet, "already exists and previous files won't be purged"))
-  }
-  dir.create(fleet, showWarnings = FALSE)
-  file.copy(from = paste0(fleet,enigmaF$origin, ".csv"),
-            to = paste0("dev/data/fleets/", enigmaF$code, ".csv"),
-            overwrite = TRUE)
   for(i in 1:nrow(enigmaF)){
     cat(" -",enigmaF$code[i])
-    nme <- paste0("dev/data/fleets/",enigmaF$code[i], ".csv")
+    nme <- paste0("dev/raw_data/fleets/",enigmaF$origin[i], ".csv")
     sheet <- read.csv(nme, sep = ";")
     sheet$annee <- 1984
     sheet <- seek_replace(sheet, enigma)
@@ -91,6 +87,7 @@ if(tea_br){
     sheet$indicateur[pattern] <- as.character(
       nrep[i] * as.numeric(sheet$indicateur[pattern])
     )
+    nme <- paste0("inst/extdata/fleets/", enigmaF$code[i], ".csv")
     write.csv2(sheet, nme, row.names = FALSE)
   }
   rm(i, sheet, nme, pattern)
@@ -200,8 +197,9 @@ if(tea_br){
   #' edit scenarri sheet to rm fleets & sp
   #' TODO : scenarii header should be removed, outdated !
   scenar <- read.xlsx(rawfile, sheet = "Scenarii",
-  rowNames=FALSE,colNames=FALSE, startRow = 100, skipEmptyRows = FALSE)
-  ndim <- nrow(scenar) + 99 # old place for the scenarii, to clean
+  rowNames=FALSE,colNames=FALSE, startRow = 101, skipEmptyRows = FALSE)
+
+  ndim <- nrow(scenar) + 100 # old place for the scenarii, to clean
   scenar <- scenar[
     is.na(scenar$X3) | grepl("e__", scenar$X3) | scenar$X3 %in% enigmaF$origin
     ,
@@ -212,11 +210,11 @@ if(tea_br){
   scenar <- scenar[-r[is.na(scenar$X5[r+1]) & is.na(scenar$X4[r+1])], ]
   rm(r)
   scenar <- seek_replace(scenar, enigma)
-  deleteData(wb, "Scenarii", rows = 100:ndim, cols = 1:ncol(scenar),
+  deleteData(wb, "Scenarii", rows = 101:ndim, cols = 1:ncol(scenar),
              gridExpand = TRUE)
   addStyle(wb, "Scenarii", createStyle(fgFill = NULL),
-           rows = 100:ndim, cols = 1:ncol(scenar), gridExpand = TRUE)
-  writeData(wb, sheet = "Scenarii", scenar, startRow = 100, colNames = F)
+           rows = 101:ndim, cols = 1:ncol(scenar), gridExpand = TRUE)
+  # writeData(wb, sheet = "Scenarii", scenar, startRow = 100, colNames = F)
   replaced_names <- replaced_names[replaced_names != "Scenarii"]
   rm(scenar, ndim)
   cat("-done-\n")
@@ -244,7 +242,7 @@ if(tea_br){
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   ## Export dataset ####
   worksheetOrder(wb) <- match(save_names, names(wb))
-  saveWorkbook(wb,"dev/data/inputFile.xlsx",overwrite = TRUE)
+  saveWorkbook(wb,"inst/extdata/inputFile.xlsx",overwrite = TRUE)
 
   rm(wb, Mbio, Meco, nrep, save_names)
 }
@@ -264,71 +262,81 @@ with(ss3, {
     eval(parse(text = paste0("dimnames(", var[i], ")[[4]] = mfile[,'code']")))
   }
   rm(i, var, shfile, mfile)
-  save(list = ls(), file = "dev/data/inpSS3darwiniana1984.RData", envir = ss3)
+  save(list = ls(), file = "inst/extdata/IAM_SS3_1984.RData", envir = ss3)
 })
-rm(ss3, enigmaF, enigmaM)
+
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.input ####
 if(tea_br){
-  load("dev/data/inpSS3darwiniana1984.RData")
-  input1984 <- IAM::IAM.input(fileIN = "dev/data/inputFile.xlsx",t_init=1984,nbStep=12,folderFleet="dev/data/fleets",
-                              Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
-                              FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
-                              FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
-                              Nt0s1q=list(DAR=Nt0s1q),Ni0q=list(DAR=Ni0q),iniNt0q=list(DAR=iniNt0q),matwt=list(DAR=mat_morphage),
-                              verbose = TRUE)
+  load(IAM_example("IAM_SS3_1984.RData"))
+  IAM_input_1984 <- IAM::IAM.input(
+    fileIN = IAM_example("inputFile.xlsx"),
+    t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+    Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
+    Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
+    FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
+    FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
+    FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
+    FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
+    Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
+    iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage),
+    verbose = TRUE
+  )
   # Clean
   rm("Fq_fmi", "Fq_i", "FqDwt_fmi", "FqDwt_i", "FqLwt_fmi", "FqLwt_i",
        "iniFq_fmi", "iniFq_i", "iniFqDwt_fmi", "iniFqDwt_i", "iniFqLwt_fmi",
        "iniFqLwt_i", "iniNt0q", "mat_morphage", "Ni0q", "Nt0s1q")
-  if(exists("input1984")) {
-    beep(5) ; cat("\U0001f947",praise(),"\U0001f947")
-    save(input1984, file = "dev/data/inputIFR.RData")
+  # Export
+  if(exists("IAM_input_1984")) {
+    beep(5) ; cat("\U0001f947",praise(),"\U0001f947\n")
+    # save(IAM_input_1984, file = "dev/data/IAM_input_1984.RData")
+    usethis::use_data(IAM_input_1984, overwrite = TRUE)
   } else {
     beep(9) ; cat("\U0001f624", "Keep trying!", "\U0001f624")
   }
 } else {
-  load("dev/data/inputIFR.RData")
+  data("IAM_input_1984")
 }
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.arg ####
 if(tea_br){
-  argum1984 <- IAM.input2args(input1984)
+  IAM_argum_1984 <- IAM.input2args(IAM_input_1984)
   # tmp <- IAM::IAM.args(input1984)
   # #recrutement corinna 1985 = 16402000
   #
   # #module Eco DCF ('active' et 'type' a priori inutiles puisque le code C++ n'integre plus le module complet)
-  argum1984@arguments$Eco$active <- as.integer(1)
-  argum1984@arguments$Eco$type <- as.integer(2)
-  argum1984@arguments$Eco$dr <- 0.04
-  argum1984@arguments$Eco$perscCalc <- as.integer(1)
+  # IAM_argum_1984@arguments$Eco$active <- as.integer(1)
+  # IAM_argum_1984@arguments$Eco$type <- as.integer(2)
+
+  IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
+
   # #Gestion desactive
-  argum1984@arguments$Gestion$active <- as.integer(0)
-  argum1984@arguments$Gestion$delay <- as.integer(1)
-  argum1984@arguments$Gestion$mfm[] <- with(input1984@input$Fleet,{
-    (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
-  })
-  argum1984@arguments$Gestion$mfm[is.na(argum1984@arguments$Gestion$mfm)] <- 0
+  # IAM_argum_1984@arguments$Gestion$active <- as.integer(0)
+  # IAM_argum_1984@arguments$Gestion$delay <- as.integer(1)
+  # IAM_argum_1984@arguments$Gestion$mfm[] <- with(input1984@input$Fleet,{
+    # (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
+  # })
+  # IAM_argum_1984@arguments$Gestion$mfm[is.na(IAM_argum_1984@arguments$Gestion$mfm)] <- 0
   # #Scenario desactive
-  argum1984@arguments$Scenario$active <- as.integer(0)
+  # IAM_argum_1984@arguments$Scenario$active <- as.integer(0)
   #
-  save(argum1984, file = "dev/data/argumIFR.RData")
+  # save(IAM_argum_1984, file = "dev/data/argumIFR.RData")
+  usethis::use_data(IAM_argum_1984, overwrite = TRUE)
 } else {
-  load("dev/data/argumIFR.RData")
+  data("IAM_argum_1984")
 }
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.model ####
 devtools::load_all()
-load("dev/data/inputIFR.RData")
-load("dev/data/argumIFR.RData")
-devtools::load_all()
-sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, verbose = TRUE)
+data("IAM_input_1984")
+data("IAM_argum_1984")
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, verbose = TRUE)
 # ne marche pas depuis Florence et sans doute l'ajout du SEX...Marche sans SS3.
 # marche avec IAM20 !
 
@@ -346,8 +354,9 @@ class(input1984@input$Fleet$GVLref_f_m)
 
 names(sim1984@outputSp$F_S1M1)
 
-lapply(argum1984@arguments$Recruitment,function(x) as.double(
+lapply(IAM_argum_1984@arguments$Recruitment,function(x) as.double(
   c(rep(x$parAmodSR,length=2),rep(x$parBmodSR,length=2), rep(x$parCmodSR,length=2),rep(x$wnNOISEmodSR,length=2),rep(x$noiseTypeSR,length=2))))
 sim1984@outputSp$N$ARC
 
-argum1984@arguments$Recruitment$ARC
+IAM_argum_1984@arguments$Recruitment$ARC
+

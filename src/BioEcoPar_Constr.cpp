@@ -1117,7 +1117,7 @@ for (int ind_f = 0 ; ind_f < nbF ; ind_f++){
 
 if (nbE>0) {
 if(VERBOSE){Rprintf("\n  Mortalite");}
- Mortalite(list, it, eVar, 0);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
+ Mortalite(list, it, eVar, VERBOSE);//Rprintf("\nG");fichier << "G" << endl;//if (it>4) error("BBBhh");////PrintValue(out_Fr_fmi);//PrintValue(VECTOR_ELT(eVar,60));
  if(VERBOSE){Rprintf(" | ");}
 
 if(VERBOSE){Rprintf("\n  DynamicPop");}
@@ -1548,7 +1548,7 @@ free_vector(multFOTHinterm_e,1,nbE);
 //UNPROTECT(123+nbE+nbE+32+11+1+3+3+2+1+5); //+6 ajout�s apr�s int�gration de 'parOQD'
 //if (nbEstat>0) UNPROTECT(nbEstat);
 if (pflex){ UNPROTECT(2); } else {UNPROTECT(1);}
-UNPROTECT(30);
+UNPROTECT(30-1);
 UNPROTECT(17+20+4+16*6+8-1+9);//out_
 UNPROTECT(14);
 UNPROTECT(10); // PROTECT_WITH_INDEX

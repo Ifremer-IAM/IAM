@@ -303,3 +303,24 @@ format_varsp <- function(name, object){
 
   return(res)
 }
+
+#' find the extdata files
+#'
+#' Allorw to get paths from the package installation location for
+#' all extdata files.
+#'
+#' @details
+#' simplified system from {readr} package.
+#'
+#' @examples
+#' IAM_example("IAM_SS3_1984.RData")
+#' IAM_example("inputFile.xlsx")
+#' IAM_example("fleets")
+#'
+#' @param file Name of the file.
+#' Need to be in inst/extdata/ directory of the package
+#'
+#' @export
+IAM_example <- function(file){
+  system.file("extdata", file, package = "IAM", mustWork = TRUE)
+}
