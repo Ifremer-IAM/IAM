@@ -124,17 +124,6 @@ mod_spInput_serv <- function(id, recru){
           toggleState(id = p, condition = input$sr_mod)
         }
         recru$Recruitment[[id]]$modSRactive <- as.numeric(input$sr_mod)
-        # if(input$sr_mod){
-        #   recru$Recruitment[[id]]$typeMODsr <- input$rec_typ
-        #   recru$Recruitment[[id]]$parAmodSR <- input$a
-        #   recru$Recruitment[[id]]$parBmodSR <- input$b
-        #   recru$Recruitment[[id]]$parCmodSR <- input$c
-        #   # Noise
-        #   recru$Recruitment[[id]]$noiseTypeSR <- match(
-        #     input$Noise_dist, c("Norm", "LogN")
-        #   )
-        #   recru$Recruitment[[id]]$wnNOISEmodSR <- input$noise_dev
-        # }
       })
 
       observeEvent(input$rec_typ, {
@@ -433,10 +422,6 @@ app_server <- function(input, output, session) {
     toggleState(id = "nbIter", condition = input$iter)
     toggleState(id = "var_rep", condition = input$iter)
     x$Replicates$active <- as.numeric(input$iter)
-    # if(input$iter){
-    #   x$Replicates$nbIter <- input$nbIter
-    #   x$Replicates$SELECTvar <- input$var_rep
-    # }
   })
   observeEvent(input$nbIter, {
     x$Replicates$nbIter <- input$nbIter
@@ -454,23 +439,6 @@ app_server <- function(input, output, session) {
       toggleState(id = p, condition = input$manag)
     }
     x$Gestion$active <- as.numeric(input$manag)
-    # if(input$manag){
-    #   # x$Gestion$active <- 1
-    #   x$Gestion$control <- input$control
-    #   x$Gestion$target <- input$target
-    #   x$Gestion$espece <- input$espece
-    #   x$Gestion$delay <- input$delay
-    #   x$Gestion$typeG <- match(input$typeG, c("+", "x")) -1
-    #   x$Gestion$upd <- match(input$upd, c("Yes", "No"))
-    #   x$Gestion$sup <- input$sup
-    #   x$Gestion$inf <- input$inf
-    #   # x$Gestion$tac <- Gestion_tab$TAC[1,]
-    #   # x$Gestion$fbar <- Gestion_tab$TAC[2,]
-    #   # x$Gestion$effSup <- Gestion_tab$eff
-    #   # x$Gestion$mfm <- Gestion_tab$mfm
-    # # } else {
-    #   # x$Gestion$active <- 0
-    # }
   })
   observeEvent(input$control,{
     x$Gestion$control <- input$control
@@ -554,13 +522,6 @@ app_server <- function(input, output, session) {
   observeEvent(input$scenar, {
     toggleState(id = "scen_var", condition = input$scenar)
     x$Scenario$active <- as.numeric(input$scenar)
-    # if(input$scenar){
-    #   # x$Scenario$active <- 1
-    #   x$Scenario$SELECTscen <- match(
-    #     input$scen_var, x$Scenario$ALLscenario
-    #   )
-    # # } else {
-    # }
   })
   observeEvent(input$scen_var, {
     x$Scenario$SELECTscen <- match(input$scen_var, x$Scenario$ALLscenario)
@@ -619,7 +580,10 @@ run_app <- function(object, AllVarRep) {
 # 6 -> Hockey Stick Quadratic (rec ~ (si (ssb<=b*(1-c)) a*ssb ; si (b*(1-c)<ssb<b*(1+c)) a*(ssb-((ssb-b*(1-c))^2)/(4*b*c)) ; sinon a*b))
 # 7 -> Hockey Stick Smooth (rec ~ a*(ssb+sqrt(b^2+g)-sqrt((ssb-b)^2+g)), avec g=0.001 )
 
-
+#' Etape d'initialisation
+#' @param desc Object descriptor (default value : \code{as.character(NA)}).
+#' If not provided, copied the description slot of object.
+#' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
   if(is.null(desc)){ desc <- object@desc }
@@ -629,18 +593,33 @@ setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.c
 
 })
 
-setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.character(NA), ...){
+#' Etape de modification
+#' @rdname IAM.args-methods
+setMethod("IAM.args", signature("iamArgs","missing"),
+          function(object, desc=as.character(NA), ...){
   if(is.null(desc)){ desc <- object@desc }
 
   AllVarRep = c(
-    "B", "SSB", "Ctot", "Ytot", "Yfmi", "Ffmi", "Zeit", "Fbar", "Foth", "mu_nbds", "mu_nbv", "N", "Ystat", "Lstat", "Dstat", "Eff",
-    "GVL_fme", "StatGVL_fme", "GVLtot_fm", "GVLav_f", "vcst_fm", "vcst_f", "rtbs_f", "gp_f", "ps_f", "gcf_f", "gva_f", "cs_f", "sts_f", "rtbsAct_f",
-    "csAct_f", "gvaAct_f", "gcfAct_f", "psAct_f", "stsAct_f", "ccwCr_f", "GVLtot_f", "wagen_f", "L_efmit", "D_efmit",
+    "B", "SSB", "Ctot", "Ytot", "Yfmi", "Ffmi", "Zeit", "Fbar", "Foth",
+    "mu_nbds", "mu_nbv", "N", "Ystat", "Lstat", "Dstat", "Eff",
+    "GVL_fme", "StatGVL_fme", "GVLtot_fm", "GVLav_f", "vcst_fm", "vcst_f",
+    "rtbs_f", "gp_f", "ps_f", "gcf_f", "gva_f", "cs_f", "sts_f", "rtbsAct_f",
+    "csAct_f", "gvaAct_f", "gcfAct_f", "psAct_f", "stsAct_f", "ccwCr_f",
+    "GVLtot_f", "wagen_f", "L_efmit", "D_efmit",
     "Fr_fmi", "C_efmit", "P", "Pstat"
   )
 
+  tac_dimcst <- attributes(object@arguments$Gestion$tac)$DimCst
+  fbar_dimcst <- attributes(object@arguments$Gestion$fbar)$DimCst
+  effsup_dimcst <- attributes(object@arguments$Gestion$effSup)$DimCst
+  mfm_dimcst <- attributes(object@arguments$Gestion$mfm)$DimCst
+
   res <- run_app(object = object, AllVarRep = AllVarRep)
-  # TODO : add DimCst arg to tac, fbar, mfm and effSup
+
+  attributes(res@arguments$Gestion$tac)$DimCst <- tac_dimcst
+  attributes(res@arguments$Gestion$fbar)$DimCst <- fbar_dimcst
+  attributes(res@arguments$Gestion$effSup)$DimCst <- effsup_dimcst
+  attributes(res@arguments$Gestion$mfm)$DimCst <- mfm_dimcst
 
   return(res)
 })

@@ -990,9 +990,13 @@ invisible(get("LL",envir=e1))
 
 #' 'iamArgs' objects creator
 #'
-#' @param object TODO
-#' @param specific TODO
-#' @param ... # TODO : this is for the specific file.
+#' @param object \code{\link[IAM]{iamInput-class}} or
+#' \code{\link[IAM]{iamArgs-class}} object.
+#' @param specific this is for the specific file, a deprecated use of
+#' this function.
+#' @param ... desc parameter described below.
+#'
+#'  @return \code{\link[IAM]{iamArgs-class}} object after modification by a GUI.
 #'
 #' @docType methods
 #' @name IAM.args-methods
