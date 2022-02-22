@@ -2,6 +2,7 @@
 % Please edit documentation in R/0_1_Edit_iamArgs.R
 \name{IAM.args_scenar}
 \alias{IAM.args_scenar}
+\alias{IAM.args_scenar,iamArgs-method}
 \title{Get Scenario arguments}
 \usage{
 IAM.args_scenar(object)

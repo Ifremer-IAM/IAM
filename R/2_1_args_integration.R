@@ -1,23 +1,22 @@
 #' 'iamArgs' objects creator
 #'
 #' @param object  An \code{\link[IAM]{iamInput-class}} or \code{\link[IAM]{iamArgs-class}} object.
-#' @param desc Object descriptor (default value : \code{as.character(NA)}).
-#' If not provided, copied the description slot of object.
-#' @param ... # TODO : this is for the specific file.
+#' @param ... desc argument
 #'
 #' @name IAM.input2args
-#' @rdname IAM.args-methods
-#'
 #'
 #' @export
-setGeneric("IAM.input2args", function(object, desc = NULL,  ...){
+setGeneric("IAM.input2args", function(object,  ...){
   standardGeneric("IAM.input2args")
 }
 )
 
-#' @rdname IAM.args-methods
+#' @param desc Object descriptor (default value : \code{as.character(NA)}).
+#' If not provided, copied the description slot of object.
+#'
+#' @rdname IAM.input2args
 #' @export
-setMethod("IAM.input2args", signature("iamInput"),function(object, desc= NULL, ...){
+setMethod("IAM.input2args", signature("iamInput"),function(object, desc= NULL){
 
 
   ALLVarRep = c(

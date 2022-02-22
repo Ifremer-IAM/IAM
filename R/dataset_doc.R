@@ -13,7 +13,7 @@
 #' }
 #'
 #' @details
-#' This dataset is created with \code{\link[IAM]{IAM.input}} function.
+#' This dataset is created with \code{\link[IAM]{IAM.input-methods}} function.
 #' This function load a \code{.xlsx} file, require a \code{t_init} and \code{nbStep}.
 #' If a SS3 species is included in the \code{.xlsx} file, then additionnal
 #' data must be provided.

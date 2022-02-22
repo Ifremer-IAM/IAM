@@ -2,6 +2,7 @@
 % Please edit documentation in R/0_1_Edit_iamArgs.R
 \name{IAM.editArgs_Scenar}
 \alias{IAM.editArgs_Scenar}
+\alias{IAM.editArgs_Scenar,iamArgs-method}
 \title{Modify Scenario arguments}
 \usage{
 IAM.editArgs_Scenar(object, ...)
@@ -11,21 +12,20 @@ IAM.editArgs_Scenar(object, ...)
 \arguments{
 \item{object}{a \code{\link[IAM]{iamArgs-class}} object}
 
+\item{...}{selected argument}
+
 \item{selected}{name or number of scenario selected.
 NULL will desactivate the scenario module}
 }
 \description{
 Modify Scenario arguments
 }
-\details{
-The selection of
-}
 \examples{
 data(IAM_argum_1984)
 IAM.args_scenar(IAM_argum_1984)
 
 # Activate scenario "Sc_saisine"
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = "Sc_saisine")
+IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected="Sc_saisine")
 IAM.args_scenar(IAM_argum_1984)
 
 # Desactivate scenario

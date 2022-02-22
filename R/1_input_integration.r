@@ -1606,8 +1606,9 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 #' @param fileSTOCH deprecated argument.
 #' @param ... Further arguments used when the input is a .xls. Described below.
 #'
-#' @name IAM.input
-#' @rdname IAM.input-methods
+#' @docType methods
+#' @name IAM.input-methods
+#' @aliases IAM.input
 #' @export
 setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
   standardGeneric("IAM.input")
@@ -1618,8 +1619,6 @@ setGeneric("IAM.input", function(fileIN, fileSPEC, fileSCEN, fileSTOCH, ...){
 
 # a partir d'un fichier .xls
 
-#' @name IAM.input
-#' @aliases IAM.input,character,missing,missing,missing-method
 #' @rdname IAM.input-methods
 #'
 #' @param t_init Only for first signature. Initial year.
@@ -1771,12 +1770,12 @@ if (length(nmQ)>0) {
           lFothqDwt_i[[paste0("FDWothi_S",season,"M",morph)]] <- temp
 
           temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
-          liniFqDwt_i[[paste("iniFDWi_S",season,"M",morph)]] <- temp
+          liniFqDwt_i[[paste0("iniFDWi_S",season,"M",morph)]] <- temp
           temp <- adrop(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
-          liniFqDwt_fmi[[paste("iniFDWfmi_S",season,"M",morph)]] <- temp
+          liniFqDwt_fmi[[paste0("iniFDWfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
           temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
-          liniFothqDwt_i[[paste("iniFDWothi_S",season,"M",morph)]] <- temp
+          liniFothqDwt_i[[paste0("iniFDWothi_S",season,"M",morph)]] <- temp
 
           temp <- adrop(iniNt0q[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
           liniNt0q[[paste0("iniNt0q_S",season,"M",morph)]] <- temp
@@ -1826,7 +1825,6 @@ return(OUT)
 
   # ? partir de fichiers .txt
 #' @importFrom methods new
-#' @name IAM.input
 #' @aliases IAM.input,character,character,missing,missing-method
 #' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "missing", "missing"),
@@ -1839,14 +1837,13 @@ stop("This depend on deprecated C++ function 'Fun' ")
 # specific <- suppressWarnings(.Call("Fun",normalizePath(fileSPEC),NULL))
 # input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 
-out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=list())
-return(convertInput(out))
+# out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=list())
+# return(convertInput(out))
 
 })
 
 
 #' @importFrom methods new
-#' @name IAM.input
 #' @aliases IAM.input,character,character,character,missing-method
 #' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "character", "missing"),
@@ -1861,14 +1858,13 @@ stop("This depend on deprecated C++ function 'Fun' ")
 # input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 # scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
 
-out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=list())
-return(convertInput(out))
+# out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=list())
+# return(convertInput(out))
 
 })
 
 
 #' @importFrom methods new
-#' @name IAM.input
 #' @aliases IAM.input,character,character,missing,character-method
 #' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "missing", "character"),
@@ -1883,14 +1879,13 @@ stop("This depend on deprecated C++ function 'Fun' ")
 # input <- suppressWarnings(.Call("Fun",normalizePath(fileIN),specific))
 # stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
-out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=stochastic)
-return(convertInput(out))
+# out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=list(),stochastic=stochastic)
+# return(convertInput(out))
 
 })
 
 
 #' @importFrom methods new
-#' @name IAM.input
 #' @aliases IAM.input,character,character,character,character-method
 #' @rdname IAM.input-methods
 setMethod("IAM.input", signature("character", "character", "character", "character"),
@@ -1907,8 +1902,8 @@ stop("This depend on deprecated C++ function 'Fun' ")
 # scenario <- suppressWarnings(.Call("Fun",normalizePath(fileSCEN),specific))
 # stochastic <- suppressWarnings(.Call("Fun",normalizePath(fileSTOCH),specific))
 
-out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=stochastic)
-return(convertInput(out))
+# out <- new("iamInput",desc=desc,specific=specific,historical=list(),input=input,scenario=scenario,stochastic=stochastic)
+# return(convertInput(out))
 
 })
 

@@ -47,7 +47,6 @@
 #'
 #' @author Mathieu Merzereaud
 #' @name iamInput-class
-#' @rdname iamInput-class
 #' @export
 setClass("iamInput", ## Class ####
 	representation(
@@ -105,7 +104,6 @@ setClass("iamInput", ## Class ####
 #' @details Used by \code{reformat} function. # TODO find in what extent
 #'
 #' @name stockInput-class
-#' @rdname stockInput-class
 setClass("stockInput", ## Class ####
          representation(
            stock="character",
@@ -237,7 +235,6 @@ setClass("stockInput", ## Class ####
 #' @details Used by \code{reformat} function. # TODO find in what extent
 #'
 #' @name staticStockInput-class
-#' @rdname staticStockInput-class
 setClass("staticStockInput", ## Class ####v
 	representation(
 		stock="character",
@@ -289,7 +286,6 @@ setClass("staticStockInput", ## Class ####v
 #' @details Used by \code{reformat} function. # TODO find in what extent
 #'
 #' @name fleetInput-class
-#' @rdname fleetInput-class
 setClass("fleetInput", ## Class ####
 	representation(
 		stock="character",
@@ -409,7 +405,6 @@ setClass("fleetInput", ## Class ####
 #' @details Used by \code{reformat} function. # TODO find in what extent
 #'
 #' @name marketInput-class
-#' @rdname marketInput-class
 setClass("marketInput", ## Class ####
          representation(
            input="list"
@@ -429,7 +424,6 @@ setClass("marketInput", ## Class ####
 
 
 # iamArgs ####
-
 #' Checking validity of iamArgs Class
 #'
 #' @param object \code{\link[IAM]{iamArgs-class}} object
@@ -525,7 +519,6 @@ val.iamArgs <- function(object){
 #'
 #' @author Mathieu Merzereaud
 #' @name iamArgs-class
-#' @rdname iamArgs-class
 #' @export
 setClass("iamArgs", ## Class ####
 	representation(

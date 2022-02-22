@@ -6,15 +6,16 @@
 
 #' Modelization method
 #'
-#' @param objArgs output from \code{\link[IAM]{IAM.args}}
-#' @param objInput output from \code{\link[IAM]{IAM.input}}
+#' @param objArgs output from \code{\link[IAM]{IAM.args-methods}}
+#' @param objInput output from \code{\link[IAM]{IAM.input-methods}}
 #' @param ... there is so much more arg.... # TODO
 #'
 #' @importFrom methods new
 #'
 #' @useDynLib IAM, .registration = TRUE
 #' @docType methods
-#' @rdname IAM.model-methods
+#' @name IAM.model-methods
+#' @aliases IAM.model
 #' @export
 setGeneric("IAM.model", function(objArgs, objInput, ...){ #  Generic model####
 	standardGeneric("IAM.model")
@@ -271,7 +272,7 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     mOth = as.double(mOth),
                     bounds = as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
                     TAC = TACtot, TACtot = as.double(objArgs@arguments$Gestion$tac), FBAR = as.double(objArgs@arguments$Gestion$fbar),      #as.double(objArgs@arguments$Gestion$tac)
-                    # othSpSup = objArgs@arguments$Gestion$othSpSup, 
+                    # othSpSup = objArgs@arguments$Gestion$othSpSup,
                     effSup = as.double(objArgs@arguments$Gestion$effSup),
                     GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(specific$Species,specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),

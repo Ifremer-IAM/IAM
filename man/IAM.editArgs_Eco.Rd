@@ -2,22 +2,26 @@
 % Please edit documentation in R/0_1_Edit_iamArgs.R
 \name{IAM.editArgs_Eco}
 \alias{IAM.editArgs_Eco}
+\alias{IAM.editArgs_Eco,iamArgs-method}
 \title{Modify Economic arguments}
 \usage{
-IAM.editArgs_Eco(object, dr = NULL, perscCalc = NULL)
+IAM.editArgs_Eco(object, ...)
 
 \S4method{IAM.editArgs_Eco}{iamArgs}(object, dr = NULL, perscCalc = NULL)
 }
 \arguments{
 \item{object}{a \code{\link[IAM]{iamArgs-class}} object}
 
-\item{dr}{actualisation rate : numeric value in decimal (percentage. For 4%, dr must be 0.04)}
+\item{...}{dr and persCalc arguments}
 
-\item{persCalc}{personnel cost : computation mode
-\itemize{
-\item{0 - constant variable}
-\item{1 - linear relation with rtbs; cshr available}
-\item{2 - linear relation with rtbs; cshr non available}
+\item{dr}{actualisation rate : numeric value in decimal
+(percentage. For 4\%, dr must be 0.04)}
+
+\item{perscCalc}{personnel cost : computation mode
+\describe{
+\item{0}{- constant variable}
+\item{1}{- linear relation with rtbs; cshr available}
+\item{2}{- linear relation with rtbs; cshr non available}
 }}
 }
 \description{
@@ -34,7 +38,6 @@ IAM_argum_1984@arguments$Eco$perscCalc
 IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.06, perscCalc = 0)
 IAM_argum_1984@arguments$Eco$dr
 IAM_argum_1984@arguments$Eco$perscCalc
-
 
 }
 \author{

@@ -27,7 +27,7 @@ Description: IAM (Impact Assessment Model) is a bio-economic model
     It is a discrete time, multi-fleet, multi-trade, multi-species annual 
     bio-economic model with "age" components for the biological part, 
     and "commercial category" components for the economic part.
-Depends: R(>= 3.4.3) 
+Depends: R(>= 3.5.0) 
 Imports: utils,
          stats,
          methods,
@@ -56,3 +56,16 @@ Suggests:
     knitr
 VignetteBuilder: knitr
 Encoding: UTF-8
+Collate: 
+    '0_input_objects.r'
+    '0_1_Edit_iamArgs.R'
+    '1_input_integration.r'
+    '2_1_args_integration.R'
+    '2_args_integration.r'
+    '3_args_input_txtExport.r'
+    '4_output_objects.r'
+    '5_simulation.r'
+    '6_utils.r'
+    '7_plotting.r'
+    'dataset_doc.R'
+    'utils_dev.R'

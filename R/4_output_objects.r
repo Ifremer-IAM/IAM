@@ -28,7 +28,6 @@
 #'
 #' @author Mathieu Merzereaud
 #' @name iamOutput-class
-#' @rdname iamOutput-class
 #' @export
 setClass("iamOutput",
 	representation(
@@ -234,7 +233,6 @@ setClass("iamOutput",
 #'
 #' @author Mathieu Merzereaud
 #' @name iamOutputRep-class
-#' @rdname iamOutputRep-class
 #' @export
 setClass("iamOutputRep",
 	representation(

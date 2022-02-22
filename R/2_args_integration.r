@@ -8,6 +8,7 @@
 #' @importFrom stats na.omit
 #' @importFrom utils fix
 #' @importFrom methods new
+#'
 #' @import tcltk
 #' @import tcltk2
 #'
@@ -993,9 +994,9 @@ invisible(get("LL",envir=e1))
 #' @param specific TODO
 #' @param ... # TODO : this is for the specific file.
 #'
-#' @name IAM.args
-#' @rdname IAM.args-methods
-#'
+#' @docType methods
+#' @name IAM.args-methods
+#' @aliases IAM.args
 #'
 #' @export
 setGeneric("IAM.args", function(object, specific,  ...){
@@ -1025,7 +1026,7 @@ setMethod("IAM.args", signature("character","character"),function(object, specif
   # specif <- .Call("Fun",normalizePath(specific),NULL)
   # argum <- .Call("Fun",normalizePath(object),specif)
 
-  return(new("iamArgs", desc=desc, arguments=argum, specific=specif))
+  # return(new("iamArgs", desc=desc, arguments=argum, specific=specif))
 
 })
 
