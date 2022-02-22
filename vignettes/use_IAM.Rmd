@@ -73,29 +73,22 @@ Ces commandes permettend d'accéder à l'aide du package, avec une aide détaill
 avoir un example simple sans SS3 et introduire le SS3 dans une autre vignette.
 :::
 
-```{r example_data, include=FALSE, echo = FALSE}
-#' TODO  export the function into the package.
-#' simplified system from {readr} package.
-#' @param file Name of the file. Need to be in inst/extdata/ directory of the package
-IAM_example <- function(file){
-  system.file("extdata", file, package = "IAM", mustWork = TRUE)
-}
-# test basic :
-fileIN <- IAM_example("inputFile.xlsx")
-file.exists(fileIN)
-```
-
 
 ```{r, eval = FALSE, include = FALSE}
-fileIN <- IAM_example("inputFile.xlsx") # simplified with only 2 dyn and 2 static
-load("../dev/data/inpSS3darwiniana1984.RData")
-  input1984 <- IAM::IAM.input(fileIN = fileIN,t_init=1984,nbStep=12,folderFleet="../dev/data/fleets",
-                              Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
-                              FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
-                              FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
-                              Nt0s1q=list(DAR=Nt0s1q),Ni0q=list(DAR=Ni0q),iniNt0q=list(DAR=iniNt0q),matwt=list(DAR=mat_morphage),
-                              verbose = TRUE)
-slotNames(input1984)
+load(IAM_example("IAM_SS3_1984.RData"))
+IAM_input_1984 <- IAM::IAM.input(
+  fileIN = IAM_example("inputFile.xlsx"),
+  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+  Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
+  Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
+  FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
+  FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
+  FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
+  FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
+  Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
+  iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
+)
+slotNames(IAM_input_1984)
 ```
 
 
@@ -122,58 +115,31 @@ inp1984 <- IAM.input(fileIN = IAM_example("inputFile.xlsx"), t_init=1984, nbStep
 
 
 ```{r falseinport, include = FALSE, echo = FALSE, results="hide"}
-load("../dev/data/inputIFR.RData")
+data(IAM_input_1984)
 ```
 
 
 
-L'objet résultant (ici `input1984`) de classe `iamInput` possède une structure fixe spécifique, composée d'éléments appelés "slots" et que l'on peut distinguer de cette façon :
+L'objet résultant (ici `IAM_input_1984`) de classe `iamInput` possède une structure fixe spécifique, composée d'éléments appelés "slots" et que l'on peut distinguer de cette façon :
 
 ```{r inpslot, eval= TRUE}
-slotNames(input1984)
+slotNames(IAM_input_1984)
 ```
 
 Le slot "desc" est un simple descripteur permettant de caractériser l'objet ; c'est un paramètre optionnel de la fonction IAM.input. Le slot "specific" est constitué des descriptifs des dimensions du modèle qui vont conditionner la structure des variables. Le slot "historical" regroupe les données antérieures à l'instant initial `t_init`. Les slots "scenario" et "stochastic" intègrent les paramètres définis dans les feuillets correspondants. Enfin, le slot principal "input" rassemble les données initiales injectées dans le modèle. Il est composé d'un élément "Fleet" et d'un élément par espèce modélisée, ces derniers possédant la même structure. Au final, ce slot rassemble toutes les informations renseignées dans les feuillets "Stock", "Flottille" et "Market", ainsi que les matrices "fm", "mm" et "icat". Voici quelques exemples permettant d'accéder aux données de cet objet (l'accès aux slots se fait par `objet@slot`, l'accès aux éléments d'un slot par `slot$élément`) :
 
 ```{r inpnames}
-names(input1984@specific)
-names(input1984@input)
-names(input1984@input$COR)
-input1984@input$COR$wStock_i
+names(IAM_input_1984@specific)
+names(IAM_input_1984@input)
+IAM_input_1984@input$COR$wStock_i
 ```
 
 On peut ici noter l'attribut `DimCst` associé à la variable `wStock_i` . Chaque variable d'entrée insérée dans le slot `input` est affectée de cet attribut qui définit sa dimension : la première composante est la dimension flottille (0 signifie "pas de dimension"), la seconde est la dimension métier, la troisième est la dimension âge/catégorie, et la quatrième est la dimension temporelle. Dans l'exemple précédent, la variable se décline uniquement suivant la dimension "âge", qui comprend pour l'espèce considérée 9 modalités. Cette attribution systématique permet au modèle de gérer les incompatibilités de dimensions entre les variables et de considérer plusieurs niveaux de définition pour une même variable.
 
 Afin de simplifier l'utilisation de cette classe d'objets, une méthode `summary()` a été implémentée qui permet d'avoir un aperçu rapide :
 
-```{r summaryexp, echo = FALSE}
-#' summary method for iamInput class
-setMethod(
-  f = "summary", signature("iamInput"),
-  function(object, ...) {
-    spe <- object@specific
-    cat(object@desc, "(IAM input) :\n")
-    cat(sprintf(
-      "Simulation of %d dynamic species, %d static species and %d fleet\n",
-      length(spe$Species), length(spe$StaticSpp), length(spe$Fleet) 
-    ))
-    cat(rep("-",35), "\nDynamic Species | Model |     Ages\n", sep = "")
-    cat(sprintf("%15s | %5s | %1s to %3s\n", spe$Species, 
-                ifelse(spe$Q == 0, "XSA", "SS3"), 
-                unlist(lapply(spe$Ages, head, 1)),
-                unlist(lapply(spe$Ages, tail, 1)) ), sep = "")
-    cat(rep("-",35),"\n", sep = "")
-    cat("                  Fleet |  nbv\n", sprintf(
-      "%22s | %4d\n", spe$Fleet, object@input$Fleet$nbv_f
-    ))
-    cat(sprintf("Simulation start in %d and end in %d (%d steps)\n",
-                spe$t_init, tail(spe$times,1), spe$NbSteps ))
-  }
-)
-```
-
 ```{r summaryinp}
-summary(input1984)
+summary(IAM_input_1984)
 ```
 
 
@@ -183,11 +149,11 @@ summary(input1984)
 La méthode `IAM.args()` prend en paramètre un objet de classe `iamInput` et permet à l'utilisateur de fixer les caractéristiques de la simulation à opérer. Une interface de paramétrage s'affiche, et la validation renvoie un objet de classe `iamArgs` définissant les choix de pilotage du modèle.
 
 ```{r argum, eval=F}
-argum1984 <- IAM.args(inp)
+argum1984 <- IAM.args(IAM_input_1984)
 ```
 
-```{r falseargum, include = FALSE, echo = FALSE, results="hide"}
-load("../dev/data/argumIFR.RData")
+```{r falseargum, include = FALSE, echo = FALSE, results="hide", eval = FALSE}
+data(IAM_argum_1984)
 ```
 
 
@@ -278,12 +244,12 @@ les  noms de gestions sont en anglais maintenant !
 
 
 Une fois la validation des arguments effectuée en cliquant sur "OK", un objet de classe `iamArgs` est retourné, intégrant tous les arguments qui vont conditionner les processus mis en œuvre pendant la phase de simulation.
+Afin de simplifier l'utilisation de cette classe d'objets, une méthode `summary()` a été implémentée qui permet d'avoir un aperçu rapide 
 
 
-
-```{r slotargum}
-slotNames(argum1984)
-names(argum1984@arguments)
+```{r slotargum, eval = FALSE}
+summary(IAM_argum_1984)
+names(IAM_argum_1984@arguments)
 ```
 
 <!--

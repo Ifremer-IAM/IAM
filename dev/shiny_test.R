@@ -1,10 +1,16 @@
 library(shiny)
-# library(shiny.i18n)
 library(shinyWidgets)
 # library(shinythemes)
+library(rhandsontable)
 library(shinyjs)
 
-# Thanks ThinkR for helping me messing some code
+#' Accessing app arguments
+#'
+#' @param which the name of an argument passed to run_app function. char.
+#'
+#' @importFrom shiny getShinyOption
+#'
+#' @details Thanks ThinkR for helping me messing some code.
 get_golem_options <- function(which = NULL){
   if (is.null(which)){
     getShinyOption("golem_options")
@@ -13,11 +19,29 @@ get_golem_options <- function(which = NULL){
   }
 }
 
+#' Allow to set golem options for an app.
+#'
+#' @param app a shiny app
+#' @param golem_opts list of options. Options need to be named.
+#'
+#' @importFrom shiny runApp
+#'
+#' @details Thanks ThinkR for helping me messing some code
 with_golem_options <- function(app, golem_opts){
   app$appOptions$golem_options <- golem_opts
   return(runApp(app))
 }
 
+#' Adding tabset for each species
+#'
+#' @name mod_spInput
+#'
+#' @import shiny
+#' @import shinyjs
+#' @import shinyWidgets
+#'
+#' @author Maxime Jaunatre
+#'
 mod_spInput <- function(id){
   ns <- NS(id)
   tagList(
@@ -29,120 +53,302 @@ mod_spInput <- function(id){
       # ),
       column(
         width = 8,
-        checkboxInput(ns("sr_mod"), "Stock Recrutement Model", value = TRUE),
-        selectInput(ns("rec_typ"), "Type",
-                    c(
-                      "Mean" = "mean",
-                      "Hockey-Stick" = "Hockey-Stick",
-                      "Beverton-Holt" = "Beverton-Holt",
-                      "Ricker" = "Ricker",
-                      "Shepherd" = "Shepherd",
-                      "Quadratic-HS" = "Quadratic-HS",
-                      "Smooth-HS" = "Smooth-HS"
-                    ),
-                    selectize = FALSE
+        checkboxInput(
+          ns("sr_mod"), "Stock Recrutement Model",
+          value = get_golem_options("arg")$Recruitment[[id]]$modSRactive
         ),
-        numericInput(ns("a"), label = "a parameter", value = 1),
-        numericInput(ns("b"), label = "b parameter", value = 0),
-        numericInput(ns("c"), label = "c parameter", value = 0),
+        selectInput(
+          ns("rec_typ"), "Type",
+          c(
+            "Mean" = "mean",
+            "Hockey-Stick" = "Hockey-Stick",
+            "Beverton-Holt" = "Beverton-Holt",
+            "Ricker" = "Ricker",
+            "Shepherd" = "Shepherd",
+            "Quadratic-HS" = "Quadratic-HS",
+            "Smooth-HS" = "Smooth-HS"
+          ),
+          selectize = FALSE,
+          selected = get_golem_options("arg")$Recruitment[[id]]$typeMODsr
+        ),
+        numericInput(
+          ns("a"), label = "a parameter",
+          value = get_golem_options("arg")$Recruitment[[id]]$parAmodSR),
+        numericInput(
+          ns("b"), label = "b parameter",
+          value = get_golem_options("arg")$Recruitment[[id]]$parBmodSR),
+        numericInput(
+          ns("c"), label = "c parameter",
+          value = get_golem_options("arg")$Recruitment[[id]]$parCmodSR),
         awesomeRadio(
           inputId = ns("Noise_dist"), label = "Noise dist.",
-          choices = c("Norm","LogN"), selected = "Norm", inline = TRUE
+          choices = c("Norm","LogN"), inline = TRUE,
+          selected = c("Norm","LogN")[
+            get_golem_options("arg")$Recruitment[[id]]$noiseTypeSR
+          ]
         ),
-        numericInput(ns("noise_dev"), label = "Noise st.dev.", value = 0)
+        numericInput(
+          ns("noise_dev"), label = "Noise st.dev.",
+          value = get_golem_options("arg")$Recruitment[[id]]$wnNOISEmodSR)
       ),
       column(
         width = 4,
-        checkboxInput(ns("stocksim"), "StockSim", value = FALSE),
-        awesomeRadio(inputId = ns("sim_typ"), label = "Type",
-                     choices = c("1","2","3"), selected = "1"
+        checkboxInput(
+          ns("stocksim"), "StockSim",
+          value = as.logical(
+            get_golem_options("arg")$Recruitment[[id]]$simuSTOCHactive
+          )
+        ),
+        awesomeRadio(
+          inputId = ns("sim_typ"), label = "Type", choices = c("1","2","3"),
+          selected = as.character(
+            get_golem_options("arg")$Recruitment[[id]]$typeSIMUstoch
+          )
         )
       )
     )
   )
 }
 
-# Define UI
+#' @rdname mod_spInput
+mod_spInput_serv <- function(id, recru){
+
+  moduleServer(
+    id,
+    ## Below is the module function
+    function(input, output, session) {
+
+      observeEvent(input$sr_mod, {
+        parts <- c("rec_typ", "a", "b", "c", "Noise_dist", "noise_dev")
+        for(p in parts){
+          toggleState(id = p, condition = input$sr_mod)
+        }
+        recru$Recruitment[[id]]$modSRactive <- as.numeric(input$sr_mod)
+        # if(input$sr_mod){
+        #   recru$Recruitment[[id]]$typeMODsr <- input$rec_typ
+        #   recru$Recruitment[[id]]$parAmodSR <- input$a
+        #   recru$Recruitment[[id]]$parBmodSR <- input$b
+        #   recru$Recruitment[[id]]$parCmodSR <- input$c
+        #   # Noise
+        #   recru$Recruitment[[id]]$noiseTypeSR <- match(
+        #     input$Noise_dist, c("Norm", "LogN")
+        #   )
+        #   recru$Recruitment[[id]]$wnNOISEmodSR <- input$noise_dev
+        # }
+      })
+
+      observeEvent(input$rec_typ, {
+        recru$Recruitment[[id]]$typeMODsr <- input$rec_typ
+      })
+      observeEvent(input$a, {
+        recru$Recruitment[[id]]$parAmodSR <- input$a
+      })
+      observeEvent(input$b, {
+        recru$Recruitment[[id]]$parBmodSR <- input$b
+      })
+      observeEvent(input$c, {
+        recru$Recruitment[[id]]$parCmodSR <- input$c
+      })
+      # Noise
+      observeEvent(input$rec_typ, {
+        recru$Recruitment[[id]]$noiseTypeSR <- match(
+          input$Noise_dist, c("Norm", "LogN")
+        )
+      })
+      observeEvent(input$noise_dev, {
+        recru$Recruitment[[id]]$wnNOISEmodSR <- input$noise_dev
+      })
+      # Stock sim
+      observeEvent(input$stocksim, {
+        toggleState(id = "sim_typ", condition = input$stocksim)
+        if(input$stocksim){
+          recru$Recruitment[[id]]$typeSIMUstoch <- as.numeric(input$sim_typ)
+        }
+        recru$Recruitment[[id]]$simuSTOCHactive <- as.numeric(input$stocksim)
+      })
+      observeEvent(input$sim_typ, {
+        recru$Recruitment[[id]]$typeSIMUstoch <- as.numeric(input$sim_typ)
+      })
+    }
+  )
+}
+
+#' @title Shiny app for \code{IAM.args()}.
+#'
+#' @author Maxime Jaunatre
+#'
+#' @import shiny
+#' @import shinyjs
+#' @import shinyWidgets
+#' @import rhandsontable
+#'
+#' @name param_app
 app_ui <- function() {
   fluidPage(
+    tags$head(
+      tags$style(HTML("
+      .option_group {
+          border: 1px double gray;
+          border-radius: 10px !important;
+          padding: 5px;
+      }
+    "))),
+
     useShinyjs(),
     fluidRow(
       column(
+        style='padding:5px;',
         width = 4,
-        div( # Recruitement panels ####
-             class = "option-group",
-             tabsetPanel(id = "tabs")
+        tags$div(
+          class = "option_group", # Recruitement panels ####
+          h3("Recruitment"),
+          tabsetPanel(id = "tabs")
         )
       ),
       column(
-        width = 8,
-        fluidRow(
-          column(
-            width = 6,
-            div( # Management panel ####
-                 class = "option-group",
-                 checkboxInput("manag", "Management", value = FALSE),
-                 selectInput("man_contr", "Control",
-                             c("Nb vessels"="Nb vessels","Nb trips"="Nb trips"),
-                             selectize = FALSE
-                 ),
-                 selectInput("variables", "Output variables",
-                             c("TAC"="TAC","Fbar"="Fbar","TAC->Fbar"="TAC->Fbar"),
-                             selectize = FALSE
-                 ),
-                 awesomeRadio(
-                   inputId = "man_typ", label = "Type",choices = c("+","x"),
-                   selected = "+", inline = TRUE
-                 ),
-                 awesomeRadio(
-                   inputId = "man_upd", label = "Update",choices = c("Yes","No"),
-                   selected = "Yes", inline = TRUE
-                 ),
-                 numericInput("up_bound", label = "Upper bound", value = 0),
-                 numericInput("low_bound", label = "Lower boun", value = 0)
-            ),
-            div( # Scenar ####
-                 class = "option-group",
-                 checkboxInput("scenar", "Scenario", value = FALSE),
-                 selectInput("scen_var", "Output variables",
-                             get_golem_options("input")@arguments$Scenario$ALLscenario,
-                             selectize = FALSE
-                 )
-            )
+        style='padding:5px;',
+        width = 4,
+        tags$div(
+          class = "option_group", # Management panel ####
+          fluidRow(
+            column(6, h3("Management")),
+            column(6, checkboxInput(
+              "manag", "activate",
+              value = as.logical(get_golem_options("arg")$Gestion$active)
+            ))
           ),
-          column(
-            width = 6,
-            div( # Economic panel ####
-                 class = "option-group",
-                 h3("Economic"),
-                 # radioGroupButtons(
-                 #   inputId = "Eco_typ", choices = c("Complete","DCF"),
-                 #   justified = TRUE
-                 # ),
-                 awesomeRadio(
-                   inputId = "pers", label = "perscCalc",
-                   choices = c("0", "1", "2", "3", "4"),
-                   selected = "0", inline = TRUE
-                 ),
-                 numericInput("disc_rate", label = "Discound rate",
-                              value = 0, step = 0.01)
-                 # )
-            ),
-            div( # Iterative panel ####
-                 class = "option-group",
-                 checkboxInput("iter", "Iterative", value = FALSE),
-                 numericInput("niter", label = "Number of iteration",
-                              value = 500),
-                 multiInput(
-                   inputId = "var_rep",
-                   label = "Output variables",
-                   choices = NULL,
-                   choiceNames = get_golem_options("AllVarRep"),
-                   choiceValues = get_golem_options("AllVarRep")
-                 )
-            )
+          fluidRow(
+            column(6, selectInput(
+              "espece", "Species",
+              get_golem_options("spe")$Species, # TODO : only dynamic or all species ?
+              selectize = FALSE,
+              selected =get_golem_options("arg")$Gestion$espece
+            )),
+            column(6, selectInput(
+              "control", "Control",
+              c("Nb vessels"="Nb vessels","Nb trips"="Nb trips"),
+              selectize = FALSE,
+              selected = get_golem_options("arg")$Gestion$control
+            ))
+          ),
+          h4("Target"),
+          fluidRow(
+            column(5, selectInput(
+              "target", label = NULL, #"Target",
+              c("TAC"="TAC","Fbar"="Fbar","TAC->Fbar"="TAC->Fbar"),
+              selectize = FALSE,
+              selected = get_golem_options("arg")$Gestion$target
+            )),
+            column(7, dropdown(
+              inputId = "tacfbar",
+              rHandsontableOutput("tac", width = 450),
+              width = "500px", up = FALSE, right = TRUE,
+              label = "TAC/Fbar", tooltip = TRUE
+            ))
+          ),
+          fluidRow(
+            column(6, awesomeRadio(
+              inputId = "typeG", label = "Type",choices = c("+","x"),
+              inline = TRUE,
+              selected = c("+", "x")[get_golem_options("arg")$Gestion$typeG +1]
+            )),
+            column(6, awesomeRadio(
+              inputId = "upd", label = "Update",choices = c("Yes","No"),
+              inline = TRUE,
+              selected = c("Yes", "No")[get_golem_options("arg")$Gestion$upd]
+            ))
+          ),
+          sliderInput(
+            "delay", label = "Delay", step = 1, min = 1,
+            max = get_golem_options("spe")$NbSteps,
+            value = get_golem_options("arg")$Gestion$delay
+          ),
+          fluidRow(
+            column(6, numericInput(
+              "sup", label = "Upper bound",
+              value = get_golem_options("arg")$Gestion$sup
+            )),
+            column(6, numericInput(
+              "inf", label = "Lower bound",
+              value = get_golem_options("arg")$Gestion$inf
+            ))
+          ),
+          fluidRow(
+            column(6, dropdown(
+              inputId = "effsup_mat",
+              rHandsontableOutput("eff", width = 450),
+              width = "500px", up = TRUE,
+              label = "eff table", tooltip = FALSE
+            )),
+            column(6, dropdown(
+              inputId = "mfm_mat",
+              rHandsontableOutput("mfm", width = 450),
+              width = "500px",up = TRUE, right = TRUE,
+              label = "mfm table", tooltip = FALSE
+            )),
           )
         ),
+        tags$div(
+          class = "option_group", # Scenar ####
+          fluidRow(
+            column(6, h3("Scenario")),
+            column(6, checkboxInput(
+              "scenar", "activate",
+              value = as.logical(get_golem_options("arg")$Scenario$active)
+            ))
+          ),
+          selectInput(
+            "scen_var", "Output variables",
+            get_golem_options("arg")$Scenario$ALLscenario,
+            selectize = FALSE,
+            selected =  get_golem_options("arg")$Scenario$ALLscenario[
+              get_golem_options("arg")$Scenario$SELECTscen
+            ]
+          )
+        )
+      ),
+      column(
+        style='padding:5px;',
+        width = 4,
+        tags$div(
+          class = "option_group", # Economic panel ####
+          h3("Economic"),
+          awesomeRadio(
+            inputId = "perscCalc", label = "perscCalc",
+            choices = c("0", "1", "2", "3", "4"), inline = TRUE,
+            selected = as.character(get_golem_options("arg")$Eco$perscCalc)
+          ),
+          numericInput(
+            "dr", label = "Discound rate", step = 0.01,
+            value = get_golem_options("arg")$Eco$dr
+          )
+        ),
+        tags$div(
+          class = "option_group", # Replicates panel ####
+          fluidRow(
+            column(6, h3("Replicates")),
+            column(6, checkboxInput(
+              "iter", "activate",
+              value = as.logical(get_golem_options("arg")$Replicates$active)
+            ))
+          ),
+          numericInput(
+            "nbIter", label = "Number of iteration",
+            value = get_golem_options("arg")$Replicates$nbIter
+          ),
+          multiInput(
+            inputId = "var_rep",
+            label = "Output variables",
+            choices = NULL,
+            choiceNames = get_golem_options("AllVarRep"),
+            choiceValues = get_golem_options("AllVarRep")
+          )
+        )
+      )
+    ),
+    fluidRow(
+      column(
+        4, offset = 4,
         actionButton("done", "Done"),
         actionButton("cancel", "Cancel")
       )
@@ -150,54 +356,252 @@ app_ui <- function() {
   )
 }
 
-# Define server function
+#' @rdname param_app
 app_server <- function(input, output, session) {
-  sp <- get_golem_options("input")@specific$Species
-  spDyn <- sp[get_golem_options("input")@specific$Q == 0]
+
+  x <- reactiveValues(
+    input = get_golem_options("input"),
+    Recruitment = get_golem_options("arg")$Recruitment,
+    Replicates = get_golem_options("arg")$Replicates,
+    Scenario = get_golem_options("arg")$Scenario,
+    Gestion = get_golem_options("arg")$Gestion,
+    Eco = get_golem_options("arg")$Eco
+  )
+
+  # Editable table with rhandsontable ####
+  Gestion_tab <- reactiveValues()
+  tac <- reactive({
+    if (!is.null(input$tac)) {
+      DF = hot_to_r(input$tac)
+      rownames(DF) <- rownames(get_golem_options("tac"))
+    } else {
+      if (is.null(Gestion_tab$TAC)){
+        DF = get_golem_options("tac")
+      }else{
+        DF = Gestion_tab$TAC
+      }
+    }
+    Gestion_tab$TAC = DF
+    DF
+  })
+  maxeff <- reactive({
+    if (!is.null(input$eff)) {
+      DF = hot_to_r(input$eff)
+      rownames(DF) <- rownames(get_golem_options("maxeff"))
+    } else {
+      if (is.null(Gestion_tab$eff))
+        DF = get_golem_options("maxeff")
+      else
+        DF = Gestion_tab$eff
+    }
+    Gestion_tab$eff = DF
+    DF
+  })
+  mfm <- reactive({
+    if (!is.null(input$mfm)) {
+      DF = hot_to_r(input$mfm)
+      rownames(DF) <- rownames(get_golem_options("mfm"))
+    } else {
+      if (is.null(Gestion_tab$mfm))
+        DF = get_golem_options("mfm")
+      else
+        DF = Gestion_tab$mfm
+    }
+    Gestion_tab$mfm = DF
+    DF
+  })
+  # eof tables
+
+  # add species tab.
+  sp <- get_golem_options("spe")$Species
+  spDyn <- sp[get_golem_options("spe")$Q == 0]
   for( i in spDyn){
     appendTab(inputId = "tabs",
               tabPanel(i, mod_spInput(i))
-              # TODO : need to reload interface with default once tab is changed
     )
   }
   updateTabsetPanel(session, "tabs", selected = unname(sp[1]))
 
+  ## Recruitment ####
+  for( i in spDyn){
+    mod_spInput_serv(i, x)
+  }
+  # EoF Recruitment
 
+  ## Replicates ####
   observeEvent(input$iter, {
-    toggleState(id = "niter")
-    toggleState(id = "var_rep")
+    toggleState(id = "nbIter", condition = input$iter)
+    toggleState(id = "var_rep", condition = input$iter)
+    x$Replicates$active <- as.numeric(input$iter)
+    # if(input$iter){
+    #   x$Replicates$nbIter <- input$nbIter
+    #   x$Replicates$SELECTvar <- input$var_rep
+    # }
   })
+  observeEvent(input$nbIter, {
+    x$Replicates$nbIter <- input$nbIter
+  })
+  observeEvent(input$var_rep, {
+    x$Replicates$SELECTvar <- input$var_rep
+  })
+  # EoF Replicates
 
+  ## Gestion ####
   observeEvent(input$manag, {
-    toggleState(id = "man_contr")
-    toggleState(id = "variables")
-    toggleState(id = "man_typ")
-    toggleState(id = "man_upd")
-    toggleState(id = "up_bound")
-    toggleState(id = "low_bound")
+    parts <- c("espece", "control", "target", "typeG", "delay", "upd", "sup",
+               "inf", "tacfbar", "effsup_mat", "mfm_mat")
+    for(p in parts){
+      toggleState(id = p, condition = input$manag)
+    }
+    x$Gestion$active <- as.numeric(input$manag)
+    # if(input$manag){
+    #   # x$Gestion$active <- 1
+    #   x$Gestion$control <- input$control
+    #   x$Gestion$target <- input$target
+    #   x$Gestion$espece <- input$espece
+    #   x$Gestion$delay <- input$delay
+    #   x$Gestion$typeG <- match(input$typeG, c("+", "x")) -1
+    #   x$Gestion$upd <- match(input$upd, c("Yes", "No"))
+    #   x$Gestion$sup <- input$sup
+    #   x$Gestion$inf <- input$inf
+    #   # x$Gestion$tac <- Gestion_tab$TAC[1,]
+    #   # x$Gestion$fbar <- Gestion_tab$TAC[2,]
+    #   # x$Gestion$effSup <- Gestion_tab$eff
+    #   # x$Gestion$mfm <- Gestion_tab$mfm
+    # # } else {
+    #   # x$Gestion$active <- 0
+    # }
+  })
+  observeEvent(input$control,{
+    x$Gestion$control <- input$control
+  })
+  observeEvent(input$target,{
+    x$Gestion$target <- input$target
+  })
+  observeEvent(input$espece,{
+    x$Gestion$espece <- input$espece
+  })
+  observeEvent(input$delay,{
+    x$Gestion$delay <- input$delay
+  })
+  observeEvent(input$typeG,{
+    x$Gestion$typeG <- match(input$typeG, c("+", "x")) -1
+  })
+  observeEvent(input$upd,{
+    x$Gestion$upd <- match(input$upd, c("Yes", "No"))
+  })
+  observeEvent(input$sup,{
+    x$Gestion$sup <- input$sup
+  })
+  observeEvent(input$inf,{
+    x$Gestion$inf <- input$inf
+  })
+  # tables
+  output$tac <- renderRHandsontable({
+    DF = tac()
+    if (!is.null(DF)){
+      x <- rhandsontable(DF, stretchH = "all")
+      x <- hot_validate_numeric(
+        x, cols = 1:ncol(DF), min = -1000, max = 1000, allowInvalid = TRUE
+      )
+    }
+    x
+  })
+  observeEvent(input$tac, {
+    x$Gestion$tac <- Gestion_tab$TAC[1,]
+    x$Gestion$fbar <- Gestion_tab$TAC[2,]
   })
 
+  output$eff <- renderRHandsontable({
+    DF = maxeff()
+    if (!is.null(DF)){
+      x <- rhandsontable(DF, stretchH = "all", rowHeaderWidth = 150)
+      x <- hot_validate_numeric(
+        x, cols = 1:ncol(DF), min = -1000, max = 1000, allowInvalid = TRUE
+      )
+    }
+    x
+  })
+  observeEvent(input$eff, {
+    x$Gestion$effSup <- Gestion_tab$eff
+  })
+
+  output$mfm <- renderRHandsontable({
+    DF = mfm()
+    if (!is.null(DF)){
+      x <- rhandsontable(DF, stretchH = "all", rowHeaderWidth = 150)
+      x <- hot_validate_numeric(
+        x, cols = 1:ncol(DF), min = -1000, max = 1000, allowInvalid = TRUE
+      )
+    }
+    x
+  })
+  observeEvent(input$mfm, {
+    x$Gestion$mfm <- Gestion_tab$mfm
+  })
+  # EoF Gestion
+
+  ## Economic ####
+  observeEvent(input$perscCalc, {
+    x$Eco$perscCalc <- as.numeric(input$perscCalc)
+  })
+  observeEvent(input$dr, {
+    x$Eco$dr <- input$dr
+  })
+  # EoF Economic
+
+  ## Scenario ####
   observeEvent(input$scenar, {
-    toggleState(id = "scen_var")
+    toggleState(id = "scen_var", condition = input$scenar)
+    x$Scenario$active <- as.numeric(input$scenar)
+    # if(input$scenar){
+    #   # x$Scenario$active <- 1
+    #   x$Scenario$SELECTscen <- match(
+    #     input$scen_var, x$Scenario$ALLscenario
+    #   )
+    # # } else {
+    # }
+  })
+  observeEvent(input$scen_var, {
+    x$Scenario$SELECTscen <- match(input$scen_var, x$Scenario$ALLscenario)
+  })
+  # EoF Scenario
+
+  observe({
+    # TODO : maybe only modify input at the very end.
+    x$input@arguments$Recruitment <- x$Recruitment
+    x$input@arguments$Replicates <- x$Replicates
+    x$input@arguments$Scenario <- x$Scenario
+    x$input@arguments$Gestion <- x$Gestion
+    x$input@arguments$Eco <- x$Eco
+    print(summary(x$input))
   })
 
   # End of app ####
   observeEvent(input$done, {
-    cat("You're really not going to like it\n")
-    returnValue <- 42
+    # cat("You're really not going to like it\n")
+    # returnValue <- 42
+    returnValue <- x$input
     stopApp(returnValue)
-    # TODO : return args and modify all it's a values according to what's in shiny
   })
   observeEvent(input$cancel, {
-    cat("Life? Don't talk to me about life.\n")
+    # cat("Life? Don't talk to me about life.\n")
     stopApp()
   })
 }
 
+#' @name param_app
+#' @param AllVarRep list of variable Outputrep can produce.
 run_app <- function(object, AllVarRep) {
+
   res <- with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server),
-    golem_opts = list(input = object, AllVarRep = AllVarRep)
+    golem_opts = list(input = object, AllVarRep = AllVarRep,
+                      spe = object@specific, arg = object@arguments,
+                      tac = rbind(tac = object@arguments$Gestion$tac,
+                                  fbar = object@arguments$Gestion$fbar),
+                      maxeff = object@arguments$Gestion$effSup,
+                      mfm =  object@arguments$Gestion$mfm)
   )
   if(is.null(res)){
     return(invisible())
@@ -216,16 +620,11 @@ run_app <- function(object, AllVarRep) {
 # 7 -> Hockey Stick Smooth (rec ~ a*(ssb+sqrt(b^2+g)-sqrt((ssb-b)^2+g)), avec g=0.001 )
 
 
-# TODO : what could be very nice is to initialise iam.Args
-# with the gui default and then just write a function that modify it.
-# So we could call it very quickly in script for automated test
-
-
 setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.character(NA), ...){
 
   if(is.null(desc)){ desc <- object@desc }
 
-  args <- IAM.input2arg(object, desc = desc)
+  args <- IAM.input2args(object, desc = desc)
   IAM.args(object = args, desc = desc)
 
 })
@@ -233,30 +632,53 @@ setMethod("IAM.args", signature("iamInput","missing"),function(object, desc=as.c
 setMethod("IAM.args", signature("iamArgs","missing"),function(object, desc=as.character(NA), ...){
   if(is.null(desc)){ desc <- object@desc }
 
-  ALLVarRep = c(
+  AllVarRep = c(
     "B", "SSB", "Ctot", "Ytot", "Yfmi", "Ffmi", "Zeit", "Fbar", "Foth", "mu_nbds", "mu_nbv", "N", "Ystat", "Lstat", "Dstat", "Eff",
     "GVL_fme", "StatGVL_fme", "GVLtot_fm", "GVLav_f", "vcst_fm", "vcst_f", "rtbs_f", "gp_f", "ps_f", "gcf_f", "gva_f", "cs_f", "sts_f", "rtbsAct_f",
     "csAct_f", "gvaAct_f", "gcfAct_f", "psAct_f", "stsAct_f", "ccwCr_f", "GVLtot_f", "wagen_f", "L_efmit", "D_efmit",
     "Fr_fmi", "C_efmit", "P", "Pstat"
   )
-  return(run_app(object = object, ALLVarRep = ALLVarRep))
+
+  res <- run_app(object = object, AllVarRep = AllVarRep)
+  # TODO : add DimCst arg to tac, fbar, mfm and effSup
+
+  return(res)
 })
 
 
 # just to test it for now
-ALLVarRep = c(
+AllVarRep = c(
   "B", "SSB", "Ctot", "Ytot", "Yfmi", "Ffmi", "Zeit", "Fbar", "Foth", "mu_nbds", "mu_nbv", "N", "Ystat", "Lstat", "Dstat", "Eff",
   "GVL_fme", "StatGVL_fme", "GVLtot_fm", "GVLav_f", "vcst_fm", "vcst_f", "rtbs_f", "gp_f", "ps_f", "gcf_f", "gva_f", "cs_f", "sts_f", "rtbsAct_f",
   "csAct_f", "gvaAct_f", "gcfAct_f", "psAct_f", "stsAct_f", "ccwCr_f", "GVLtot_f", "wagen_f", "L_efmit", "D_efmit",
   "Fr_fmi", "C_efmit", "P", "Pstat"
 )
 
+library(IAM)
+data("IAM_argum_1984")
+# cas avec les choix de tout et n'importe quoi
+IAM_argum_1984@arguments$Scenario$SELECTscen <- 2
+IAM_argum_1984@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
+IAM_argum_1984@arguments$Gestion$sup <- 100
+IAM_argum_1984@arguments$Gestion$inf <- 1
+IAM_argum_1984@arguments$Gestion$target <- "Fbar"
+IAM_argum_1984@arguments$Gestion$typeG <- 1
+IAM_argum_1984@arguments$Gestion$upd <- 2
+IAM_argum_1984@arguments$Gestion$delay <- 6
+IAM_argum_1984@arguments$Gestion$control <- "Nb trips"
+IAM_argum_1984@arguments$Gestion$espece <- "DAR"
+IAM_argum_1984@arguments$Eco$perscCalc <- 3
+IAM_argum_1984@arguments$Eco$dr <- 0.04
+IAM_argum_1984@arguments$Replicates$nbIter <- 300
 
-load("dev/data/argumIFR.RData")
-run_app(argum1984, ALLVarRep)
+IAM_argum_1984@arguments$Scenario$active <- 1
+IAM_argum_1984@arguments$Gestion$active <- 1
+IAM_argum_1984@arguments$Eco$active <- 1
+IAM_argum_1984@arguments$Replicates$active <- 1
+run_app(IAM_argum_1984, AllVarRep)
+summary(IAM_argum_1984)
 
+IAM::IAM.args(IAM_argum_1984)
 
-argum1984 <- IAM20::IAM.args(argum1984)
-argum1984@arguments$Eco$active <- 1
-argum1984@arguments$Eco$type <- 2
-
+i <- IAM.args(IAM_argum_1984)
+IAM.args(IAM_input_1984)

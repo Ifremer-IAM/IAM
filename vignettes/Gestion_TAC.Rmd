@@ -25,15 +25,20 @@ Le modèle bio-économique IAM a été développé dans l'optique d'être utilis
 L'ensemble de ces simulations sera réalisé avec le jeu de donnée example `Ifremer` composé de 7 flotilles et deux 3 espèces dynamiques dont une espèce à dynamique SS3.
 
 ```{r inport, eval=FALSE, results="hide"}
-load("../dev/data/inpSS3darwiniana1984.RData")
-input1984 <- IAM::IAM.input(
-  fileIN = IAM_example("inputFile.xlsx"),t_init=1984,nbStep=12,folderFleet="../dev/data/fleets",
-  Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
-  FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
-  FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
-  Nt0s1q=list(DAR=Nt0s1q),Ni0q=list(DAR=Ni0q),iniNt0q=list(DAR=iniNt0q),matwt=list(DAR=mat_morphage)
+load(IAM_example("IAM_SS3_1984.RData"))
+IAM_input_1984 <- IAM::IAM.input(
+  fileIN = IAM_example("inputFile.xlsx"),
+  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+  Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
+  Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
+  FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
+  FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
+  FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
+  FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
+  Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
+  iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
 )
-summary(input1984)
+summary(IAM_input_1984)
 ```
 ```{r summaryexp, echo = FALSE}
 #' summary method for iamInput class
@@ -62,17 +67,17 @@ setMethod(
 ```
 
 ```{r falseinport, echo = FALSE}
-load("../dev/data/inputIFR.RData")
-summary(input1984)
+data(IAM_input_1984)
+summary(IAM_input_1984)
 ```
 
 L'objet argument est laissé tel quel lors de l'utilisation de l'interface et sera édité à la main plus tard pour chaque scénario.
 
 ```{r argum, eval=FALSE}
-argum1984 <- IAM.args(input1984)
+argum1984 <- IAM.args(IAM_input_1984)
 ```
 
-```{r falseargum, echo = FALSE}
+```{r falseargum, echo = FALSE, eval = FALSE}
 load("../dev/data/argumIFR.RData")
 ```
 
@@ -82,7 +87,7 @@ Afin de pouvoir comparer l'effet de chaque scénario, il nous faut un scénario 
 
 Dans un premier temps il est utile de définir les dynamiques de recrutements ainsi que des éléments de paramétrage du module économique. On va pour cela éditer l'objet `argum1984`
 
-```{r edit argum}
+```{r edit argum, eval=FALSE}
 # Module SR
 # TODO add boken stick Rec
 
@@ -112,7 +117,7 @@ sim_statu_quo <- IAM::IAM.model(objArgs = argum1984, objInput = input1984)
 
 Les différentes options de réglages du module Gestion sont exposées dans la vignette "Utilisation IAM dans R". Il s'agit ici de les explorer plus en avant et de les utiliser.
 
-```{r editargum}
+```{r editargum, eval = FALSE}
 
 # argum1984_TAC <- IAM.args(argum1984)
 setGestion_tac <- function(argum, species, delay = 1, bound = c(0,0), tac){
