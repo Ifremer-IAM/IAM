@@ -312,7 +312,7 @@ if(tea_br){
   # IAM_argum_1984@arguments$Eco$active <- as.integer(1)
   # IAM_argum_1984@arguments$Eco$type <- as.integer(2)
 
-  IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
+  # IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
 
   # #Gestion desactive
   # IAM_argum_1984@arguments$Gestion$active <- as.integer(0)

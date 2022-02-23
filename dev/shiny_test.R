@@ -553,7 +553,7 @@ app_server <- function(input, output, session) {
 
 #' @name param_app
 #' @param AllVarRep list of variable Outputrep can produce.
-run_app <- function(object, AllVarRep) {
+IAM_arg_app <- function(object, AllVarRep) {
 
   res <- with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server),
@@ -571,7 +571,7 @@ run_app <- function(object, AllVarRep) {
   }
 }
 
-# Plotting Rec ####
+# Plotting Rec and/or hide useless parameters ####
 # 1 -> recrutement constant moyen (rec~a)
 # 2 -> Hockey stick (rec ~ (si (ssb<=b) a*ssb sinon a*b))
 # 3 -> Beverton & Holt (rec ~ a*ssb/(b+ssb))
@@ -614,7 +614,7 @@ setMethod("IAM.args", signature("iamArgs","missing"),
   effsup_dimcst <- attributes(object@arguments$Gestion$effSup)$DimCst
   mfm_dimcst <- attributes(object@arguments$Gestion$mfm)$DimCst
 
-  res <- run_app(object = object, AllVarRep = AllVarRep)
+  res <- IAM_arg_app(object = object, AllVarRep = AllVarRep)
 
   attributes(res@arguments$Gestion$tac)$DimCst <- tac_dimcst
   attributes(res@arguments$Gestion$fbar)$DimCst <- fbar_dimcst
@@ -661,3 +661,23 @@ IAM::IAM.args(IAM_argum_1984)
 
 i <- IAM.args(IAM_argum_1984)
 IAM.args(IAM_input_1984)
+
+
+# enveloppe de loi normale.
+library(tidyverse)
+sd = 1
+d <- data.frame(a = seq(10,11,length.out = 10)  ) %>%
+  mutate(d = qnorm(0.05,mean=a,sd=sd)) %>%
+  mutate(b = qnorm(0.95,mean=a,sd=sd)) %>%
+  mutate(dl = qlnorm(0.05,mean=a,sd=sd)) %>%
+  mutate(bl = qlnorm(0.95,mean=a,sd=sd))
+
+
+d %>%
+  ggplot(aes(x = a, y = a)) +
+  # geom_ribbon(aes(ymin = b, ymax = d), fill = "azure3") +
+  geom_ribbon(aes(ymin = a, ymax = bl), fill = "azure3") +
+  geom_line() +
+  NULL
+
+

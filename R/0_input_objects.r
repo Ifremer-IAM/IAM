@@ -473,22 +473,13 @@ val.iamArgs <- function(object){
   if (length(arg$Gestion$fbar)!=length(spe$times)) stop("wrong 'fbar' argument in iamArgs object!!")
   if (nrow(arg$Gestion$mfm)!=length(spe$Fleet)) stop("wrong 'mfm' argument in iamArgs object!!")
   if (ncol(arg$Gestion$mfm)!=length(spe$MetierEco)) stop("wrong 'mfm' argument in iamArgs object!!")
-  if (length(arg$Gestion$othSpSup)!=length(c(na.omit(spe$Species)))+length(c(na.omit(spe$StaticSpp)))-1) stop("wrong 'othSpSup' argument in iamArgs object!!")
   if (nrow(arg$Gestion$effSup)!=length(spe$Fleet)) stop("wrong 'effSup' argument in iamArgs object!!")
   if (ncol(arg$Gestion$effSup)!=length(spe$times)) stop("wrong 'effSup' argument in iamArgs object!!")
 
 
 
   #Eco
-  if (!arg$Eco$active%in%(0:1)) stop("wrong 'Eco$active' argument in iamArgs object!!")
-  if (!arg$Eco$type%in%(1:2)) stop("wrong 'Eco$type' argument in iamArgs object!!")
-  if (!arg$Eco$adj%in%(1:2)) stop("wrong 'Eco$adj' argument in iamArgs object!!")
-  #if (!arg$Eco$lev%in%(1:2)) stop("wrong 'Eco$lev' argument in iamArgs object!!")
-  if (!arg$Eco$ue_choice%in%(1:2)) stop("wrong 'Eco$ue_choice' argument in iamArgs object!!")
-  if (!arg$Eco$oths%in%(0:1)) stop("wrong 'Eco$oths' argument in iamArgs object!!")
-  if (!arg$Eco$othsFM%in%(0:1)) stop("wrong 'Eco$othsFM' argument in iamArgs object!!")
   if (!arg$Eco$perscCalc%in%(0:4)) stop("wrong 'Eco$perscCalc' argument in iamArgs object!!")
-  if (!arg$Eco$report%in%(0:1)) stop("wrong 'Eco$report' argument in iamArgs object!!")
   if (!is.numeric(arg$Eco$dr)) stop("wrong 'Eco$dr' argument in iamArgs object!!")
 
   return(TRUE)
@@ -497,7 +488,6 @@ val.iamArgs <- function(object){
 
 #' Class "iamArgs"
 #'
-#' # TODO
 #'
 #' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
 #' @slot arguments Arguments set in the GUI window.
@@ -512,7 +502,7 @@ val.iamArgs <- function(object){
 #' }
 #' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
 #'
-#' @details Used by \code{IAM.Args} method that use tcltk package for GUI.
+#' @details Used by \code{IAM.Args} method that use shiny package for GUI.
 #'
 #' @examples
 #' showClass("iamArgs")

@@ -5,10 +5,10 @@
 \alias{iamArgs-class}
 \title{Class "iamArgs"}
 \description{
-# TODO
+Class "iamArgs"
 }
 \details{
-Used by \code{IAM.Args} method that use tcltk package for GUI.
+Used by \code{IAM.Args} method that use shiny package for GUI.
 }
 \section{Slots}{
 

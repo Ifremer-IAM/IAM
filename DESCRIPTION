@@ -36,8 +36,6 @@ Imports: utils,
          reshape2,
          openxlsx,
          lattice,
-         tcltk, 
-         tcltk2,
          Rcpp (>=  1.0.7),
          dplyr,
          tibble,
@@ -45,7 +43,11 @@ Imports: utils,
          tidyr,
          fs,
          rstudioapi,
-         usethis
+         usethis,
+         rhandsontable,
+         shiny,
+         shinyWidgets,
+         shinyjs
 License: CeCILL-2
 LazyData: true
 NeedsCompilation: yes
@@ -60,7 +62,6 @@ Collate:
     '0_input_objects.r'
     '0_1_Edit_iamArgs.R'
     '1_input_integration.r'
-    '2_1_args_integration.R'
     '2_args_integration.r'
     '3_args_input_txtExport.r'
     '4_output_objects.r'

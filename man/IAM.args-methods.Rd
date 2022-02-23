@@ -5,24 +5,28 @@
 \alias{IAM.args-methods}
 \alias{IAM.args}
 \alias{IAM.args,iamInput,missing-method}
-\alias{IAM.args,character,character-method}
 \alias{IAM.args,iamArgs,missing-method}
+\alias{IAM.args,character,character-method}
 \title{'iamArgs' objects creator}
 \usage{
 IAM.args(object, specific, ...)
 
 \S4method{IAM.args}{iamInput,missing}(object, desc = as.character(NA), ...)
 
-\S4method{IAM.args}{character,character}(object, specific, desc = as.character(NA), ...)
-
 \S4method{IAM.args}{iamArgs,missing}(object, desc = as.character(NA), ...)
+
+\S4method{IAM.args}{character,character}(object, specific, desc = as.character(NA), ...)
 }
 \arguments{
-\item{object}{TODO}
+\item{object}{\code{\link[IAM]{iamInput-class}} or
+\code{\link[IAM]{iamArgs-class}} object.}
 
-\item{specific}{TODO}
+\item{specific}{this is for the specific file, a deprecated use of
+this function.}
 
-\item{...}{# TODO : this is for the specific file.}
+\item{...}{desc parameter described below.
+
+ @return \code{\link[IAM]{iamArgs-class}} object after modification by a GUI.}
 
 \item{desc}{Object descriptor (default value : \code{as.character(NA)}).
 If not provided, copied the description slot of object.}
@@ -32,10 +36,20 @@ If not provided, copied the description slot of object.}
 
 Etape d'initialisation
 
-Etape d'initialisation from txt file.
-
 Etape de modification
-To update an iamArgs object, the function require to have original
-information about input. This is why at the end of initialization
-the specific slot is copied from iamInput to iamArgs
+
+Etape d'initialisation from txt file.
+}
+\examples{
+\dontrun{
+data(IAM_input_1984)
+# example not run because depend on shiny app.
+# Initiate argument from input.
+IAM_argum_1984 <- IAM.args(IAM_input_1984)
+summary(IAM_argum_1984)
+# Modify argument from argument.
+IAM_argum_1984 <- IAM.args(IAM_argum_1984)
+summary(IAM_argum_1984)
+}
+
 }

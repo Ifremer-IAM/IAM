@@ -601,8 +601,8 @@ read.Scenar <- function(file){
 
   #on peut maintenant s?parer les variables
   #pour cela, il faut tout mettre sous forme 1D
-  if (length(tbl2DS)>0) tbl2S <- lapply(tbl2DS,IAM:::twoDto1D,"2D") else tbl2S <- NULL
-  if (length(tbl1DS)>0) tbl1S <- lapply(tbl1DS,IAM:::twoDto1D,"1D") else tbl1S <- NULL
+  if (length(tbl2DS)>0) tbl2S <- lapply(tbl2DS,twoDto1D,"2D") else tbl2S <- NULL
+  if (length(tbl1DS)>0) tbl1S <- lapply(tbl1DS,twoDto1D,"1D") else tbl1S <- NULL
 
 
   ListS <- c(tbl1S,tbl2S)
@@ -688,8 +688,8 @@ result_filtre <- function(result, indEmpt){
   }
   #on peut maintenant s?parer les variables
   #pour cela, il faut tout mettre sous forme 1D
-  if (length(tbl2D)>0) tbl2 <- lapply(tbl2D,IAM:::twoDto1D,"2D") else tbl2 <- NULL
-  if (length(tbl1D)>0) tbl1 <- lapply(tbl1D,IAM:::twoDto1D,"1D") else tbl1 <- NULL
+  if (length(tbl2D)>0) tbl2 <- lapply(tbl2D,twoDto1D,"2D") else tbl2 <- NULL
+  if (length(tbl1D)>0) tbl1 <- lapply(tbl1D,twoDto1D,"1D") else tbl1 <- NULL
 
   List <- c(tbl1,tbl2)
 
@@ -795,16 +795,16 @@ init_listHisto <- function(List, t_init, t_hist_max, nbStep){
 #' @importFrom utils read.table
 read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
                        desc = "My input", folderFleet = NULL, verbose = FALSE ) {
-  if(!is.null(getOption("dev"))){ # will be triggered if option(dev = TRUE)
-    rm(list = ls())
-    library(openxlsx)
-    file <- "inst/extdata/IAM_MED_simpl.xlsx"
-    t_init <- 2020
-    t_hist_max <- 2020
-    nbStep <-  5
-    desc <- "Med tryhard"
-    folderFleet = NULL
-  }
+  # if(!is.null(getOption("dev"))){ # will be triggered if option(dev = TRUE)
+  #   rm(list = ls())
+  #   library(openxlsx)
+  #   file <- "inst/extdata/inputFile_simpl.xlsx"
+  #   t_init <- 2020
+  #   t_hist_max <- 2020
+  #   nbStep <-  5
+  #   desc <- "input tryhard"
+  #   folderFleet = NULL
+  # }
   ## Read sheets names ####
   tbls <- getSheetNames(file)
   nam_stock <- tbls[grep("stock",tolower(tbls))]
@@ -1091,7 +1091,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if(verbose) cat(' histo')
       #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
       #il faut consid?rer l'historique... (t<=t_init)
-      res <- IAM:::init_listHisto(List, t_init, t_hist_max, nbStep)
+      res <- init_listHisto(List, t_init, t_hist_max, nbStep)
       listHisto <- res[[1]] ; listInput <- res[[2]]
       rm(res)
 
@@ -1372,7 +1372,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
 
       #on en fait maintenant des objets standards accompagn?s de leur attribut 'DimCst' pour les inputs, et on laisse sous forme de DF pour l'historique
       #il faut consid?rer l'historique... (t<=t_init)
-      res <- IAM:::init_listHisto(List, t_init, t_hist_max, nbStep)
+      res <- init_listHisto(List, t_init, t_hist_max, nbStep)
       listHisto <- res[[1]] ; listInput <- res[[2]]
       rm(res)
 
@@ -1434,7 +1434,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
   #on gere les constantes
   Fleet <- lapply(Fleet,function(x) if (is.null(dim(x))) return(x[1]) else return(x))
   names(Fleet) <- n
-  LL$input$Fleet <- lapply(Fleet,IAM:::standFormat,nbStep,paste0("f__",modF),paste0("m__",modMeco),"","",NULL) # reformat
+  LL$input$Fleet <- lapply(Fleet,standFormat,nbStep,paste0("f__",modF),paste0("m__",modMeco),"","",NULL) # reformat
   rm(Fleet, n)
 
   #on calcule les valeurs totales a partir des valeurs moyennes sur les champs "nbact_f_tot","nbds_f_tot","nbdf_f_tot",
@@ -1656,7 +1656,7 @@ if (!substring(fileIN,nchar(fileIN)-4,nchar(fileIN))%in%".xlsx") stop("'fileIN' 
 # }
 #require(abind)
 if(verbose) cat('Highway to hell \n')
-out <- IAM:::read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet, verbose = verbose)
+out <- read.input(normalizePath(fileIN),t_init=t_init,nbStep=nbStep,t_hist_max=t_hist_max,desc=desc,folderFleet=folderFleet, verbose = verbose)
 if(verbose) cat('read.input done \n')
 
 ## SS3 init ####

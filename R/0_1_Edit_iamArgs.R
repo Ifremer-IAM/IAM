@@ -196,8 +196,8 @@ setMethod(
 
     if (any(spe$Q == 1)) {
       listType <- list(
-        modSRactive=0,typeMODsr="Mean",parAmodSR=NA,parBmodSR=NA,parCmodSR=NA,
-        wnNOISEmodSR=NA,noiseTypeSR=1,simuSTOCHactive=0,typeSIMUstoch=1
+        modSRactive=0,typeMODsr="Mean",parAmodSR=0,parBmodSR=0,parCmodSR=0,
+        wnNOISEmodSR=0,noiseTypeSR=1,simuSTOCHactive=0,typeSIMUstoch=1
         )
       namQ <- names(spe$Q)[spe$Q == 1]
       lll <- lapply(namQ,function(z) return(listType))
@@ -219,17 +219,17 @@ setMethod(
                 spe$t_init, tail(spe$times,1), spe$NbSteps ))
 
     cat("\n",
-        rep("=",83),
+        rep("=",87),
         "\n  SR module  |               Stock Recruitment             |",
-        "    Noise     | Proba |\n",
-        rep("-",83),
+        "      Noise       | Proba |\n",
+        rep("-",87),
         "\n    Species  |    function  :  param A ; param B ; param C |",
-        "  Type :  sd  |  Type |\n",
-        sprintf(" %5s (%3s) | %13s %9d  %8d  %8d |  %4s |%.2g |   %1s   |\n",
+        "  Type :    sd    |  Type |\n",
+        sprintf(" %5s (%3s) | %13s %.3e  %.2e  %.2e |  %4s | %.2e |   %1s   |\n",
                 spe$Species,
                 ifelse(spe$Q == 0, "XSA", "SS3"),
                 ifelse(SRactif == 1, unlist(lapply(arg$Recruitment, "[[", "typeMODsr")),
-                       "............." ),
+                       "not activated" ),
                 unlist(lapply(arg$Recruitment, "[[", "parAmodSR")), # A
                 unlist(lapply(arg$Recruitment, "[[", "parBmodSR")), # B
                 unlist(lapply(arg$Recruitment, "[[", "parCmodSR")), # C
@@ -240,7 +240,7 @@ setMethod(
                   as.character(unlist(lapply(arg$Recruitment, "[[", "typeSIMUstoch"))), "."
                   )
         ),
-        rep("-",83),"\n",
+        rep("-",87),"\n",
         sep = "")
 
     if(arg$Gestion$active == 1){
