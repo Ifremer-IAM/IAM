@@ -19,16 +19,16 @@ setGestion_tac <- function(argum, species, delay = 1, bound = c(0,0), tac){
 
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
-argum1984 <- setGestion_tac(argum1984, "COR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+IAM_argum_1984 <- setGestion_tac(IAM_argum_1984, "COR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
                             c(NA, 3300, 3250, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200))
 #                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
-# argum1984 <- setGestion_tac(argum1984, "DAR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+# IAM_argum_1984 <- setGestion_tac(IAM_argum_1984, "DAR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
                             # c(NA, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4))
 #                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
-# argum1984@arguments$Recruitment$ARC$typeMODsr <- "Hockey-Stick"
+# IAM_argum_1984@arguments$Recruitment$ARC$typeMODsr <- "Hockey-Stick"
 
-argum1984@arguments$Gestion$typeG <- 1
-sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984,
+IAM_argum_1984@arguments$Gestion$typeG <- 1
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984,
                           verbose = TRUE, force_t = 7)
 sim1984@output$nbv_f ; sim1984@output$effort1_f
 
@@ -38,13 +38,13 @@ sim1984@outputSp$L_et$DAR
 
 # TACF ####
 devtools::load_all()
-load("dev/data/inputIFR.RData")
-load("dev/data/argumIFR.RData")
+data("IAM_argum_1984")
+data("IAM_input_1984")
 
-nbV <- length(input1984@specific$Fleet)
-nbT <- input1984@specific$NbSteps
+nbV <- length(IAM_input_1984@specific$Fleet)
+nbT <- IAM_input_1984@specific$NbSteps
 
-Lref <- input1984@input$COR$Lref_f_e
+Lref <- IAM_input_1984@input$COR$Lref_f_e
 percLref <- Lref / sum(Lref)
 
 scenar <- c(1, 0.95, 0.93, 0.90, 1, 1, 1, 1, 1, 1, 1, 1, 1)
@@ -53,20 +53,20 @@ for(y in 2:(nbT+1)){
   TACtmp[, y] <- TACtmp[, y-1] * scenar[y]
 }
 TACf <- TACtmp[, -1];  TACtot = colSums(TACtmp[, -1])
-dimnames(TACf) <- list(input1984@specific$Fleet,input1984@specific$times)
+dimnames(TACf) <- list(IAM_input_1984@specific$Fleet,IAM_input_1984@specific$times)
 TACf
 rm(TACtmp, y, nbV, nbT, scenar)
 
 
-argum1984@arguments$Gestion$espece <- "COR"
-argum1984@arguments$Gestion$inf <- -100
-argum1984@arguments$Gestion$sup <- 100
-argum1984@arguments$Gestion$active <- 1
+IAM_argum_1984@arguments$Gestion$espece <- "COR"
+IAM_argum_1984@arguments$Gestion$inf <- -100
+IAM_argum_1984@arguments$Gestion$sup <- 100
+IAM_argum_1984@arguments$Gestion$active <- 1
 
 TACf <- list(COR = TACf) ; TACtot <- list(COR = TACtot)
 
-sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, TACbyF=TACf, TACtot = TACtot, updateE = 1,
-                          verbose = TRUE, force_t = 8)
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, TACbyF=TACf, TACtot = TACtot, updateE = 1,
+                          verbose = TRUE)
 
 sim1984@output$effort1_f_m
 sim1984@output$effort2_f_m
@@ -156,17 +156,17 @@ load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
 
 NITER <- 10
-XSAsp <- names(argum1984@arguments$Recruitment)
+XSAsp <- names(IAM_argum_1984@arguments$Recruitment)
 
 pb <- txtProgressBar(min = 0, max = NITER, style = 3)
 simuls <- lapply(1:NITER,function(k) {
-  argum <- argum1984
+  argum <- IAM_argum_1984
   for(nms in XSAsp){
-    val <- argum1984@arguments$Recruitment[[nms]]$parAmodSR
+    val <- IAM_argum_1984@arguments$Recruitment[[nms]]$parAmodSR
     argum@arguments$Recruitment[[nms]]$parAmodSR <- rnorm(1, val, 1e6)
   }
   setTxtProgressBar(pb, k)
-  return(IAM.model(objArgs = argum, objInput = input1984))
+  return(IAM.model(objArgs = argum, objInput = IAM_input_1984))
 })
 close(pb)
 

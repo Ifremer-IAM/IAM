@@ -8,7 +8,7 @@ library(tidyverse)
 devtools::load_all()
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
-sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984,
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984,
                           verbose = FALSE, force_t = NULL)
 
 # Thanks ThinkR for helping me messing some code

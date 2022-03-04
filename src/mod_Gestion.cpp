@@ -259,12 +259,12 @@ if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
      Mortalite(listTemp, IND_T+1, eVarCopy);
      DynamicPop(listTemp, IND_T+1, eVarCopy,true);  //� revoir !!!!!!!!!!!!!!!!
      tot = REAL(VECTOR_ELT(out_B_et, eTemp));
-     result = TAC_glob[IND_T+1]-tot[IND_T+1]; Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T+1],tot[IND_T+1],result);
+     result = TAC_glob[IND_T+1]-tot[IND_T+1];// Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T+1],tot[IND_T+1],result);
     } else {
      SEXP nDim = allocVector(INTSXP,4);
      int *nd = INTEGER(nDim); for (int i = 0; i<3; i++) nd[i] = 0; nd[3] = nbT;
      tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, eTemp),nDim));
-     result = TAC_glob[IND_T]-tot[IND_T]; Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T],tot[IND_T],result);
+     result = TAC_glob[IND_T]-tot[IND_T]; //Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T],tot[IND_T],result);
     }
 //Rprintf("fxtac : TAC_glob %f TOT %f\n",TAC_glob[IND_T],tot[IND_T]);
 

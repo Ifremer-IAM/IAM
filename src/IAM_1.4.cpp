@@ -264,7 +264,8 @@ SEXP BioEcoPar::calcCapturabilite(SEXP adjustedMortal, SEXP effortIni)
     PROTECT(dimMort = getAttrib(adjustedMortal, install("DimCst")));
     PROTECT(dimEff = getAttrib(effortIni, install("DimCst")));
 
-    dimM = INTEGER(dimMort); dimE = INTEGER(dimEff);
+    dimM = INTEGER(dimMort); 
+    dimE = INTEGER(dimEff);
 
     //tests sur les dimensions
     if (((dimE[0]!=0) & (dimM[0]!=0) & (dimE[0]!=dimM[0])) | ((dimE[1]!=0) & (dimM[1]!=0) & (dimE[1]!=dimM[1])) |

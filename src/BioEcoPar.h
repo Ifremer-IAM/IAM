@@ -236,8 +236,8 @@ SEXP    ZtempList;
     int EstimationTACfromF(int ind_t);
 
     // Module GestionF2
-    void GestionF2(int ind_t);
-    void abv_GestionF2(int ind_t, SEXP updateE, SEXP tacCTRL, SEXP FList);
+    void GestionF2(int ind_t, int VERBOSE = 0);
+    void abv_GestionF2(int ind_t, SEXP updateE, SEXP tacCTRL, SEXP FList, int VERBOSE = 0);
 
     //double fxTAC_F_customCst2(double *x);
 

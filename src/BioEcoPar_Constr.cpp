@@ -1070,7 +1070,7 @@ if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==1) & (delay<=it) & !isNull(TACbyF) & !isN
 //if ((INTEGER(VECTOR_ELT(parQEX,0))[0]==0) & (delay<=it) & !all_is_na(TACbyF) & !all_is_na(TAC) & (it>=1) & (gestInd==1) & (t_stop==0 | t_stop>it)) {  //optimisation TAC par flottille activ�e si au moins un �l�ment de TACbyF est renseign�
 if ( (delay<=it) & !isNull(TACbyF) & !isNull(TAC) & (it>=1) & ((t_stop==0) | (t_stop>it))) {
     if(VERBOSE){Rprintf("GestionF2");}
-    abv_GestionF2(it, updateE, tacCTRL, FList);
+    abv_GestionF2(it, updateE, tacCTRL, FList, VERBOSE);
     if(VERBOSE){Rprintf(" | ");}
 }
 

@@ -22,7 +22,8 @@
 #'
 #' @name IAM.editArgs_Eco
 #' @export
-setGeneric("IAM.editArgs_Eco", function(object, ...){
+setGeneric("IAM.editArgs_Eco",
+           function(object, ...){ ## Generic editArgs ####
   standardGeneric("IAM.editArgs_Eco")
 }
 )
@@ -40,7 +41,7 @@ setGeneric("IAM.editArgs_Eco", function(object, ...){
 #' @export
 setMethod(
   f = "IAM.editArgs_Eco", signature("iamArgs"),
-  function(object, dr = NULL, perscCalc = NULL) {
+  function(object, dr = NULL, perscCalc = NULL) { ## iamArgs editArgs ####
 
     eco <- object@arguments$Eco
 
@@ -82,7 +83,8 @@ setMethod(
 #'
 #' @name IAM.args_scenar
 #' @export
-setGeneric("IAM.args_scenar", function(object){
+setGeneric("IAM.args_scenar",
+           function(object){ ## generic arg scenar ####
   standardGeneric("IAM.args_scenar")
 }
 )
@@ -92,7 +94,7 @@ setGeneric("IAM.args_scenar", function(object){
 #' @export
 setMethod(
   f = "IAM.args_scenar", signature("iamArgs"),
-  function(object) {
+  function(object) { ## iamArgs arg scenar ####
     object@arguments$Scenario
   }
 )
@@ -127,7 +129,8 @@ setMethod(
 #'
 #' @name IAM.editArgs_Scenar
 #' @export
-setGeneric("IAM.editArgs_Scenar", function(object, ...){
+setGeneric("IAM.editArgs_Scenar",
+           function(object, ...){ ## generic editArgs ####
   standardGeneric("IAM.editArgs_Scenar")
 }
 )
@@ -139,29 +142,216 @@ setGeneric("IAM.editArgs_Scenar", function(object, ...){
 #' @export
 setMethod(
   f = "IAM.editArgs_Scenar", signature("iamArgs"),
-  function(object, selected = NULL) {
+  function(object, selected = NULL) { ## iamArgs editArgs ####
     scenar <- IAM.args_scenar(object)
     scenarii <- scenar$ALLscenario
 
     if(!is.null(selected)){
       if(is.numeric(selected) && selected %in% seq_along(scenarii)){
         scenar$SELECTscen <- selected
-        scenar$active <- 1
+        scenar$active <- 1L
       } else if(is.character(selected) && selected %in% scenarii){
         scenar$SELECTscen <- match(selected, scenarii)
-        scenar$active <- 1
+        scenar$active <- 1L
       } else {
         stop(paste("selected must be either a numeric between 1 and the",
                    " number of scenarii or the name of a scenario"))
       }
     } else {
-      scenar$active <- 0
+      scenar$active <- 0L
     }
 
     object@arguments$Scenario <- scenar
     return(object)
   }
 )
+
+# Gestion ####
+#' Modify Gestion arguments
+#'
+#' @param object a \code{\link[IAM]{iamArgs-class}} object
+#' @param ... selected argument
+#'
+#' @include 0_input_objects.r
+#'
+#' @author Maxime Jaunatre
+#'
+#' @examples
+#' data(IAM_argum_1984)
+#' IAM.args_scenar(IAM_argum_1984)
+#'
+#' # Activate scenario "Sc_saisine"
+#' IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active= TRUE)
+#' summary(IAM_argum_1984)
+#'
+#'
+#' @name IAM.editArgs_Gest
+#' @export
+setGeneric("IAM.editArgs_Gest",
+           function(object, ...){ ## generic editArgs ####
+             standardGeneric("IAM.editArgs_Gest")
+           }
+)
+
+#' @param active Activation of the module. TRUE or FALSE input,
+#' but accept 1 or 0 values (any numeric will be interpreted as logical)
+#' @param control option to choose if the management will control effort
+#' reduction by reducing the number of vessels or number of trips per vessels.
+#' @param target management aim to reduce effort to reach TAC or Fbar,
+#' or TAC then Fbar.
+#' @param espece species to target for management.
+#' @param delay option to delay the management for n years. If the delay is
+#' larger than the year in model, the management will have no effect.
+#' @param type option to choose if effort reduction is additive ("+") or
+#' multiplicative ("x").
+#' @param update option to choose is effort reduction is from t0 or t-1
+#' iteration
+#' @param bounds bounds for target reach at each model iteration.
+#' num of length 2.
+#' @param tac TAC values for each model iteration. Can be NA.
+#' @param fbar Fbar values for each model iteration. Can be NA.
+#' @param effSup Maximum effort per fleet and year. To limit nbds.
+#' @param mfm Ponderation fleet/metier for effort reduction.
+#'
+#'
+#' @rdname IAM.editArgs_Gest
+#' @export
+setMethod(
+  f = "IAM.editArgs_Gest", signature("iamArgs"),
+  function(object, active = NULL,
+           control = c("Nb vessels", "Nb trips"),
+           target = c("TAC", "Fbar", "TAC->Fbar"), espece = NULL,
+           delay = NULL, type = c("+", "x"), update = NULL, bounds = NULL,
+           tac = NULL, fbar = NULL, effSup = NULL, mfm = NULL) { ## iamArgs editArgs ####
+
+    gest <- object@arguments$Gestion
+
+    if(!is.null(active)){
+      if(is.numeric(active)){
+        active <- as.logical(active)
+      }
+      if(!is.logical(active) | length(active) > 1 ) {
+        stop(paste("active must be logical (or numeric, FALSE being 0 and TRUE",
+                   "being 1) single value"), call. = interactive())
+      }
+      gest$active <- as.numeric(active)
+    }
+
+    if(!is.null(control)){
+      tryCatch(
+        control <- match.arg(control),
+        error = function(c) stop(paste("control must be either 'Nb vessels' or",
+                                       "'Nb trips'", call. = FALSE))
+      )
+      gest$control <- control
+    }
+
+    if(!is.null(target)){
+      tryCatch(
+        target <- match.arg(target),
+        error = function(c) stop(paste("target must be either 'TAC', 'Fbar' or",
+                                       "'TAC->Fbar'", call. = FALSE))
+      )
+      gest$target <- target
+    }
+
+    if(!is.null(espece)){
+      espece <- match.arg(espece, object@specific$Species) # TODO :All species or only XSA
+      gest$espece <- espece
+    }
+
+    if(!is.null(delay)){
+      if(!is.numeric(delay) | length(delay) > 1 | is.na(delay)| delay < 0 ) {
+        stop("delay must be a positive numeric single value",
+             call. = interactive())
+      }
+      if(delay > object@specific$NbSteps){
+        warning(paste("delay value is greater than number of steps and thus ",
+                      "scenario will never be triggered"), call. = interactive())
+      }
+      gest$delay <- as.integer(delay)
+    }
+
+    if(!is.null(type)){
+      tryCatch(
+        type <- match.arg(type),
+        error = function(c) stop("type must be either '+' or 'x'", call. = FALSE)
+      )
+      type <- match(type, c("+", "x")) - 1
+      gest$typeG <- type
+    }
+
+    if(!is.null(update)){
+      warning("update argument for Gestion module is deprecated !")
+      if(is.numeric(update)){
+        update <- as.logical(update)
+      }
+      if(!is.logical(update) | length(update) > 1 ) {
+        stop(paste("update must be logical (or numeric, FALSE being 0 and TRUE",
+                   "being 1) single value"), call. = interactive())
+      }
+      gest$upd <- -as.numeric(update) + 2
+    }
+
+    if(!is.null(bounds)){
+      if(!is.numeric(bounds) | length(bounds) != 2 ) {
+        stop(paste("bounds must be 2 numeric values"), call. = interactive())
+      }
+      # bounds will be sorted
+      bounds <- sort(bounds)
+
+      gest$sup <- bounds[2]
+      gest$inf <- bounds[1]
+    }
+
+    if(!is.null(tac)){
+      n <- length(gest$tac)
+      if(any(!is.numeric(tac)) | length(tac) != n |
+         any(tac[!is.na(tac)] < 0) ) {
+        stop(sprintf("tac must be %d positive numeric values", n),
+             call. = interactive())
+      }
+      gest$tac[] <- tac
+    }
+
+    if(!is.null(fbar)){
+      n <- length(gest$fbar)
+      if(any(!is.numeric(fbar)) | length(fbar) != n |
+         any(fbar[!is.na(fbar)] < 0) ) {
+        stop(sprintf("fbar must be %d positive numeric values", n),
+             call. = interactive())
+      }
+      gest$fbar[] <- fbar
+    }
+
+    if(!is.null(effSup)){
+      n <- dim(gest$effSup)
+      if(any(!is.numeric(effSup)) | any(dim(effSup) != n) |
+         any(effSup[!is.na(effSup)] < 0) ) {
+        stop(sprintf("effSup must be a %d by %d positive numeric matrix",
+                     n[1], n[2]),
+             call. = interactive())
+      }
+      gest$effSup[] <- effSup
+    }
+
+    if(!is.null(mfm)){
+      n <- dim(gest$mfm)
+      if(any(!is.numeric(mfm)) | any(dim(mfm) != n) |
+         any(mfm[!is.na(mfm)] < 0) ) {
+        stop(sprintf("mfm must be a %d by %d positive numeric matrix",
+                     n[1], n[2]),
+             call. = interactive())
+      }
+      gest$mfm[] <- mfm
+    }
+
+
+    object@arguments$Gestion <- gest
+    return(object)
+  }
+)
+
 
 
 # Summary ####
@@ -190,7 +380,7 @@ setMethod(
 #' @export
 setMethod(
   f = "summary", signature("iamArgs"),
-  function(object, ...) {
+  function(object, ...) { ## iamArgs summary ####
     spe <- object@specific
     arg <- object@arguments
 
@@ -330,7 +520,7 @@ setMethod(
 #' @export
 setMethod(
   f = "summary", signature("iamInput"),
-  function(object, ...) {
+  function(object, ...) { ## iamInput summary ####
     spe <- object@specific
 
     cat(object@desc, "(IAM input) :\n")
