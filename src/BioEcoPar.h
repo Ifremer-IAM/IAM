@@ -159,11 +159,6 @@ SEXP    ZtempList;
 
     double finite(double value);
 
-    //indices multipliateurs pour les concordances de dimensions
-    SEXP iDim(int *dimInput);
-
-    //fontion d'agr�gation d'un objet R accompagn� de son attribut 'DimCst'
-    SEXP aggregObj(SEXP object, SEXP newDim);
 
     // fonction de ventilation de la mortalit� en fonction d'une matrice de donn�es "capture"
     SEXP allocMortality(SEXP mortality, SEXP capture, SEXP captureTot);

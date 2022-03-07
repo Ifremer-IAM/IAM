@@ -13,6 +13,7 @@
 //#include <Rcpp.h>
 
 #include "BioEcoPar.h" // Class is defined in this file.
+#include "array_fcts.h" // AggregObj function
 // #include "Modules.h" // Contient tout les modules
 
 //using namespace Rcpp;
@@ -703,22 +704,41 @@ if ((delay<=it) & (gestInd==1) & (DELAY>0)) { //DELAY = 1 -> on remet l'effort a
 
     } else {
 
-            double *Fothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 116)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + it*nbi] = Fothi2_S1M1[ag + (DELAY-1)*nbi];
-            double *Fothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 117)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + it*nbi] = Fothi2_S1M2[ag + (DELAY-1)*nbi];
-            double *Fothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 118)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M3[ag + it*nbi] = Fothi2_S1M3[ag + (DELAY-1)*nbi];
-            double *Fothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 119)); for (int ag = 0; ag < nbi; ag++) Fothi2_S1M4[ag + it*nbi] = Fothi2_S1M4[ag + (DELAY-1)*nbi];
-            double *Fothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 120)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M1[ag + it*nbi] = Fothi2_S2M1[ag + (DELAY-1)*nbi];
-            double *Fothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 121)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M2[ag + it*nbi] = Fothi2_S2M2[ag + (DELAY-1)*nbi];
-            double *Fothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 122)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M3[ag + it*nbi] = Fothi2_S2M3[ag + (DELAY-1)*nbi];
-            double *Fothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 123)); for (int ag = 0; ag < nbi; ag++) Fothi2_S2M4[ag + it*nbi] = Fothi2_S2M4[ag + (DELAY-1)*nbi];
-            double *Fothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 124)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M1[ag + it*nbi] = Fothi2_S3M1[ag + (DELAY-1)*nbi];
-            double *Fothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 125)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M2[ag + it*nbi] = Fothi2_S3M2[ag + (DELAY-1)*nbi];
-            double *Fothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 126)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M3[ag + it*nbi] = Fothi2_S3M3[ag + (DELAY-1)*nbi];
-            double *Fothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 127)); for (int ag = 0; ag < nbi; ag++) Fothi2_S3M4[ag + it*nbi] = Fothi2_S3M4[ag + (DELAY-1)*nbi];
-            double *Fothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 128)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M1[ag + it*nbi] = Fothi2_S4M1[ag + (DELAY-1)*nbi];
-            double *Fothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 129)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M2[ag + it*nbi] = Fothi2_S4M2[ag + (DELAY-1)*nbi];
-            double *Fothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 130)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M3[ag + it*nbi] = Fothi2_S4M3[ag + (DELAY-1)*nbi];
-            double *Fothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 131)); for (int ag = 0; ag < nbi; ag++) Fothi2_S4M4[ag + it*nbi] = Fothi2_S4M4[ag + (DELAY-1)*nbi];
+            double *Fothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 116));
+            double *Fothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 117));
+            double *Fothi2_S1M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 118));
+            double *Fothi2_S1M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 119));
+            double *Fothi2_S2M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 120));
+            double *Fothi2_S2M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 121));
+            double *Fothi2_S2M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 122));
+            double *Fothi2_S2M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 123));
+            double *Fothi2_S3M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 124));
+            double *Fothi2_S3M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 125));
+            double *Fothi2_S3M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 126));
+            double *Fothi2_S3M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 127));
+            double *Fothi2_S4M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 128));
+            double *Fothi2_S4M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 129));
+            double *Fothi2_S4M3 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 130));
+            double *Fothi2_S4M4 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 131));
+
+
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S1M1[ag + it*nbi] = Fothi2_S1M1[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S1M2[ag + it*nbi] = Fothi2_S1M2[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S1M3[ag + it*nbi] = Fothi2_S1M3[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S1M4[ag + it*nbi] = Fothi2_S1M4[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S2M1[ag + it*nbi] = Fothi2_S2M1[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S2M2[ag + it*nbi] = Fothi2_S2M2[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S2M3[ag + it*nbi] = Fothi2_S2M3[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S2M4[ag + it*nbi] = Fothi2_S2M4[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S3M1[ag + it*nbi] = Fothi2_S3M1[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S3M2[ag + it*nbi] = Fothi2_S3M2[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S3M3[ag + it*nbi] = Fothi2_S3M3[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S3M4[ag + it*nbi] = Fothi2_S3M4[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S4M1[ag + it*nbi] = Fothi2_S4M1[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S4M2[ag + it*nbi] = Fothi2_S4M2[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S4M3[ag + it*nbi] = Fothi2_S4M3[ag + (DELAY-1)*nbi];
+            for (int ag = 0; ag < nbi; ag++) Fothi2_S4M4[ag + it*nbi] = Fothi2_S4M4[ag + (DELAY-1)*nbi];
+
 
             double *FRWTothi2_S1M1 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 176));
             double *FRWTothi2_S1M2 = REAL(VECTOR_ELT(VECTOR_ELT(eVar, eTemp), 177));

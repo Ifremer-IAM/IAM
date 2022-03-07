@@ -7,6 +7,7 @@
 #define in_isNull(s)    (TYPEOF(s) == NILSXP)
 
 #include "BioEcoPar.h" // Class is defined in this file.
+#include "array_fcts.h" // AggregObj function
 
 // using namespace Rcpp;
 

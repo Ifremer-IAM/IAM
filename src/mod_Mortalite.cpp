@@ -14,6 +14,7 @@
 
 // #include "Modules.h" // Contient tout les modules
 #include "BioEcoPar.h" // Class is defined in this file.
+#include "array_fcts.h" // AggregObj function
 
 //using namespace Rcpp;
 // using namespace std;

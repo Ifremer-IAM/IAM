@@ -2,6 +2,7 @@
 #include <Rmath.h>
 
 #include "BioEcoPar.h" // Class is defined in this file.
+#include "array_fcts.h" // AggregObj function
 
 
 
