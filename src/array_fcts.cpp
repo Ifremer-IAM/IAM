@@ -88,7 +88,7 @@ SEXP aggregObj(SEXP object, SEXP newDim)
     }
 
     if (nbDim>0) {
-        //en-t�tes
+        //en-tetes
         PROTECT(Dim = allocVector(INTSXP,nbDim));
         rdim = INTEGER(Dim);
         PROTECT(dimnames = allocVector(VECSXP,nbDim));
@@ -116,7 +116,7 @@ SEXP aggregObj(SEXP object, SEXP newDim)
     int *index_dim = INTEGER(iDim(dim));
     int *index_ndim = INTEGER(iDim(ndim));
 
-    //il ne reste plus qu'� effectuer l'agr�gation
+    //il ne reste plus qu'a effectuer l'agregation
     for (int ind_f = 0 ; ind_f < (1 + (dim[0] - 1)*(dim[0]>0)) ; ind_f++)
     for (int ind_m = 0 ; ind_m < (1 + (dim[1] - 1)*(dim[1]>0)) ; ind_m++)
     for (int ind_i = 0 ; ind_i < (1 + (dim[2] - 1)*(dim[2]>0)) ; ind_i++)

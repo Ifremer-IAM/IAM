@@ -175,12 +175,12 @@ PROTECT(sppListQM_dyn = sppListQ);
 PROTECT(Qholdings = VECTOR_ELT(parQEX,8));
 
 //tac_ctrl = tacCTRL;
-recList = getListElement(tacCTRL, "recList");//PrintValue(recList);
-recParamList = getListElement(tacCTRL, "recParamList");
-ParamSPMlist = getListElement(tacCTRL, "ParamSPMList");
-maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0]; // TODO : only used in GestionF2
-diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0];
-lambda = REAL(getListElement(tacCTRL, "lambda"))[0];
+recList = getListElement(tacCTRL, "recList");//PrintValue(recList);  // TODO : only used in DynamicPop
+recParamList = getListElement(tacCTRL, "recParamList"); // TODO : only used in DynamicPop & Est_TACfromF
+ParamSPMlist = getListElement(tacCTRL, "ParamSPMList");  // TODO : only used in DynamicPop
+// maxIter = INTEGER(getListElement(tacCTRL, "maxIter"))[0]; // TODO : only used in GestionF2
+// diffZmax = REAL(getListElement(tacCTRL, "diffZmax"))[0]; // TODO : only used in GestionF2
+// lambda = REAL(getListElement(tacCTRL, "lambda"))[0]; // TODO : only used in GestionF2
 int t_stop = INTEGER(getListElement(tacCTRL, "t_stop"))[0];
 ZoptSS3 = false;
 

@@ -85,28 +85,35 @@ if (!is.null(MeanRec_Ftarg)){ # ajout Florence
   })
 }
 
+SPPdyn <- lengths(specific$Ages)
+
 #Ajout 27/03/2018 ----------------
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
 if ((length(TACbyF)==0) | (length(TACtot)==0)) {
  warning("Pas d'ajustement TAC opere car 'TACbyF' ou 'TACtot' est manquant!!")
  TACbyF <- TACtot <- NULL
  SPPstatOPT <- SPPspictOPT <- SPPdynOPT <- integer(0)
- SPPdyn <- unlist(lapply(specific$Ages,length))
- Ztemp <- lapply(specific$Species,function(x) if (specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
- names(Ztemp) <- specific$Species
 } else {
  #if (length(TACtot)==0) TACtot <- list()
  TACtot <- TACtot[names(TACbyF)] ; names(TACtot) <- names(TACbyF)     #TACbyF et TACtot listes de structure similaire # TODO : why second statment ?
  SPPstatOPT <- match(names(TACbyF),specific$StaticSpp) ; SPPstatOPT <- SPPstatOPT[!is.na(SPPstatOPT)] ; if (length(SPPstatOPT)==0) SPPstatOPT <- integer(0)
- SPPdyn <- unlist(lapply(specific$Ages,length))
  SPPspictOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn==1])],specific$Species) ; SPPspictOPT <- SPPspictOPT[!is.na(SPPspictOPT)]
  if (length(SPPspictOPT)==0) SPPspictOPT <- integer(0)
  SPPdynOPT <- match(names(TACbyF)[names(TACbyF)%in%names(SPPdyn[SPPdyn>1])],specific$Species) ; SPPdynOPT <- SPPdynOPT[!is.na(SPPdynOPT)]
  if (length(SPPdynOPT)==0) SPPdynOPT <- integer(0)
- Ztemp <- lapply(specific$Species,function(x) if (specific$Q[x]==1) rep(as.numeric(0),16*SPPdyn[x]) else if (specific$S[x]==1) rep(as.numeric(0),2*SPPdyn[x]) else rep(as.numeric(0),SPPdyn[x]))
- names(Ztemp) <- specific$Species
  for(i in 1:length(TACbyF)) attributes(TACbyF[[i]])$DimCst <- as.integer(c(nF,0,0,nT))
 }
+
+Ztemp <- lapply(specific$Species,function(x, SPPdyn) {
+  if (specific$Q[x]==1){
+    rep(as.numeric(0),16*SPPdyn[x])
+  }  else if (specific$S[x]==1){
+    rep(as.numeric(0),2*SPPdyn[x])
+  }  else {
+    rep(as.numeric(0),SPPdyn[x])
+  }
+}, SPPdyn)
+names(Ztemp) <- specific$Species
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 # Add SR info for SS3 species 19/11/2014

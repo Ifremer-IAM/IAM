@@ -114,12 +114,12 @@ int     nbT, nbF, nbM, nbMe, nbE, nbEstat, nbP,nbEall,nbEQuota,nbEQuotaMarket, n
         curQ, spQ, scen, //application du sc�nario??
         bhv_active /*application du module report d'effort*/, type, /*boot, nbBoot, ecodcf,*/ typeGest, //special request ICES 2013 : pistage des r�gles de sc�nario int�gr� dans la variable out_typeGest
         var, trgt, delay, upd, gestInd, gestyp/*Module de gestion*/, activeQR,
-        IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'esp�ces et de flottilles consid�r�s*/, corVarTACnby_CPP, Blim_trigger, maxIter,
+        IND_T, IND_F, eTemp, fTemp /*indicateurs de temps, d'esp�ces et de flottilles consid�r�s*/, corVarTACnby_CPP, Blim_trigger, /*maxIter, */
         *SRInd, /**EcoIndCopy,*/ *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement al�atoire d�fini par la m�thode impl�ment�e RecAlea
 
 
 double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de mod�le de prix
-        *TAC_byFleet, *TAC_glob, *Fbar_trgt, diffZmax, lambda,//param�tres de contr�le du TAC pour l'analyse des mesures de gestion pour la requ�te CIEM 2013 sur la SOLE GG
+        *TAC_byFleet, *TAC_glob, *Fbar_trgt, /*diffZmax, lambda,*///param�tres de contr�le du TAC pour l'analyse des mesures de gestion pour la requ�te CIEM 2013 sur la SOLE GG
         *effortIni, *effort1Ini, *Zoptim, *FOTHoptim, *Ztemp, *Etemp, *Einterm_fm, *EffsupTMP_fm, *Einterm_fm_copy, *multFOTHinterm_e;//Z fix� pour r�soudre l'ajustement par flottille (dimension �ge)
 
 
@@ -231,7 +231,7 @@ SEXP    ZtempList;
     int EstimationTACfromF(int ind_t);
 
     // Module GestionF2
-    void GestionF2(int ind_t, int VERBOSE = 0);
+    void GestionF2(int ind_t, SEXP tacCTRL, int VERBOSE = 0);
     void abv_GestionF2(int ind_t, SEXP updateE, SEXP tacCTRL, SEXP FList, int VERBOSE = 0);
 
     //double fxTAC_F_customCst2(double *x);
