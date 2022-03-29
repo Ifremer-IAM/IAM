@@ -34,7 +34,7 @@ You are free to copy, modify, and distribute IAM with attribution under the term
 
 Before using IAM, you need few software :
 - R >= 3.6
-- Rtools (can be installed with {devtools} R package)
+- Rtools (can be installed with `{devtools}` R package)
 
 <!--
 ## Installation

@@ -71,7 +71,7 @@ sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, T
 sim1984@output$effort1_f_m
 sim1984@output$effort2_f_m
 
-resF <- format_var("F", sim1984)  %>% filter(species == "COR")
+resF <- IAM.format(sim1984, "F")  %>% filter(species == "COR")
   # filter(metier == "Filet_DP", fleet == "Antea", year >= 9) %>%
   # print(n = 22) %>%
 
@@ -93,17 +93,7 @@ sim1984@output$psAct_f
 # Grouping variable for plot ####
 
 devtools::load_all()
-# cas vide PQuot
-format_varsp("PQuot", sim1984)
-# cas simple SSB
-format_varsp("SSB", sim1984)
-# cas complexe F
-format_varsp("F", sim1984) # %>% filter(is.na(value)) %>% head # TODO why NA here ?
-format_varsp("N_S1M1", sim1984)
 
-# demonstration de la puissance !!!!
-format_vareco(name = "ratio_gp_K_f", sim1984)
-format_vareco(name = "reconcilSPP", sim1984)
 
 # group output and outputsp in one single large element of doom
 # details : remove reconcilSPP because value is character and it's crap
@@ -119,33 +109,6 @@ simpl <- function(sim){
 
   bind_rows(output, outputsp)
 }
-
-
-# Test when variable does not exist return NULL
-format_var("MLA",sim1984)
-
-# ici on recup toutes les variables pour une simul
-# permet d'imaginer un rbind de plusieurs simuls
-res <- lapply(names(sim1984@outputSp), format_var, sim1984) %>%
-  do.call(rbind, .)
-
-# ici on filtre une simul pour plot selon metier flotte.
-res %>% filter(variable == "GVL_f_m_e") %>%
-  mutate( year = as.numeric(year) ) %>%
-  mutate( value = as.numeric(value) ) %>%
-  ggplot(., aes(x=year, y=value, color = fleet)) +
-  geom_line() +
-  facet_grid(species ~ metier)
-
-# et la on peut meme trier facilement,
-# enlever les colonnes inutiles et mettre au bon format
-# le format de base etant celui pour ggplot
-format_var(name = "allocEff_f_m", sim1984) %>%
-  filter( fleet == "Alis") %>%
-  discard( ~n_distinct(.) == 1) %>%
-  pivot_wider(names_from = year, values_from = value)
-
-
 
 
 
@@ -174,7 +137,7 @@ close(pb)
 pb <- txtProgressBar(min = 0, max = NITER, style = 3)
 res <- lapply(1:NITER,function(k) {
   setTxtProgressBar(pb, k)
-  format_var("Ltot", simuls[[k]]) %>%
+  IAM.format("Ltot", simuls[[k]]) %>%
     add_column(sim = k, .before = "variable")
   }) %>%
   do.call(rbind, .) %>%
@@ -257,5 +220,26 @@ res %>%
   summarize(value = sum(value)) %>% ungroup() %>%
   group_by(across(c(-s_age))) -> tmp
 
+library(tidyverse)
 
+res <- lapply(names(sim_statu_quo@outputSp), IAM.format, sim_statu_quo) %>%
+  do.call(rbind, .)
+ec <- lapply(names(sim_statu_quo@output), IAM.format, sim_statu_quo) %>%
+  do.call(rbind, .)
 
+tmp <- rbind(res, ec)
+lobstr::obj_size(tmp)
+save(tmp,file = "tmp.RData")
+save(sim_statu_quo, file = "sim.RData")
+.rs.restartR()
+gc()
+load("tmp.RData")
+load("sim.RData")
+lobstr::obj_size(tmp)
+lobstr::obj_size(sim_statu_quo)
+object.size(tmp)
+object.size(sim_statu_quo)
+
+a <- rep(tmp, 1000)
+
+do.call(rbind, a)

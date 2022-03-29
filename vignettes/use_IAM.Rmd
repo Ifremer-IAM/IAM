@@ -1,10 +1,10 @@
 ---
 title: "Utilisation IAM dans R"
 output:
-  rmarkdown::html_vignette:
-    fig_caption: yes
   pdf_document:
     keep_tex: yes
+  rmarkdown::html_vignette:
+    fig_caption: yes
 vignette: |
   %\VignetteIndexEntry{Utilisation IAM dans R} 
   %\VignetteEncoding{UTF-8} 
@@ -72,25 +72,6 @@ Ces commandes permettend d'accéder à l'aide du package, avec une aide détaill
 avoir un example simple sans SS3 et introduire le SS3 dans une autre vignette.
 :::
 
-
-```{r, eval = FALSE, include = FALSE}
-load(IAM_example("IAM_SS3_1984.RData"))
-IAM_input_1984 <- IAM::IAM.input(
-  fileIN = IAM_example("inputFile.xlsx"),
-  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
-  Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
-  Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
-  FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
-  FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
-  FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
-  FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
-  Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
-  iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
-)
-slotNames(IAM_input_1984)
-```
-
-
 La package intègre un fichier exemple de paramétrage qui va permettre d'illustrer le fonctionnement des procédures d'importation.
 <!-- Ce fichier doit se trouver dans le répertoire "IAM" du dossier "R/R-version/library". -->
 La fonction `IAM_example()` renvoie le chemin du fichier d'exemple choisis dans le package IAM. Il s'agit de données brutes au format `.xlsx` ou `.RData`.
@@ -110,18 +91,34 @@ Le package contient également des objets intermédiaires issus des différentes
 data(package = "IAM")
 ```
 
-La méthode `IAM.input()` sert à l'importation des paramètres d'entrée bruts du modèle, et retourne un objet de classe `iamInput` regroupant de manière organisée toute ces données. Elle prend pour argument principal le chemin du fichier `.xlsx` à importer, complété par `t_init` l'instant initial, et `nbStep` le nombre de pas de temps désiré pour la simulation. On procède alors à l'importation de la manière suivante :
+La méthode `IAM.input()` sert à l'importation des paramètres d'entrée bruts du modèle, et retourne un objet de classe `iamInput` regroupant de manière organisée toute ces données. Elle prend pour argument principal le chemin du fichier `.xlsx` à importer, complété par `t_init` l'instant initial, et `nbStep` le nombre de pas de temps désiré pour la simulation. 
 
-::: {#exdata .greeting .message style="color: red;"}
-changer le data set example
-:::
+Dans le cadre de cet exemple, il faut cependant noter quelques modifications. En effet ici les flotilles ne sont pas comprises dans le fichier `.xlsx` et sont donc à aller chercher dans un dossier flottille avec l'argument `folderFleet`.
 
-```{r inport, eval=FALSE, results="hide"}
-IAM_input_1984_simpl <- IAM.input(fileIN = IAM_example("inputFile.xlsx"), t_init=1984, nbStep=12)
+De même, une espèce décrite dans le fichier de paramètrage utilise un modèle de dynamique dit *SS3*, et les informations sont donc introduites à ce moment là. Il s'agit de mortalité définies par saisons.
+
+On procède alors à l'importation de la manière suivante (*attention, cela peut prendre quelques secondes selon le nombre de flottilles*):
+
+```{r inport, results="hide"}
+load(IAM_example("IAM_SS3_1984.RData"))
+
+IAM_input_1984 <- IAM::IAM.input(
+  fileIN = IAM_example("inputFile.xlsx"),
+  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+  # elements 
+  Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
+  Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
+  FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
+  FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
+  FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
+  FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
+  Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
+  iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
+)
 ```
 
 
-```{r falseinport, include = FALSE, echo = FALSE, results="hide"}
+```{r falseinport, include = FALSE, echo = FALSE, results="hide, eval = FALSE"}
 data(IAM_input_1984)
 ```
 
@@ -133,10 +130,6 @@ slotNames(IAM_input_1984)
 ```
 
 Le slot "desc" est un simple descripteur permettant de caractériser l'objet ; c'est un paramètre optionnel de la fonction `IAM.input`. Le slot "specific" est constitué des descriptifs des dimensions du modèle qui vont conditionner la structure des variables. Le slot "historical" regroupe les données antérieures à l'instant initial `t_init`. Les slots "scenario" et "stochastic" intègrent les paramètres définis dans les feuillets correspondants. Enfin, le slot principal "input" rassemble les données initiales injectées dans le modèle. Il est composé d'un élément "Fleet" et d'un élément par espèce modélisée, ces derniers possédant la même structure. Au final, ce slot rassemble toutes les informations renseignées dans les feuillets "Stock", "Flottille" et "Market", ainsi que les matrices "fm", "mm" et "icat". Voici quelques exemples permettant d'accéder aux données de cet objet (l'accès aux slots se fait par `objet@slot`, l'accès aux éléments d'un slot par `slot$élément`) :
-
-::: {#exdata .greeting .message style="color: red;"}
-stochastic is deprecated ?
-:::
 
 ```{r inpnames}
 names(IAM_input_1984@specific)
@@ -209,7 +202,9 @@ L'instruction va provoquer l'affichage d'une interface de paramétrage comportan
 
   + *Species* : espèce sur laquelle porte la mesure de gestion (à choisir entre toutes les espèces modélisées)
   
-  + *Type* : multiplicatif ou additif. **To explain !**
+  + *Type* : multiplicatif ou additif.
+  
+  <!-- **To explain !** -->
 
   + *Delay* : délai d'application de la mesure de gestion (autrement dit, temps d'attente avant la mise en activation du module).
 
@@ -217,7 +212,9 @@ L'instruction va provoquer l'affichage d'une interface de paramétrage comportan
 
   + *Upper bound* / *Lower bound* : bornes de l'intervalle d'application de la procédure d'optimisation. Un intervalle restreint permet de maximiser le temps de calcul, mais fait prendre le risque de ne pas trouver de solution. Ces valeurs sont fortements dépendantes du type de gestion réglé. A utiliser avec précaution.
   
-  + Bouton *Eff table* **explain**: effort maximum par flottille.
+  + Bouton *Eff table* : effort maximum par flottille.
+  
+  <!-- **To explain !** -->
 
   + Bouton *mFm table* : permet de renseigner les pondérations (décimales) par flottille utilisées durant le processus d'ajustement (une cellule par classe de flottille). Cette pondération permet de paramétrer la distribution d'effort concédée par chaque flottille afin d'atteindre l'objectif désiré. Un poids nul signifiera que la flottille en question conservera son effort initial. Un poids *p* signifiera que la variation de l'effort consentie par la flottille pour atteindre au final la valeur objectif sera *p* fois plus importante que celle des flottilles de poids unité (attention : tout ceci s'applique relativement au signe de variation global, qui peut être contrôlé par le biais des bornes supérieures et inférieures préalablement définies). Des poids de signes opposés peuvent être utilisés pour simuler des variations contraires selon les flottilles.
 
@@ -240,24 +237,20 @@ summary(IAM_argum_1984)
 names(IAM_argum_1984@arguments)
 ```
 
-<!--
-On peut modifier l'objet déjà existant en modifiant directement une ou plusieurs valeurs. Mais ceci suggère une bonne connaissance de R et un risque non négligeable d'entamer la structure de l'objet. Par exemple, pour modifier le nombre d'itérations du module de réplication :
+On peut modifier l'objet déjà existant utilisant des fonctions spécifiques et les valeurs voulues. Mais ceci suggère une bonne connaissance de R et un risque non négligeable d'entamer la structure de l'objet. Par exemple, pour mettre en oeuvre la module Gestion et modifier les variables économiques :
 
-```{r editargum, eval=F}
-names(argum@arguments$Replicates)
-argum@arguments$Replicates$nbIter
-argum@arguments$Replicates$nbIter <- 250
-argum@arguments$Replicates$nbIter
+```{r editargum}
+# Modify Gestion
+IAM_argum_1984 <- IAM.editArgs_Gest(
+  IAM_argum_1984, active = TRUE, control = "Nb trips", target = "Fbar",
+  espece = "DAR", type = "x")
+# Modify Eco
+IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 3)
+# Check if Gestion is active
+summary(IAM_argum_1984)
+# Desactivate Gestion
+IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active = FALSE)
 ```
-
-On peut faire de même pour désactiver le module :
-
-```{r editargum2, eval=F}
-argum@arguments$Replicates$active
-argum@arguments$Replicates$active <- 0
-```
-
--->
 
 Mais la procédure la plus simple pour corriger un objet est de reprendre l'interface au stade de la validation, et d'effectuer directement les corrections. Pour cela, il suffit de rappeler la méthode `IAM.args()`, mais non plus affectée à un objet de paramétrage initial de classe `iamInput`, mais plutôt à l'objet qu'on désire modifier. On tape donc :
 
@@ -310,55 +303,100 @@ argum2 <- IAM.args("C:/folder/args.txt",specific="C:/folder/specific.txt")
 
 -->
 
-<!-- ### Simulation (IAM.model) -->
-<!--
-
-Une fois les deux principaux composants du paramétrage obtenus, la mise en route de la simulation est très simple : la méthode `IAM.model()` appelle l'objet `iamArgs` et l'objet `iamInput` et restitue les résultats de la simulation dans un objet de classe `iamOutput` si le module de réplication est désactivé, de classe `iamOutputRep` dans le cas contraire.
+### Simulation (IAM.model)
 
 
-```{r simul, eval=F}
-out <- IAM.model(argum,inp)
-class(out)
+Une fois les deux principaux composants du paramétrage obtenus, la mise en route de la simulation est très simple : la méthode `IAM.model()` appelle l'objet de classe `iamArgs` et l'objet de classe `iamInput` et restitue les résultats de la simulation dans un objet de classe `iamOutput`, ou de classe `iamOutputRep` si le module de réplication est activé.
+
+
+```{r simul}
+IAM_out_1984 <- IAM.model(IAM_argum_1984,IAM_input_1984)
+class(IAM_out_1984)
 ```
 
-Toutes les sorties du modèle sont entreposées dans 2 slots de l'objet out. Un slot outputSp réunit toutes les variables définies par espèce modélisée (sorties du modèle biologique principalement), et un autre slot output rassemble les variables sans dimension espèce (les variables économiques). L'accès aux variables est illustré ci-dessous :
+Toutes les sorties du modèle sont entreposées dans 2 slots de l'objet `IAM_out_1984`. Un slot `outputSp` réunit toutes les variables définies par espèce modélisée (sorties du modèle biologique principalement), et un autre slot `output` rassemble les variables sans dimension espèce (les variables économiques). L'accès aux variables est illustré ci-dessous :
 
-```{r slotsim, eval=F}
-slotNames(out)
-names(out@outputSp)
-names(out@outputSp$F)
-names(out@output)
+```{r slotsim}
+slotNames(IAM_out_1984)
+names(IAM_out_1984@outputSp)
+names(IAM_out_1984@output)
 ```
 
-Dans le cas d'un  objet de classe iamOutputRep, chaque variable est une liste de n éléments, avec n le nombre de réplicats.
+<!-- <details> -->
+<!-- TODO : possibilite de collaspe cette partie -->
+  <!-- <summary>`iamOutputRep` simulation</summary> -->
+Dans le cas d'un  objet de classe `iamOutputRep`, chaque variable est une liste de n éléments, avec n le nombre de réplicats.
 
 
-```{r simrep, eval=F}
-class(out)
-length(out@outputSp$F)
-names(out@outputSp$F[[1]])
-names(out@outputSp$F[[500]])
+```{r simrep}
+# Activate replicates
+IAM_argumRep_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = 2)
+
+IAM_outRep_1984 <- IAM.model(IAM_argumRep_1984,IAM_input_1984)
+class(IAM_outRep_1984)
+length(IAM_outRep_1984@outputSp$F)
+names(IAM_outRep_1984@outputSp$F[[1]])
+names(IAM_outRep_1984@outputSp$F[[2]])
 ```
--->
+<!-- </details>  -->
 
-<!-- ### Mise en forme des sorties (IAM.format \& IAM.unite) -->
+### Mise en forme des sorties (IAM.format \& IAM.format_quant<!--\& IAM.unite -->)
 
-<!--
-
-La méthode IAM.format est une fonction de formatage appliquée aux objets iamOutput et iamOutputRep. Elle va permettre la conversion d'une variable multidimensionnelle en une table de type "data.frame" (format facilitant la création de graphiques adaptés à ce type de variables), mais aussi le filtrage et l'agrégation des données. Outre l'objet "output", elle possède les arguments suivants :
+La méthode IAM.format est une fonction de formatage appliquée aux objets iamOutput <!--et iamOutputRep-->. Elle va permettre la conversion d'une variable multidimensionnelle en une table de type "data.frame" (format facilitant la création de graphiques adaptés à ce type de variables) <!--, mais aussi le filtrage et l'agrégation des données. Outre l'objet "output", elle possède les arguments suivants :
 
 * elmt : nom de la variable à formater (type character).
 * spp : nom de l'espèce décrite par la variable (pertinent selon la variable).
 * agg : vecteur numérique indiquant la ou les dimensions sur lesquelles opérer une agrégation (Rappel : 1 pour la dimension "Flottille", 2 pour la dimension "Métier", 3 pour la dimension "Age/Catégorie", 4 pour la dimension temporelle).
 * headers : Optionnel. Dimension qui constituera les en-têtes du tableau (caractère, "f" pour flottille, "m" pour "métier", "a\_c" pour "âge-catégorie" et "t" pour "temps").
 * subs : Optionnel. Expression logique permettant d'effectuer un filtrage des données. Les champs filtrés sont codés dans l'expression par "f", "m", "a\_c" ou "t".
+-->
 
-```{r format, eval=F}
+Cette fonction prend également en entrée le nom d'une ou plusieurs variables à extraire, un nom de simulation et un numero qui pourront servir plus tard pour aggréger plusieurs simulations ensemble.
+
+On note qu'une variable spéciale nommée `"summary"` permet d'extraire d'un seul coup quelques variables biologiques et économiques.
+
+
+```{r format}
+# Extraction d'une variable
+statu_quo_tbl_Fbar <- IAM.format(IAM_out_1984, name = "Fbar", sim_name = "statu_quo", n = 1)
+head(statu_quo_tbl_Fbar)
+# Extraction de plusieurs variables
+statu_quo_tbl_summary <- IAM.format(IAM_out_1984, name = "summary", sim_name = "statu_quo", n = 1)
+unique(statu_quo_tbl_summary$variable)
+```
+
+<!--
+```{r old_format, eval=FALSE, include = FALSE}
 dim(out@outputSp$C$Langoustine)
 IAM.format(out,elmt = "C", spp = "Langoustine", agg = 1:2, headers = "a_c", t%in%(2012:2016))
 IAM.format(out,elmt = "C", spp = "Langoustine", agg = 1:2, headers = NA, t%in%(2012:2013))
 ```
+-->
 
+Ce format de table long permet ensuite l'utilisation d'outils pour trier et éventuellement produire les tables dans un format large.
+
+```{r pivot_wider}
+library(dplyr)
+library(magrittr)
+
+# Extraction du SSB
+statu_quo_tbl_summary %>%
+  dplyr::filter( species == "COR", variable == "SSB") %>% # trie des lignes
+  discard(~all(is.na(.x))) %>% # retire les colonnes vides (NA)
+  # discard( ~ n_distinct(.) == 1) %>% # Ligne optionnelle pour enlever les colonnes identiques.
+  pivot_wider(names_from = year, values_from = value) # mise en forme horizontale
+
+
+# Table de gp_f
+statu_quo_tbl_summary %>%
+  dplyr::filter(variable == "gp_f") %>% # trie des lignes
+  discard(~all(is.na(.x))) %>% # retire les colonnes vides (NA)
+  discard( ~ n_distinct(.) == 1) %>% # Ligne optionnelle pour enlever les colonnes identiques.
+  pivot_wider(names_from = year, values_from = value) # mise en forme horizontale
+
+```
+
+<!--
 Le premier appel prend l'élément "C" de l'objet out pour l'espèce "Langoustine", agrège sur les dimensions "flottilles" et "métiers", ne garde que l'information de 2012 jusqu'à 2016, et formate la table de sorte que les modalités de la dimension "âge" composent les champs. Le second appel ne décline plus de dimension en en-tête, et ne conserve que l'information pour les années 2012 et 2013. Il est important de conserver une certaine cohérence au moment de paramétrer cette fonction : par exemple, la méthode n'acceptera pas en tant que header une dimension incluse dans l'index d'agrégation.
 La fonction prendra aussi en entrée des objets de classe iamOutputRep, mais retournera dans ce cas non plus une simple table, mais une liste de tables.
 On rappelle que la fonction IAM.model ne génère qu'un objet de sortie par scénario. La fonction IAM.unite est une fonction qui hérite de IAM.format et qui gère le regroupement des données de plusieurs objets (et ainsi de plusieurs scénarios). Elle s'utilise de manière similaire à IAM.format, à la différence qu'elle ne prend plus un seul objet en entrée, mais une liste d'objets. La dimension "scénario" est alors intégrée à la table résultante (sous le codage "Scen" utilisable en tant que paramètre headers). Notons que la liste doit contenir des objets de même classe. Une liste peut toutefois ne contenir qu'un seul objet, comme dans l'exemple ci-dessous :
@@ -368,9 +406,25 @@ IAM.unite(list(out), elmt = "C", spp = "Langoustine", agg = 1:2, headers = "a_c"
 ```
 
 Dans le cas d'une liste d'objets de classe iamOutputRep, la fonction procède en outre à la concaténation de toutes les tables générées par chacune des itérations, et ajoute à la table obtenue un champ iter indiquant l'itération concernée (voir table DFiam\_iter dans le chapitre 3.2.7).
-
-
 -->
+
+Dans le cas d'une liste d'objet de classe `iamOuput`, il est possible d'extraire les variables, de concaténer et d'ensuite calculer une table résumée ne présentant que les quantiles d'interêt. Cela permet d'alleger les sorties du modèle et de les manipuler plus simplement lors de la production de représentations graphiques.
+
+```{r iam.format_quant}
+res1 <- IAM.format(IAM_out_1984, c("SSB"), n = 1) %>%
+ dplyr::filter(species == "ARC", year <= 1990)
+# Je modifie légérement les données pour avoir des quantiles écartés.
+res2 <- mutate(res1, n = 2, value = value + rnorm(1, sd = 100))
+
+# On peut associer les données extraites avec rbind.
+res <- rbind(res1, res2)
+
+IAM.format_quant(res, probs = c(0.025, 0.975), select_indiv = 2) %>%
+  discard(~all(is.na(.x)))
+```
+
+A noter que des colonnes seront souvent remplies de valeurs manquantes car peu de variables sont définies sur toutes les dimensions d'IAM. Cependant, il vaut mieux conserver ces colonnes jusqu'au dernier moment afin de pouvoir trier les données avec des fonctions génériques ou encore pouvoir utiliser `rbind`.
+
 <!-- ### Représentations graphiques des sorties (IAM.plot, IAM.barplot, IAM.barIC, IAM.bwplot, IAM.zone) -->
 
 
@@ -448,6 +502,48 @@ update(trellis.last.object(), scales=list(alternating=1))
 La fonction update ciblant la sortie graphique va permettre d'appliquer des paramètres "lattice" qui n'auraient pas été considérés dans l'implémentation des fonctions graphiques du package "IAM".
 
 -->
+
+### Conseil de réplication ####
+
+L'utilisation du package IAM prend tout son sens lors du lancement d'un même scénario répliqué de nombreuses fois. Cela permet de prendre en compte les problématiques stochastiques de certaines variables comme le recrutement. Ainsi, un même scénario peut être lancé plusieurs centaines de fois. Cette option est implémentée de base dans le package avec la classe `IAMOutputRep`, mais celle-ci est dépcréciée car ne permettant plus la réalisation de scénarios complexes.
+
+Une autre alternative réside dans l'utilisation de code R pour forcer de grands nombres de réplicats, au détriment d'une plus grande place en mémoire. Notons tout de même que cela peut prendre un certain temps.
+
+```{r, eval = FALSE}
+# Code non exécuté
+library(IAM)
+a <- Sys.time() # mesure du temps
+nsim_statu_quo <- replicate(
+  500,
+  IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+)
+b <- Sys.time() # mesure du temps
+b - a # 1.17 min
+```
+
+Afin de gagner du temps, le package `{parallel}` permet d'effectuer les calculs sur un plus grand nombre de processeurs de l'ordinateurs. L'utilisation de ce package permet de réduire le temps de calcul pour un grand nombre de réplicats et est donc conseillé.
+
+```{rn eval = FALSE}
+# Code non exécuté
+library(parallel)
+cl <- makeCluster(detectCores()-1)
+
+clusterEvalQ(cl,library(IAM)) # charger les librairies dans le cluster.
+
+c <- Sys.time() # mesure du temps
+# rendre les objets disponibles pour le code
+clusterExport(cl,c("IAM_argum_1984", "IAM_input_1984"))
+# S'assurer de "seed" différentes pour chaque noeud.
+clusterSetRNGStream(cl)
+#... Simuler les réplicats ...
+res <- parSapply(cl, 1:50, function(i,...) {
+  IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+  } )
+# Arreter le cluster
+stopCluster(cl)
+d <- Sys.time() # mesure du temps
+d - c # 51 sec !!!
+```
 
 ## References
 

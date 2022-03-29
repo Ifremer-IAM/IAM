@@ -337,9 +337,8 @@ setMethod(
 
     if(!is.null(mfm)){
       n <- dim(gest$mfm)
-      if(any(!is.numeric(mfm)) | any(dim(mfm) != n) |
-         any(mfm[!is.na(mfm)] < 0) ) {
-        stop(sprintf("mfm must be a %d by %d positive numeric matrix",
+      if(any(!is.numeric(mfm)) | any(dim(mfm) != n)  ) {
+        stop(sprintf("mfm must be a %d by %d numeric matrix",
                      n[1], n[2]),
              call. = interactive())
       }
@@ -348,6 +347,62 @@ setMethod(
 
 
     object@arguments$Gestion <- gest
+    return(object)
+  }
+)
+
+
+# Replicates ####
+#' Modify Replicates arguments
+#'
+#' @param object a \code{\link[IAM]{iamArgs-class}} object
+#' @param ... selected argument
+#'
+#' @include 0_input_objects.r
+#'
+#' @author Maxime Jaunatre
+#'
+#' @examples
+#' data(IAM_argum_1984)
+#'
+#' # Replicate 100 times
+#' IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = 100)
+#' IAM.args_scenar(IAM_argum_1984)
+#'
+#' # Desactivate Replicates
+#' IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = NULL)
+#' IAM.args_scenar(IAM_argum_1984)
+#'
+#' @name IAM.editArgs_Rep
+#' @export
+setGeneric("IAM.editArgs_Rep",
+           function(object, ...){ ## generic editArgs ####
+             standardGeneric("IAM.editArgs_Rep")
+           }
+)
+
+#' @param n Number of replicates
+#' NULL will desactivate the Replicates module
+#'
+#' @rdname IAM.editArgs_Rep
+#' @export
+setMethod(
+  f = "IAM.editArgs_Rep", signature("iamArgs"),
+  function(object, n = NULL) { ## iamArgs editArgs ####
+    rep <- object@arguments$Replicates
+
+    if(!is.null(n)){
+      if(is.numeric(n) && length(n) == 1 && n > 0){
+        rep$nbIter <- n
+        rep$active <- 1L
+      } else {
+        stop("n must be a single positive numeric value")
+      }
+    } else {
+      rep$active <- 0L
+    }
+
+    object@arguments$Replicates <- rep
     return(object)
   }
 )
@@ -539,11 +594,20 @@ setMethod(
                 unlist(lapply(spe$Ages, function(x) tail(x, 1))) ), sep = "")
 
     cat(rep("-",36),"\n", sep = "")
-    cat("                  Fleet |    nbv   |\n", sprintf(
-      "%22s |  %4d    |\n", spe$Fleet, object@input$Fleet$nbv_f
-    ))
+
+    if(length(spe$Fleet) < 15){
+      cat("                  Fleet |    nbv   |\n", sprintf(
+        "%22s |  %4d    |\n", spe$Fleet, object@input$Fleet$nbv_f
+      ))
+    } else {
+      cat(" Too mant fleet to summarise ( > 15 )\n")
+    }
+
 
   }
 )
+
+
+
 
 

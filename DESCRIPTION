@@ -30,6 +30,7 @@ Description: IAM (Impact Assessment Model) is a bio-economic model
 Depends: R(>= 3.5.0) 
 Imports: utils,
          stats,
+         rlang,
          methods,
          grDevices,
          abind,
@@ -47,7 +48,9 @@ Imports: utils,
          rhandsontable,
          shiny,
          shinyWidgets,
-         shinyjs
+         shinyjs,
+         ggplot2,
+         Cairo
 License: CeCILL-2
 LazyData: true
 NeedsCompilation: yes
@@ -66,6 +69,9 @@ Collate:
     '3_args_input_txtExport.r'
     '4_output_objects.r'
     '5_simulation.r'
+    '6_0_utils_test_plot.R'
+    '6_1_utils_plot_bio.R'
+    '6_1_utils_plot_eco.R'
     '6_utils.r'
     '7_plotting.r'
     'dataset_doc.R'
