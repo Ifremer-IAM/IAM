@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_dev.R
 \name{IAM_example}
 \alias{IAM_example}
-\title{find the extdata files}
+\title{Path to the IAM extdata files}
 \usage{
 IAM_example(file)
 }

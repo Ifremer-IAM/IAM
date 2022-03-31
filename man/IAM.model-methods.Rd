@@ -5,7 +5,7 @@
 \alias{IAM.model-methods}
 \alias{IAM.model}
 \alias{IAM.model,iamArgs,iamInput-method}
-\title{Modelization method}
+\title{Running an IAM simulation.}
 \usage{
 IAM.model(objArgs, objInput, ...)
 
@@ -48,5 +48,5 @@ IAM.model(objArgs, objInput, ...)
 \item{verbose}{Show messages to follow the process. Mainly used for debug process.}
 }
 \description{
-Modelization method
+Running an IAM simulation.
 }

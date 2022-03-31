@@ -14,14 +14,13 @@ knitr::opts_chunk$set(
 library(badger)
 ```
 
-# IAM : Impact Assessment bio-economic Model for fisheries management <img src="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/fig/IAM_hex.png?inline=false" alt="logo" align="right" height="200px/"/>
+# IAM : Impact Assessment bio-economic Model for fisheries management <img src="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/fig/IAM_hex.png?inline=false" alt="IAM logo" align="right" height="200px/"/>
 
 <!-- badges: start -->
 
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![Dev Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam)  [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cran.r-project.org/web/licenses/CeCILL-2)
+
 <!-- `r badge_devel("iam/iam", "blue")` -->
-[![Dev Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam) 
-[![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cran.r-project.org/web/licenses/CeCILL-2)
 
 <!-- badges: end -->
 
@@ -35,8 +34,10 @@ You are free to copy, modify, and distribute IAM with attribution under the term
 ## Usage
 
 Before using IAM, you need few software :
-- R >= 3.6
-- Rtools (can be installed with `{devtools}` R package)
+
+* R >= 3.6
+
+* Rtools (can be installed with `{devtools}` R package)
 
 ## Installation
 
@@ -88,7 +89,7 @@ A more in depth notice in french is available if you need to check the model imp
 
 ## Credits
 
-IAM is written by Mathieu Merzéréaud, Claire Macher, Michel Bertignac, Marjolaine, Frésard, Olivier Guyader, Christelle Le Grand and Maxime Jaunatre.
+IAM is written by Mathieu Merzéréaud, Claire Macher, Michel Bertignac, Marjolaine Frésard, Olivier Guyader, Christelle Le Grand and Maxime Jaunatre.
 
 ## Contributions
 
@@ -96,6 +97,6 @@ We welcome contributions to the model. If such case, please contact Mathieu Merz
 
 ## Support
 
-For further information or help, don't hesitate to get in touch with the samba developpers:
+For further information or help, don't hesitate to get in touch with the IAM developpers:
 
 Mathieu.Merzereaud\@ifremer.fr

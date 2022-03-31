@@ -103,38 +103,6 @@ setMethod("IAM.input2args", signature("iamInput"),function(object, desc= NULL){
 })
 
 
-#' Accessing app arguments
-#'
-#' @param which the name of an argument passed to run_app function. char.
-#'
-#' @importFrom shiny getShinyOption
-#'
-#' @details Thanks ThinkR for helping me messing some code.
-#' @noRd
-get_golem_options <- function(which = NULL){
-  if (is.null(which)){
-    getShinyOption("golem_options")
-  } else {
-    getShinyOption("golem_options")[[which]]
-  }
-}
-
-
-#' Allow to set golem options for an app.
-#'
-#' @param app a shiny app
-#' @param golem_opts list of options. Options need to be named.
-#'
-#' @importFrom shiny runApp
-#'
-#' @details Thanks ThinkR for helping me messing some code
-#' @noRd
-with_golem_options <- function(app, golem_opts){
-  app$appOptions$golem_options <- golem_opts
-  return(runApp(app))
-}
-
-
 #' Adding tabset for each species
 #'
 #' @import shiny
@@ -277,7 +245,7 @@ mod_spInput_serv <- function(id, recru){
 #' @import rhandsontable
 #'
 #' @noRd
-app_ui <- function() {
+args_app_ui <- function() {
   fluidPage(
     tags$head(
       tags$style(HTML("
@@ -454,7 +422,7 @@ app_ui <- function() {
 #' @param input basic shiny argument for server function
 #' @param output basic shiny argument for server function
 #' @param session basic shiny argument for server function
-app_server <- function(input, output, session) {
+args_app_server <- function(input, output, session) {
 
   x <- reactiveValues(
     input = get_golem_options("input"),
@@ -667,7 +635,7 @@ app_server <- function(input, output, session) {
 IAM_arg_app <- function(object, AllVarRep) {
 
   res <- with_golem_options(
-    app = shinyApp(ui = app_ui, server = app_server),
+    app = shinyApp(ui = args_app_ui, server = args_app_server),
     golem_opts = list(input = object, AllVarRep = AllVarRep,
                       spe = object@specific, arg = object@arguments,
                       tac = rbind(tac = object@arguments$Gestion$tac,

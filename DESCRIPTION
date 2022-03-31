@@ -76,4 +76,5 @@ Collate:
     '6_utils.r'
     '7_plotting.r'
     'dataset_doc.R'
+    'shiny_utils.R'
     'utils_dev.R'

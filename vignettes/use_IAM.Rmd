@@ -1,14 +1,12 @@
 ---
-title: |
-  ![](IAM_hex.png){width=2.5in}  
-  Utilisation IAM dans R
+title: "Utilisation IAM dans R (fr)"
 output:
   pdf_document:
     keep_tex: yes
   rmarkdown::html_vignette:
     fig_caption: yes
 vignette: |
-  %\VignetteIndexEntry{Utilisation IAM dans R} 
+  %\VignetteIndexEntry{Utilisation IAM dans R (fr)} 
   %\VignetteEncoding{UTF-8} 
   %\VignetteEngine{knitr::rmarkdown}
 bibliography: vignette.bib
@@ -344,14 +342,7 @@ names(IAM_outRep_1984@outputSp$F[[2]])
 
 ### Mise en forme des sorties (IAM.format \& IAM.format_quant<!--\& IAM.unite -->)
 
-La méthode IAM.format est une fonction de formatage appliquée aux objets iamOutput <!--et iamOutputRep-->. Elle va permettre la conversion d'une variable multidimensionnelle en une table de type "data.frame" (format facilitant la création de graphiques adaptés à ce type de variables) <!--, mais aussi le filtrage et l'agrégation des données. Outre l'objet "output", elle possède les arguments suivants :
-
-* elmt : nom de la variable à formater (type character).
-* spp : nom de l'espèce décrite par la variable (pertinent selon la variable).
-* agg : vecteur numérique indiquant la ou les dimensions sur lesquelles opérer une agrégation (Rappel : 1 pour la dimension "Flottille", 2 pour la dimension "Métier", 3 pour la dimension "Age/Catégorie", 4 pour la dimension temporelle).
-* headers : Optionnel. Dimension qui constituera les en-têtes du tableau (caractère, "f" pour flottille, "m" pour "métier", "a\_c" pour "âge-catégorie" et "t" pour "temps").
-* subs : Optionnel. Expression logique permettant d'effectuer un filtrage des données. Les champs filtrés sont codés dans l'expression par "f", "m", "a\_c" ou "t".
--->
+La méthode IAM.format est une fonction de formatage appliquée aux objets iamOutput <!--et iamOutputRep-->. Elle va permettre la conversion d'une variable multidimensionnelle en une table de type "data.frame" (format facilitant la création de graphiques adaptés à ce type de variables) 
 
 Cette fonction prend également en entrée le nom d'une ou plusieurs variables à extraire, un nom de simulation et un numero qui pourront servir plus tard pour aggréger plusieurs simulations ensemble.
 
@@ -399,18 +390,6 @@ statu_quo_tbl_summary %>%
   pivot_wider(names_from = year, values_from = value) # mise en forme horizontale
 
 ```
-
-<!--
-Le premier appel prend l'élément "C" de l'objet out pour l'espèce "Langoustine", agrège sur les dimensions "flottilles" et "métiers", ne garde que l'information de 2012 jusqu'à 2016, et formate la table de sorte que les modalités de la dimension "âge" composent les champs. Le second appel ne décline plus de dimension en en-tête, et ne conserve que l'information pour les années 2012 et 2013. Il est important de conserver une certaine cohérence au moment de paramétrer cette fonction : par exemple, la méthode n'acceptera pas en tant que header une dimension incluse dans l'index d'agrégation.
-La fonction prendra aussi en entrée des objets de classe iamOutputRep, mais retournera dans ce cas non plus une simple table, mais une liste de tables.
-On rappelle que la fonction IAM.model ne génère qu'un objet de sortie par scénario. La fonction IAM.unite est une fonction qui hérite de IAM.format et qui gère le regroupement des données de plusieurs objets (et ainsi de plusieurs scénarios). Elle s'utilise de manière similaire à IAM.format, à la différence qu'elle ne prend plus un seul objet en entrée, mais une liste d'objets. La dimension "scénario" est alors intégrée à la table résultante (sous le codage "Scen" utilisable en tant que paramètre headers). Notons que la liste doit contenir des objets de même classe. Une liste peut toutefois ne contenir qu'un seul objet, comme dans l'exemple ci-dessous :
-
-```{r unite, eval=F}
-IAM.unite(list(out), elmt = "C", spp = "Langoustine", agg = 1:2, headers = "a_c", t%in%(2012:2016))
-```
-
-Dans le cas d'une liste d'objets de classe iamOutputRep, la fonction procède en outre à la concaténation de toutes les tables générées par chacune des itérations, et ajoute à la table obtenue un champ iter indiquant l'itération concernée (voir table DFiam\_iter dans le chapitre 3.2.7).
--->
 
 Dans le cas d'une liste d'objet de classe `iamOuput`, il est possible d'extraire les variables, de concaténer et d'ensuite calculer une table résumée ne présentant que les quantiles d'interêt. Cela permet d'alleger les sorties du modèle et de les manipuler plus simplement lors de la production de représentations graphiques.
 
@@ -507,7 +486,7 @@ La fonction update ciblant la sortie graphique va permettre d'appliquer des para
 
 -->
 
-### Conseil de réplication ####
+## Conseil de réplication
 
 L'utilisation du package IAM prend tout son sens lors du lancement d'un même scénario répliqué de nombreuses fois. Cela permet de prendre en compte les problématiques stochastiques de certaines variables comme le recrutement. Ainsi, un même scénario peut être lancé plusieurs centaines de fois. Cette option est implémentée de base dans le package avec la classe `IAMOutputRep`, mais celle-ci est dépcréciée car ne permettant plus la réalisation de scénarios complexes.
 

@@ -7,7 +7,7 @@
 \alias{IAM.args,iamInput,missing-method}
 \alias{IAM.args,iamArgs,missing-method}
 \alias{IAM.args,character,character-method}
-\title{'iamArgs' objects creator}
+\title{'iamArgs' objects creator by GUI}
 \usage{
 IAM.args(object, specific, ...)
 
@@ -32,7 +32,7 @@ this function.}
 If not provided, copied the description slot of object.}
 }
 \description{
-'iamArgs' objects creator
+'iamArgs' objects creator by GUI
 
 Etape d'initialisation
 

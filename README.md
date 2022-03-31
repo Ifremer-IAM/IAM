@@ -7,12 +7,12 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
-<!-- [![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/iam/iam) -->
 [![Dev
 Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam)
 [![License:
 CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cran.r-project.org/web/licenses/CeCILL-2)
 
+<!-- [![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/iam/iam) -->
 <!-- badges: end -->
 
 IAM (Impact Assessment Model) is a bio-economic model for the simulation
@@ -31,8 +31,11 @@ See the LICENSE-CECILL-2.1 file for details.
 
 ## Usage
 
-Before using IAM, you need few software : - R &gt;= 3.6 - Rtools (can be
-installed with `{devtools}` R package)
+Before using IAM, you need few software :
+
+-   R &gt;= 3.6
+
+-   Rtools (can be installed with `{devtools}` R package)
 
 ## Installation
 
@@ -88,7 +91,7 @@ A more in depth notice in french is available if you need to check the model imp
 ## Credits
 
 IAM is written by Mathieu Merzéréaud, Claire Macher, Michel Bertignac,
-Marjolaine, Frésard, Olivier Guyader, Christelle Le Grand and Maxime
+Marjolaine Frésard, Olivier Guyader, Christelle Le Grand and Maxime
 Jaunatre.
 
 ## Contributions
@@ -99,6 +102,6 @@ Mathieu Merzereaud.
 ## Support
 
 For further information or help, don’t hesitate to get in touch with the
-samba developpers:
+IAM developpers:
 
 Mathieu.Merzereaud@ifremer.fr

@@ -3,7 +3,7 @@
 \name{IAM.input2args}
 \alias{IAM.input2args}
 \alias{IAM.input2args,iamInput-method}
-\title{'iamArgs' objects creator}
+\title{'iamArgs' objects creator by code}
 \usage{
 IAM.input2args(object, ...)
 
@@ -18,5 +18,5 @@ IAM.input2args(object, ...)
 If not provided, copied the description slot of object.}
 }
 \description{
-'iamArgs' objects creator
+'iamArgs' objects creator by code
 }

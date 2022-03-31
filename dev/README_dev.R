@@ -16,6 +16,7 @@
 library(usethis)
 library(devtools)
 library(pkgdown)
+library(fs)
 
 # Command for pkg compil ####
 
@@ -31,18 +32,20 @@ devtools::clean_dll()
 devtools::load_all()
 
 ## Reinstall package ####
-remove.packages("IAM")
-devtools::load_all()
 devtools::document()
-devtools::install()
+devtools::unload("IAM")
+.rs.restartR()
+remove.packages("IAM")
+devtools::install(upgrade = "never")
 
 ## Check the full package ####
 devtools::check() # takes few minutes
 
 ## Compile documentation site
+devtools::load_all()
 rmarkdown::render("README.rmd", clean = TRUE, quiet = TRUE)
-file_delete("README.html")
-pkgdown::build_site(preview = FALSE) # will open website
+fs::file_delete("README.html")
+pkgdown::build_site(preview = TRUE) # will open website
 
 ## Clear objects in env ####
 rm(list = ls())

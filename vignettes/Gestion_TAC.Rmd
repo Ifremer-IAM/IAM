@@ -1,8 +1,8 @@
 ---
-title: "Gestion avec TAC"
+title: "Gestion avec TAC (fr)"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Gestion avec TAC}
+  %\VignetteIndexEntry{Gestion avec TAC (fr)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 # bibliography: vignette.bib
@@ -14,6 +14,14 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
+
+```{r dep}
+# Dépendances pour l'analyse des données et les représentations graphiques.
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+```
+
 
 Le modèle bio-économique IAM a été développé dans l'optique d'être utilisé pour des scénarios de gestion de quotas. Ainsi, des scénarios de Gestion par TAC peuvent être introduit à différentes échelles. Ce document traite de la gestion de TAC à un niveau interflotilles puis une autre partie détaillera la gestion intra flotilles.
 
@@ -109,30 +117,18 @@ IAM_argum_1984_TAC <- IAM.editArgs_Gest(
       #   84, 85, 1986:1995
 ```
 
-Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles. 
+Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles. On note d'ailleurs que seules 2 flottilles comportent encore plus de 2 navires à la fin de la simulation, ce qui est catastrophique.
 
 ```{r TAC}
 sim_TACglob <- IAM::IAM.model(objArgs = IAM_argum_1984_TAC, objInput = IAM_input_1984)
 
-sim_TACglob@outputSp$Fbar$COR
-sim_TACglob@outputSp$SSB$COR
-sim_TACglob@outputSp$L_et$COR
-sim_TACglob@outputSp$L_et$COR / IAM_argum_1984_TAC@arguments$Gestion$tac
-sim_TACglob@outputSp$N$COR
-# courbe d'age
-
-sim_TACglob@output$nbv_f
-sim_TACglob@output$effort2_f
-sim_TACglob@output$GVLav_f
-sim_TACglob@output$gva_f
-sim_TACglob@output$gp_f
-sim_TACglob@output$wageg_f
-sim_TACglob@output$wagen_f
-
-
-
-sim_TACglob@outputSp$Fbar$COR
-sim_TACglob@output$nbv_f
+tbl_TACglob <-  IAM.format(sim_TACglob, "summary", sim_name = "TAC global", n = 1)
+tbl_TACglob %>% 
+  filter(variable == "nbv_f") %>% 
+  ggplot(aes(x = year, y = value, color = fleet)) + geom_line() +
+   geom_vline(xintercept=1986, linetype = "dotted") +
+  geom_hline(yintercept = 2, linetype = "dashed", color = "darkred") +
+  NULL
 ```
 
 

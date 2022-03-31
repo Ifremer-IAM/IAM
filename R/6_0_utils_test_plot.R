@@ -1,29 +1,3 @@
-#' Thanks ThinkR for helping me messing some code
-#'
-#' @author Maxime Jaunatre
-#' @importFrom shiny getShinyOption
-#'
-#' @noRd
-get_golem_options <- function(which = NULL){
-  if (is.null(which)){
-    getShinyOption("golem_options")
-  } else {
-    getShinyOption("golem_options")[[which]]
-  }
-}
-
-#' Thanks ThinkR for helping me messing some code
-#'
-#' @author Maxime Jaunatre
-#' @importFrom shiny runApp
-#'
-#' @noRd
-with_golem_options <- function(app, golem_opts){
-  app$appOptions$golem_options <- golem_opts
-  return(runApp(app))
-}
-
-
 #' Define UI
 #'
 #' @author Maxime Jaunatre
@@ -32,7 +6,7 @@ with_golem_options <- function(app, golem_opts){
 #' @import shinyWidgets
 #'
 #' @noRd
-app_ui <- function() {
+plot_app_ui <- function() {
   fluidPage(
     chooseSliderSkin("Flat", color = "#112446"),
     useShinyjs(),
@@ -93,7 +67,7 @@ app_ui <- function() {
 #' @author Maxime Jaunatre
 #'
 #' @noRd
-app_server <- function(input, output, session) {
+plot_app_server <- function(input, output, session) {
   options(shiny.usecairo=TRUE)
 
   x <- reactiveValues(
@@ -175,7 +149,7 @@ IAM.test_plot <- function(object) {
   }
 
   res <- with_golem_options(
-    app = shinyApp(ui = app_ui, server = app_server),
+    app = shinyApp(ui = plot_app_ui, server = plot_app_server),
     golem_opts = list(input = object, Biovars = Biovars, Ecovars = Ecovars,
                       dinsp = dinsp)
   )
