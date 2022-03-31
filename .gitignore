@@ -4,13 +4,10 @@
 .Ruserdata
 .Rprofile
 
-data/
 raw_data/
-output/
 tryhard.R
 src/*.dll
 src/*.o
-inst/doc
 
 inst/extdata
 
@@ -21,3 +18,4 @@ dev/data
 dev/dev_cp_datarmor.R
 /doc/
 /Meta/
+docs/

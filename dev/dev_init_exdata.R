@@ -337,26 +337,5 @@ devtools::load_all()
 data("IAM_input_1984")
 data("IAM_argum_1984")
 sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, verbose = TRUE)
-# ne marche pas depuis Florence et sans doute l'ajout du SEX...Marche sans SS3.
-# marche avec IAM20 !
 
-sim1984@output$RoFTA_f
-
-sim1984@output$NGVLav_f_m
-
-sim1984@output$ratio_GVL_K_f
-attributes(sim1984@output$ratio_GVL_K_f)
-sim1984@output$np_f
-input1984@input$Fleet$K_f
-
-attributes(input1984@input$Fleet$GVLref_f_m)
-class(input1984@input$Fleet$GVLref_f_m)
-
-names(sim1984@outputSp$F_S1M1)
-
-lapply(IAM_argum_1984@arguments$Recruitment,function(x) as.double(
-  c(rep(x$parAmodSR,length=2),rep(x$parBmodSR,length=2), rep(x$parCmodSR,length=2),rep(x$wnNOISEmodSR,length=2),rep(x$noiseTypeSR,length=2))))
-sim1984@outputSp$N$ARC
-
-IAM_argum_1984@arguments$Recruitment$ARC
 

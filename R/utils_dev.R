@@ -132,7 +132,7 @@ IAM.dev <- function(project = "Workgroup", file = "analysis.R"){
 
 
 
-#' find the extdata files
+#' Path to the IAM extdata files
 #'
 #' Allorw to get paths from the package installation location for
 #' all extdata files.

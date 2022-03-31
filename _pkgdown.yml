@@ -1,0 +1,94 @@
+reference:
+
+- title: Main package documentation.
+  contents:
+    - IAM
+
+- title: Importing data
+  desc: >
+    Function used to import dataset from .xlsx format.
+    It will create an iamInput class object.
+  contents:
+    - IAM.input
+
+- title: Setting model parameters
+  desc: >
+    Open a GUI to set model parameters.
+    It will create an iamArgs class object from a iamInput class object.
+  contents:
+    - IAM.args
+    - IAM.input2args
+
+- title: Editing model parameters
+  desc: >
+    Function for parameters modifications.
+    It will create an iamArgs class object from a iamArgs class object.
+  contents:
+    - IAM.args_scenar
+    - IAM.editArgs_Eco
+    - IAM.editArgs_Gest
+    - IAM.editArgs_Rep
+    - IAM.editArgs_Scenar
+
+- title: Running a simulation.
+  desc: >
+    Takes iamInput and iamArgs class objects to run a simulation.
+    It will create a iamOutput class object.
+  contents:
+    - IAM.model
+
+- title: Extract information from 'iamOutput'
+  desc: >
+    Function for parameters modifications.
+    It will create an iamArgs class object from a iamArgs class object.
+  contents:
+    - IAM.format
+    - format_vareco
+    - format_varsp
+    - IAM.format_quant
+
+- title: Classes
+  desc: >
+    IAM use multiple S4 classes. Basic summary methods are also present.
+    iamOutputRep class is softly deprecrated.
+  contents:
+    - iamArgs-class
+    - iamInput-class
+    - iamOutput-class
+    - iamOutputRep-class
+    - summary,iamArgs-method
+    - summary,iamInput-method
+
+- title: Example dataset
+  desc: Dataset used in vignette.
+  contents:
+    - IAM_input_1984
+    - IAM_argum_1984
+    - IAM_example
+
+
+- title: Misc
+  contents:
+    - IAM.dev
+
+- title: Deprecated Functions
+  contents:
+    - IAM.export
+    - IAM.unite
+
+- title: internal
+  contents:
+    - app_dev
+    - convertInput
+    - fleetInput-class
+    - IAM.bwplot
+    - init_listHisto
+    - marketInput-class
+    - read.Pflex
+    - read.Scenar
+    - read.sheet
+    - result_filtre
+    - staticStockInput-class
+    - stockInput-class
+    - val.iamArgs
+

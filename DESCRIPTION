@@ -58,7 +58,8 @@ RoxygenNote: 7.1.2
 LinkingTo: Rcpp
 Suggests: 
     rmarkdown,
-    knitr
+    knitr, 
+    purrr
 VignetteBuilder: knitr
 Encoding: UTF-8
 Collate: 

@@ -1,4 +1,4 @@
-#' 'iamArgs' objects creator
+#' 'iamArgs' objects creator by code
 #'
 #' @param object  An \code{\link[IAM]{iamInput-class}} or \code{\link[IAM]{iamArgs-class}} object.
 #' @param ... desc argument
@@ -692,7 +692,7 @@ IAM_arg_app <- function(object, AllVarRep) {
 
 #Arguments...
 
-#' 'iamArgs' objects creator
+#' 'iamArgs' objects creator by GUI
 #'
 #' @param object \code{\link[IAM]{iamInput-class}} or
 #' \code{\link[IAM]{iamArgs-class}} object.

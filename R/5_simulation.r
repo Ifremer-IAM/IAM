@@ -4,7 +4,7 @@
 # M?thode de simulation, avec en entr?e deux objets de classe 'iamArgs' et 'iamInput'
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-#' Modelization method
+#' Running an IAM simulation.
 #'
 #' @param objArgs output from \code{\link[IAM]{IAM.args-methods}}
 #' @param objInput output from \code{\link[IAM]{IAM.input-methods}}

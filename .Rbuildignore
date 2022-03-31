@@ -9,3 +9,6 @@ raw_data
 ^doc$
 ^Meta$
 ^dev$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

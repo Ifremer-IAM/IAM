@@ -1,5 +1,7 @@
 ---
-title: "Utilisation IAM dans R"
+title: |
+  ![](IAM_hex.png){width=2.5in}  
+  Utilisation IAM dans R
 output:
   pdf_document:
     keep_tex: yes
@@ -377,6 +379,8 @@ Ce format de table long permet ensuite l'utilisation d'outils pour trier et éve
 
 ```{r pivot_wider}
 library(dplyr)
+library(tidyr)
+library(purrr)
 library(magrittr)
 
 # Extraction du SSB
@@ -523,7 +527,7 @@ b - a # 1.17 min
 
 Afin de gagner du temps, le package `{parallel}` permet d'effectuer les calculs sur un plus grand nombre de processeurs de l'ordinateurs. L'utilisation de ce package permet de réduire le temps de calcul pour un grand nombre de réplicats et est donc conseillé.
 
-```{rn eval = FALSE}
+```{r, eval = FALSE}
 # Code non exécuté
 library(parallel)
 cl <- makeCluster(detectCores()-1)

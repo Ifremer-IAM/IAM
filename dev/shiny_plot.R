@@ -3,8 +3,7 @@
 #' author : maxime Jaunatre 29/03/2022
 #'
 #' script of the IAM package.
-
-
+#'
 devtools::load_all() # Load IAM
 data("IAM_input_1984")
 data("IAM_argum_1984")

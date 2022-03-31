@@ -1,9 +1,10 @@
-library(shiny)
-library(shinyWidgets)
-library(rhandsontable)
-library(shinyjs)
-
-
+#' Script for testing the IAM.args function and shiny application
+#'
+#' Warning  this script will open shiny applications !!
+#' Run interactively
+#'
+#' Maxime Jaunatre
+#'
 # Plotting Rec and/or hide useless parameters ####
 # 1 -> recrutement constant moyen (rec~a)
 # 2 -> Hockey stick (rec ~ (si (ssb<=b) a*ssb sinon a*b))
@@ -25,7 +26,7 @@ AllVarRep = c(
   "Fr_fmi", "C_efmit", "P", "Pstat"
 )
 
-library(IAM)
+devtools::load_all()
 data("IAM_argum_1984")
 # cas avec les choix de tout et n'importe quoi
 IAM_argum_1984@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
@@ -43,14 +44,13 @@ IAM_argum_1984@arguments$Replicates$active <- 1
 IAM_arg_app(IAM_argum_1984, AllVarRep)
 summary(IAM_argum_1984)
 
-IAM::IAM.args(IAM_argum_1984)
+IAM.args(IAM_argum_1984)
+i <- IAM.args(IAM_argum_1984) # Testing return
 
-i <- IAM.args(IAM_argum_1984)
-IAM.args(IAM_input_1984)
-
-
+#' Testing plots for Recruitment module.
 # enveloppe de loi normale.
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 sd = 1
 d <- data.frame(a = seq(10,11,length.out = 10)  ) %>%
   mutate(d = qnorm(0.05,mean=a,sd=sd)) %>%
