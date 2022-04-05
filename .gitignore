@@ -9,8 +9,6 @@ tryhard.R
 src/*.dll
 src/*.o
 
-inst/extdata
-
 .vscode/
 
 dev/raw_data

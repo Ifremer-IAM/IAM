@@ -2,7 +2,7 @@
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- # IAM : Impact Assessment bio-economic Model for fisheries management <img src="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/fig/IAM_hex.png?inline=false" alt="IAM logo" align="right" height="200px/"/> -->
 
-# IAM : Impact Assessment bio-economic Model for fisheries management <img src="man/figures/logo.png" align="right" />
+# IAM : Impact Assessment bio-economic Model for fisheries management <img src="man/figures/logo.png" align="right" height="200px/"/>
 
 <!-- badges: start -->
 
