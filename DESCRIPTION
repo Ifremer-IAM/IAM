@@ -1,0 +1,104 @@
+Package: IAM
+Title: BioEconomic model for fisheries
+Version: 2.0.0
+Date: 2021
+Authors@R: c(person(given = "Mathieu",
+                    family = "Merzereaud",
+                    role = c("aut"),
+                    email = "mathieu.merzereaud@yahoo.fr",
+                    comment = c(ORCID = "0000-0001-5545-0744")),
+              person(given = "Claire",
+                    family = "Macher",
+                    role = c("aut"),
+                    email = "Claire.Macher@ifremer.fr",
+                    comment = c(ORCID = "0000-0001-9307-6562")),
+              person(given = "Michel",
+                    family = "Bertignac",
+                    role = "aut",
+                    comment = c(ORCID = "0000-0002-8783-9612")),
+              person(given = "Marjolaine",
+                    family = "Fresard",
+                    role = "aut"),
+              person(given = "Olivier",
+                    family = "Guyader",
+                    role = "aut",
+                    comment = c(ORCID = "0000-0001-9017-0182")),
+              person(given = "Christelle",
+                    family = "Le Grand",
+                    role = "aut",
+                    comment = c(ORCID = "0000-0002-4188-8187")),
+              person(given = "Sophie",
+                    family = "Gourguet",
+                    role = "aut",
+                    comment = c(ORCID = "0000-0002-1565-4053")),
+              person(given = "Florence",
+                    family = "Briton",
+                    role = "aut",
+                    comment = c(ORCID = "0000-0002-4943-1851")),
+              person(given = "Maxime",
+                    family = "Jaunatre",
+                    role = c("aut", "cre"),
+                    email = "maxime.jaunatre@yahoo.fr"),
+              person(given = "IFREMER",
+                    role = c("cph"))
+              )
+Description: IAM (Impact Assessment Model) is a bio-economic model 
+    for the simulation of fisheries dynamics, 
+    integrating specific decision support tools within the 
+    framework of the theoretical implementation of management measures
+    It is a discrete time, multi-fleet, multi-trade, multi-species annual 
+    bio-economic model with "age" components for the biological part, 
+    and "commercial category" components for the economic part.
+Depends: R(>= 3.5.0) 
+URL: https://gitlab.ifremer.fr/iam/iam
+BugReports: https://gitlab.ifremer.fr/iam/iam/-/issues
+Imports: utils,
+         stats,
+         rlang,
+         methods,
+         grDevices,
+         abind,
+         reshape2,
+         openxlsx,
+         lattice,
+         Rcpp (>=  1.0.7),
+         dplyr,
+         tibble,
+         magrittr,
+         tidyr,
+         fs,
+         rstudioapi,
+         usethis,
+         rhandsontable,
+         shiny,
+         shinyWidgets,
+         shinyjs,
+         ggplot2,
+         Cairo
+License: CeCILL-2
+LazyData: true
+NeedsCompilation: yes
+RoxygenNote: 7.1.2
+LinkingTo: Rcpp
+Suggests: 
+    rmarkdown,
+    knitr, 
+    purrr
+VignetteBuilder: knitr
+Encoding: UTF-8
+Collate: 
+    '0_input_objects.r'
+    '0_1_Edit_iamArgs.R'
+    '1_input_integration.r'
+    '2_args_integration.r'
+    '3_args_input_txtExport.r'
+    '4_output_objects.r'
+    '5_simulation.r'
+    '6_0_utils_test_plot.R'
+    '6_1_utils_plot_bio.R'
+    '6_1_utils_plot_eco.R'
+    '6_utils.r'
+    '7_plotting.r'
+    'dataset_doc.R'
+    'shiny_utils.R'
+    'utils_dev.R'

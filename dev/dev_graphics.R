@@ -1,0 +1,245 @@
+
+
+devtools::load_all()
+library(tidyverse)
+library(viridis)
+library(ggthemes)
+
+setGestion_tac <- function(argum, species, delay = 1, bound = c(0,0), tac){
+
+  argum@arguments$Gestion$active <- 1
+  argum@arguments$Gestion$espece <- species
+  argum@arguments$Gestion$delay <- delay
+  argum@arguments$Gestion$sup <- bound[1]
+  argum@arguments$Gestion$inf <- bound[2]
+  argum@arguments$Gestion$tac <- tac
+
+  return(argum)
+}
+
+load("dev/data/inputIFR.RData")
+load("dev/data/argumIFR.RData")
+IAM_argum_1984 <- setGestion_tac(IAM_argum_1984, "COR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+                            c(NA, 3300, 3250, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200))
+#                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
+# IAM_argum_1984 <- setGestion_tac(IAM_argum_1984, "DAR", 2, c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
+                            # c(NA, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4, 11e4))
+#                             84, 1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995
+# IAM_argum_1984@arguments$Recruitment$ARC$typeMODsr <- "Hockey-Stick"
+
+IAM_argum_1984@arguments$Gestion$typeG <- 1
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984,
+                          verbose = TRUE, force_t = 7)
+sim1984@output$nbv_f ; sim1984@output$effort1_f
+
+sim1984@output$nbv_f
+sim1984@outputSp$L_et$COR
+sim1984@outputSp$L_et$DAR
+
+# TACF ####
+devtools::load_all()
+data("IAM_argum_1984")
+data("IAM_input_1984")
+
+nbV <- length(IAM_input_1984@specific$Fleet)
+nbT <- IAM_input_1984@specific$NbSteps
+
+Lref <- IAM_input_1984@input$COR$Lref_f_e
+percLref <- Lref / sum(Lref)
+
+scenar <- c(1, 0.95, 0.93, 0.90, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+TACtmp <- matrix(Lref, ncol = nbT+1, nrow = nbV, byrow = FALSE)
+for(y in 2:(nbT+1)){
+  TACtmp[, y] <- TACtmp[, y-1] * scenar[y]
+}
+TACf <- TACtmp[, -1];  TACtot = colSums(TACtmp[, -1])
+dimnames(TACf) <- list(IAM_input_1984@specific$Fleet,IAM_input_1984@specific$times)
+TACf
+rm(TACtmp, y, nbV, nbT, scenar)
+
+
+IAM_argum_1984@arguments$Gestion$espece <- "COR"
+IAM_argum_1984@arguments$Gestion$inf <- -100
+IAM_argum_1984@arguments$Gestion$sup <- 100
+IAM_argum_1984@arguments$Gestion$active <- 1
+
+TACf <- list(COR = TACf) ; TACtot <- list(COR = TACtot)
+
+sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, TACbyF=TACf, TACtot = TACtot, updateE = 1,
+                          verbose = TRUE)
+
+sim1984@output$effort1_f_m
+sim1984@output$effort2_f_m
+
+resF <- IAM.format(sim1984, "F")  %>% filter(species == "COR")
+  # filter(metier == "Filet_DP", fleet == "Antea", year >= 9) %>%
+  # print(n = 22) %>%
+
+resF %>%  #filter(metier == "Filet_COR", fleet == "Thalassa", year < 5) %>%
+  filter( year < 5) %>%
+ggplot(., aes(x=year, y=value, color = age)) +
+  geom_line() +
+  # facet_grid(fleet ~ metier ) +
+  ggtitle("SSB with mean recrutment drawn in rnorm (sd = 1e6)")
+
+
+dim(sim1984@outputSp$GVLcom_f_m_e$COR)
+
+sim1984@output$gpmargin_f
+
+sim1984@output$cs_f
+sim1984@output$ps_f
+sim1984@output$psAct_f
+# Grouping variable for plot ####
+
+devtools::load_all()
+
+
+# group output and outputsp in one single large element of doom
+# details : remove reconcilSPP because value is character and it's crap
+simpl <- function(sim){
+  output <- lapply(names(sim@output), format_vareco, sim) %>%
+    do.call(rbind, .) %>%
+    filter( variable != "reconcilSPP") %>%
+    mutate( value = as.numeric(value),year = as.numeric(year) )
+
+  outputsp <- lapply(names(sim@outputSp), format_varsp, sim) %>%
+    do.call(rbind, .)%>%
+    mutate( value = as.numeric(value),year = as.numeric(year) )
+
+  bind_rows(output, outputsp)
+}
+
+
+
+# Testing replication ####
+devtools::load_all()
+library(tidyverse)
+load("dev/data/inputIFR.RData")
+load("dev/data/argumIFR.RData")
+
+NITER <- 10
+XSAsp <- names(IAM_argum_1984@arguments$Recruitment)
+
+pb <- txtProgressBar(min = 0, max = NITER, style = 3)
+simuls <- lapply(1:NITER,function(k) {
+  argum <- IAM_argum_1984
+  for(nms in XSAsp){
+    val <- IAM_argum_1984@arguments$Recruitment[[nms]]$parAmodSR
+    argum@arguments$Recruitment[[nms]]$parAmodSR <- rnorm(1, val, 1e6)
+  }
+  setTxtProgressBar(pb, k)
+  return(IAM.model(objArgs = argum, objInput = IAM_input_1984))
+})
+close(pb)
+
+# take 2 minutes...not a good idea.
+pb <- txtProgressBar(min = 0, max = NITER, style = 3)
+res <- lapply(1:NITER,function(k) {
+  setTxtProgressBar(pb, k)
+  IAM.format("Ltot", simuls[[k]]) %>%
+    add_column(sim = k, .before = "variable")
+  }) %>%
+  do.call(rbind, .) %>%
+  filter(species != "DAR")
+close(pb)
+
+
+# Best solution for a plot.
+# loose some info on the way for ages but good enought.
+# Overwise require to produce similar dataset as condquant.
+res %>%
+  # sum ages
+  group_by(sim, variable, species, fleet, metier, year) %>%
+  summarise(value = sum(value, na.rm = TRUE), .groups = "keep") %>%
+  # quantile by sim
+  # https://stackoverflow.com/questions/34749859/ggplot2-shading-envelope-of-time-series
+  ungroup(sim) %>%
+  do(s_sim = (1*.$sim), raw_val = (1 * .$value),
+     quant = quantile(.$value, probs = seq(0,1,.25), na.rm = TRUE),
+     probs = seq(0,1,.25)) %>%
+  unnest(cols = c( quant, probs)) %>% unnest(cols = c(s_sim, raw_val)) %>%
+  mutate(delta = 2*round(abs(.5-probs)*100)) %>%
+  group_by(variable, species, fleet, metier, year, s_sim, raw_val, delta) %>%
+  summarize(quantmin = min(quant), quantmax= max(quant), quantmean  = mean(quant),
+            .groups = "keep") %>%
+  # select only one sim
+  filter( s_sim == 7) %>%
+  # plot
+  ggplot( aes(x = year, y = raw_val)) +
+  geom_line() +
+  geom_ribbon(aes(x = year, ymin = quantmin, ymax = quantmax,
+                                    group = reorder(delta, -delta), fill = as.numeric(delta)),
+              alpha = .5) +
+  scale_fill_continuous( limits = c(50, 100), name = "Density") +
+  guides(x = guide_axis(angle = 90)) +
+  facet_grid(species ~ .) +
+  facet_grid(species ~ .) + ggtitle("Ltot (ages summed) with mean recrutment drawn in rnorm (sd = 1e6)") +
+  NULL
+
+
+
+condquant <- res %>%
+  discard( ~n_distinct(.) == 1) %>% # remove column with similar values.
+  group_by(year, species) %>%
+  do(quant = quantile(.$value, probs = seq(0,1,.25)), probs = seq(0,1,.25)) %>%
+  unnest(cols = c(quant, probs)) %>%
+  mutate(delta = 2*round(abs(.5-probs)*100)) %>%
+  group_by(year, delta, species) %>%
+  summarize(quantmin = min(quant), quantmax= max(quant), quantmean  = mean(quant)) %>%
+  add_column(value = 1)
+
+res  %>% filter(sim == 500) %>%
+  ggplot(., aes(x=year, y=value)) +
+  geom_ribbon(data = condquant, aes(x = year, ymin = quantmin, ymax = quantmax,
+                                    group = reorder(delta, -delta), fill = as.numeric(delta)),
+              alpha = .5) +
+  scale_fill_continuous( limits = c(50, 100), name = "Density") +
+  geom_line() +
+  guides(x = guide_axis(angle = 90)) +
+  facet_grid(species ~ .) + ggtitle("SSB with mean recrutment drawn in rnorm (sd = 1e6)")
+  #+ theme_dark() +
+  # theme(panel.background = element_rect(fill = "steelblue"))
+
+res %>%
+  filter( species == "COR", year >= 1995, sim == 2) %>% mutate(s = sum(value))
+
+
+res %>%
+  filter( species == "COR", year >= 1995, sim <= 3, age %in% c("2", "3")) %>%
+  # sum ages
+  group_by(across(c(-age, -value))) %>%
+  mutate(s_age = sum(value)) %>% ungroup() %>%
+  group_by(across(c(-s_age))) -> tmp
+
+
+res %>%
+  filter( species == "COR", year >= 1995, sim <= 3, age %in% c("2", "3")) %>%
+  # sum ages
+  group_by(across(c(-age, -value))) %>%
+  summarize(value = sum(value)) %>% ungroup() %>%
+  group_by(across(c(-s_age))) -> tmp
+
+library(tidyverse)
+
+res <- lapply(names(sim_statu_quo@outputSp), IAM.format, sim_statu_quo) %>%
+  do.call(rbind, .)
+ec <- lapply(names(sim_statu_quo@output), IAM.format, sim_statu_quo) %>%
+  do.call(rbind, .)
+
+tmp <- rbind(res, ec)
+lobstr::obj_size(tmp)
+save(tmp,file = "tmp.RData")
+save(sim_statu_quo, file = "sim.RData")
+.rs.restartR()
+gc()
+load("tmp.RData")
+load("sim.RData")
+lobstr::obj_size(tmp)
+lobstr::obj_size(sim_statu_quo)
+object.size(tmp)
+object.size(sim_statu_quo)
+
+a <- rep(tmp, 1000)
+
+do.call(rbind, a)

@@ -1,0 +1,133 @@
+template:
+  bootstrap: 5
+
+home:
+  sidebar:
+    structure: [links, community, citation, custom, dev]
+    components:
+      custom:
+        title: Developers
+        text: |
+          <li>Mathieu Merzereaud <br><small class="roles"> Author, compiler </small>  <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a></li>
+          <li>Claire Macher <br><small class="roles"> Author, compiler </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
+          <li>
+          <a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer, compiler </small>  </li>
+          <li>
+          <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>  </li>
+          <li><a href="authors.html">More about authors...</a></li>
+
+  links:
+  - text: License CeCILL-2
+    href: https://cecill.info/licences/Licence_CeCILL_V2-en.html
+
+authors:
+  footer:
+    roles: [cre, com]
+  Maxime Jaunatre:
+    href: https://gowachin.github.io/
+
+repo:
+  url:
+    home: https://gitlab.ifremer.fr/iam/iam
+    source: https://gitlab.ifremer.fr/iam/iam
+
+articles:
+- title: Using IAM
+  navbar: ~
+  contents:
+  - use_IAM
+  - Gestion_TAC
+
+reference:
+- title: Main package documentation.
+  contents:
+    - IAM
+
+- title: Importing data
+  desc: >
+    Function used to import dataset from .xlsx format.
+    It will create an iamInput class object.
+  contents:
+    - IAM.input
+
+- title: Setting model parameters
+  desc: >
+    Open a GUI to set model parameters.
+    It will create an iamArgs class object from a iamInput class object.
+  contents:
+    - IAM.args
+    - IAM.input2args
+
+- title: Editing model parameters
+  desc: >
+    Function for parameters modifications.
+    It will create an iamArgs class object from a iamArgs class object.
+  contents:
+    - IAM.args_scenar
+    - IAM.editArgs_Eco
+    - IAM.editArgs_Gest
+    - IAM.editArgs_Rep
+    - IAM.editArgs_Scenar
+
+- title: Running a simulation.
+  desc: >
+    Takes iamInput and iamArgs class objects to run a simulation.
+    It will create a iamOutput class object.
+  contents:
+    - IAM.model
+
+- title: Extract information from 'iamOutput'
+  desc: >
+    Function for parameters modifications.
+    It will create an iamArgs class object from a iamArgs class object.
+  contents:
+    - IAM.format
+    - format_vareco
+    - format_varsp
+    - IAM.format_quant
+
+- title: Classes
+  desc: >
+    IAM use multiple S4 classes. Basic summary methods are also present.
+    iamOutputRep class is softly deprecrated.
+  contents:
+    - iamArgs-class
+    - iamInput-class
+    - iamOutput-class
+    - iamOutputRep-class
+    - summary,iamArgs-method
+    - summary,iamInput-method
+
+- title: Example dataset
+  desc: Dataset used in vignette.
+  contents:
+    - IAM_input_1984
+    - IAM_argum_1984
+    - IAM_example
+
+
+- title: Misc
+  contents:
+    - IAM.dev
+
+- title: Deprecated Functions
+  contents:
+    - IAM.export
+    - IAM.unite
+
+- title: internal
+  contents:
+    - app_dev
+    - convertInput
+    - fleetInput-class
+    - IAM.bwplot
+    - init_listHisto
+    - marketInput-class
+    - read.Pflex
+    - read.Scenar
+    - read.sheet
+    - result_filtre
+    - staticStockInput-class
+    - stockInput-class
+    - val.iamArgs
+
