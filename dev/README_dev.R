@@ -36,7 +36,8 @@ devtools::document()
 devtools::unload("IAM")
 .rs.restartR()
 remove.packages("IAM")
-devtools::install(upgrade = "never")
+devtools::install(upgrade = "never",
+                  build_vignettes = TRUE)
 
 ## Check the full package ####
 devtools::check() # takes few minutes

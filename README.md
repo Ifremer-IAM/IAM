@@ -1,7 +1,8 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- # IAM : Impact Assessment bio-economic Model for fisheries management <img src="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/fig/IAM_hex.png?inline=false" alt="IAM logo" align="right" height="200px/"/> -->
 
-# IAM : Impact Assessment bio-economic Model for fisheries management <img src="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/fig/IAM_hex.png?inline=false" alt="logo" align="right" height="200px/"/>
+# IAM : Impact Assessment bio-economic Model for fisheries management <img src="man/figures/logo.png" align="right" />
 
 <!-- badges: start -->
 
@@ -10,7 +11,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 [![Dev
 Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam)
 [![License:
-CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cran.r-project.org/web/licenses/CeCILL-2)
+CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
 
 <!-- [![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/iam/iam) -->
 <!-- badges: end -->
@@ -26,7 +27,7 @@ bio-economic model with “age” components for the biological part, and
 
 You are free to copy, modify, and distribute IAM with attribution under
 the terms of the [CECILL-2
-Licence](https://github.com/gowachin/DiveR/blob/master/LICENCE-CECILL-2.1.txt).
+Licence](https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt).
 See the LICENSE-CECILL-2.1 file for details.
 
 ## Usage
@@ -81,27 +82,29 @@ or use e.g. the RStudio graphical interface
 
 ## Documentation
 
-For further information, check the vignettes describing above examples
-in more depth.
+For further information, multiple vignettes are available along with
+function help.
 
-<!--
-A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for [download here](https://gitlab.ifremer.fr/iam/iam/-/tree/dev/inst/notice/Notice.pdf)
--->
+To access a vignette you can run this code
+locally<!-- or check them with provided links-->. Please note that to
+this day, vignettes are written in french.
+
+``` r
+vignette("use_IAM", package = "IAM")
+```
+
+A more in depth notice in french is available if you need to check the
+model implementation and mathematical formula. The pdf file is available
+for [download
+here](https://gitlab.ifremer.fr/iam/iam/-/tree/dev/inst/notice/Notice.pdf)
 
 ## Credits
 
 IAM is written by Mathieu Merzéréaud, Claire Macher, Michel Bertignac,
-Marjolaine Frésard, Olivier Guyader, Christelle Le Grand and Maxime
-Jaunatre.
-
-## Contributions
-
-We welcome contributions to the model. If such case, please contact
-Mathieu Merzereaud.
+Marjolaine Frésard, Olivier Guyader, Christelle Le Grand, Sophie
+Gourgue, Florence Briton and Maxime Jaunatre.
 
 ## Support
 
-For further information or help, don’t hesitate to get in touch with the
-IAM developpers:
-
-Mathieu.Merzereaud@ifremer.fr
+For further information or help, don’t hesitate to fill an [issue on
+gitlab](https://gitlab.ifremer.fr/iam/iam/-/issues)

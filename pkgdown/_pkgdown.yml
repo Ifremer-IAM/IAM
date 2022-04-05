@@ -1,5 +1,44 @@
-reference:
+template:
+  bootstrap: 5
 
+home:
+  sidebar:
+    structure: [links, community, citation, custom, dev]
+    components:
+      custom:
+        title: Developers
+        text: |
+          <li>Mathieu Merzereaud <br><small class="roles"> Author, compiler </small>  <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a></li>
+          <li>Claire Macher <br><small class="roles"> Author, compiler </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
+          <li>
+          <a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer, compiler </small>  </li>
+          <li>
+          <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>  </li>
+          <li><a href="authors.html">More about authors...</a></li>
+
+  links:
+  - text: License CeCILL-2
+    href: https://cecill.info/licences/Licence_CeCILL_V2-en.html
+
+authors:
+  footer:
+    roles: [cre, com]
+  Maxime Jaunatre:
+    href: https://gowachin.github.io/
+
+repo:
+  url:
+    home: https://gitlab.ifremer.fr/iam/iam
+    source: https://gitlab.ifremer.fr/iam/iam
+
+articles:
+- title: Using IAM
+  navbar: ~
+  contents:
+  - use_IAM
+  - Gestion_TAC
+
+reference:
 - title: Main package documentation.
   contents:
     - IAM

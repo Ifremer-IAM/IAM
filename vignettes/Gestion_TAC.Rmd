@@ -11,17 +11,24 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7, # default vignette figure size is too small
+  fig.height = 5
 )
 ```
 
-```{r dep}
+```{r dep, message=FALSE, warning=FALSE}
 # Dépendances pour l'analyse des données et les représentations graphiques.
 library(magrittr)
 library(ggplot2)
 library(dplyr)
+library(IAM)
 ```
 
+```{r, include=FALSE}
+lodpkg <- loadedNamespaces()
+lodpkg[grep("IAM", lodpkg)]
+```
 
 Le modèle bio-économique IAM a été développé dans l'optique d'être utilisé pour des scénarios de gestion de quotas. Ainsi, des scénarios de Gestion par TAC peuvent être introduit à différentes échelles. Ce document traite de la gestion de TAC à un niveau interflotilles puis une autre partie détaillera la gestion intra flotilles.
 
@@ -76,8 +83,9 @@ Dans un premier temps il est utile de définir les dynamiques de recrutements ai
 
 ```{r edit argum}
 # Module SR
-# On ne modifie pas les recrutements
 # TODO add boken stick Rec..where is the value ?
+# Add noise to COR
+IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 100
 
 # Module EcoDCF
 IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
@@ -97,9 +105,29 @@ IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984) # desactivate scenario
 summary(IAM_argum_1984)
 ```
 
+Je choisis de simuler tout mes scénarios avec des réplicats, qui est fixé ici par `N`
 
-```{r statuquo}
-sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+```{r statuquo, message = FALSE}
+N = 10
+
+sim_statu_quo <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_1984,  objInput = IAM_input_1984)
+})
+
+Fbar_sq_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_statu_quo[[x]], name = "Fbar", sim_name = "SQ", n = x)
+})
+Fbar_sq <- do.call(rbind,Fbar_sq_l) %>%
+  filter(species == "COR") %>%
+  IAM.format_quant(., probs = c(.025, .975))
+
+
+Fbar_sq %>%
+  ggplot(aes(x = year, y = median)) +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
+  geom_line(aes(y = value), linetype = "dotted") +
+  geom_line() +
+  NULL
 ```
 
 
@@ -109,35 +137,101 @@ Les différentes options de réglages du module Gestion sont exposées dans la v
 
 On fixe ici un scénario de Gestion qui va agir sur le nombre de navire afin d'atteindre un TAC (*Total allowable catches*) donné pour chaque année. Ce quotas vise particulièrement l'espèce dite "COR" et rentre en application 2 ans après le début de la simulation, soit en 1986. Les modification d'efforts seront multiplicatives.
 
-```{r editargum}
-IAM_argum_1984_TAC <- IAM.editArgs_Gest(
+```{r arg_TACnbv, message = FALSE}
+IAM_argum_1984_TACnbv <- IAM.editArgs_Gest(
   IAM_argum_1984, active = TRUE, control = "Nb vessels", target = "TAC",
   espece = "COR", delay = 2, type = "x", bounds = c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
   tac = c(NA, NA, rep(3200, 10)))
       #   84, 85, 1986:1995
+
+sim_TACglob_nbv <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_1984_TACnbv,  objInput = IAM_input_1984)
+})
 ```
 
-Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles. On note d'ailleurs que seules 2 flottilles comportent encore plus de 2 navires à la fin de la simulation, ce qui est catastrophique.
+Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles.
 
-```{r TAC}
-sim_TACglob <- IAM::IAM.model(objArgs = IAM_argum_1984_TAC, objInput = IAM_input_1984)
+Une autre variable d'ajustement de l'effort est le nombre voyage en mer des navires.
 
-tbl_TACglob <-  IAM.format(sim_TACglob, "summary", sim_name = "TAC global", n = 1)
-tbl_TACglob %>% 
-  filter(variable == "nbv_f") %>% 
-  ggplot(aes(x = year, y = value, color = fleet)) + geom_line() +
-   geom_vline(xintercept=1986, linetype = "dotted") +
-  geom_hline(yintercept = 2, linetype = "dashed", color = "darkred") +
+```{r arg_TACntrip, message = FALSE}
+IAM_argum_1984_TACnbds <- IAM.editArgs_Gest(
+  IAM_argum_1984_TACnbv, active = TRUE, control = "Nb trips"
+)
+
+sim_TACglob_nbt <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_1984_TACnbds,  objInput = IAM_input_1984)
+})
+```
+
+### Représentations graphiques
+
+On peut aisement comparer les différents scénarios avec des fonctions graphiques. Ainsi on observe que nos scénarios de TAC arrivent tout deux à la reconstruction progressive du stock "COR" par une baisse de la mortalité par pêche (Fbar).
+
+```{r}
+TACglobv_nbv_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbv[[x]], name = "summary",
+             sim_name = "TAC global nbv", n = x)
+})
+
+TACglobv_nbt_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbt[[x]], name = "summary", 
+             sim_name = "TAC global nbtrip", n = x)
+})
+
+Statuquo_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_statu_quo[[x]], name = "summary", 
+             sim_name = "Statu quo", n = x)
+})
+
+COR <- do.call(rbind, c(Statuquo_l, TACglobv_nbt_l, TACglobv_nbv_l)) %>%
+  filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
+  IAM.format_quant(., probs = c(.025, .975))
+  
+
+COR %>%
+  ggplot(aes(x = year, y = value)) + 
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
+  geom_line() +
+  geom_vline(xintercept=1986, linetype = "dotted") +
+  NULL
+
+```
+
+Cependant, ces scénarios entrainent de fortes réductions d'effort car ils ne ciblent pas les métiers et flottilles impactant le plus le stock cible. Ainsi on observe que les variables ajustées lors des scénarios arrivent vite proche de valeurs nulles.
+
+```{r TACglob_plot}
+variables <- c("nbv_f", "effort1_f")
+
+TACglobv_nbv_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbv[[x]], name = variables,
+             sim_name = "TAC global nbv", n = x)
+})
+
+TACglobv_nbt_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbt[[x]], name = variables, 
+             sim_name = "TAC global nbtrip", n = x)
+})
+
+TACglob_effort <- do.call(rbind, c(TACglobv_nbv_l, TACglobv_nbt_l)) %>%
+  IAM.format_quant(., probs = c(.025, .975))
+
+TACglob_effort %>%
+  ggplot(aes(x = year, y = value, color = fleet )) +
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_line() +
+  geom_vline(xintercept=1986, linetype = "dotted") +
   NULL
 ```
 
 
+### Pondérer les efforts avec la matrice mfm
 
-Cependant, les réductions aussi drastiques peuvent être limitées en ciblant les flottilles affectées. Par exemple, l'espèce ciblé est pêchées à `r IAM_input_1984@input$COR$Lref_f_m_e["Thalassa", "Filet_COR"] /sum(IAM_input_1984@input$COR$Lref_f_m_e, na.rm = TRUE) * 100` % par la flottille dite "Thalassa", via le métier "Filet_COR". Il serait donc plus intéressant de diminuer l'effort sur cette flottille uniquement.
+Ces réductions drastiques peuvent être limitées en ciblant les flottilles et les métiers. Par exemple, l'espèce ciblé est pêchées à `r IAM_input_1984@input$COR$Lref_f_m_e["Thalassa", "Filet_COR"] /sum(IAM_input_1984@input$COR$Lref_f_m_e, na.rm = TRUE) * 100` % par la flottille dite "Thalassa", via le métier "Filet_COR". Il serait donc plus intéressant de diminuer l'effort sur cette flottille uniquement.
 
 Pour cela on peut agir sur la pondération des métiers et indiquer que l'on diminiue l'effort des métiers "Filet_COR" pour les flottilles qui l'utilisent au profit du méthier "Filet_DP". Il s'agit d'un **report d'effort** par métier.
 
-```{r target_f}
+```{r target_f, message = FALSE}
 trg_f <- c("Thalassa", "Haliotis")
 
 mfm <- with(IAM_input_1984@input$Fleet,{
@@ -152,22 +246,59 @@ mfm[trg_f,"Filet_COR"] <- with(IAM_input_1984@input$Fleet,
 )
 mfm
 
+IAM_argum_1984_TACnbvR <- IAM.editArgs_Gest(IAM_argum_1984_TACnbv,  mfm = mfm)
 
-IAM_argum_1984_Report <- IAM.editArgs_Gest(
-  IAM_argum_1984, active = TRUE, control = "Nb vessels", target = "TAC",
-  espece = "COR", delay = 4, type = "x", bounds = c(100, -100), 
-  tac = c(NA, NA, rep(3200, 10)), mfm = mfm)
-      #   84, 85, 1986:1995
+sim_TACglob_nbvR <- replicate(N, {
+  sim_TACreport <- IAM::IAM.model(objArgs = IAM_argum_1984_TACnbvR, objInput = IAM_input_1984)
+})
 ```
+
+Il est tout à fait possible de rajouter aux précédents scénrarios déjà simuler pour avoir un moyen de comparaison. Il faut cependant éviter de rajouter les objets à la suite avec rbind comme cela, car R utilise beaucoup plus de mémoire pour cela. On remarque ainsi qu'on obtient une plus faible réduction d'effort sur le nombre de navire pour les mêmes résultats au niveau du stock.
 
 ```{r TACreport}
-sim_TACreport <- IAM::IAM.model(objArgs = IAM_argum_1984_Report, objInput = IAM_input_1984)
+variables <- c("nbv_f", "effort1_f")
+# Extraction des variables.
+TACglob_nbvR_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbvR[[x]], name = variables,
+             sim_name = "Report TAC global nbv", n = x)
+})
+# Calcul des quantiles et ajout aux simulations précédentes.
+TACglob_effort <- do.call(rbind, c(TACglob_nbvR_l)) %>%
+  IAM.format_quant(., probs = c(.025, .975)) %>%
+  rbind(., TACglob_effort)
 
-sim_TACreport@outputSp$Fbar$COR
-sim_TACreport@output$nbv_f
+TACglob_effort %>%
+  ggplot(aes(x = year, y = value, color = fleet )) +
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_line() +
+  geom_vline(xintercept=1986, linetype = "dotted") +
+  NULL
+
+
+TACglobv_nbvR_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbvR[[x]], name = "summary",
+             sim_name = "Report TAC global nbv", n = x)
+})
+
+COR <- do.call(rbind, c(TACglobv_nbvR_l)) %>%
+  filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
+  IAM.format_quant(., probs = c(.025, .975)) %>%
+  rbind(., COR)
+  
+
+COR %>%
+  mutate(sim_name = factor(sim_name, levels = c( # Reorder the column in plot
+    "Statu quo", "TAC global nbtrip",            # by setting level order
+    "TAC global nbv", "Report TAC global nbv"))) %>%
+  ggplot(aes(x = year, y = value)) + 
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
+  geom_line() +
+  geom_vline(xintercept=1986, linetype = "dotted") +
+  NULL
 ```
 
-## Gestion TAC par flotille
+<!-- ## Gestion TAC par flotille -->
 
 
 

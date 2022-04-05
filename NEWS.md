@@ -23,3 +23,7 @@
 * Added a git repository to track down every change
 
 * Added a `NEWS.md` file to track changes to the package.
+
+# IAM 1.4.0
+
+Prior versions of IAM where specially developped for project usage and hardly succeed to each other.
