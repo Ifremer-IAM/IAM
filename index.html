@@ -93,67 +93,60 @@
 </div>
 <!-- badges: start -->
 
-<!-- [![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/iam/iam) -->
 <!-- badges: end -->
 <p>IAM (Impact Assessment Model) is a bio-economic model for the simulation of fisheries dynamics, integrating specific decision support tools within the framework of the theoretical implementation of management measures.</p>
 <p>It is a discrete time, multi-fleet, multi-trade, multi-species annual bio-economic model with “age” components for the biological part, and “commercial category” components for the economic part.</p>
-<p>You are free to copy, modify, and distribute IAM with attribution under the terms of the <a href="https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt" class="external-link">CECILL-2 Licence</a>. See the LICENSE-CECILL-2.1 file for details.</p>
-<div class="section level2">
-<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
-</h2>
-<p>Before using IAM, you need few software :</p>
-<ul>
-<li><p>R &gt;= 3.6</p></li>
-<li><p>Rtools (can be installed with <a href="https://devtools.r-lib.org/" class="external-link">devtools</a> R package)</p></li>
-</ul>
-</div>
+<p>You are free to copy, modify, and distribute <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">IAM</a> with attribution under the terms of the <a href="https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt" class="external-link">CECILL-2 Licence</a>. See the LICENSE-CECILL-2.1 file for details.</p>
+<p>Note : the github repository is only a mirror from <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">gitlab</a></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
+<p><a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">IAM</a> is a <code>R</code> package and thus require you to install it with a version superior to 3.6. Updating <code>R</code> (and Rstudio) is recommended before running a lot of package updates.</p>
 <div class="section level3">
-<h3 id="from-gitlab-recommended">From Gitlab (recommended)<a class="anchor" aria-label="anchor" href="#from-gitlab-recommended"></a>
+<h3 id="from-a-package-archive-file-recommended">From a package archive file (recommended)<a class="anchor" aria-label="anchor" href="#from-a-package-archive-file-recommended"></a>
 </h3>
-<p>To install the released version of IAM from <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link uri">https://gitlab.ifremer.fr/iam/iam</a>:</p>
 <ol style="list-style-type: decimal">
-<li>install “remotes” R package by executing in a R console:</li>
+<li><p>Go to the <a href="https://gitlab.ifremer.fr/iam/iam/-/releases/" class="external-link">Project ‘Releases’ page</a> and download an <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">IAM</a> binary package (.zip format under Window, tar.gz format under Linux) coressponding with your <code>R</code> version. These are <strong>not</strong> the files listed in assets !</p></li>
+<li><p>Install IAM from the archive file by either entering the following command in the <code>R</code> prompt:</p></li>
 </ol>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></code></pre></div>
-<ol start="2" style="list-style-type: decimal">
-<li>install IAM package by executing in a R console:</li>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"--path to zipfile--/IAM_2.0.0.zip"</span>,
+                 repos <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"win.binary"</span><span class="op">)</span></code></pre></div>
+<!-- ```{r, installlink, eval = FALSE} -->
+<!-- # Also work with direct link  -->
+<!-- install.packages("https://gitlab.ifremer.fr/iam/iam/uploads/1252e068a81c5c282bb1599686ef67df/IAM_2.0.0.zip", -->
+<!--                  repos = NULL, type = "win.binary") -->
+<!-- ``` -->
+</div>
+<div class="section level3">
+<h3 id="from-package-source-code">From package source code<a class="anchor" aria-label="anchor" href="#from-package-source-code"></a>
+</h3>
+<p>In order to build packages from sources on Windows, you will need <code>Rtools</code>, which is an independent software from <code>R</code>. You can install <code>Rtools</code> from the <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">CRAN project website</a> after selecting the right version. Note that <code>Rtools 4.2</code> is still in development version. You can check your <code>R</code> version with <code>R.version</code>.</p>
+<ol style="list-style-type: decimal">
+<li>install <a href="https://remotes.r-lib.org" class="external-link">remotes</a> <code>R</code> package by executing in a <code>R</code> prompt:</li>
 </ol>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_gitlab</span><span class="op">(</span>
-  repo <span class="op">=</span> <span class="st">"iam/iam"</span>, 
-  host <span class="op">=</span> <span class="st">"https://gitlab.ifremer.fr"</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></code></pre></div>
+<ol start="2" style="list-style-type: decimal">
+<li>install <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">IAM</a> package by executing in a <code>R</code> prompt:</li>
+</ol>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_git</span><span class="op">(</span>url <span class="op">=</span> <span class="st">"https://gitlab.ifremer.fr/iam/iam"</span><span class="op">)</span>
+
+<span class="co"># You can install development version with the ref option</span>
+<span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_git</span><span class="op">(</span>
+  url <span class="op">=</span> <span class="st">"https://gitlab.ifremer.fr/iam/iam"</span>, 
+  ref <span class="op">=</span> <span class="st">"dev"</span>, 
+  build_vignettes <span class="op">=</span> <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/rmarkdown" class="external-link">rmarkdown</a></span><span class="op">)</span>
 <span class="op">)</span></code></pre></div>
-<!--
-### From a package archive file
-
-1. Install IAM dependencies by running in a R console:
-
-```r
-for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
-         'reshape2', 'openxlsx', 'lattice', 'tcltk', 'tcltk2',
-         'Rcpp') ){
-  if(!require(i,character.only = TRUE))
-    install.packages(i)
-}
-```
-
-2. Go to the [Project 'Releases' page](https://gitlab.ifremer.fr/iam/iam/releases) and download an IAM binary package (.zip format under Window, tar.gz format under Linux)
-3. Install IAM from the archive file by either entering the following command in the R prompt: 
-`install.packages(path_to_file, repos = NULL, type="source")`
-or use e.g. the RStudio graphical interface
--->
 </div>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
-<p>For further information, multiple vignettes are available along with function help.</p>
-<p>To access a vignette you can run this code locally<!-- or check them with provided links-->. Please note that to this day, vignettes are written in french.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>For further information, allo documentation is centralized in a <a href="https://ifremer-iam.github.io/IAM/index.html" class="external-link">{pkgdown} website</a>. IAM package has multiple vignettes available along with functions help. Please note that to this day, vignettes are written in french.</p>
+<p>To get started, read <a href="https://ifremer-iam.github.io/IAM/articles/use_IAM.html" class="external-link">Use IAM vignette</a>. You can also access a vignette by running this code locally :</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"use_IAM"</span>, package <span class="op">=</span> <span class="st">"IAM"</span><span class="op">)</span></code></pre></div>
 <p>A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for <a href="https://gitlab.ifremer.fr/iam/iam/-/tree/dev/inst/notice/Notice.pdf" class="external-link">download here</a></p>
 </div>
@@ -190,13 +183,13 @@ or use e.g. the RStudio graphical interface
 <ul class="list-unstyled">
 <li>
 <li>
-Mathieu Merzereaud <br><small class="roles"> Author, compiler </small> <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
+Mathieu Merzereaud <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
 </li>
 <li>
-Claire Macher <br><small class="roles"> Author, compiler </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
+Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
 </li>
 <li>
-<a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer, compiler </small>
+<a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer </small>
 </li>
 <li>
 <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>
@@ -211,7 +204,7 @@ Claire Macher <br><small class="roles"> Author, compiler </small> <a href="https
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://www.tidyverse.org/lifecycle/#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
-<li><a href="https://gitlab.ifremer.fr/iam/iam" class="external-link"><img src="https://img.shields.io/badge/devel%20version-2.0.0-blue.svg" alt="Dev Version"></a></li>
+<li><a href="https://github.com/https://gitlab.ifremer.fr/iam/iam" class="external-link"><img src="https://img.shields.io/badge/dev%20version-2.0.0-blue.svg" alt="Dev Version"></a></li>
 <li><a href="https://cecill.info/licences/Licence_CeCILL_V2.1-en.html" class="external-link"><img src="https://img.shields.io/badge/license-CeCILL--2-blue.svg" alt="License: CeCILL-2"></a></li>
 </ul>
 </div>
