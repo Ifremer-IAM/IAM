@@ -46,7 +46,7 @@ Before using IAM, you need few software :
 
 To install the released version of IAM from [https://gitlab.ifremer.fr/iam/iam](https://gitlab.ifremer.fr/iam/iam):
 
-1. install "remotes" R package by executing in a R console:
+1. install `{remotes}` R package by executing in a R console:
 
 ```{r remotes, eval=FALSE}
 install.packages("remotes")
@@ -61,12 +61,8 @@ remotes::install_git(url = "https://gitlab.ifremer.fr/iam/iam")
 remotes::install_git(
   url = "https://gitlab.ifremer.fr/iam/iam", 
   ref = "dev", 
-  build_vignettes = TRUE
+  build_vignettes = TRUE # require rmakdown and knitr
 )
-
-install.packages("fs", type = "source")
-install.packages("magrittr", type = "source")
-install.packages("cachem", type = "source")
 ```
 
 <!--
