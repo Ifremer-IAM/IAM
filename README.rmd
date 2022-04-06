@@ -59,6 +59,9 @@ remotes::install_gitlab(
   repo = "iam/iam", 
   host = "https://gitlab.ifremer.fr"
 )
+
+devtools::install_git("https://gitlab.ifremer.fr/iam/iam", INSTALL_opts = "--no-multiarch")
+devtools::load_all()
 ```
 
 <!--
