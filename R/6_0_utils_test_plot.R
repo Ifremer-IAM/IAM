@@ -59,7 +59,6 @@ plot_app_ui <- function() {
 #'  eco_plot : pas affecte par cette fonciton
 #'
 #' @import shiny
-#' @import Cairo
 #' @importFrom ggplot2 ggplot
 #' @rawNamespace import(shinyjs, except = c(runExample, alert)) #https://github.com/daattali/shinyjs/issues/127
 #'
@@ -68,7 +67,6 @@ plot_app_ui <- function() {
 #'
 #' @noRd
 plot_app_server <- function(input, output, session) {
-  options(shiny.usecairo=TRUE)
 
   x <- reactiveValues(
     var = NULL,

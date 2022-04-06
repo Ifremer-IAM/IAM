@@ -55,13 +55,18 @@ install.packages("remotes")
 2. install IAM package by executing in a R console:
 
 ```{r remotes_install, eval=FALSE}
-remotes::install_gitlab(
-  repo = "iam/iam", 
-  host = "https://gitlab.ifremer.fr"
+remotes::install_git(url = "https://gitlab.ifremer.fr/iam/iam")
+
+# You can install devlopment version with the ref option
+remotes::install_git(
+  url = "https://gitlab.ifremer.fr/iam/iam", 
+  ref = "dev", 
+  build_vignettes = TRUE
 )
 
-devtools::install_git("https://gitlab.ifremer.fr/iam/iam", INSTALL_opts = "--no-multiarch")
-devtools::load_all()
+install.packages("fs", type = "source")
+install.packages("magrittr", type = "source")
+install.packages("cachem", type = "source")
 ```
 
 <!--
