@@ -8,6 +8,8 @@ raw_data/
 tryhard.R
 src/*.dll
 src/*.o
+src-i386/
+src-x64
 
 .vscode/
 
@@ -17,3 +19,9 @@ dev/dev_cp_datarmor.R
 /doc/
 /Meta/
 docs/
+
+inst/notice/*.aux
+inst/notice/*.log
+inst/notice/*.out
+inst/Meta
+inst/doc

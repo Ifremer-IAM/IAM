@@ -17,6 +17,7 @@ library(usethis)
 library(devtools)
 library(pkgdown)
 library(fs)
+library(beepr)
 
 # Command for pkg compil ####
 
@@ -42,7 +43,7 @@ devtools::install(upgrade = "never",
 ## Check the full package ####
 devtools::check() # takes few minutes
 
-## Compile documentation site
+## Compile documentation site ####
 devtools::load_all()
 rmarkdown::render("README.rmd", clean = TRUE, quiet = TRUE)
 fs::file_delete("README.html")
@@ -53,6 +54,29 @@ rm(list = ls())
 gc()
 # Restart R
 .rs.restartR()
+
+## Building Binary package for Releases ####
+# FROM SO https://stackoverflow.com/questions/54634056/how-to-include-an-html-vignette-in-a-binary-r-package
+build_vignettes_to_inst <- function() {
+  devtools::build_vignettes() # Builds vignettes to 'doc' and 'Meta'. Updates '.gitignore'.
+  unlink(c("inst/doc", "inst/Meta"), recursive = TRUE) # Remove the directories if they exist
+  dir.create("inst/doc"); dir.create("inst/Meta") # Create empty directories
+  has_worked <- c( # Copy files to 'inst' subfolders
+    file.copy(list.files("doc", full.names = TRUE), to = "inst/doc"),
+    file.copy(list.files("Meta", full.names = TRUE), to = "inst/Meta")
+  )
+  unlink(c("doc", "Meta"), recursive = TRUE) # Optional: Remove unwanted directories
+  return(all(has_worked)) # Returns TRUE if everything worked OK
+}
+
+build_vignettes_to_inst() # Call the function
+devtools::build(binary = TRUE, args = c('--preclean'))
+beepr::beep(5)
+
+## Compile the math notice ####
+setwd("inst/notice")
+tinytex::pdflatex("test_notice.tex")
+setwd("../../")
 
 #' I tested using some options but it's poorly used in the package.
 # options(dev = TRUE)

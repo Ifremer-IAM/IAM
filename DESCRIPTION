@@ -73,8 +73,7 @@ Imports: utils,
          shiny,
          shinyWidgets,
          shinyjs,
-         ggplot2,
-         Cairo
+         ggplot2
 License: CeCILL-2
 LazyData: true
 NeedsCompilation: yes

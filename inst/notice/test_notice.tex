@@ -1,0 +1,584 @@
+\documentclass[12pt, colorinlistoftodos]{article} 
+
+\title{IAM:  Impact Assessment \\ Structure et mode opératoire du modèle}
+\author{Maxime Jaunatre}
+
+\usepackage{ifthen} 
+\newboolean{draft}\setboolean{draft}{true} % display notes, stamp
+
+\providecommand{\main}{.}  % *Modification: define file location
+% \usepackage{\main/.tex/setup}
+
+\usepackage{tabularx}
+\usepackage{eurosym}
+
+% % Beginning of the setup file !!!!
+% set up file for new commands and main packages :
+% \providecommand{\main}{.}  % *Modification: define file location
+\usepackage[utf8]{inputenc} % encoding
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{a4paper} % format de feuille
+\geometry{top=2.5cm, bottom=2.5cm, left=2cm, right=2cm} %marges
+%\linespread{1.5} % interligne
+
+\usepackage[table,dvipsnames*,svgnames]{xcolor} % allow to put colour in table and correct a bug in names
+% option 'gray' emulate a gray scale print of the document
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\chead{\csname @title\endcsname}
+\lhead{}
+\rhead{\includegraphics[width=2cm]{\main/.tex/Logo_ifr_y.jpg}}
+\lfoot{page \thepage}\cfoot{}
+\rfoot{\csname @author\endcsname ~-~\the\year}
+
+\fancypagestyle{plain}{%
+    \fancyhf{}% clear all header and footer fields
+    %\fancyfoot[L, R]{page \thepage}{\csname @author\endcsname ~-~\the\year} 
+    \lfoot{page \thepage}\cfoot{}
+    \rfoot{\csname @author\endcsname ~-~\the\year}
+    \renewcommand{\headrulewidth}{0pt}%\
+    %\renewcommand{\footrulewidth}{0pt}
+}
+
+\ifthenelse{\boolean{draft}}{
+    %\usepackage{pagecolor} \pagecolor{darkgray} \color{lightgray}
+    \usepackage[color={[rgb]{0.96, 0.77, 0.19}}]{draftwatermark}
+    \SetWatermarkScale{4}
+    \SetWatermarkText{DRAFT}
+    \usepackage[backgroundcolor = orange]{todonotes}
+}{ \usepackage[disable]{todonotes} }
+
+% using math
+\usepackage{amstext}
+
+\usepackage[hidelinks]{hyperref} % lien cliquables
+\hypersetup{
+colorlinks = true,
+linkcolor = black,
+citecolor = black,
+urlcolor = blue
+} % https://tex.stackexchange.com/questions/50747/options-for-appearance-of-links-in-hyperref
+\usepackage{url}
+
+
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{float} 
+
+\def\correction#1{%
+    \abovedisplayshortskip=#1\baselineskip\relax\belowdisplayshortskip=#1\baselineskip\relax%
+    \abovedisplayskip=#1\baselineskip\relax\belowdisplayskip=#1\baselineskip\relax}
+
+\arrayrulewidth=1pt\relax
+\tabcolsep=5pt\relax
+\fboxsep=\tabcolsep\relax
+\fboxrule=\arrayrulewidth\relax
+
+\newcolumntype{A}[2]{%
+    >{\minipage{\dimexpr#1\linewidth-2\tabcolsep-#2\arrayrulewidth\relax}\vspace\tabcolsep}%
+    c<{\vspace\tabcolsep\endminipage}}
+
+\newenvironment{Table}[4]{%
+    \longtable{%
+        |>{\centering$\displaystyle}A{#1}{1}<{$}% for inline equation
+        |>{\centering}A{#2}{1.5}% for text
+        |>{\centering}A{#3}{1.5}% for text
+        |>{\centering$\displaystyle}A{#4}{1}<{$}% for inline equation
+        |}\hline\ignorespaces}{%
+    \endlongtable\ignorespacesafterend}
+
+\newenvironment{nTable}[6]{%
+    \longtable{%
+        |>{ \addtocounter{rowcntr}{-1} \refstepcounter{rowcntr} \therowcntr }A{#1}{1.5}<{\addtocounter{rowcntr}{1}} 
+        |>{\centering$\displaystyle}A{#2}{1}<{$}% for inline equation
+        |>{\centering}A{#3}{1.5}% for text
+        |>{\centering}A{#4}{1.5}% for text
+        |>{\small \centering}A{#5}{1.5}% for text
+        |>{\centering$\displaystyle}A{#6}{1}<{$}% for inline equation
+        |}\hline\ignorespaces}{%
+    \endlongtable\ignorespacesafterend}
+
+\usepackage{ifthen}
+
+\newcounter{rowcntr}[table]
+\renewcommand{\therowcntr}{%
+    \ifnum\value{rowcntr} > 0
+    \ifnum\thetable = 1
+        i\arabic{rowcntr}
+    \else 
+    \ifnum\thetable = 2
+        p\arabic{rowcntr}
+    \else
+    \ifnum\thetable = 3
+        t\arabic{rowcntr}
+    \else
+        \thetable. \arabic{rowcntr}
+    \fi
+    \fi
+    \fi 
+    \fi
+}
+
+
+\newcommand{\efmi}{%
+    _{e,f,m,i}}
+\newcommand{\efmc}{%
+    _{e,f,m,c}}
+\newcommand{\efm}{%
+    _{e,f,m}}
+\newcommand{\fm}{%
+    _{f,m}}
+
+\newcommand{\tabnl}{
+    \tabularnewline\hline
+}
+
+\newcommand{\pref}[1]{(\ref{#1})}
+
+% % EOF setup.sty
+
+\newcolumntype{L}{>{\(\displaystyle }l<{\)}} % math-mode version of "l" column type
+
+\begin{document}
+
+\thispagestyle{plain}
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{\main/.tex/header_ifre.png}
+    \par ~ \par
+    \begin{minipage}{\textwidth}
+        \begin{center}
+            {\huge \csname @title\endcsname }
+        \end{center}
+        \rule{7em}{.4pt}\par
+        \csname @author\endcsname ~| UMR AMURE \hfill %\par 
+        \href{mailto:maxime.jaunatre@ifremer.fr}{Mail} | \today
+    \end{minipage}
+\end{figure}
+\hrule
+%\ifthenelse{\boolean{draft}}{\listoftodos \hrule}{} %is this list present or not
+
+\iffalse
+
+\section{Introduction}
+
+IAM (Impact Assessment Model) est un modèle bio-économique de simulation de dynamiques de pêcheries, 
+intégrant des outils spécifiques d'aide à la décision dans le cadre de mises en application théoriques de mesures de gestion.  
+Ce document constitue un support d'utilisation du modèle, décrivant les étapes de paramétrage et de lancement des simulations, 
+exposant les méthodologies et équations fonctionnelles utilisées en arrière-plan, et analysant les possibilités offertes par l'outil. 
+Une première partie  principalement théorique décrira l'architecture modulaire du modèle, 
+détaillera les paramètres mis en jeu ainsi que les liens fonctionnels les unissant. Les différents outils de simulation 
+greffés au modèle "basique" et les méthodologies associées seront également présentés dans cette partie. 
+Plus techniquement, la méthode de constitution du fichier de paramétrage fera l'objet d'une seconde partie, 
+alors qu'une troisième et dernière partie décrira la mise en application des simulations au sein d'un environnement R.
+
+
+
+\section{Notations et structure schématique du modèle}
+
+\subsection{Notations utilisées}
+
+IAM est un modèle bio-économique à temps discret, multi-flottille, multi-métier, et multi-spécifique à composantes "âge"
+ pour la partie biologique, et à composantes "catégorie commerciale" pour la partie économique. 
+ Les paramètres du modèle peuvent ainsi se décliner selon 7 indices de définition distincts qui sont 
+ décrits dans le tableau ci-dessous :
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|L| c |}
+\hline
+\textbf{Indice} & \textbf{Description} \\
+ \hline
+t & Indice temporel \\
+f & Indice flottille \\
+m_{bio} & Indice métier (paramètres biologiques) \\
+m_{eco} & Indice métier (paramètres économiques) \\
+e & Indice espèce \\
+ie & Indice âge (dépend de l’espèce) \\
+ce & Indice catégorie (dépend de l’espèce) \\
+\hline
+\end{tabular}
+\label{neat}
+\caption{Indices de déclinaison des variables numériques}
+\end{table}
+
+En pratique, ces indices vont également déterminer la structuration des objets R incarnant les inputs du modèle 
+(voir partie 3\todo{ref to section}). Ces objets se présenteront en effet sous la forme de matrices multidimensionnelles formatées, 
+incluant toute l'information nécessaire au modèle pour à la fois procéder aux calculs des indicateurs de sortie, 
+mais aussi pour assurer la robustesse des implémentations. De surcroît, cette mise en forme spécifique, 
+commune aux données d'entrée et de sortie, facilitera les traitements numériques ultérieurs qui pourront 
+leur être appliqués. Notons que l'on peut distinguer deux types d'indices "métier", puisque le modèle 
+prend en considération la possibilité de définir les paramètres biologiques et les paramètres économiques 
+selon deux niveaux "métier" distincts. Dans ce cas, une matrice de correspondance entre ces deux niveaux de 
+définition sera requise (matrice de dimension $m_{bio} \cdot m_{eco}$, voir partie 2\todo{ref to section}). Précisons également que plusieurs 
+types de dynamiques de population pourront être appliquées à un stock donné ; elles sont pour le moment 
+au nombre de 3, et sont les suivantes :
+
+\begin{itemize}
+    \item dynamique de population de type XSA (par défaut, annuelle et définie aux âges. Ex : Sole 8ab)
+    \item dynamique de population de type SS3 (trimestrielle et définie par âge et cohorte. Ex : Merlu 8ab)
+    \item dynamique de population de type SPiCT (modèle Pella-Tomlinson  annuel)
+\end{itemize}
+
+On peut rajouter à ces trois options la possibilité de ne pas considérer de dynamique de population. 
+Les productions seront alors calculées sur  la base de débarquements par unité d'effort, considérés 
+ou non comme constants au cours du temps. La mise en œuvre de chacune de ces dynamiques nécessitera un 
+ensemble de paramètres spécifiques. 
+
+\subsection{Schéma structurel du modèle bio-économique}
+
+Le schéma de la page suivante décrit de manière synthétique et simplifiée le mode de fonctionnement du modèle bio-économique.
+Il met à la fois en évidence la structure modulaire du modèle (chaque module étant représenté par un rectangle bleu), 
+et les interactions entre ces modules au travers des relations existant entre les  paramètres mis en jeu. 
+Il permet aussi de distinguer les modules "utilisateur" (rectangles bleus avec intitulés en couleur), 
+qui serviront à orchestrer l'exécution des modules de simulation tout en permettant à l'utilisateur 
+d'intervenir au cours du processus de simulation, des modules "passifs"  (rectangle bleus avec intitulés en noir) 
+qui seront tributaires de l'action des précédents et qui composeront l'ossature du modèle. 
+La dynamique de population ici considérée et illustrée est le modèle XSA. 
+Pour plus de précisions concernant les interactions mises en jeu au sein des autres modèles de population, 
+le lecteur pourra se référer aux équations détaillées de la partie 1.2\todo{ref to section}.
+
+L'objectif des  chapitres qui vont suivre est de proposer une description exhaustive et organisée des 
+processus mis en action durant l'étape de simulation. Il s'agira donc de fournir à la fois une synthèse 
+des calculs effectués, mais aussi une vue des méthodologies utilisées et des différents outils mis à 
+la disposition de l'utilisateur.
+
+
+\section{Description et déroulement des modules}
+
+La partie qui suit va s'attarder plus longuement sur les modules constituant le modèle bio-économique. 
+Dans ce contexte, les paramètres d'entrée du module seront décrits (ils pourront tout aussi bien être 
+des paramètres d'entrée du modèle que des paramètres de sortie d'autres modules), les sorties le seront également, 
+et les équations décrivant le cheminement des calculs seront présentées. 
+
+Notons que les paramètres initiaux et les variables calculées sont décrits ici à leur niveau maximal de précision. 
+Il est bien évidemment concevable que certaines données ne soient pas disponibles à ce niveau de définition : 
+l’ajustement nécessaire est généralement pris en compte dans l’implémentation (tests sur la compatibilité des 
+dimensions entre variables, et correction du format si besoin est).
+
+Précisons pour finir que  la dimension temporelle le plus souvent implicite dans les formulations suivantes 
+peut être non seulement intégrée au stade initial de déclaration des paramètres d’entrées, mais également 
+greffée à toute variable du modèle par le biais du module "scénario" permettant l'intervention de l'utilisateur 
+à n'importe quel instant $t$.
+
+\todo[inline]{add the great figure with cycle}
+
+\subsection{Module "Mortalité par pêche et Survie des rejets"}
+
+Ce module fait appel à deux sous-modules. Le premier procède à la ventilation de la donnée "mortalité" initiale 
+disponible par une variable auxiliaire supposée corrélée afin d’affiner le niveau de définition accessible. 
+Ce processus s’effectue le plus souvent au moyen d’une variable de type "captures", ou à défaut, 
+d’une donnée "débarquements". Le deuxième sous-module va estimer initialement une capturabilité 
+associée afin de l’appliquer au cours du processus de modélisation à une variable de contrôle "effort". 
+
+\subsubsection{Sous-module "Allocation de la mortalité"}
+
+Avant tout, précisons que ce qui va se rapporter à cette étape d'allocation ne concerne que les dynamiques \textbf{XSA} et \textbf{SPiCT}. 
+La mortalité par pêche pour la dynamique SS3 est d'entrée renseignée déjà ventilée au niveau flottille-métier-âge-cohorte-saison 
+requis, aucun travail d'allocation n'est donc nécessaire. Le modèle statique quant à lui s'affranchit de cet indicateur
+ puisqu'il se base sur des données de LPUE déjà disponibles au niveau flottille-métier. 
+
+L’objectif de ce module est d’aboutir à un niveau de définition maximal du paramètre de mortalité, à savoir idéalement 
+une valeur par espèce, âge, flottille et métier. Il existe plusieurs manières d’obtenir ce niveau maximal  
+(voir tableau 1.2.1.1.1\todo{ref} décrivant les procédés de ventilation implémentés). En partant d’une donnée "Mortalité" plus précise, 
+on peut se contenter d’une variable de ventilation plus grossière. On peut également procéder en deux étapes successives 
+avec deux variables distinctes si la variable initiale ne décline que la dimension "âge", et qu'il reste donc à 
+intégrer les dimensions "métier", puis "flottille". Toutes ces possibilités sont offertes par le module implémenté, 
+et celui-ci considérera au mieux les ventilations à opérer le cas échéant.
+
+Si nécessaire, une première ventilation sera effectuée au moyen des variables Cmi et Ci préalablement renseignées dans 
+les onglets "Espèce" du fichier de paramétrage (voir partie 2\todo{ref to section}) afin d'intégrer au minimum la dimension "métier" à 
+la donnée de mortalité par pêche. On rappelle qu'il s'agira idéalement de données de captures en nombre, mais qu'une 
+autre donnée pourra à défaut être utilisée. Si à ce stade, la mortalité possède le niveau complet requis, la procédure s'arrêtera. 
+Sinon, la seconde ventilation s’opérera avec les variables $Ymi$ et $Lref_{fe}$ (variable présente dans les onglets de 
+paramétrage économique et appliquée ici à la matrice "fm" d'allocation flottille-métier) afin d'inclure la dimension 
+"flottille". Il revient à l'utilisateur de s'assurer de la pertinence des données assignées à chacune de 
+ces variables afin que le processus de ventilation aboutisse à des résultats justes et optimaux 
+(cf tableau 1.2.1.1.1 de la page suivante\todo{ref to section}).   
+
+Note : la ventilation ne s'effectue plus en tant qu'étape préliminaire aux simulations lors du lancement du modèle, 
+mais désormais  lors de la phase d'intégration des indicateurs visant à créer l'objet R de paramétrage. Le paramètre calculé 
+$F_{fmi}$ apparaît donc maintenant parmi les paramètres "sources" au sein de l'objet, et est au même titre qu'eux 
+directement utilisé par le modèle.  
+
+$\bullet$ \textbf{Paramètres initiaux} (la description des paramètres d'entrée et l'équation de calcul associée dépeignant 
+ici la procédure d'allocation ne doivent être considérées que comme un cas particulier d'une ventilation en une étape) 
+\fi 
+
+\iffalse
+\begin{table}[h]
+\begin{center}
+
+\begin{flushleft}
+    $\bullet$ XSA, SPiCT
+    \end{flushleft}
+    \begin{tabularx}{\textwidth}{|L| X | X|}
+    \hline
+    \textbf{Notation} & \textbf{Descritption} & \textbf{Source} \\
+     \hline
+    F_{e,i} & Coefficient de mortalité par pêche initial (ici, par espèce et par âge) & 
+    Stock Assessment ($i=\{all\}$ pour modèle global SpiCT, et $\{i\}=\{0,1,\ldots\}$ pour modèle aux âges XSA)\\ \hline
+    C_{e,f,m,i} & Variable de ventilation à un niveau de définition requis (ici, captures par espèce, flottille, métier et âge) & 
+    SACROIS\\ \hline
+    Ctot_{e,i} & Variable de ventilation totale (doit être définie sur l’intersection des niveaux des deux variables précédentes) & 
+    SACROIS\\
+    \hline
+    \end{tabularx}
+
+
+
+
+    \begin{flushleft}
+        $\bullet$ SS3
+    \end{flushleft}
+    \begin{tabularx}{\textwidth}{|L| X | X|}
+        \hline
+        \textbf{Notation} & \textbf{Descritption} & \textbf{Source} \\
+         \hline
+        iniFq_{e,i} & Coefficient de mortalité par pêche total initial (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        Fq_{e,i} & Coefficient de mortalité par pêche total à t=1 (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        iniFq_{e,i} & Coefficient de mortalité par pêche total initial (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+        Fq_{e,f,m,i} & Coefficient de mortalité par pêche total à t=1 (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+
+        iniFqLwt_{e,i} & Coefficient de mortalité par pêche "poids débarqués" initial (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        FqLwt_{e,i} & Coefficient de mortalité par pêche "poids débarqués" à t=1 (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        iniFqLwt_{e,f,m,i} & Coefficient de mortalité par pêche "poids débarqués" initial (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+        FqLwt_{e,f,m,i} & Coefficient de mortalité par pêche "poids débarqués" à t=1 (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+
+        iniFqDwt_{e,i} & Coefficient de mortalité par pêche "poids rejetés" initial (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        FqDwt_{e,i} & Coefficient de mortalité par pêche "poids rejetés" à t=1 (par espèce, âge, saison et cohorte) & Stock Assessment \\ \hline
+        iniFqDwt_{e,f,m,i} & Coefficient de mortalité par pêche "poids rejetés" initial (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+        FqDwt_{e,f,m,i} & Coefficient de mortalité par pêche "poids rejetés" à t=1 (par espèce, flottille, métier, âge, saison et cohorte) & Stock Assessment \\ \hline
+        \hline
+        \end{tabularx}
+\end{center}
+    \label{neat}
+    \caption{Paramètres initiaux pour le sous-module "allocation de la mortalité par pêche"}
+\end{table}
+
+\begin{table}[h]
+        \centering
+    
+        \begin{flushleft}
+            $\bullet$ Variables calculées (XSA et SPiCT)
+        \end{flushleft}
+        \begin{tabularx}{\textwidth}{|L| c | X |L|}
+        \hline
+        \textbf{Notation} & \textbf{Type} & \textbf{Descritption} & \textbf{Source} \\
+         \hline
+        F_{e,f,m,i} & sortie & Coefficient instantané de mortalité par pêche ventilé initial (ici, par espèce, flottille, métier et âge) & 
+        F_{e,f,m,i} = \frac{F_{e,i} \cdot C_{e,f,m,i}}{Ctot_{e,i}}\\ \hline
+        Foth_{e,i} & Sortie & Mortalité par pêche initiale "autres flottilles" par espèce et âge. Entrée des modules \textit{Captures} et \textit{Dynamiques de populations} & 
+        Foth_{e,i} = F_{e,i} - \sum_{f,m} F_{e,f,m,i} \\ 
+        \hline
+        \end{tabularx}
+        \label{neat}
+        \caption{Paramètres calculés pour le sous-module "allocation de la mortalité par pêche"}
+        \end{table}
+
+\fi
+\newpage
+
+
+% \begin{table}[H]
+%     \begin{nTable}{0.05}{0.15}{0.1}{0.3}{0.0001}{0.38}
+%     \textbf{N} & {\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description}& \textbf{Unité} & \textbf{Equation} \tabnl
+%     \label{qefmi} &Q\efmi & Sortie & & Capturabilité initiale (par espèce, flottille, métier et âge) & 
+%      Q\efmi = \frac{F\efmi}{effort1_{f,m} \cdot effort2_{f,m}} \tabnl
+%     \label{qei} &Q_{e,f,m,i} & Sortie & & Capturabilité initiale (par espèce, flottille, métier et âge) & 
+%      Q_{e,f,m,i} = \frac{F_{e,f,m,i}}{effort1_{f,m} \cdot effort2_{f,m}} \tabnl
+%      &Q_{e,f,m,i} & Sortie & & Capturabilité initiale (par espèce, flottille, métier et âge) &
+%      Q_{e,f,m,i} = \frac{F_{e,f,m,i}}{effort1_{f,m} \cdot effort2_{f,m}} \tabnl
+%     \end{nTable}
+%     \caption{Input variable (i)} \label{tab:Q1}
+%     \end{table}
+  
+
+% \begin{table}[H]
+    \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
+\textbf{N} & {\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
+\label{Lefmc} & L_{e,f,m,c} & EC \tiny(bio) & Débarquements totaux par flottille, métier, espèce (et catégorie)
+ & tonnes &  \tabnl
+\label{Pefmc} & P_{e,f,m,c} & EC \tiny(marché) & Prix moyen par flottille, métier, espèce (et catégorie)
+ & euro/kg &  \tabnl
+\label{thetae} & theta_{e} & E & Multiplicateur (par espèce) à appliquer aux prix "débarquements" afin 
+d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;1]. & - &  \tabnl
+\label{LDefmc} & LD_{e,f,m,c} & EC \tiny(bio) & Rejets débarqués en poids, par flottille, métier, espèce modélisée et catégorie (taille et sous-taille)
+ & tonnes &  \tabnl
+\label{statLDorefm} & statLDor_{e,f,m} & EC \tiny(bio) & Rejets débarqués "autres" en poids, par flottille, métier et espèce statique
+ & tonnes &  \tabnl
+\label{statLDstefm} & statLDst_{e,f,m} & EC \tiny(bio) & Rejets débarqués "sous taille" en poids, par flottille, métier et espèce statique
+ & tonnes &  \tabnl
+\label{pste} & pst_{e} & E & Prix au kg de la partie "rejets débarqués sous taille" pour les espèces statiques
+ & euro/kg &  \tabnl
+\label{nbvf} & nbv_{f} & E & Nombre de navires par flottille & nombre &  \tabnl
+\label{nbvfm} & nbv_{f,m} & E & Nombre de navires par flottille et métier & nombre &  \tabnl
+\label{lcfm} & lc_{f,m} & E & Taxes de débarquements (en \% du CA) par flottille et métier & \% &  \tabnl
+\label{lcdfm} & lcd_{f,m} &  & Taxes de débarquements des rejets "sous taille" (en \% du CA) par flottille et métier &  &  \tabnl
+\label{tripLgthf} & tripLgth_{f} & E & Durée moyenne d'une marée par navire d'une flottille par an
+ & heures &  \tabnl
+\label{tripLgthfm} & tripLgth_{f,m} & E & Durée moyenne d'une marée par navire d'une flottille-métier & heures &  \tabnl
+\label{nbTripf} & nbTrip_{f} & E & Nombre de marées annuel par navire d'une flottille & nombre &  \tabnl
+\label{nbTripfm} & nbTrip_{f,m} & E & Nombre de marées annuel par navire d'une flottille-métier & nombre &  \tabnl
+\label{nbdsf} & nbds_{f} & E & Nombre de jours de mer par navire d'une flottille par an & jours &  \tabnl
+\label{nbdsfm} & nbds_{f,m} & E & Nombre moyen de jours de mer par navire d'une flottille-métier et par an & jours &  \tabnl
+\label{effort1f} & effort1_{f} & E & Première composante d'effort par navire d'une flottille par an & - & nbTrip_{f\pref{nbTripf}} \text{ ou } nbds_{f\pref{nbdsf}} \tabnl
+\label{effort1fm} & effort1_{f,m} & E & Première composante d'effort par navire d'une flottille-métier par an & - & nbTrip_{f,m\pref{nbTripfm}} \text{ ou } nbds_{f,m\pref{nbdsfm}} \tabnl
+\label{effort2f} & effort2_{f} & E & Deuxième composante d'effort par navire d'une flottille par an & - & tripLgth_{f\pref{tripLgthf}} \text{ ou } 1 \tabnl
+\label{effort2fm} & effort2_{f,m} & E & Deuxième composante d'effort par navire d'une flottille-métier par an & - & tripLgth_{f,m\pref{tripLgthfm}} \text{ ou } 1 \tabnl
+\label{Lreffm} & Lref_{f,m} & E & Débarquements totaux de référence par flottille et métier & tonnes &  \tabnl
+\label{cnbfm} & cnb_{f,m} & E & Effectif moyen par navire d'une flottille-métier & nombre &  \tabnl
+\label{ovcfm} & ovc_{f,m} & E & Autres coûts variables DCF déduits des coûts de débarquements ($lc_{f,m\pref{lcfm}}$) par navire d'une flottille-métier & euro/an &  \tabnl
+\label{fcfm} & fc_{f,m} & E & Coûts de carburant par navire d'une flottille-métier & euro/an &  \tabnl
+\label{vffm} & vf_{f,m} & E & Prix du carburant par navire d'une flottille-métier & euro/L &  \tabnl
+\label{cshrfm} & cshr_{f,m} & E & Part équipage (ratio du RAP) par navire d'une flottille-métier & \%RAP &  \tabnl
+\label{cshrf} & cshr_{f} & E & Part équipage (ratio du RAP) par navire d'une flottille & \%RAP &  \tabnl
+\label{cnbf} & cnb_{f} & E & Effectif moyen par navire d'une flottille & nombre &  \tabnl
+\label{perscf} & persc_{f} & E & Coûts de personnel initiaux par navire d'une flottille & euro/an &  \tabnl
+\label{eecf} & eec_{f} & E & Cotisations salariales totales par navire d'une flottille & euro/an &  \tabnl
+\label{mwh} & mwh_{} & E & Salaire brut horaire  minimum national & euro/an &  \tabnl
+\label{repf} & rep_{f} & E & Coûts entretien et réparation par navire d'une flottille & euro/an &  \tabnl
+\label{gcf} & gc_{f} & E & Coût total engin par navire d'une flottille & euro/an &  \tabnl
+\label{fixcf} & fixc_{f} & E & Autres coûts fixes par navire d'une flottille & euro/an &  \tabnl
+\label{FTEf} & FTE_{f} & E & ETP par navire d'une flottille & hommes &  \tabnl
+\label{depf} & dep_{f} & E & Amortissements par navire d'une flottille & euro/an &  \tabnl
+\label{icf} & ic_{f} & E & Coût d'opportunité du capital par navire d'une flottille & euro/an &  \tabnl
+\label{Kf} & K_{f} & E & Valeur d'assurance par navire d'une flottille & euro/an &  \tabnl
+\label{invf} & inv_{f} & E & Coût d'investissement annuel par navire d'une flottille & euro/an &  \tabnl
+\label{FTEfm} & FTE_{f,m} & E & ETP par navire d'une flottille-métier & hommes &  \tabnl
+\label{perscCalc} & perscCalc_{} & E & Mode de calcul de la variable "coût du personnel" & - &
+\textbf{0}\text{\footnotesize: salaires par marin fixés}\newline
+\textbf{1}\text{\footnotesize: part équipage constante (cshr)}\newline
+\textbf{2}\text{\footnotesize: part équipage constante calculée (ccwr)}\newline
+\textbf{3}\text{\footnotesize: part équipage constante + salaire}\newline \text{\footnotesize marin supplémentaire fixé (cshr)}\newline
+\textbf{4}\text{\footnotesize: part équipage constante calculée +}\newline \text{\footnotesize salaire marin supplémentaire fixé (ccwr)}
+ \tabnl
+\label{GVLreffm} & GVLref_{f,m} & E & CA moyen initial par navire d'une flottille-métier & euro/an &  \tabnl
+
+\caption{Paramètres initiaux pour le module "Economique"}
+    \end{nTable}
+
+\newpage 
+
+    \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
+        \textbf{N} & {\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
+
+        \label{ETinifm} & ETini\fm & I & Efficacité initiale de tri en tonnage par heure et homme, par flottille-métier &  tonnes/ \footnotesize h.homme &
+        \frac{Lref\fm}{nbvIni\fm \cdot nbTripIni\fm} \times \frac{1}{tripLgthIni\fm \cdot cnbIni\fm}  \tabnl
+
+        \label{uefm} & ue\fm & EC & Unité d'effort annuelle par navire d'une flottille-métier & - &
+        effort1_{f,m\pref{effort1fm}} \cdot effort2_{f,m\pref{effort2fm}} \tabnl
+
+        \label{uef} & ue_f & EC & Unité d'effort annuelle par navire d'une flottille & - &
+        effort1_{f\pref{effort1f}} \cdot effort2_{f\pref{effort2fm}} \tabnl
+
+        \label{fvoluefm} & fvolue\fm & EC & Volume de carburant par unité d'effort et par navire d'une flottille-métier & L/ue &
+        \frac{ fc_{f,m\pref{fcfm}} }{ vf_{f,m\pref{vffm}} \cdot ue_{f,m\pref{uefm}} } \tabnl
+
+        \label{ovcuefm} & ovcue\fm & EC & Autres coûts variables par unité d'effort et par navire d'une flottille-métier & \euro/ue &
+        \frac{ ovc_{f,m\pref{ovcfm}} }{ ue_{f,m\pref{uefm}} } \tabnl
+
+        \label{rtbsf} & rtbs_f & I & Reste à partager par navire d'une flottille & \euro/an &
+        \sum_m ( GVLref_{f,m\pref{GVLreffm}} \cdot nbv_{f,m\pref{nbvfm}} \cdot (1 - lc_{f,m\pref{lcfm}}) 
+        \cdot ovc_{f,m\pref{ovcfm}} \cdot fc_{f,m\pref{fcfm}} ) \times \frac{1}{ nbv_{f\pref{nbvf}} } \tabnl
+
+        \label{ccwrf} & ccwr_f & EC & Part du coût de personnel en \% du RAP par flottille & \% &
+        \frac{ persc_{f\pref{perscf}} }{ rtbs_{f\pref{rtbsf}} } \tabnl
+
+        \label{operscf} & opersc_f & EC & Autres coûts de personnel par navire d'une flottille & \euro/an  &
+        persc_{f\pref{perscf}} \cdot cshr_{f\pref{cshrf}} \cdot rtbs_{f\pref{rtbsf}} \tabnl
+    \caption{Paramètres initiaux calculés pour le module "Economique"}
+    \end{nTable}
+
+\newpage
+
+\begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
+    \textbf{N} & {\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
+
+    & & & & &  GVLcom_{f,m,e} = \sum_{c\neq 999} P_{f,m,e,c(i2)} \times L_{f,m,e,c(i1)]} + \sum_{c\neq 999} \theta_{e(i3)} \times P_{f,m,e,c(i2]} \times LD_{f,m,e,c(i4)} \text{ si e modélisée} \newline
+               GVLcom_{f,m,e} = P_{f,m,e(i2)} \times L_{f,m,e(i1)} + \theta_{e(i3)} \times P_{f,m,e(i2)} \times statLDor_{f,m,e(i5)} \text{ si e statique} \tabnl
+    & & & & &  GVLst_{f,m,e} = \sum_{c \in 999} P_{f,m,e,c(i2)} \times L_{f,m,e,c(i1)]} + \sum_{c \in 999} \theta_{e(i3)} \times P_{f,m,e,c(i2]} \times LD_{f,m,e,c(i4)} \text{ si e modélisée} \newline 
+               GVLst_{f,m,e} = pst_{e(i7)} \times statLDst_{f,m,e(i6)} \text{ si e statique} \tabnl
+    & & & & &  GVLtot_{f,m,e} = GVLcom_{f,m,e(t1)} + GVLst_{f,m,e(t2)} \tabnl
+    & & & & &  GVLtot_{f,m} = \sum_{e} GVLtot_{f,m,e(t3)} \tabnl
+    & & & & &  GVLav_{f,m} = \frac{ GVLtot_{f,m(t4)} }{ nbv_{f,m(i9)} } \tabnl
+
+    & & & & &  GVLtot_{f} = \sum_{m} GVLtot_{f,m(t4)} \tabnl
+    & & & & &  GVLav_{f} = \frac{ GVLtot_{f(t6)} }{ nbv_{f(i8)} } \tabnl
+    & & & & &  NGVLav_{f,m} = \frac{ \sum_{e} GVLcom_{f,m,e(t1)} \times \left( 1 - lc_{f, m(i10)} \right) }{ nbv_{f, m(i9)} }
+        + \frac{ \sum_{e} GVLst_{f, m, e(t2)} \times \left( 1 - lcd_{f,m(i11)} \right) }{ nbv_{f, m(i9)} }
+         \tabnl
+    & & & & &  cnb_{f,m} = \frac{ \sum_{e,c} \left( L_{f,m,e,c(11)} + LD_{f,m,e,c(i4)} \right) }{ ETini_{f,m(p1)} \times nbv_{f, m(i9)} \times nbTrip_{f,m(i15)} \times tripLgth_{f,m(i13)} } \tabnl
+    & & & & &  cnb_{f} = \frac{ \sum_{m} \left( cnb_{f,m(i9)} \times nbv_{f, m(i9)} \times nbTrip_{f,m(i15)} \times tripLgth_{f,m(i13)} \right) }{ nbv_{f(i8)} \times nbTrip_{f(i15)} \times tripLgth_{f(il2)} } \tabnl
+
+
+    & & & & &  rtbs_{fm} = NGVLav_{f,m(t8}) - ( ovcue_{f,m(t4)} + fvolue_{f,m(p5)} \times vf_{f,m(i26)} ) \times ue_{f,m(p2)} \tabnl
+    & & & & &  rtbs_{f} = \frac{ \sum_{m} \left( rtbs_{f,m(tl4)} \times nbv_{f,m(i9)} \right) }{ nbv_{f(i8)} }  \tabnl
+    & & & & &  cshrT_{f,m} = cshr_{f,m(i27)} \times rtbs_{f,m(tll \text{ si perscCalc }=0 \text{ ou } 1 \text{, NA sinon)} } \tabnl
+    & & & & &  cshrT_{f} = cshr_{f(i28)} \times \frac{ rtbsIni_{f(p6)} }{ cnbIni_{f(i29)} } \times cnb_{f(i10)} 
+    \newline \text{si } perscCalc_{(i42)} = 0 \text{ (salaires par marin fixé)} \newline
+               cshrT_{f} = cshr_{f(i28)} \times rtbs_{f(tl2)}
+    \newline \text{si } perscCalc_{(i42)} = 1 \text{ (part équipage constante)} \newline
+               cshrT_{f} = ccwr_{f(i28)} \times rtbs_{f(tl2)}
+    \newline \text{si } perscCalc_{(i42)} = 2 \text{  (part équipage constante)} \newline
+               cshrT_{f} = cshr_{f(i28)} \times ( rtbs_{f(tl2)} + \frac{ rtbsIni_{f(p6)} }{ cnbIni_{f(i29)} } \times ( cnb_{f(i10)} - cnbIni_{f(i29)} ) )
+    \newline \text{si } perscCalc_{(i42)} = 3 \text{ (salaires marin suppl. fixé)} \newline
+               cshrT_{f} = ccwr_{f(i28)} \times ( rtbs_{f(tl2)} + \frac{ rtbsIni_{f(p6)} }{ cnbIni_{f(i29)} } \times ( cnb_{f(i10)} - cnbIni_{f(i29)} ) )
+    \newline \text{si } perscCalc_{(i42)} = 4 \text{ (salaires marin suppl. fixé)
+                           } \tabnl
+    & & & & &  ncshr_{f} = cshrT_{f(t14)} - eec_{f(i31)} \tabnl
+
+    & & & & &  ocl_{f} = mwh_{(i32)} \times cnb_{f(tl0)} \times nbTrip_{f(i14)} \times tripLgth_{f(i12)} \tabnl
+    & & & & &  cs_{f} = cshrT_{f(t14)} - ocl_{f(t16)} \tabnl
+    & & & & &  csTot_{f} = cs_{f(t17)} \times nbv_{f(il8)} \tabnl
+    & & & & &  gva_{f} = rtbs_{f(tl2)} - rep_{f(i33)} - gc_{f(i34)} - fixc_{f(i35)} \tabnl
+    & & & & &  gvamargin_{f} = \frac{ gva_{f(t21)} }{ GVLav_{f(t7)} } \tabnl
+
+
+    & & & & &  gvaFTE_{f} = \frac{ gva_{f(t21)} }{ FTE_{f(i36)} } \tabnl
+    & & & & &  ccw_{f} = cshrT_{f(t14)} + opersc_{f(p8)} \newline \text{si } perscCalc_{(i42)} = 1,0 \text{ ou } 3 \newline 
+               ccw_{f} = cshrT_{f(t14)} \newline \text{si } perscCalc_{(i42)} = 2 \text{ ou } 4 \tabnl
+    & & & & &  ccwCr_{f} = \frac{ ccw_{f(t22)} }{ cnb_{f(t10)}}  \tabnl
+    & & & & &  wageg_{f} = \frac{ cshrT_{f(t14)} }{ cnb_{f(t10)} } \tabnl
+    & & & & &  wagen_{f} = \frac{ ncshr_{f(t15)} }{ cnb_{f(t10)} } \tabnl
+
+    & & & & &  wagegFTE_{f} = \frac{ wageg_{f(t24)} }{ FTE_{f(i36)} } \tabnl
+    & & & & &  wagegh_{f} = \frac{ wagegFTE_{f(t26)} }{ nbTrip_{f(i14upd)} \times tripLgth_{f(i12upd)} } \tabnl
+    & & & & &  gp_{f} = gva_{f(t19)} - ccw_{f(t22)} \tabnl
+    & & & & &  gpmargin_{f} = \frac{ gp_{f(t28)} }{ GVLav_{f(t7)} } \tabnl
+    & & & & &  ncf_{f} = gp_{f(t28)} - dep_{f(i37)} \tabnl
+
+
+    & & & & &  np_{f} = ncf_{f(t30)} - ic_{f(i38)} \tabnl
+    & & & & &  npmargin_{f} = \frac{ np_{f(t31)} }{ GVLav_{f(t7)} } \tabnl
+    & & & & &  prof_{f} = \newline \text{"Hight" : si } npmargin_{f(t32)} > 10\% \newline
+                                   \text{"Reasonable" : si } npmargin_{f(t32)} \in [0\%;10\%] \newline
+                                   \text{"Weak" : si } npmargin_{f(t32)} < 0\% \newline \tabnl
+    & & & & &  npmarginTrend_{f,t} = \frac{ npmargin_{f(i32)} }{ \frac{1}{5} \sum_{T\in\{T-5, \ldots, t-1\}} npmargin_{f(i32)} } \newline 
+                                    \text{"Improved" : si } devTrend > 6\% \newline
+                                    \text{"Stable" : si } devTrend \in [-5\%;6\%] \newline
+                                    \text{"Deterioration" : si } devTrend < -5\% \newline\tabnl
+    & & & & &  ssTot_{f} = gp_{f(t28)} \times nbv_{f(i8)} \tabnl
+
+    & & & & &  ps_{f} = nbv_{f(i8)} \times \left( cs_{f(t17)} + gp_{f(t28)} \right) \tabnl
+    & & & & &  sts_{f} = \sum_{m} lc_{f,m(i10)} \times GVLav_{f,m(t5)} \times nbv_{f,m(i9)} \tabnl
+    & & & & &  BER_{f} = \frac{ GVLtot_{f(t6)} \times ( fixc_{f(i35)} + ic_{f(i38)} + dep_{f(i37)} ) \times nbv_{f(i8)} }{ \sum_{m} (  NGVLav_{f,m(t8}) - ( fvolue_{f,m(p5)} \times vf_{f,m(i26)} + ovcue_{f,m(p4)} ) ) \times nbv_{f, m(i9)} }\tabnl
+    & & & & &  CRBER_{f} = \frac{ GVLav_{f(t7)} }{ BER_{f(t38)} } \tabnl
+    & & & & &  fuelEff_{f} = \frac{ \sum_{m} fvolue_{f,m(p5)} \times ue_{f,m(p2)} \times nbv_{f, m(i9)} }{ \sum_{m,e,c} ( L_{f,m,e(i1)} + LD_{f,m,e,c(i4)} ) + \sum_{m,e} ( L_{f,m,e(i1)} + statLDor_{f,m,e(i5)} + statLDst_{f,m,e(i6)}) }\tabnl
+
+
+    & & & & & fvolGVA_{f} = \frac{ \sum_{m} fvolue_{f,m(p5)} \cdot ue_{f,m(p2)} }{ gva_{f(t19)} } \tabnl
+    & & & & & gpGVA_{f} = \frac{ gp_{f(t28)} }{ gva_{f(t19)} } \tabnl
+    & & & & & gvlK_{f} = \frac{ GVLav_{f(t7))} }{ K_{f(t39)} } \tabnl
+    & & & & & gpK_{f} = \frac{ gp_{f(t28)} }{ K_{f(t39)} } \tabnl
+    & & & & & RoFTA_{f} = \frac{ ncf_{f(t30)} }{ K_{f(t39)} } \tabnl
+
+    & & & & & ROI_{f} = \frac{ gp_{f(t28)} - inv_{f(i40)} }{ inv_{f(i40)} } \tabnl
+    & & & & & npK_{f} = \frac{ np_{f(t31)]} }{ K_{f(t39))} } \tabnl
+    & & & & & gvlCNBue_{f} = \frac{ GVLav_{f(t7)} }{ cnb_{f(t10)} \times ue_{f(p3)} } \tabnl
+
+    \caption{Paramètres initiaux pour le module "Economique"}
+        \end{nTable}
+
+\end{document}

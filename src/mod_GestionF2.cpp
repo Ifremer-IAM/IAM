@@ -442,24 +442,24 @@ extern "C" {
     //   Rprintf("\n");
     // }
 
-    // Rprintf("\ncheck Einterm_fm : \n");
+    // Rprintf("\n eff_max : \n");
     // for (int ind_f = 0 ; ind_f < nbF ; ind_f++) {
     //   for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
-    //     Rprintf("%4f ", g_effort1FM[1 + ind_f + nbF*ind_m]);
+    //     Rprintf("%4f ", EffsupTMP_fm[1 + ind_f + nbF*ind_m]);
     //   }
     //   Rprintf("\n");
     // }
 
+    // double *basic_effort1FM = REAL(getListElement(getListElement(list, "Fleet"), "effort1_f_m"));
 
     //les -1 restants sont remplac�s par les efforts initiaux --> les cellules fm non contraintes ne changent pas d'effort lors de l'ajustement
     for (int ind_f = 0 ; ind_f<nbF ; ind_f++){
       for (int ind_m = 0 ; ind_m<nbMe ; ind_m++) {
         if (Einterm_fm[1 + ind_f + nbF*ind_m]<-0.5) { 
           // if(mpond_fm[ind_f + nbF*ind_m + nbF*nbMe*IND_T] == 0){// TODO : ici il ne faut pas mfm car 0 !
-            // Einterm_fm[1 + ind_f + nbF*ind_m] = g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f];
-          // } else {
-            Einterm_fm[1 + ind_f + nbF*ind_m] = g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
+          //   Einterm_fm[1 + ind_f + nbF*ind_m] = basic_effort1FM[ind_f + nbF*ind_m];
           // }
+          Einterm_fm[1 + ind_f + nbF*ind_m] = g_effort1F[ind_f] * g_effort2F[ind_f] * g_nbvF[ind_f] * mpond_fm[ind_f + nbF*ind_m + nbF*nbMe*IND_T];
           
           SET_STRING_ELT(reconcilSPP, ind_f + nbF*ind_m + nbF*nbMe*IND_T, mkChar("---"));
           SET_STRING_ELT(reconcilSPP_copy, ind_f + nbF*ind_m + nbF*nbMe*IND_T, mkChar("---"));

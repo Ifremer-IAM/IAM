@@ -396,6 +396,7 @@ for (int e = 0 ; e < nbE ; e++) {
                     //---------------------------------------------------------------------
 
                     if ((Qvec[e]==1) & (Svec[e]==0)) {
+                        if(VERBOSE){Rprintf(" SS3");}
 //Rprintf("Mort3.1\n");
                     PROTECT(v_Sr_e = getListElement(elmt, "sr"));
                     PROTECT(v_d_efi = getListElement(elmt, "d_i"));
@@ -524,6 +525,7 @@ for (int e = 0 ; e < nbE ; e++) {
                      PROTECT(dim_Finput = getAttrib(v_F_efmi_S1M1, install("DimCst")));
 
                     } else if ((Qvec[e]==0) & (Svec[e]==0)){
+                        if(VERBOSE){Rprintf(" XSA");}
 //Rprintf("Mort3.2\n");
                         PROTECT(v_Sr_e = getListElement(elmt, "sr"));
                         PROTECT(v_d_efi = getListElement(elmt, "d_i"));
@@ -541,6 +543,7 @@ for (int e = 0 ; e < nbE ; e++) {
                      PROTECT(dim_Finput = getAttrib(v_F_efmi, install("DimCst")));
 
                     } else if ((Qvec[e]==0) & (Svec[e]==1)){
+                        if(VERBOSE){Rprintf(" SEX");}
 //Rprintf("Mort3.3\n");
                         PROTECT(v_Sr_e = getListElement(elmt, "sr"));
 
@@ -568,7 +571,7 @@ for (int e = 0 ; e < nbE ; e++) {
                     }
 
                     dimF = INTEGER(dim_Finput);
-
+                    if(VERBOSE){Rprintf(" f");}
 
                     PROTECT(v_nbNav_f = getListElement(Flist, "nbv_f_m"));
                     PROTECT(dim_nbNavCst = getAttrib(v_nbNav_f, install("DimCst")));
@@ -588,11 +591,12 @@ for (int e = 0 ; e < nbE ; e++) {
 
                     }
 
-//Rprintf("Mort4\n");
+// Rprintf("Mort4\n");
 //Rprintf("Qvec[e] %i\n",Qvec[e]);
 
                     //on calcule la mortalit� via la capturabilit�
                     if ((Qvec[e]==1) & (Svec[e]==0)) {
+                        if(VERBOSE){Rprintf(" SS3");}
 
                     PROTECT(v_F_efmi2_S1M1 = calcCapturabilite(v_F_efmi_S1M1 , effort));
 
@@ -775,6 +779,9 @@ for (int e = 0 ; e < nbE ; e++) {
                      PROTECT(v_iniFRWT_efmi2_S4M3 = calcCapturabilite(v_iniFRWT_efmi_S4M3 , effort));
                      PROTECT(v_iniFRWT_efmi2_S4M4 = calcCapturabilite(v_iniFRWT_efmi_S4M4 , effort));
 
+if(VERBOSE){Rprintf(" cut");}
+
+
                      PROTECT(v_iniFDWT_efmi2_S1M1 = calcCapturabilite(v_iniFDWT_efmi_S1M1 , effort));
                      PROTECT(v_iniFDWT_efmi2_S1M2 = calcCapturabilite(v_iniFDWT_efmi_S1M2 , effort));
                      PROTECT(v_iniFDWT_efmi2_S1M3 = calcCapturabilite(v_iniFDWT_efmi_S1M3 , effort));
@@ -793,10 +800,14 @@ for (int e = 0 ; e < nbE ; e++) {
                      PROTECT(v_iniFDWT_efmi2_S4M4 = calcCapturabilite(v_iniFDWT_efmi_S4M4 , effort));    //### +48
 
                     } else if((Qvec[e]==0) & (Svec[e]==0)){
+                        if(VERBOSE){Rprintf(" XSA");}
+
 
                      PROTECT(v_F_efmi2 = calcCapturabilite(v_F_efmi , effort)); //PrintValue(v_F_efmi2);
 
                     } else if((Qvec[e]==0) & (Svec[e]==1)){
+                        if(VERBOSE){Rprintf(" SEX");}
+
 
                      PROTECT(v_F_efmi2_G1 = calcCapturabilite(v_F_efmi_G1 , effort));
                      PROTECT(v_F_efmi2_G2 = calcCapturabilite(v_F_efmi_G2 , effort));
@@ -805,6 +816,7 @@ for (int e = 0 ; e < nbE ; e++) {
 
                     ////PrintValue(v_F_efmi2);
                             //et dans ce cas, l'effort � appliquer � la capturabilit� est...
+                    if(VERBOSE){Rprintf(" capt");}
 
                         dimE = INTEGER(dimEff);
 
