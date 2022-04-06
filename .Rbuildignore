@@ -13,3 +13,7 @@ raw_data
 ^docs$
 ^pkgdown$
 ^\.github$
+
+^inst/notice/.*.aux$
+^inst/notice/.*.log$
+^inst/notice/.*.out$

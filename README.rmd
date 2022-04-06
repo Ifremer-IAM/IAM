@@ -19,9 +19,7 @@ library(badger)
 
 <!-- badges: start -->
 
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![Dev Version](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://gitlab.ifremer.fr/iam/iam)  [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
-
-<!-- `r badge_devel("iam/iam", "blue")` -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam) [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
 
 <!-- badges: end -->
 
@@ -30,67 +28,68 @@ IAM (Impact Assessment Model) is a bio-economic model for the simulation of fish
 
 It is a discrete time, multi-fleet, multi-trade, multi-species annual bio-economic model with "age" components for the biological part, and "commercial category" components for the economic part.
 
-You are free to copy, modify, and distribute IAM with attribution under the terms of the [CECILL-2 Licence](https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt). See the LICENSE-CECILL-2.1 file for details.
+You are free to copy, modify, and distribute `{IAM}` with attribution under the terms of the [CECILL-2 Licence](https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt). See the LICENSE-CECILL-2.1 file for details.
 
-## Usage
+Note : the github repository is only a mirror from [gitlab](https://gitlab.ifremer.fr/iam/iam)
 
-Before using IAM, you need few software :
 
-* R >= 3.6
-
-* Rtools (can be installed with `{devtools}` R package)
 
 ## Installation
 
-### From Gitlab (recommended)
+`{IAM}` is a `R` package and thus require you to install it with a version superior to 3.6. Updating `R` (and Rstudio) is recommended before running a lot of package updates.
 
-To install the released version of IAM from [https://gitlab.ifremer.fr/iam/iam](https://gitlab.ifremer.fr/iam/iam):
 
-1. install `{remotes}` R package by executing in a R console:
+### From a package archive file (recommended)
+
+1. Go to the [Project 'Releases' page](https://gitlab.ifremer.fr/iam/iam/-/releases/) and download an `{IAM}` binary package (.zip format under Window, tar.gz format under Linux) coressponding with your `R` version. These are **not** the files listed in assets !
+
+2. Install IAM from the archive file by either entering the following command in the `R` prompt: 
+```{r, installzip, eval = FALSE}
+install.packages("--path to zipfile--/IAM_2.0.0.zip",
+                 repos = NULL, type = "win.binary")
+```
+
+```{r, install_link, include = FALSE, eval = FALSE}
+install.packages("C:/Users/mjaunatr/Desktop/IAM_2.0.0.zip", repos = NULL, type = "win.binary")
+```
+<!-- ```{r, installlink, eval = FALSE} -->
+<!-- # Also work with direct link  -->
+<!-- install.packages("https://gitlab.ifremer.fr/iam/iam/uploads/1252e068a81c5c282bb1599686ef67df/IAM_2.0.0.zip", -->
+<!--                  repos = NULL, type = "win.binary") -->
+<!-- ``` -->
+
+
+### From package source code
+
+In order to build packages from sources on Windows, you will need `Rtools`, which is an independent software from `R`. You can install `Rtools` from the [CRAN project website](https://cran.r-project.org/bin/windows/Rtools/) after selecting the right version. Note that `Rtools 4.2` is still in development version. You can check your `R` version with `R.version`.
+
+1. install `{remotes}` `R` package by executing in a `R` prompt:
 
 ```{r remotes, eval=FALSE}
 install.packages("remotes")
 ```
 
-2. install IAM package by executing in a R console:
+2. install `{IAM}` package by executing in a `R` prompt:
 
 ```{r remotes_install, eval=FALSE}
 remotes::install_git(url = "https://gitlab.ifremer.fr/iam/iam")
 
-# You can install devlopment version with the ref option
+# You can install development version with the ref option
 remotes::install_git(
   url = "https://gitlab.ifremer.fr/iam/iam", 
   ref = "dev", 
-  build_vignettes = TRUE # require rmakdown and knitr
+  build_vignettes = require(rmarkdown)
 )
 ```
 
-<!--
-### From a package archive file
 
-1. Install IAM dependencies by running in a R console:
-```{r, eval = FALSE}
-for (i in c('utils', 'stats', 'methods', 'grDevices', 'abind',
-         'reshape2', 'openxlsx', 'lattice', 'tcltk', 'tcltk2',
-         'Rcpp') ){
-  if(!require(i,character.only = TRUE))
-    install.packages(i)
-}
-```
-
-2. Go to the [Project 'Releases' page](https://gitlab.ifremer.fr/iam/iam/releases) and download an IAM binary package (.zip format under Window, tar.gz format under Linux)
-3. Install IAM from the archive file by either entering the following command in the R prompt: 
-`install.packages(path_to_file, repos = NULL, type="source")`
-or use e.g. the RStudio graphical interface
--->
 
 ## Documentation
 
-For further information, multiple vignettes are available along with function help.
+For further information, allo documentation is centralized in a [{pkgdown} website](https://ifremer-iam.github.io/IAM/index.html). IAM package has multiple vignettes available along with functions help. Please note that to this day, vignettes are written in french.
 
-To access a vignette you can run this code locally<!-- or check them with provided links-->.
-Please note that to this day, vignettes are written in french.
-
+To get started, read [Use IAM vignette](https://ifremer-iam.github.io/IAM/articles/use_IAM.html).
+You can also access a vignette by running this code locally :
 ```{r, eval = FALSE}
 vignette("use_IAM", package = "IAM")
 ```
@@ -98,9 +97,11 @@ vignette("use_IAM", package = "IAM")
 
 A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for [download here](https://gitlab.ifremer.fr/iam/iam/-/tree/dev/inst/notice/Notice.pdf)
 
+
 ## Credits
 
 IAM is written by Mathieu Merzéréaud, Claire Macher, Michel Bertignac, Marjolaine Frésard, Olivier Guyader, Christelle Le Grand, Sophie Gourgue, Florence Briton and Maxime Jaunatre.
+
 
 ## Support
 

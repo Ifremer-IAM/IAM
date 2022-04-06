@@ -1,0 +1,63 @@
+% set up file for new commands and main packages :
+% \providecommand{\main}{.}  % *Modification: define file location
+\usepackage[utf8]{inputenc} % encoding
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{a4paper} % format de feuille
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm} %marges
+%\linespread{1.5} % interligne
+
+\usepackage[table,dvipsnames*,svgnames]{xcolor} % allow to put colour in table and correct a bug in names
+% option 'gray' emulate a gray scale print of the document
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\chead{\csname @title\endcsname}
+\lhead{}
+\rhead{\includegraphics[width=2cm]{\main/.tex/Logo_ifr_y.jpg}}
+\lfoot{page \thepage}\cfoot{}
+\rfoot{\csname @author\endcsname ~-~\the\year}
+
+\fancypagestyle{plain}{%
+    \fancyhf{}% clear all header and footer fields
+    %\fancyfoot[L, R]{page \thepage}{\csname @author\endcsname ~-~\the\year} 
+    \lfoot{page \thepage}\cfoot{}
+    \rfoot{\csname @author\endcsname ~-~\the\year}
+    \renewcommand{\headrulewidth}{0pt}%\
+    %\renewcommand{\footrulewidth}{0pt}
+}
+
+\ifthenelse{\boolean{draft}}{
+    %\usepackage{pagecolor} \pagecolor{darkgray} \color{lightgray}
+    \usepackage[color={[rgb]{0.96, 0.77, 0.19}}]{draftwatermark}
+    \SetWatermarkScale{4}
+    \SetWatermarkText{DRAFT}
+    \usepackage[backgroundcolor = orange]{todonotes}
+}{ \usepackage[disable]{todonotes} }
+
+\usepackage[hidelinks]{hyperref,url} % lien cliquables
+\hypersetup{
+colorlinks = true,
+linkcolor = black,
+citecolor = black,
+urlcolor = blue
+} % https://tex.stackexchange.com/questions/50747/options-for-appearance-of-links-in-hyperref
+
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{float} 
+
+\parindent=0pt
+
+\def\correction#1{%
+    \abovedisplayshortskip=#1\baselineskip\relax\belowdisplayshortskip=#1\baselineskip\relax%
+    \abovedisplayskip=#1\baselineskip\relax\belowdisplayskip=#1\baselineskip\relax}
+
+\arrayrulewidth=1pt\relax
+\tabcolsep=5pt\relax
+% \arrayrulecolor{red}
+\fboxsep=\tabcolsep\relax
+\fboxrule=\arrayrulewidth\relax
+
+
+% using math
+\usepackage{amstext}
