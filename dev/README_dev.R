@@ -72,6 +72,8 @@ build_vignettes_to_inst <- function() {
 build_vignettes_to_inst() # Call the function
 devtools::build(binary = TRUE, args = c('--preclean'))
 beepr::beep(5)
+# we can push releases to gitlab with curl. See this SO post:
+# https://stackoverflow.com/questions/29013457/how-to-store-releases-binaries-in-gitlab
 
 ## Compile the math notice ####
 setwd("inst/notice")

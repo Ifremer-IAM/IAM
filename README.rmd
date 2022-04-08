@@ -38,12 +38,26 @@ Note : the github repository is only a mirror from [gitlab](https://gitlab.ifrem
 
 `{IAM}` is a `R` package and thus require you to install it with a version superior to 3.6. Updating `R` (and Rstudio) is recommended before running a lot of package updates.
 
+### From package repository (recommended)
 
-### From a package archive file (recommended)
+```{r, eval = FALSE}
+install.packages("IAM", repos = "https://ifremer-iam.r-universe.dev")
+```
+
+<!-- This is CRAN-like -->
+
+### From a package archive file
 
 1. Go to the [Project 'Releases' page](https://gitlab.ifremer.fr/iam/iam/-/releases/) and download an `{IAM}` binary package (.zip format under Window, tar.gz format under Linux) coressponding with your `R` version. These are **not** the files listed in assets !
 
-2. Install IAM from the archive file by either entering the following command in the `R` prompt: 
+2. Install IAM dependencies if needed:
+```{r, installdep, eval = FALSE}
+# install.packages("remotes")
+remotes::install_deps("--path to zipfile--/IAM_2.0.0.zip")
+```
+
+
+3. Install IAM from the archive file by entering the following command in the `R` prompt: 
 ```{r, installzip, eval = FALSE}
 install.packages("--path to zipfile--/IAM_2.0.0.zip",
                  repos = NULL, type = "win.binary")
@@ -63,14 +77,7 @@ install.packages("C:/Users/mjaunatr/Desktop/IAM_2.0.0.zip", repos = NULL, type =
 
 In order to build packages from sources on Windows, you will need `Rtools`, which is an independent software from `R`. You can install `Rtools` from the [CRAN project website](https://cran.r-project.org/bin/windows/Rtools/) after selecting the right version. Note that `Rtools 4.2` is still in development version. You can check your `R` version with `R.version`.
 
-1. install `{remotes}` `R` package by executing in a `R` prompt:
-
-```{r remotes, eval=FALSE}
-install.packages("remotes")
-```
-
-2. install `{IAM}` package by executing in a `R` prompt:
-
+Install IAM from the sources files by entering the following command in the `R` prompt: 
 ```{r remotes_install, eval=FALSE}
 remotes::install_git(url = "https://gitlab.ifremer.fr/iam/iam")
 
