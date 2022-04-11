@@ -8,12 +8,14 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
-[![Dev
-Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam)
+[![IAM status
+badge](https://ifremer-iam.r-universe.dev/badges/IAM)](https://ifremer-iam.r-universe.dev)
 [![License:
 CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
 
 <!-- badges: end -->
+<!-- old badge -->
+<!-- [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam)  -->
 
 IAM (Impact Assessment Model) is a bio-economic model for the simulation
 of fisheries dynamics, integrating specific decision support tools
@@ -38,7 +40,15 @@ Note : the github repository is only a mirror from
 version superior to 3.6. Updating `R` (and Rstudio) is recommended
 before running a lot of package updates.
 
-### From a package archive file (recommended)
+### From package repository (recommended)
+
+``` r
+install.packages("IAM", repos = "https://ifremer-iam.r-universe.dev")
+```
+
+<!-- This is CRAN-like -->
+
+### From a package archive file
 
 1.  Go to the [Project ‘Releases’
     page](https://gitlab.ifremer.fr/iam/iam/-/releases/) and download an
@@ -46,8 +56,15 @@ before running a lot of package updates.
     under Linux) coressponding with your `R` version. These are **not**
     the files listed in assets !
 
-2.  Install IAM from the archive file by either entering the following
-    command in the `R` prompt:
+2.  Install IAM dependencies if needed:
+
+``` r
+# install.packages("remotes")
+remotes::install_deps("--path to zipfile--/IAM_2.0.0.zip")
+```
+
+3.  Install IAM from the archive file by entering the following command
+    in the `R` prompt:
 
 ``` r
 install.packages("--path to zipfile--/IAM_2.0.0.zip",
@@ -69,13 +86,8 @@ website](https://cran.r-project.org/bin/windows/Rtools/) after selecting
 the right version. Note that `Rtools 4.2` is still in development
 version. You can check your `R` version with `R.version`.
 
-1.  install `{remotes}` `R` package by executing in a `R` prompt:
-
-``` r
-install.packages("remotes")
-```
-
-2.  install `{IAM}` package by executing in a `R` prompt:
+Install IAM from the sources files by entering the following command in
+the `R` prompt:
 
 ``` r
 remotes::install_git(url = "https://gitlab.ifremer.fr/iam/iam")

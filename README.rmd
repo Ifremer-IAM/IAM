@@ -19,9 +19,12 @@ library(badger)
 
 <!-- badges: start -->
 
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam) [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental) [![IAM status badge](https://ifremer-iam.r-universe.dev/badges/IAM)](https://ifremer-iam.r-universe.dev) [![License: CeCILL-2](https://img.shields.io/badge/license-CeCILL--2-blue.svg)](https://cecill.info/licences/Licence_CeCILL_V2.1-en.html)
 
 <!-- badges: end -->
+
+<!-- old badge -->
+<!-- [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam)  -->
 
 
 IAM (Impact Assessment Model) is a bio-economic model for the simulation of fisheries dynamics, integrating specific decision support tools within the framework of the theoretical implementation of management measures.
