@@ -23,5 +23,6 @@ docs/
 inst/notice/*.aux
 inst/notice/*.log
 inst/notice/*.out
+inst/notice/*.synctex.gz
 inst/Meta
 inst/doc
