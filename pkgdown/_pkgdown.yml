@@ -1,6 +1,19 @@
 template:
   bootstrap: 5
 
+navbar:
+  structure:
+    left:  [intro, reference, notice, articles, tutorials, news]
+    right: [search, github]
+  components:
+    notice:
+      text: Notices
+      menu:
+      - text: Notice pdf (fr)
+        icon: fa-download
+        href: https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/notice/Notice_IAM.pdf?inline=false
+
+
 home:
   sidebar:
     structure: [links, community, citation, custom, dev]
@@ -15,6 +28,8 @@ home:
           <li>
           <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>  </li>
           <li><a href="authors.html">More about authors...</a></li>
+
+
 
   links:
   - text: License CeCILL-2
@@ -36,7 +51,7 @@ articles:
   navbar: ~
   contents:
   - use_IAM
-  - Gestion_TAC
+  #- Gestion_TAC
 
 reference:
 - title: Main package documentation.

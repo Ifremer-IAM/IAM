@@ -77,7 +77,7 @@ beepr::beep(5)
 
 ## Compile the math notice ####
 setwd("inst/notice")
-tinytex::pdflatex("test_notice.tex")
+tinytex::pdflatex("Notice.tex")
 setwd("../../")
 
 #' I tested using some options but it's poorly used in the package.

@@ -41,15 +41,12 @@ Ce qui suit va être une description par l'exemple des outils contenus dans la v
 
 ### Installation et chargement du package
 
-<!--
+L'installation du package IAM se fait de la même manière que tout autre package du CRAN, à la différence que le dépôt doit être précisé. D'autres méthodes d'installations sont développées dans le [README.md](https://gitlab.ifremer.fr/iam/iam/-/blob/main/README.md) du gitlab hébergeant le code source. Ces méthodes peuvent être utiles dans le cas d'installation de versions précédentes ou en cours de développement actif.
 
-Le package dépend de plusieurs autres packages R qu'il va falloir au préalable installer sur votre machine. Ces packages sont les suivants : lattice (fonctions graphiques), MASS, tcltk2 (génération de l'interface pour les arguments du modèle), xlsReadWrite et RODBC (importation du fichier de paramétrage). Ne pas oublier de valider l'installation de xlsReadWrite en tapant en session l'instruction xls.getshlib().Les 2 premiers packages sont normalement déjà installés, les 3 autres packages sont disponibles sur le site du CRAN (lien au bas de la page précédente).
+```{r, eval = FALSE}
+install.packages("IAM", repos = "https://ifremer-iam.r-universe.dev")
+```
 
--->
-
-::: {#dep .greeting .message style="color: red;"}
-mettre a jour les dependances et leur biblio
-:::
 
 Après avoir installé le package IAM, l'instruction suivante va charger le package en session, donnant accès à tous les outils de modélisation :
 
@@ -68,9 +65,9 @@ Ces commandes permettend d'accéder à l'aide du package, avec une aide détaill
 
 ### Importation des paramètres (`IAM.input`)
 
-::: {#simple_example .greeting .message style="color: red;"}
-avoir un example simple sans SS3 et introduire le SS3 dans une autre vignette.
-:::
+<!-- ::: {#simple_example .greeting .message style="color: red;"} -->
+<!-- avoir un example simple sans SS3 et introduire le SS3 dans une autre vignette. -->
+<!-- ::: -->
 
 La package intègre un fichier exemple de paramétrage qui va permettre d'illustrer le fonctionnement des procédures d'importation.
 <!-- Ce fichier doit se trouver dans le répertoire "IAM" du dossier "R/R-version/library". -->
