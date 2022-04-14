@@ -1,6 +1,10 @@
 ---
 title: "Gestion avec TAC (fr)"
-output: rmarkdown::html_vignette
+output:
+  pdf_document:
+    keep_tex: yes
+  rmarkdown::html_vignette:
+    fig_caption: yes
 vignette: >
   %\VignetteIndexEntry{Gestion avec TAC (fr)}
   %\VignetteEngine{knitr::rmarkdown}
@@ -85,7 +89,7 @@ Dans un premier temps il est utile de définir les dynamiques de recrutements ai
 # Module SR
 # TODO add boken stick Rec..where is the value ?
 # Add noise to COR
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 100
+IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5000000
 
 # Module EcoDCF
 IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
@@ -137,11 +141,32 @@ Les différentes options de réglages du module Gestion sont exposées dans la v
 
 On fixe ici un scénario de Gestion qui va agir sur le nombre de navire afin d'atteindre un TAC (*Total allowable catches*) donné pour chaque année. Ce quotas vise particulièrement l'espèce dite "COR" et rentre en application 2 ans après le début de la simulation, soit en 1986. Les modification d'efforts seront multiplicatives.
 
+Concernant la recherche de réduction d'effort, une recherche d'optimum se fait par itération afin de trouver le multiplicateur $\mu$ tel que la différence entre le TAC requis et atteins est minimale. Le maximum d'itération est de 10, et peut s'arrêter avant si la différence est inférieur à une tolérance donnée. 
+
+La recherche de ce $\mu$ se fait dans un intervalle donné dans les paramètres (nommé bounds). Cet interval dépend fortement du type de Gestion utilisé. En effet, on essaye d'atteindre un effort $var_c$ à partir d'un effort initial $var_i$ par l'application de $\mu$ sur la matrice $m_{f,m}$ comme illustré dans les équations suivantes.
+
+
+  | Cas           | Place de $\mu$ dans la calcul du TAC visé         |
+  |---------------+---------------------------------------------------|
+  | Additif       | $var_{c} = var_i + \mu \cdot m_{f,m}$             |
+  | Multiplicatif | $var_{c} = var_i + var_i \cdot \mu \cdot m_{f,m}$ |
+  
+  
+Cependant, le modèle va venir s'assurer que $var_c$ ne devient pas négatif et assigner la valeur 0 dans ce cas précis. Afin de limiter les temps de calculs, il est donc préférable de chercher $\mu$ dans les intervals suivants :
+
+  | Additif       | $\mu \in [ \frac{-1}{m_{f,m}} ; \infty]$     |
+  | Multiplicatif | $\mu \in [ \frac{-var_i}{m_{f,m}} ; \infty]$ |
+  
+Il est également important de noter qu'un interval $[0;0]$ revient à ne pas appliquer le module Gestion. 
+<!-- De manière générale une Gestion multiplicative impacte plus lentement le système. -->
+
 ```{r arg_TACnbv, message = FALSE}
 IAM_argum_1984_TACnbv <- IAM.editArgs_Gest(
   IAM_argum_1984, active = TRUE, control = "Nb vessels", target = "TAC",
-  espece = "COR", delay = 2, type = "x", bounds = c(100, -100), # X2 a -100 entraine des flottes a 0 navires !
-  tac = c(NA, NA, rep(3200, 10)))
+  espece = "COR", delay = 2, 
+  # type = "+", bounds = c(1e4, -60, # on fixe -100 en borne inférieur car le maximum de navire est 60
+  type = "x", bounds = c(1e7, -1), # on fixe -100 en borne inférieur car le maximum de navire est 60
+  tac = c(NA, NA, rep(3600, 10)))
       #   84, 85, 1986:1995
 
 sim_TACglob_nbv <- replicate(N, {
@@ -149,7 +174,7 @@ sim_TACglob_nbv <- replicate(N, {
 })
 ```
 
-Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles.
+Cette simulation permet de diminuer drastiquement la mortalite par pêche de l'espèce dite "COR" avec une reduction immédiate la taille des flottilles. 
 
 Une autre variable d'ajustement de l'effort est le nombre voyage en mer des navires.
 
@@ -189,10 +214,11 @@ COR <- do.call(rbind, c(Statuquo_l, TACglobv_nbt_l, TACglobv_nbv_l)) %>%
   
 
 COR %>%
-  ggplot(aes(x = year, y = value)) + 
+  ggplot(aes(x = year, y = median)) + 
   facet_grid(variable ~ sim_name, scales = "free_y") +
   geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
   geom_line() +
+  geom_line(aes(y = value), linetype = "dotted") +
   geom_vline(xintercept=1986, linetype = "dotted") +
   NULL
 

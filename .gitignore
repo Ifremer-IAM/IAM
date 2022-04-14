@@ -24,5 +24,7 @@ inst/notice/*.aux
 inst/notice/*.log
 inst/notice/*.out
 inst/notice/*.synctex.gz
+inst/notice/*.maf
+inst/notice/*.mtc*
 inst/Meta
 inst/doc

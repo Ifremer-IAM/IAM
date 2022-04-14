@@ -11,7 +11,7 @@ navbar:
       menu:
       - text: Notice pdf (fr)
         icon: fa-download
-        href: https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/notice/Notice_IAM.pdf?inline=false
+        href: https://gitlab.ifremer.fr/iam/iam/-/raw/main/inst/notice/Notice_IAM.pdf?inline=false
 
 
 home:
