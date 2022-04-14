@@ -1,9 +1,10 @@
-\documentclass[12pt, colorinlistoftodos]{article} 
+% \documentclass[12pt, colorinlistoftodos]{article} 
+\documentclass[12pt, colorinlistoftodos, notitlepage]{report} 
 
-\title{IAM: Impact Assessment \\ Structure et mode opératoire du modèle}
+\title{IAM: Impact Assessment}
 \author{Merzereaud et al.}
 
-\usepackage[frenchb]{babel}
+\usepackage[french]{babel}
 \usepackage{ifthen} 
 \newboolean{draft}\setboolean{draft}{false} % display notes, stamp
 
@@ -55,6 +56,9 @@
 
 % using math
 \usepackage{amstext}
+% TOC depth
+\setcounter{tocdepth}{4}
+\setcounter{secnumdepth}{4}
 
 \usepackage[hidelinks]{hyperref} % lien cliquables
 \hypersetup{
@@ -65,7 +69,7 @@ urlcolor = blue
 } % https://tex.stackexchange.com/questions/50747/options-for-appearance-of-links-in-hyperref
 \usepackage{url}
 
-
+% Tableaux avec les équations et longtables.
 \usepackage{array}
 \usepackage{longtable}
 \usepackage{float} 
@@ -82,6 +86,8 @@ urlcolor = blue
 \newcolumntype{A}[2]{%
     >{\minipage{\dimexpr#1\linewidth-2\tabcolsep-#2\arrayrulewidth\relax}\vspace\tabcolsep}%
     c<{\vspace\tabcolsep\endminipage}}
+
+\newcolumntype{L}{>{\(\displaystyle }l<{\)}} % math-mode version of "l" column type
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Defining  table format
@@ -102,7 +108,9 @@ urlcolor = blue
         |}\hline\ignorespaces}{%
     \endlongtable\ignorespacesafterend}
 
+\newcounter{nTable}
 \newenvironment{nTable}[6]{%
+    \stepcounter{nTable}
     \longtable{%
         |>{ \addtocounter{rowcntr}{-1} \refstepcounter{rowcntr} \therowcntr }A{#1}{1.5}<{\addtocounter{rowcntr}{1}} 
         |>{\centering$\displaystyle}A{#2}{1}<{$}% for inline equation
@@ -122,27 +130,27 @@ urlcolor = blue
 \LTcapwidth=\textwidth % force width of longtable caption
 
 \usepackage{ifthen}
-
+% lien dynamiques pour les équations
 \newcounter{rowcntr}[table]
 \renewcommand{\therowcntr}{%
     \ifnum\value{rowcntr} > 0
-    \ifnum\thetable = 30
-        i\arabic{rowcntr}
-    \else 
-    \ifnum\thetable = 31
-        p\arabic{rowcntr}
-    \else
-    \ifnum\thetable = 32
-        t\arabic{rowcntr}
-    \else
-        \thetable. \arabic{rowcntr}
-    \fi
-    \fi
+        \ifnum\thenTable = 1
+            i\arabic{rowcntr}
+        \else 
+            \ifnum\thenTable = 2
+                p\arabic{rowcntr}
+            \else
+                \ifnum\thenTable = 3
+                    t\arabic{rowcntr}
+                \else
+                \thetable. \arabic{rowcntr}
+                \fi
+            \fi
+        \fi 
     \fi 
-    \fi
 }
 
-
+% Boite pour la ventilation
 \usepackage[export]{adjustbox}
 \newenvironment{defbox}{% % a box with a title 'Glossary'
     \noindent
@@ -153,8 +161,14 @@ urlcolor = blue
     \egroup
 }
 
+%DIF PREAMBLE
+\RequirePackage[normalem]{ulem} 
+\RequirePackage{color}\definecolor{RED}{rgb}{1,0,0}\definecolor{BLUE}{rgb}{0,0,1}
+\providecommand{\edit}[2]{{
+    \ifthenelse{\boolean{draft}}{\protect\color{red}\sout{#1}\protect\color{blue}\uwave{#2}}{#2}
+}}
 
-
+% petites commandes pour gagner du temps de lecture
 \newcommand{\efmi}{%
     _{e,f,m,i}}
 \newcommand{\efmc}{%
@@ -170,9 +184,49 @@ urlcolor = blue
 
 \newcommand{\pref}[1]{(\ref{#1})}
 
-% % EOF setup.sty
+% sigle warning dans le texte
+\newcommand\Warning{%
+ \makebox[1.4em][c]{%
+ \makebox[0pt][c]{\raisebox{.1em}{\small!}}%
+ \makebox[0pt][c]{\color{red}\Large$\bigtriangleup$}}}%
 
-\newcolumntype{L}{>{\(\displaystyle }l<{\)}} % math-mode version of "l" column type
+
+\usepackage{pdfpages}
+
+\usepackage{minitoc}
+\dominitoc
+\setcounter{minitocdepth}{4}
+\mtcsetdepth{minitoc}{4}
+\mtcsettitle{minitoc}{Table des matières du chapitre}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Code R   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{listings}
+%http://latexcolor.com/ 
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{cerulean}{rgb}{0.0, 0.48, 0.65}
+\definecolor{beaublue}{rgb}{0.95, 0.95, 0.95}
+\definecolor{amber}{rgb}{1.0, 0.25, 0.0}
+\definecolor{indiagreen}{rgb}{0.07, 0.53, 0.03}
+\definecolor{number}{rgb}{0.01, 0.01, 0.01}
+
+\lstset{language = R,
+    basicstyle=\footnotesize\color{black},
+    breaklines=true,
+    keepspaces=true,
+    firstnumber=1,
+    numbers=left, % where line-numbers; possible values (none, left, right)
+    numbersep=5pt,  % how far the line-numbers are from the code
+    numberstyle=\color{number},
+    deletekeywords={_,/,C,troll,approx,min},
+    backgroundcolor=\color{beaublue},   
+    commentstyle=\color{indiagreen},
+    keywordstyle=\color{amber},
+    stringstyle=\color{cerulean}
+    }
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% % EOF setup.sty
 
 
 
@@ -180,7 +234,7 @@ urlcolor = blue
 
 \thispagestyle{plain}
 
-\begin{figure}
+\begin{figure}[H]
     \includegraphics[width=\textwidth]{\main/.tex/header_ifre.png}
     \par ~ \par
     \begin{minipage}{\textwidth}
@@ -188,8 +242,8 @@ urlcolor = blue
             {\huge \csname @title\endcsname }
         \end{center}
         \rule{7em}{.4pt}\par
-        Mathieu Merzereaud$^1$, Claire Macher$^1$, Michel Bertignac$^2$, Marjolaine Fresard$^3$, Olivier Guyader$^1$, Christelle Le Grand$^1$, Sophie Gourguet$^1$, Florence 
-        Briton$^1$, Maxime Jaunatre$^1$ \newline
+        Mathieu Merzereaud$^1$, Claire Macher$^1$, Michel Bertignac$^2$, Marjolaine Fresard$^3$, Olivier Guyader$^1$, Christelle Le Grand$^1$, Sophie Gourguet$^1$, Florence Briton$^1$, Maxime Jaunatre$^1$
+        
         \par ~ \par
         $^1$ IFREMER ~| UMR AMURE, RBE/ Unité d'Economie Maritime \newline
         $^2$ IFREMER ~| RBE/ Unité Sciences et Technologies Halieutiques \newline
@@ -198,13 +252,22 @@ urlcolor = blue
         
         \begin{center}
             {\large \today }
+            \vspace{10mm}
+
+            \includegraphics[width=7cm]{\main/.tex/IAM_hex.jpg}
         \end{center}
+
         
     \end{minipage}
 \end{figure}
-\hrule
+%\hrule
+\vfill
+\par ~ \par
+
+% \newpage
 
 \tableofcontents
+% {\let\clearpage\relax\tableofcontents}
 \newpage
 \ifthenelse{\boolean{draft}}{
     \listoftodos
@@ -213,13 +276,17 @@ urlcolor = blue
 
 \section*{Introduction}
 
-IAM (Impact Assessment Model) est un modèle bio-économique de simulation de dynamiques de pêcheries, intégrant des outils spécifiques d'aide à la décision dans le cadre de mises en application théoriques de mesures de gestion. Ce document constitue un support d'utilisation du modèle, décrivant les étapes de paramétrage et de lancement des simulations, exposant les méthodologies et équations fonctionnelles utilisées en arrière-plan, et analysant les possibilités offertes par l'outil. Une première partie  principalement théorique décrira l'architecture modulaire du modèle, détaillera les paramètres mis en jeu ainsi que les liens fonctionnels les unissant. Les différents outils de simulation greffés au modèle "basique" et les méthodologies associées seront également présentés dans cette partie. Plus techniquement, la méthode de constitution du fichier de paramétrage fera l'objet d'une seconde partie, alors qu'une troisième et dernière partie décrira la mise en application des simulations au sein d'un environnement R.
+IAM (Impact Assessment Model) est un modèle bio-économique de simulation de dynamiques de pêcheries, intégrant des outils spécifiques d'aide à la décision dans le cadre de mises en application théoriques de mesures de gestion. Ce document constitue un support d'utilisation du modèle, décrivant les étapes de paramétrage et de lancement des simulations, exposant les méthodologies et équations fonctionnelles utilisées en arrière-plan, et analysant les possibilités offertes par l'outil. Une première partie principalement théorique décrira l'architecture modulaire du modèle, détaillera les paramètres mis en jeu ainsi que les liens fonctionnels les unissant. Les différents outils de simulation greffés au modèle "basique" et les méthodologies associées seront également présentés dans cette partie. Plus techniquement, la méthode de constitution du fichier de paramétrage fera l'objet alors qu'une troisième et dernière partie reprendra l'ensemble des vignettes associées au package décrivant la mise en application des simulations au sein d'un environnement R.
+\todo{remanier cette introduction pour la non dépendance à l'ordre de la notice!}
+
+%\iffalse
+\chapter{Structure et mode opératoire du modèle}
 
 \section{Notations et structure schématique du modèle}
 
 \subsection{Notations utilisées}
 
-IAM est un modèle bio-économique à temps discret, multi-flottille, multi-métier, et multi-spécifique à composantes "âge" pour la partie biologique, et à composantes "catégorie commerciale" pour la partie économique.  Les paramètres du modèle peuvent ainsi se décliner selon 7 indices de définition distincts qui sont décrits dans le tableau ci-dessous :
+IAM est un modèle bio-économique à temps discret, multi-flottille, multi-métier, et multi-spécifique à composantes "âge" pour la partie biologique, et à composantes "catégorie commerciale" pour la partie économique. Les paramètres du modèle peuvent ainsi se décliner selon 7 indices de définition distincts qui sont décrits dans le tableau ci-dessous :
 
 \begin{table}[h]
 \centering
@@ -240,23 +307,23 @@ ce & Indice catégorie (dépend de l’espèce) \\
 \caption{Indices de déclinaison des variables numériques}
 \end{table}
 
-En pratique, ces indices vont également déterminer la structuration des objets R incarnant les inputs du modèle \todo{(voir partie 3)}. 
-Ces objets se présenteront en effet sous la forme de matrices multidimensionnelles formatées, incluant toute l'information nécessaire au modèle pour à la fois procéder aux calculs des indicateurs de sortie, mais aussi pour assurer la robustesse des implémentations. De surcroît, cette mise en forme spécifique, commune aux données d'entrée et de sortie, facilitera les traitements numériques ultérieurs qui pourront leur être appliqués. Notons que l'on peut distinguer deux types d'indices "métier", puisque le modèle prend en considération la possibilité de définir les paramètres biologiques et les paramètres économiques selon deux niveaux "métier" distincts. Dans ce cas, une matrice de correspondance entre ces deux niveaux de définition sera requise (matrice de dimension $m_{bio} \cdot m_{eco}$, \todo{voir partie 2}). 
+En pratique, ces indices vont également déterminer la structuration des objets R incarnant les inputs du modèle (voir chapite \ref{vignette}). 
+Ces objets se présenteront en effet sous la forme de matrices multidimensionnelles formatées, incluant toute l'information nécessaire au modèle pour à la fois procéder aux calculs des indicateurs de sortie, mais aussi pour assurer la robustesse des implémentations. De surcroît, cette mise en forme spécifique, commune aux données d'entrée et de sortie, facilitera les traitements numériques ultérieurs qui pourront leur être appliqués. Notons que l'on peut distinguer deux types d'indices "métier", puisque le modèle prend en considération la possibilité de définir les paramètres biologiques et les paramètres économiques selon deux niveaux "métier" distincts. Dans ce cas, une matrice de correspondance entre ces deux niveaux de définition sera requise (matrice de dimension $m_{bio} \cdot m_{eco}$, voir chapitre \ref{chp:param}). 
 Précisons également que plusieurs types de dynamiques de population pourront être appliquées à un stock donné ; elles sont pour le moment au nombre de 3, et sont les suivantes :
 
 \begin{itemize}
-    \item dynamique de population de type XSA (par défaut, annuelle et définie aux âges. Ex : Sole 8ab)
-    \item dynamique de population de type SS3 (trimestrielle et définie par âge et cohorte. Ex : Merlu 8ab)
-    \item dynamique de population de type SPiCT (modèle Pella-Tomlinson  annuel)
+    \item[$\bullet$] dynamique de population de type XSA (par défaut, annuelle et définie aux âges. Ex : Sole 8ab)
+    \item[$\bullet$] dynamique de population de type SS3 (trimestrielle et définie par âge et cohorte. Ex : Merlu 8ab)
+    \item[$\bullet$] dynamique de population de type SPiCT (modèle Pella-Tomlinson annuel)
 \end{itemize}
 
-On peut rajouter à ces trois options la possibilité de ne pas considérer de dynamique de population. Les productions seront alors calculées sur  la base de débarquements par unité d'effort, considérés ou non comme constants au cours du temps. La mise en œuvre de chacune de ces dynamiques nécessitera un ensemble de paramètres spécifiques. 
+On peut rajouter à ces trois options la possibilité de ne pas considérer de dynamique de population. Les productions seront alors calculées sur la base de débarquements par unité d'effort, considérés ou non comme constants au cours du temps. La mise en œuvre de chacune de ces dynamiques nécessitera un ensemble de paramètres spécifiques. 
 
 \subsection{Schéma structurel du modèle bio-économique}
 
-Le schéma de la page suivante décrit de manière synthétique et simplifiée le mode de fonctionnement du modèle bio-économique. Il met à la fois en évidence la structure modulaire du modèle (chaque module étant représenté par un rectangle bleu), et les interactions entre ces modules au travers des relations existant entre les  paramètres mis en jeu. Il permet aussi de distinguer les modules "utilisateur" (rectangles bleus avec intitulés en couleur), qui serviront à orchestrer l'exécution des modules de simulation tout en permettant à l'utilisateur d'intervenir au cours du processus de simulation, des modules "passifs"  (rectangle bleus avec intitulés en noir) qui seront tributaires de l'action des précédents et qui composeront l'ossature du modèle. La dynamique de population ici considérée et illustrée est le modèle XSA. Pour plus de précisions concernant les interactions mises en jeu au sein des autres modèles de population, le lecteur pourra se référer aux équations détaillées de la partie \ref{sec:module}.
+Le schéma de la page suivante décrit de manière synthétique et simplifiée le mode de fonctionnement du modèle bio-économique. Il met à la fois en évidence la structure modulaire du modèle (chaque module étant représenté par un rectangle bleu), et les interactions entre ces modules au travers des relations existant entre les paramètres mis en jeu. Il permet aussi de distinguer les modules "utilisateur" (rectangles bleus avec intitulés en couleur), qui serviront à orchestrer l'exécution des modules de simulation tout en permettant à l'utilisateur d'intervenir au cours du processus de simulation, des modules "passifs" (rectangle bleus avec intitulés en noir) qui seront tributaires de l'action des précédents et qui composeront l'ossature du modèle. La dynamique de population ici considérée et illustrée est le modèle XSA. Pour plus de précisions concernant les interactions mises en jeu au sein des autres modèles de population, le lecteur pourra se référer aux équations détaillées de la partie \ref{sec:module}.
 
-L'objectif des  chapitres qui vont suivre est de proposer une description exhaustive et organisée des processus mis en action durant l'étape de simulation. Il s'agira donc de fournir à la fois une synthèse des calculs effectués, mais aussi une vue des méthodologies utilisées et des différents outils mis à la disposition de l'utilisateur.
+L'objectif des sections qui vont suivre est de proposer une description exhaustive et organisée des processus mis en action durant l'étape de simulation. Il s'agira donc de fournir à la fois une synthèse des calculs effectués, mais aussi une vue des méthodologies utilisées et des différents outils mis à la disposition de l'utilisateur.
 
 
 \section{Description et déroulement des modules} \label{sec:module}
@@ -265,7 +332,7 @@ La partie qui suit va s'attarder plus longuement sur les modules constituant le 
 
 Notons que les paramètres initiaux et les variables calculées sont décrits ici à leur niveau maximal de précision. Il est bien évidemment concevable que certaines données ne soient pas disponibles à ce niveau de définition : l’ajustement nécessaire est généralement pris en compte dans l’implémentation (tests sur la compatibilité des dimensions entre variables, et correction du format si besoin est).
 
-Précisons pour finir que  la dimension temporelle le plus souvent implicite dans les formulations suivantes peut être non seulement intégrée au stade initial de déclaration des paramètres d’entrées, mais également greffée à toute variable du modèle par le biais du module "scénario" permettant l'intervention de l'utilisateur à n'importe quel instant $t$.
+Précisons pour finir que la dimension temporelle le plus souvent implicite dans les formulations suivantes peut être non seulement intégrée au stade initial de déclaration des paramètres d’entrées, mais également greffée à toute variable du modèle par le biais du module "scénario" permettant l'intervention de l'utilisateur à n'importe quel instant $t$.
 
 \begin{figure}
 \begin{center}
@@ -284,16 +351,16 @@ Ce module fait appel à deux sous-modules. Le premier procède à la ventilation
 
 Avant tout, précisons que ce qui va se rapporter à cette étape d'allocation ne concerne que les dynamiques \textbf{XSA} et \textbf{SPiCT}. La mortalité par pêche pour la dynamique SS3 est d'entrée renseignée déjà ventilée au niveau flottille-métier-âge-cohorte-saison requis, aucun travail d'allocation n'est donc nécessaire. Le modèle statique quant à lui s'affranchit de cet indicateur puisqu'il se base sur des données de LPUE déjà disponibles au niveau flottille-métier. 
 
-L’objectif de ce module est d’aboutir à un niveau de définition maximal du paramètre de mortalité, à savoir idéalement une valeur par espèce, âge, flottille et métier. Il existe plusieurs manières d’obtenir ce niveau maximal  (voir encadré \ref{bx:vent} décrivant les procédés de ventilation implémentés). En partant d’une donnée "Mortalité" plus précise, on peut se contenter d’une variable de ventilation plus grossière. On peut également procéder en deux étapes successives avec deux variables distinctes si la variable initiale ne décline que la dimension "âge", et qu'il reste donc à intégrer les dimensions "métier", puis "flottille". Toutes ces possibilités sont offertes par le module implémenté, et celui-ci considérera au mieux les ventilations à opérer le cas échéant.
+L’objectif de ce module est d’aboutir à un niveau de définition maximal du paramètre de mortalité, à savoir idéalement une valeur par espèce, âge, flottille et métier. Il existe plusieurs manières d’obtenir ce niveau maximal (voir encadré \ref{bx:vent} décrivant les procédés de ventilation implémentés). En partant d’une donnée "Mortalité" plus précise, on peut se contenter d’une variable de ventilation plus grossière. On peut également procéder en deux étapes successives avec deux variables distinctes si la variable initiale ne décline que la dimension "âge", et qu'il reste donc à intégrer les dimensions "métier", puis "flottille". Toutes ces possibilités sont offertes par le module implémenté, et celui-ci considérera au mieux les ventilations à opérer le cas échéant.
 
-Si nécessaire, une première ventilation sera effectuée au moyen des variables Cmi et Ci préalablement renseignées dans les onglets "Espèce" du fichier de paramétrage \todo{(voir partie 2)} afin d'intégrer au minimum la dimension "métier" à la donnée de mortalité par pêche. On rappelle qu'il s'agira idéalement de données de captures en nombre, mais qu'une autre donnée pourra à défaut être utilisée. Si à ce stade, la mortalité possède le niveau complet requis, la procédure s'arrêtera. Sinon, la seconde ventilation s’opérera avec les variables $Ymi$ et $Lref_{fe}$ (variable présente dans les onglets de paramétrage économique et appliquée ici à la matrice "fm" d'allocation flottille-métier) afin d'inclure la dimension "flottille". Il revient à l'utilisateur de s'assurer de la pertinence des données assignées à chacune de ces variables afin que le processus de ventilation aboutisse à des résultats justes et optimaux (cf encadré \ref{bx:vent} de la page suivante ).   
+Si nécessaire, une première ventilation sera effectuée au moyen des variables Cmi et Ci préalablement renseignées dans les onglets "Espèce" du fichier de paramétrage (voir chapitre \ref{chp:param}) afin d'intégrer au minimum la dimension "métier" à la donnée de mortalité par pêche. On rappelle qu'il s'agira idéalement de données de captures en nombre, mais qu'une autre donnée pourra à défaut être utilisée. Si à ce stade, la mortalité possède le niveau complet requis, la procédure s'arrêtera. Sinon, la seconde ventilation s’opérera avec les variables $Ymi$ et $Lref_{fe}$ (variable présente dans les onglets de paramétrage économique et appliquée ici à la matrice "fm" d'allocation flottille-métier) afin d'inclure la dimension "flottille". Il revient à l'utilisateur de s'assurer de la pertinence des données assignées à chacune de ces variables afin que le processus de ventilation aboutisse à des résultats justes et optimaux (cf encadré \ref{bx:vent} de la page suivante ).
 
-\textbf{\underline{Note :}} la ventilation ne s'effectue plus en tant qu'étape préliminaire aux simulations lors du lancement du modèle, mais désormais  lors de la phase d'intégration des indicateurs visant à créer l'objet R de paramétrage. Le paramètre calculé $F_{fmi}$ apparaît donc maintenant parmi les paramètres "sources" au sein de l'objet, et est au même titre qu'eux directement utilisé par le modèle.  
+\textbf{\underline{Note :}} la ventilation ne s'effectue plus en tant qu'étape préliminaire aux simulations lors du lancement du modèle, mais désormais lors de la phase d'intégration des indicateurs visant à créer l'objet R de paramétrage. Le paramètre calculé $F_{fmi}$ apparaît donc maintenant parmi les paramètres "sources" au sein de l'objet, et est au même titre qu'eux directement utilisé par le modèle.
 
 \begin{defbox}
     \textbf{\underline{Procédures de ventilation :}} ventilation d'une variable Mortalité (F) par une variable Capture (C)
 
-	On décrit ici les procédures permettant de redéfinir le niveau d'agrégation d'une variable donnée en  prenant appui sur une donnée externe corrélée, de niveau de définition supérieur ou complémentaire. On prendra pour cela l'exemple d'une variable de mortalité par pêche, qu'on ventilera à l'aide d'une variable de captures totales. Ces méthodes d'application porteront sur différentes combinaisons de dimensions. Les dimensions illustrées seront d'indice "f" (flottille), "m" (métier) et "i" (âge).
+	On décrit ici les procédures permettant de redéfinir le niveau d'agrégation d'une variable donnée en prenant appui sur une donnée externe corrélée, de niveau de définition supérieur ou complémentaire. On prendra pour cela l'exemple d'une variable de mortalité par pêche, qu'on ventilera à l'aide d'une variable de captures totales. Ces méthodes d'application porteront sur différentes combinaisons de dimensions. Les dimensions illustrées seront d'indice "f" (flottille), "m" (métier) et "i" (âge).
 
     $\bullet$ Indice(s) en commun
 
@@ -355,7 +422,7 @@ $\bullet$ \textbf{XSA, SPiCT}
     \caption{Paramètres initiaux XSA, SPiCT pour le sous-module "allocation de la mortalité par pêche"}
 \end{iTable}
 
-$\bullet$ \textbf{SS3} (toutes les variables décrites ci-dessous comprennent chacune 4x4 incarnations correspondants aux combinaisons "cohorte  / saison" ; par souci d'identification, les noms de ces variables seront indexées M1S1, M1S2, …, M4S3, M4S4):
+$\bullet$ \textbf{SS3} (toutes les variables décrites ci-dessous comprennent chacune 4x4 incarnations correspondants aux combinaisons "cohorte / saison" ; par souci d'identification, les noms de ces variables seront indexées M1S1, M1S2, …, M4S3, M4S4):
 
 \begin{iTable}{0.17}{0.5}{0.33}
     \text{\normalsize\textbf{Notation}} & \textbf{Description} & \textbf{Source} \tabnl
@@ -377,6 +444,7 @@ $\bullet$ \textbf{SS3} (toutes les variables décrites ci-dessous comprennent ch
   
     \caption{Paramètres initiaux SS3 pour le sous-module "allocation de la mortalité par pêche"}
 \end{iTable}
+\todo[inline]{check dimension for SS3 variables}
 
 \hspace{10mm}$\bullet$ \textbf{Variables calculées (XSA et SPiCT)} 
 
@@ -421,9 +489,9 @@ On utilise ici le terme "capturabilité" de façon générique pour désigner la
 
 \subsubsection{Module "Mortalité par pêche"} \label{sec:mortalsub}
 
-Ce module intègre la méthode de calcul des capturabilités décrite précédemment. Il va en outre évaluer les mortalités par pêche corrigées. Le paramétrage systématisant dorénavant pour une flottille donnée la description exhaustive des espèces pêchées et des métiers pratiqués (via une espèce "ZZZ" considérée et un métier "Autres"), la couverture des indicateurs de sortie du modèle définis par flottille est complète.  Ainsi, les mortalités complémentaires, au même titre que les autres variables complémentaires que le modèle sera amené à évaluer, sont désormais uniquement celles engendrées par les flottilles non modélisées. à partir de la mortalité par pêche ventilée initialement. Le module procède également au calcul de l'indicateur "Fbar" pour chacune des espèces modélisées XSA ou SS3.
+Ce module intègre la méthode de calcul des capturabilités décrite précédemment. Il va en outre évaluer les mortalités par pêche corrigées. Le paramétrage systématisant dorénavant pour une flottille donnée la description exhaustive des espèces pêchées et des métiers pratiqués (via une espèce "ZZZ" considérée et un métier "Autres"), la couverture des indicateurs de sortie du modèle définis par flottille est complète. Ainsi, les mortalités complémentaires, au même titre que les autres variables complémentaires que le modèle sera amené à évaluer, sont désormais uniquement celles engendrées par les flottilles non modélisées. à partir de la mortalité par pêche ventilée initialement. Le module procède également au calcul de l'indicateur "Fbar" pour chacune des espèces modélisées XSA ou SS3.
 	
-Ajoutons que les deux variables de sortie "Mortalité par pêche  ventilée» (F) et "Mortalité par pêche Autres flottilles" (Foth) sont des paramètres internes (donc non renseignés dans le fichier de paramétrage car évalués lors de la construction de l'objet input) sur lesquels il est possible d'intervenir au moyen du module "Scénario". On décrira le mode opératoire de ce module dans le chapitre correspondant. Il faut simplement noter que de cette manière,  l'utilisateur pourra par exemple intégrer dans la simulation la prise en compte d'un facteur de sélectivité à un niveau flottille-métier-âge pour une ou plusieurs espèces modélisées.  
+Ajoutons que les deux variables de sortie "Mortalité par pêche ventilée» (F) et "Mortalité par pêche Autres flottilles" (Foth) sont des paramètres internes (donc non renseignés dans le fichier de paramétrage car évalués lors de la construction de l'objet input) sur lesquels il est possible d'intervenir au moyen du module "Scénario". On décrira le mode opératoire de ce module dans le chapitre correspondant. Il faut simplement noter que de cette manière, l'utilisateur pourra par exemple intégrer dans la simulation la prise en compte d'un facteur de sélectivité à un niveau flottille-métier-âge pour une ou plusieurs espèces modélisées.
 
 $\bullet$ \textbf{XSA}
 \hspace{10mm}$\bullet$ \textbf{Paramètres initiaux (inputs biologiques prélevés dans les feuillets de paramétrage Stocks)} 
@@ -538,7 +606,7 @@ Précisons enfin que les espèces dites "statiques" ne s'inscrivent pas dans ce 
 
 \subsubsection{Module principal}
 
-Ce module  se charge d'opérer le calcul des indicateurs relatifs aux stocks des espèces considérées dynamiquement dans la simulation (XSA et SS3). En partant de la mortalité par pêche appliquée au stock et estimée en sortie du module décrit dans le chapitre précédent , il estime pour chaque pas de temps, et à partir d'un état initial, la mortalité totale, les effectifs totaux aux âges, la biomasse et la biomasse reproductrice résultantes. Notons qu'il est possible de définir dans le fichier de paramétrage un recrutement a priori par espèce pour les projections (cf première ligne du tableau \ref{tbl:xsadyna}).  Toutefois, si le module "Recrutement" est activé (voir \ref{sec:recrut}), le module principal fera appel à lui au cours de la simulation afin d'estimer $N_{e,i=0,t}$ pour tout instant non initial (fonctionnel uniquement pour la dynamique XSA) 
+Ce module se charge d'opérer le calcul des indicateurs relatifs aux stocks des espèces considérées dynamiquement dans la simulation (XSA et SS3). En partant de la mortalité par pêche appliquée au stock et estimée en sortie du module décrit dans le chapitre précédent , il estime pour chaque pas de temps, et à partir d'un état initial, la mortalité totale, les effectifs totaux aux âges, la biomasse et la biomasse reproductrice résultantes. Notons qu'il est possible de définir dans le fichier de paramétrage un recrutement a priori par espèce pour les projections (cf première ligne du tableau \ref{tbl:xsadyna}). Toutefois, si le module "Recrutement" est activé (voir \ref{sec:recrut}), le module principal fera appel à lui au cours de la simulation afin d'estimer $N_{e,i=0,t}$ pour tout instant non initial (fonctionnel uniquement pour la dynamique XSA) 
 
 $\bullet$ \textbf{XSA} 
 
@@ -547,7 +615,7 @@ $\bullet$ \textbf{XSA}
 \begin{iTable}{0.17}{0.5}{0.33}
     \text{\normalsize\textbf{Notation}} & \textbf{Description} & \textbf{Source} \tabnl
 
-    N_{e,i,t=0} \newline\text{ et } N_{e,i=0,t} & Effectifs initiaux en nombre par espèce et par âge, et  effectifs des recrutements par espèce à l'instant $t$. & Stock Assessment \tabnl
+    N_{e,i,t=0} \newline\text{ et } N_{e,i=0,t} & Effectifs initiaux en nombre par espèce et par âge, et effectifs des recrutements par espèce à l'instant $t$. & Stock Assessment \tabnl
     M_{e,i} & Taux de mortalité naturelle par espèce et par âge & Stock Assessment \tabnl
     w_{e,i} & Poids moyen dans le stock par espèce à l’âge $i$ & Stock Assessment \tabnl
     mr_{e,i} & Taux de maturité dans le stock par espèce à l’âge $i$ & Stock Assessment \tabnl
@@ -646,7 +714,7 @@ $\bullet$ \textbf{SS3}
 
 \subsubsection{Module "Recrutement} \label{sec:recrut}
 
-Le module "Recrutement" est une composante du module composite "Stochasticité/Bootstrap" qui va donner la possibilité à l'utilisateur de générer un recrutement pour une espèce donnée, de manière stochastique, et ce à tout instant non initial, qui sera intégré en tant qu'input du modèle (voir illustration sur le schéma \ref{fig:schema}). Ce module propose pour l'instant deux méthodes de génération de recrutement dit "aléatoire". L'utilisateur peut ainsi assigner à chacune des espèces modélisées un type de recrutement donné avec des paramètres qui lui sont propres.
+Le module "Recrutement" est une composante du module composite "Stochasticité / Bootstrap" qui va donner la possibilité à l'utilisateur de générer un recrutement pour une espèce donnée, de manière stochastique, et ce à tout instant non initial, qui sera intégré en tant qu'input du modèle (voir illustration sur le schéma \ref{fig:schema}). Ce module propose pour l'instant deux méthodes de génération de recrutement dit "aléatoire". L'utilisateur peut ainsi assigner à chacune des espèces modélisées un type de recrutement donné avec des paramètres qui lui sont propres.
 	
 La première méthode va gérer les recrutements issus de relations stock-recrutement. Elle permet, pour le moment, de choisir entre 5 types de relations paramétrables (recrutement moyen, de type Hockey Stick, Beverton \& Holt, Ricker, et Shepherd), et autorise l'adjonction d'un bruit paramétrable.
 	
@@ -832,7 +900,7 @@ Un modèle permettant de simuler l'application de mesures d'obligation de débar
 
 \subsection{Module "Marché"}
 
-Le module Marché n’est pas seulement voué à simuler un modèle de prix moyen plus ou moins élaboré, mais va également servir de passerelle entre la partie biologique et la partie économique du modèle. Cette étape va être en effet caractérisée par deux actions affectant la définition intrinsèque de certaines variables issues de modules biologiques. D'une part, la déclinaison par âge mutera en une déclinaison par catégorie commerciale grâce à l’apport d’une clé âge/catégorie ($icat_{e,i,c}$ \todo{voir partie 2}). D'autre part, le niveau "métier" déclinant les paramètres économiques étant potentiellement différent de celui pour lesquelles les données biologiques sont définies, une matrice de recodage du niveau métier ($mat_{f,m1,m2}$) sera requise afin d’assurer la concordance des dimensions. L’utilisateur a le choix entre modéliser sa variable de prix ou la considérer constante sur un niveau de définition donné (par espèce et par catégorie, par exemple). Dans tous les cas de figure, les paramètres de prix seront déclarés dans un onglet spécifique "Marché" du fichier de paramétrage. Les tableaux ci-dessous décrivent un exemple de modèle de prix ; d'autres modèles s'ajouteront dans les développements futurs.
+Le module Marché n’est pas seulement voué à simuler un modèle de prix moyen plus ou moins élaboré, mais va également servir de passerelle entre la partie biologique et la partie économique du modèle. Cette étape va être en effet caractérisée par deux actions affectant la définition intrinsèque de certaines variables issues de modules biologiques. D'une part, la déclinaison par âge mutera en une déclinaison par catégorie commerciale grâce à l’apport d’une clé âge/catégorie ($icat_{e,i,c}$ voir chapitre \ref{chp:param}). D'autre part, le niveau "métier" déclinant les paramètres économiques étant potentiellement différent de celui pour lesquelles les données biologiques sont définies, une matrice de recodage du niveau métier ($mat_{f,m1,m2}$) sera requise afin d’assurer la concordance des dimensions. L’utilisateur a le choix entre modéliser sa variable de prix ou la considérer constante sur un niveau de définition donné (par espèce et par catégorie, par exemple). Dans tous les cas de figure, les paramètres de prix seront déclarés dans un onglet spécifique "Marché" du fichier de paramétrage. Les tableaux ci-dessous décrivent un exemple de modèle de prix ; d'autres modèles s'ajouteront dans les développements futurs.
 
 \hspace{10mm}$\bullet$ \textbf{Paramètres initiaux} 
 
@@ -872,10 +940,10 @@ Le module Marché n’est pas seulement voué à simuler un modèle de prix moye
 \underline{Hypothèses générales du module économique :}
 
 \begin{itemize}
-    \item modèle dynamique en temps discret (années)
-    \item modèle déterministe (pour l'instant)
-    \item le modèle utilise en entrée des paramètres issus des fiches "flottilles" et des fiches "produits", ainsi que les outputs du modèle biologique. Une autre partie des paramètres d'entrée est générée par les calculs internes au modèle.
-    \item le modèle utilise en entrée des paramètres exprimés en termes nominaux. Ces paramètres pourront aussi être exprimés en termes réels une fois l'inflation déduite (2.8\% en 2008 ; indice général des prix à la consommation INSEE, coefficient de transformation de l'euro ou du franc d'une année en euro ou franc d'une autre année 
+    \item[$\bullet$] modèle dynamique en temps discret (années)
+    \item[$\bullet$] modèle déterministe (pour l'instant)
+    \item[$\bullet$] le modèle utilise en entrée des paramètres issus des fiches "flottilles" et des fiches "produits", ainsi que les outputs du modèle biologique. Une autre partie des paramètres d'entrée est générée par les calculs internes au modèle.
+    \item[$\bullet$] le modèle utilise en entrée des paramètres exprimés en termes nominaux. Ces paramètres pourront aussi être exprimés en termes réels une fois l'inflation déduite (2.8\% en 2008 ; indice général des prix à la consommation INSEE, coefficient de transformation de l'euro ou du franc d'une année en euro ou franc d'une autre année 
     \footnote{ \url{http://www.insee.fr/fr/themes/indicateur.asp?id=29&page=achatfranc.htm} }).
 \end{itemize}
 
@@ -883,14 +951,14 @@ Le module Marché n’est pas seulement voué à simuler un modèle de prix moye
 \underline{Description des variables en jeu et mise en équation du modèle économique :}
 
 \begin{itemize}
-    \item Notation : intitulé exact de la variable tel qu'il sera utilisé dans l'implémentation et à l'intérieur des fichiers de paramétrage
-    \item Type(s) : statut de la variable au sein de l'organisation du modèle (E : entrée, C : calculée,  EC : entrée calculée, I : calcul interne, S : sortie...)
-    \item Description : description succincte de la variable
-    \item Unité : unité utilisée dans le modèle (peut différer de l'unité employée dans un feuillet de paramétrage de stock, pourvu que le champ "multiplicateur" de ce même feuillet soit ajusté en conséquence)
-    \item Équation : formulation de la variable en fonction de paramètres déjà déclarés (ne concerne que les variables calculées)
+    \item[$\bullet$] Notation : intitulé exact de la variable tel qu'il sera utilisé dans l'implémentation et à l'intérieur des fichiers de paramétrage
+    \item[$\bullet$] Type(s) : statut de la variable au sein de l'organisation du modèle (E : entrée, C : calculée, EC : entrée calculée, I : calcul interne, S : sortie...)
+    \item[$\bullet$] Description : description succincte de la variable
+    \item[$\bullet$] Unité : unité utilisée dans le modèle (peut différer de l'unité employée dans un feuillet de paramétrage de stock, pourvu que le champ "multiplicateur" de ce même feuillet soit ajusté en conséquence)
+    \item[$\bullet$] Équation : formulation de la variable en fonction de paramètres déjà déclarés (ne concerne que les variables calculées)
 \end{itemize}
 
-    \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
+\begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
 \textbf{N} & \text{\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
 \label{Lefmc} & L_{e,f,m,c} & EC \tiny(bio) & Débarquements totaux par flottille, métier, espèce (et catégorie)
  & tonnes &  \tabnl
@@ -909,7 +977,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 \label{nbvf} & nbv_{f} & E & Nombre de navires par flottille & nombre &  \tabnl
 \label{nbvfm} & nbv_{f,m} & E & Nombre de navires par flottille et métier & nombre &  \tabnl
 \label{lcfm} & lc_{f,m} & E & Taxes de débarquements (en \% du CA) par flottille et métier & \% &  \tabnl
-\label{lcdfm} & lcd_{f,m} &  & Taxes de débarquements des rejets "sous taille" (en \% du CA) par flottille et métier &  &  \tabnl
+\label{lcdfm} & lcd_{f,m} & \text{\todo[fancyline]{missing E}} & Taxes de débarquements des rejets "sous taille" (en \% du CA) par flottille et métier & \text{\todo[fancyline]{missing unit}} &  \tabnl
 \label{tripLgthf} & tripLgth_{f} & E & Durée moyenne d'une marée par navire d'une flottille par an
  & heures &  \tabnl
 \label{tripLgthfm} & tripLgth_{f,m} & E & Durée moyenne d'une marée par navire d'une flottille-métier & heures &  \tabnl
@@ -953,22 +1021,21 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 \caption{Paramètres initiaux pour le module "Economique"}
     \end{nTable}
 
-\newpage 
 
     \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
         \textbf{N} & \text{\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
 
         \label{ETinifm} & ETini\fm & I & Efficacité initiale de tri en tonnage par heure et homme, par flottille-métier &  tonnes/ \footnotesize h.homme &
-        \frac{Lref\fm}{nbvIni\fm \cdot nbTripIni\fm} \times \frac{1}{tripLgthIni\fm \cdot cnbIni\fm}  \tabnl
+        \frac{ Lref_{f,m\pref{Lrefm}} }{nbvIni\fm  \cdot nbTripIni\fm} \times \frac{1}{tripLgthIni\fm \cdot cnbIni\fm}  \text{\todo[fancyline]{missing refs !}} \tabnl
 
         \label{uefm} & ue\fm & EC & Unité d'effort annuelle par navire d'une flottille-métier & - &
         effort1_{f,m\pref{effort1fm}} \cdot effort2_{f,m\pref{effort2fm}} \tabnl
 
         \label{uef} & ue_f & EC & Unité d'effort annuelle par navire d'une flottille & - &
-        effort1_{f\pref{effort1f}} \cdot effort2_{f\pref{effort2fm}} \tabnl
+        effort1_{f\pref{effort1f}} \cdot effort2_{f\pref{effort2f}} \tabnl
 
         \label{fvoluefm} & fvolue\fm & EC & Volume de carburant par unité d'effort et par navire d'une flottille-métier & L/ue &
-        \frac{ fc_{f,m\pref{fcfm}} }{ vf_{f,m\pref{vffm}} \cdot ue_{f,m\pref{uefm}} } \tabnl
+        \frac{ fc_{f,m\pref{fcfm}} }{ vf_{f,m\pref{vffm}} \cdot ue_{f,m\pref{uefm}} } \text{\todo[fancyline]{simplification possible en fc/vf soit en L/an }} \tabnl
 
         \label{ovcuefm} & ovcue\fm & EC & Autres coûts variables par unité d'effort et par navire d'une flottille-métier & \euro/ue &
         \frac{ ovc_{f,m\pref{ovcfm}} }{ ue_{f,m\pref{uefm}} } \tabnl
@@ -985,7 +1052,17 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \caption{Paramètres initiaux calculés pour le module "Economique"}
     \end{nTable}
 
-\newpage
+    \hspace{10mm}$\bullet$ \textbf{Équations régissant le modèle pour tout instant $t$ : table "t"} 
+
+    On ajoute qu'un taux d'actualisation est appliqué aux variables de coût pour $t>tinit$. Pour simplifier l'écriture, on notera $X_{(act)}$ une variable de sortie du modèle dont une version actualisée est également disponible. On rappelle qu'une variable actualisée est réajustée selon la formule suivante :
+
+    $$
+    X_{(act)} = \frac{x}{(1+dr)^{t'}} \text{ à l'instant } t
+    $$
+
+    $dr$ est le taux d'actualisation en entrée du module économique (voir fonction \textit{IAM.args()})
+    \todo{ajouter dr à la table d'input ? historiquement input 57}
+
 
 \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
     \textbf{N} & \text{\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
@@ -1003,7 +1080,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{GVLtotfm} & GVLtot_{f,m} & C & CA total par flottille et métier & euro/an 
     &  \sum_{e} GVLtot_{e,f,m \pref{GVLtotefm}} \tabnl
     \label{GVLavfm} & GVLav_{f,m} & C & CA moyen par navire d'une flottille-métier & euro/an 
-    &  \frac{ GVLtot_{f,m \pref{GVLtotfm}} }{ nbv_{f,m \pref{nbvfm}} } \tabnl
+    &  \frac{ GVLtot_{f,m \pref{GVLtotfm}} }{ nbv_{f,m \pref{nbvfm}} } \tabnl %5
     
     \label{GVLtotf} & GVLtot_{f} & C & CA total par flottille & euro/an 
     &  \sum_{m} GVLtot_{f,m \pref{GVLtotfm}} \tabnl
@@ -1018,11 +1095,12 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     % \frac{ \sum_{e,c} \left( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} \right) }{ ETini_{f,m \pref{ETinifm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} }
     \label{cnbf} & cnb_{f} \text{\todo[fancyline]{duplicated cnbf}} & C & Réévaluation de l'équipage en fonction de la production, par navire d'une flottille & hommes 
     &  \sum_{m} ( cnb_{f,m \pref{cnbfm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} ) \times \frac{1}{ nbv_{f \pref{nbvf}}  } \times \frac{1}{ nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} }\tabnl
-    % \frac{ \sum_{m} \left( cnb_{f,m \pref{cnbfm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} \right) }{ nbv_{f \pref{nbvf}} \times nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} }
+    % \frac{ \sum_{m} \left( cnb_{f,m \pref{cnbfm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} \right) }{ nbv_{f \pref{nbvf}} \times nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} } % 10
     
     
     \label{rtbsfm} & rtbs_{f,m} & C & Reste à partager par navire d'une flottille-métier & euro/an 
-    &  NGVLav_{f,m \pref{NGVLavfm}} - ( ovcue_{f,m \pref{ovcuefm}} + fvolue_{f,m \pref{fvoluefm}} \times vf_{f,m \pref{vffm}} ) \times ue_{f,m\pref{uefm}} \tabnl
+    &  NGVLav_{f,m \pref{NGVLavfm}} - ( ovcue_{f,m \pref{ovcuefm}} + fvolue_{f,m \pref{fvoluefm}} \times vf_{f,m \pref{vffm}} ) \times ue_{f,m\pref{uefm}} \text{\todo[fancyline]{simplification possible en ovc + fc }} \tabnl
+    % NGVLav_{f,m \pref{NGVLavfm}} - ( ovc_{f,m\pref{ovcfm}} + fc_{f,m\pref{fcfm}} )
     \label{rtbsf} & rtbs_{f} \text{\todo[fancyline]{duplicated rtbsf}} & C & Reste à partager par navire d'une flottille & euro/an 
     &  \frac{ \sum_{m} \left( rtbs_{f,m \pref{rtbsfm}} \times nbv_{f,m \pref{nbvfm}} \right) }{ nbv_{f \pref{nbvf}} }  \tabnl
     \label{cshrTfm} & cshrT_{f,m} & C & Part équipage par navire d'une flottille-métier & euro/an 
@@ -1044,7 +1122,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \newline \text{si } perscCalc_{ \pref{perscCalc}} = 4 \text{ (salaires marin suppl. fixé)} 
         \tabnl
     \label{ncshrf} & ncshr_{f} & C & Part équipage nette par navire d'une flottille & euro/an 
-    &  cshrT_{f \pref{cshrTf}} - eec_{f \pref{eecf}} \tabnl
+    &  cshrT_{f \pref{cshrTf}} - eec_{f \pref{eecf}} \tabnl % 15
     
     \label{oclf} & ocl_{f} & C & Coût d'opportunité du travail par navire d'une flottille & euro/an 
     &  mwh_{ \pref{mwh}} \times cnb_{f \pref{cnbf}} \times nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} \tabnl
@@ -1055,7 +1133,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{gvaf} & gva_{f} & C & Valeur Ajoutée Brute pour un navire d'une flottille & euro/an 
     &  rtbs_{f \pref{rtbsf}} - rep_{f \pref{repf}} - gc_{f \pref{gcf}} - fixc_{f \pref{fixcf}} \tabnl
     \label{gvamarginf} & gvamargin_{f} & C & Ratio valeur ajoutée brute / CA d'un navire moyen d'une flottille & - 
-    &  \frac{ gva_{f \pref{gvaf}} }{GVLav_{f \pref{GVLavf}} } \tabnl
+    &  \frac{ gva_{f \pref{gvaf}} }{GVLav_{f \pref{GVLavf}} } \tabnl % 20
     
     
     \label{gvaFTEf} & gvaFTE_{f} & C & Ratio valeur ajoutée brute / ETP d'un navire moyen d'une flottille & - 
@@ -1071,7 +1149,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{wagegf} & wageg_{f} & C & Salaire brut par marin & euro/an 
     &  \frac{ cshrT_{f \pref{cshrTf}} }{ cnb_{f \pref{cnbf}} } \tabnl
     \label{wagenf} & wagen_{f} & C & Salaire net par marin & euro/an 
-    &  \frac{ ncshr_{f \pref{ncshrf}} }{ cnb_{f \pref{cnbf}} } \tabnl
+    &  \frac{ ncshr_{f \pref{ncshrf}} }{ cnb_{f \pref{cnbf}} } \tabnl % 25
     
     \label{wagegFTEf} & wagegFTE_{f} & C & Salaire brut par marin / ETP & - 
     &  \frac{ wageg_{f \pref{wagegf}} }{ FTE_{f \pref{FTEf}} } \tabnl
@@ -1082,7 +1160,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{gpmarginf} & gpmargin_{f} & C & Ratio excédent brut d'exploitation / CA d'un navire moyen d'une flottille & - 
     &  \frac{gp_{f \pref{gpf}} }{ GVLav_{f \pref{GVLavf}} } \tabnl
     \label{ncff} & ncf_{f} & C & Excédent net d'exploitation par navire d'une flottille & euro/an 
-    & gp_{f \pref{gpf}} - dep_{f \pref{depf}} \tabnl
+    & gp_{f \pref{gpf}} - dep_{f \pref{depf}} \tabnl % 30
     
     
     \label{npf} & np_{f} & C & Résultat net d'exploitation par navire d'une flottille & euro/an 
@@ -1103,7 +1181,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
                          \text{---------------------------------------------} \newline
                          \text{"Deterioration" : si } devTrend < -5\% \tabnl
     \label{ssTotf} & ssTot_{f} & C & Surplus total de l'armateur d'une flottille & euro/an 
-    & gp_{f \pref{gpf}} \times nbv_{f \pref{nbvf}} \tabnl
+    & gp_{f \pref{gpf}} \times nbv_{f \pref{nbvf}} \tabnl % 35
     
     \label{psf} & ps_{f} & C & Surplus total du producteur d'une flottille & euro/an 
     &  nbv_{f \pref{nbvf}} \times \left( cs_{f \pref{csf}} +gp_{f \pref{gpf}} \right) \tabnl
@@ -1116,11 +1194,12 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     &  \frac{ GVLav_{f \pref{GVLavf}} }{ BER_{f \pref{BERf}} } \tabnl
     \label{fuelEfff} & fuelEff_{f} & C & Ratio Volume de carburant / Débarquements totaux d'un navire d'une flottille & - 
     &  \sum_{m} fvolue_{f,m \pref{fvoluefm}} \times ue_{f,m\pref{uefm}} \times nbv_{f,m \pref{nbvfm}} \times 1 / ( \sum_{m,e,c} ( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} ) + \sum_{m,e} ( L_{e,f,m,c \pref{Lefmc}} + statLDor_{e,f,m \pref{statLDorefm}} + statLDst_{e,f,m \pref{statLDstefm}}) ) \tabnl
-    % \frac{ \sum_{m} fvolue_{f,m \pref{fvoluefm}} \times ue_{f,m\pref{uefm}} \times nbv_{f,m \pref{nbvfm}} }{ \sum_{m,e,c} ( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} ) + \sum_{m,e} ( L_{e,f,m,c \pref{Lefmc}} + statLDor_{e,f,m \pref{statLDorefm}} + statLDst_{e,f,m \pref{statLDstefm}}) }
+    % \frac{ \sum_{m} fvolue_{f,m \pref{fvoluefm}} \times ue_{f,m\pref{uefm}} \times nbv_{f,m \pref{nbvfm}} }{ \sum_{m,e,c} ( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} ) + \sum_{m,e} ( L_{e,f,m,c \pref{Lefmc}} + statLDor_{e,f,m \pref{statLDorefm}} + statLDst_{e,f,m \pref{statLDstefm}}) } % 40
     
     
     \label{fvolGVAf} & fvolGVA_{f} & C & Ratio volume de carburant  / valeur ajoutée brute d'un navire moyen d'une flottille & - 
-    &  \frac{ \sum_{m} fvolue_{f,m \pref{fvoluefm}} \cdot ue_{f,m\pref{uefm}} }{ gva_{f \pref{gvaf}} } \tabnl
+    &  \frac{ \sum_{m} fvolue_{f,m \pref{fvoluefm}} \cdot ue_{f,m\pref{uefm}} }{ gva_{f \pref{gvaf}} } \text{\todo[fancyline]{simplification possible en fc/vf }} \tabnl
+    % \frac{ fc_{f,m\pref{fcfm}} }{ vf_{f,m\pref{vffm}} }
     \label{gpGVAf} & gpGVA_{f} & C & Ratio excédent brut d'exploitation  / valeur ajoutée brute d'un navire moyen d'une flottille & - 
     &  \frac{ gp_{f \pref{gpf}} }{ gva_{f \pref{gvaf}} } \tabnl
     \label{gvlKf} & gvlK_{f} & C & Ratio CA  / valeur d'assurance d'un navire moyen d'une flottille & - 
@@ -1128,31 +1207,29 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{gpKf} & gpK_{f} & C & Ratio excédent brut d'exploitation  / valeur d'assurance d'un navire moyen d'une flottille & - 
     &  \frac{ gp_{f \pref{gpf}} }{ K_{f \pref{Kf}} } \tabnl
     \label{RoFTAf} & RoFTA_{f} & C & Rate of Return on Fixed TangibleAssessed & - 
-    &  \frac{ ncf_{f \pref{ncff}} }{ K_{f \pref{Kf}} } \tabnl
+    &  \frac{ ncf_{f \pref{ncff}} }{ K_{f \pref{Kf}} } \tabnl % 45
     
     \label{ROIf} & ROI_{f} & C & Return Of Investment & - 
     &  \frac{gp_{f \pref{gpf}} - inv_{f \pref{invf}} }{ inv_{f \pref{invf}} } \tabnl
     \label{npKf} & ratio_npK_{f} & C & Ratio résultat net d'exploitation  / valeur d'assurance d'un navire moyen d'une flottille & - 
     &  \frac{ np_{f \pref{npf}} }{ K_{f \pref{Kf}} } \tabnl
     \label{gvlCNBuef} & gvlCNBue_{f} & C & Ratio CA / effectif moyen / unité d'effort d'un navire moyen d'une flottille
-     & - &  \frac{ GVLav_{f \pref{GVLavf}} }{ cnb_{f \pref{cnbf}} \times ue_{f\pref{uef}} } \tabnl
+     & - &  \frac{ GVLav_{f \pref{GVLavf}} }{ cnb_{f \pref{cnbf}} \times ue_{f\pref{uef}} } \tabnl % 48
     
     \caption{: Paramètres calculés pour le module "Economique"}
         \end{nTable}
 
-\subsection{Module "Scénario"}
+\subsection{Module "Scénario"} \label{sec:scenar}
 
-$ \frac{ \sum_{m} fvolue_{f,m \pref{fvoluefm}} \times ue_{f,m\pref{uefm}} \times nbv_{f,m \pref{nbvfm}} }{ \sum_{m,e,c} ( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} ) + \sum_{m,e} ( L_{e,f,m,c \pref{Lefmc}} + statLDor_{e,f,m \pref{statLDorefm}} + statLDst_{e,f,m \pref{statLDstefm}}) } $
+Le module "Scénario" va permettre à l'utilisateur d'intervenir à sa convenance sur le cours de la simulation en modulant un certain nombre de paramètres. L'action peut s'opérer sur n'importe quel paramètre initial ainsi que sur quelques paramètres internes au modèle, et ce à n'importe quel instant de la projection (hormis l'instant initial). On rappelle en outre que chaque scénario est renseigné dans un onglet spécifique du fichier de paramétrage (voir chapitre \ref{chp:param} sur la paramétrisation), accompagné d'une déclaration des actions à opérer (quelle(s) modulation(s) sur quelle(s) dimension(s) de quel(s) paramètre(s) et à quel(s) instant(s) de la simulation). Les paramètres internes sur lesquels il est, pour le moment, possible d'agir via le module "Scénario" incluent la mortalité ventilée ($F_{e,f,m,i}$), la mortalité "autres flottilles et autres métiers" ($Foth_{e,i}$), et le chiffre d'affaires "autres espèces" ($CAoths_{f,m_{eco}}$ et $CAoths_f$ ).
 
-Le module "Scénario" va permettre à l'utilisateur d'intervenir à sa convenance sur le cours de la simulation en modulant un certain nombre de  paramètres. L'action peut s'opérer sur n'importe quel paramètre initial ainsi que sur quelques paramètres internes au modèle, et ce à n'importe quel instant de la projection (hormis l'instant initial). On rappelle en outre que chaque scénario est renseigné dans un onglet spécifique du fichier de paramétrage \todo{(voir partie 2 sur la paramétrisation)}, accompagné d'une déclaration des  actions à opérer (quelle(s) modulation(s) sur quelle(s) dimension(s) de quel(s) paramètre(s) et à quel(s) instant(s) de la simulation). Les paramètres internes sur lesquels il est, pour le moment, possible d'agir via le module "Scénario" incluent la mortalité ventilée ($F_{e,f,m,i}$), la mortalité "autres flottilles et autres métiers" ($Foth_{e,i}$),  et le chiffre d'affaires "autres espèces" ($CAoths_{f,m_{eco}}$ et $CAoths_f$ ).
+Les différentes actions sur les variables sont renseignées comme une variable du modèle à part entière, c'est-à-dire sous la forme d'une table de valeurs (dans ce cas, des multiplicateurs appliqués aux données) intégrant les dimensions d'application (flottille, métier, âge,...), le nom de la variable impliquée, et enfin le nom du scénario dans lequel l'action devra s'opérer. Bien entendu, il est nécessaire que les dimensions de l'action coïncident avec les dimensions de la variable ciblée : on ne définira pas une action sur la dimension "métier" pour intervenir sur une variable de simple dimension "flottille". L'inclusion (mais pas nécessairement l'égalité) des dimensions "action" dans les dimensions "cible" sera donc requise. Seule la dimension temporelle pourra être intégrée dans la définition des actions sans pour autant que la variable cible n'en possède une (variable constante au cours du temps). On pourra en complément se référer au chapitre \ref{chp:param}) dans lequel on décrira plus précisément l'onglet "Scénario" du fichier de paramétrage.
 
-Les différentes actions sur les variables sont renseignées comme une variable du modèle à part entière,  c'est-à-dire sous la forme d'une table de valeurs (dans ce cas, des multiplicateurs appliqués aux données) intégrant les dimensions d'application (flottille, métier, âge,...), le nom de la variable impliquée, et enfin le nom du scénario dans lequel l'action devra s'opérer. Bien entendu, il est nécessaire que les dimensions de l'action coïncident avec les dimensions de la variable ciblée : on ne définira pas une action sur la dimension "métier" pour intervenir sur une variable de simple dimension "flottille". L'inclusion (mais pas nécessairement l'égalité) des dimensions  "action" dans les dimensions "cible" sera donc requise. Seule la dimension temporelle pourra être intégrée dans la définition des actions sans pour autant que la variable cible n'en possède une (variable constante au cours du temps). On pourra en complément se référer à la seconde partie dans laquelle on décrira plus précisément l'onglet "Scénario" du fichier de paramétrage.
-
-La revalorisation d'une variable dans le cadre d'un scénario est une action irrémédiable : cela signifie que la variable conserve sa nouvelle valeur à partir de cet instant, et ce jusqu'à une hypothétique prochaine intervention. Pour illustrer ce mode de fonctionnement, prenons un exemple simple. Soit une variable "prix moyen" initiale d'une valeur de 10 euros. Supposons qu'on veuille simuler deux scénarios distincts : le premier simulant une baisse de 10\% du prix moyen à l'instant $t$ et $t+1$, et le second simulant une baisse de 1 euro du prix moyen aux mêmes instants. Ainsi, le premier scénario fera intervenir un multiplicateur de valeur 0,9 à $t$ et $t+1$, alors que le second appliquera un multiplicateur de valeur 0,9 à t et de valeur  $0,8888$ à $t+1$.
+La revalorisation d'une variable dans le cadre d'un scénario est une action irrémédiable : cela signifie que la variable conserve sa nouvelle valeur à partir de cet instant, et ce jusqu'à une hypothétique prochaine intervention. Pour illustrer ce mode de fonctionnement, prenons un exemple simple. Soit une variable "prix moyen" initiale d'une valeur de 10 euros. Supposons qu'on veuille simuler deux scénarios distincts : le premier simulant une baisse de 10\% du prix moyen à l'instant $t$ et $t+1$, et le second simulant une baisse de 1 euro du prix moyen aux mêmes instants. Ainsi, le premier scénario fera intervenir un multiplicateur de valeur 0,9 à $t$ et $t+1$, alors que le second appliquera un multiplicateur de valeur 0,9 à t et de valeur $0,8888$ à $t+1$.
 
 \subsection{Module "Gestion"}
 
-Le module permet en l'état actuel de moduler l'effort de pêche total simulé (en jouant sur les variables de contrôle que sont l’effort (en nombre de jours de mer) ou le nombre de navires),  ainsi que  la mortalité par pêche des flottilles non modélisées. On peut de cette manière exercer un contrôle sur toutes les composantes de la mortalité par pêche appliquée à un stock donné. Cette modulation s'opère avec pour objectif d'atteindre des valeurs données d'une variable "cible". Il est pour le moment possible d'ajuster les variables de contrôle en vue d'atteindre une valeur de TAC (captures) ou une valeur de Fbar, moyenne pondérée de la mortalité par pêche (voir \ref{sec:mortalsub}). L'ajustement peut se faire de façon homogène sur toutes les flottilles modélisées (variations de même proportion quelles que soient les flottilles), ou bien être obtenu par des variations distinctes de l'effort par flottille (la répartition des "efforts" consentis par chaque flottille étant renseignée par l'utilisateur au moyen d'une donnée de pondération), permettant par exemple d'allouer la réduction de mortalité par pêche par flottille en fonction de leur dépendance à une espèce ou de leur contribution à la mortalité par pêche d’une espèce. On exposera en détail les multiples options disponibles dans la partie 3 consacrée à l'utilisation du modèle.
+Le module permet en l'état actuel de moduler l'effort de pêche total simulé (en jouant sur les variables de contrôle que sont l’effort (en nombre de jours de mer) ou le nombre de navires), ainsi que la mortalité par pêche des flottilles non modélisées. On peut de cette manière exercer un contrôle sur toutes les composantes de la mortalité par pêche appliquée à un stock donné. Cette modulation s'opère avec pour objectif d'atteindre des valeurs données d'une variable "cible". Il est pour le moment possible d'ajuster les variables de contrôle en vue d'atteindre une valeur de TAC (captures) ou une valeur de Fbar, moyenne pondérée de la mortalité par pêche (voir \ref{sec:mortalsub}). L'ajustement peut se faire de façon homogène sur toutes les flottilles modélisées (variations de même proportion quelles que soient les flottilles), ou bien être obtenu par des variations distinctes de l'effort par flottille (la répartition des "efforts" consentis par chaque flottille étant renseignée par l'utilisateur au moyen d'une donnée de pondération), permettant par exemple d'allouer la réduction de mortalité par pêche par flottille en fonction de leur dépendance à une espèce ou de leur contribution à la mortalité par pêche d’une espèce. On exposera en détail les multiples options disponibles dans la partie \ref{vignette} consacrée à l'utilisation du modèle.
 
 La représentation schématique de la figure \ref{fig:gest_mod} retrace le mode de fonctionnement actuel du module de gestion pour les options "atteinte de TAC" et "atteinte de Fbar". Le module de gestion intègre un algorithme de résolution qui vise à estimer le multiplicateur µ qui sera appliqué aux pondérations des variables de contrôles mF (par flottille, appliquées au nombre de navires ou au nombre de jours de mer) et mOth \todo{still exist ?} (valeur unique appliquée à la mortalité par pêche "autres flottilles, autres métiers"), avant qu'elles mêmes soient appliquées aux variables de contrôles "initiales" (en fait issues de la simulation à l'instant précédent). Des variables de contrôle réévaluées (out) sont déduites les valeurs des variables "cible", qui peuvent être comparées avec les valeurs demandées. Les réitérations s'interrompent une fois la convergence de l'algorithme d'ajustement obtenue.
 
@@ -1165,13 +1242,13 @@ La représentation schématique de la figure \ref{fig:gest_mod} retrace le mode 
 \label{fig:gest_mod}
 \end{figure}
 
-Les perspectives quant à l'enrichissement du module par de nouvelles options de gestion (potentiellement apportées par l'intermédiaire d'un module complémentaire de simulation de comportement)  sont très nombreuses. Il est ainsi envisageable d'offrir la possibilité de définir des règles de variation des multiplicateurs (par exemple, en fonction de la rentabilité),  ou de multiplier les paramètres "cible" (ajout de la SSB,...), ou encore d'intégrer des contraintes sur les variations d'une année sur l'autre ou sur les valeurs limites des paramètres affectés (variation annuelle majorée de TAC, seuil minimal acceptable pour  l'EBE,...).
+Les perspectives quant à l'enrichissement du module par de nouvelles options de gestion (potentiellement apportées par l'intermédiaire d'un module complémentaire de simulation de comportement) sont très nombreuses. Il est ainsi envisageable d'offrir la possibilité de définir des règles de variation des multiplicateurs (par exemple, en fonction de la rentabilité), ou de multiplier les paramètres "cible" (ajout de la SSB,...), ou encore d'intégrer des contraintes sur les variations d'une année sur l'autre ou sur les valeurs limites des paramètres affectés (variation annuelle majorée de TAC, seuil minimal acceptable pour l'EBE,...).
 
 \subsection{Module "Réplicat"}
 
-Le rôle de ce module est d'intégrer une variabilité dans les sorties du modèle en tirant parti des incertitudes considérées pour certaines variables (par le biais du module "Stochasticité", l'illustration évidente étant la donnée de recrutement). Comme son nom l'indique, il va procéder par réplication multiple des simulations afin d'obtenir pour chaque indicateur un jeu de valeurs permettant, par exemple, d'aboutir  à l'estimation d'une moyenne, d'une variance, ou bien encore d'un intervalle de confiance des projections.
+Le rôle de ce module est d'intégrer une variabilité dans les sorties du modèle en tirant parti des incertitudes considérées pour certaines variables (par le biais du module "Stochasticité", l'illustration évidente étant la donnée de recrutement). Comme son nom l'indique, il va procéder par réplication multiple des simulations afin d'obtenir pour chaque indicateur un jeu de valeurs permettant, par exemple, d'aboutir à l'estimation d'une moyenne, d'une variance, ou bien encore d'un intervalle de confiance des projections.
 
-Une schématisation de la façon dont le modèle  actuel fait collaborer les modules "Recrutement" et "Réplicat" (aussi appelé abusivement "Bootstrap") est représentée en figure \ref{fig:recru_mod}. On distingue d'abord parmi les paramètres d'entrée les variables qui évolueront entre deux répétitions (variables stochastiques) de celles qui resteront inchangées (variables non stochastiques). Comme on l'a vu précédemment, les variables stochastiques peuvent être de trois types : des variables issues d'un tirage aléatoire dans un historique (avec possibilité de pondérer les éléments le composant), des variables incarnant une réalisation d'une variable aléatoire donnée avec des paramètres donnés, et un cas particulier de variable (de recrutement) issue d'une relation Stock-Recrutement avec addition d'un bruit paramétré. Toutes ces variables prennent part à la simulation opérée par le modèle bio-économique, et si le module "Bootstrap" est activé, un certain nombre d'itérations (déterminé par l'utilisateur) est effectué, chaque sortie étant ainsi conservée en vue des traitements post visant à considérer (ou simplement à estimer) leur variabilité.  
+Une schématisation de la façon dont le modèle actuel fait collaborer les modules "Recrutement" et "Réplicat" (aussi appelé abusivement "Bootstrap") est représentée en figure \ref{fig:recru_mod}. On distingue d'abord parmi les paramètres d'entrée les variables qui évolueront entre deux répétitions (variables stochastiques) de celles qui resteront inchangées (variables non stochastiques). Comme on l'a vu précédemment, les variables stochastiques peuvent être de trois types : des variables issues d'un tirage aléatoire dans un historique (avec possibilité de pondérer les éléments le composant), des variables incarnant une réalisation d'une variable aléatoire donnée avec des paramètres donnés, et un cas particulier de variable (de recrutement) issue d'une relation Stock-Recrutement avec addition d'un bruit paramétré. Toutes ces variables prennent part à la simulation opérée par le modèle bio-économique, et si le module "Bootstrap" est activé, un certain nombre d'itérations (déterminé par l'utilisateur) est effectué, chaque sortie étant ainsi conservée en vue des traitements post visant à considérer (ou simplement à estimer) leur variabilité.
 
 \begin{figure}
 \begin{center}
@@ -1181,5 +1258,282 @@ Une schématisation de la façon dont le modèle  actuel fait collaborer les mod
 \label{fig:recru_mod}
 \end{figure}
 
+\chapter{Elaboration d'un fichier de paramétrage fonctionnel} \label{chp:param}
+
+Un effort particulier a été mis en œuvre afin que le modèle IAM possède un système de paramétrage relativement simple à aborder, et ce malgré la diversité d'inputs qu'un modèle bio-économique multi-spécifique, multi-flottille et multi-métier induit. Pour cela, il a été convenu que l'intégralité des données d'entrée du modèle seraient contenue dans un fichier Excel d'extension ".xlsx", possédant une structure spécifique, et lisible par une procédure d'importation intégrée à l'outil (rappelons que le modèle IAM est utilisable dans un environnement R, et qu'un fichier de paramétrage type est disponible dans le package).
+	
+Le fichier d'entrée se compose des feuillets suivants : un feuillet "Stock" par espèce modélisée, un feuillet "Market", un feuillet "Flottille" par flottille modélisée, trois feuillets contenant les tables de conversions, un feuillet "Scénarii" et un feuillet "Stochasticité". Les seules données non intégrées dans le fichier et intervenant dans le modèle sont les options d'utilisation du modèle que l'on spécifiera séparément lors du lancement des simulations \todo{(cf partie 4)}.	
+
+\section{Feuillet "Stock"} \label{sec:stock}
+
+Les feuillets de type "Stock" vont permettre de réunir tous les paramètres propres à chaque stock modélisé (paramètres biologiques, biomasses, effectifs totaux, mortalités par pêche,...). Il est possible de renseigner chaque paramètre de manière exhaustive au niveau historique puisque l'utilisateur peut décider du temps initial de la modélisation : ce fichier a donc aussi pour vocation d'être complété et remis à jour année après année afin que l'utilisateur aie à sa disposition une source de données à la fois évolutive et fonctionnelle.
+
+\par~\par
+
+Chacun de ces feuillets doit être nommé (click droit sur l'onglet $ \to $ Renommer) selon le schéma suivant : "Stock\_\_" + nom de l'espèce sans espace (par exemple, "Stock\_\_Langoustine" ou "Stock\_\_Merlu\_commun".
+
+\Warning La dénomination choisie sera également la caractérisation du stock dans le modèle (dans l'exemple, "Langoustine" ou "Merlu\_commun").
+
+\par~\par
+
+En haut de la feuille, un cadre jaune en partie protégé en écriture fait office de listing des variables considérées. La colonne "Variable" n'est pas modifiable : il s'agit des intitulés de chacun des paramètres tels qu'ils sont utilisés dans l'implémentation du modèle. L'autre champ fixe est le champ "Description" qui comme son nom l'indique présente rapidement les variables. La colonne "Alias" permet d'intégrer des tables de données dans lesquelles les variables ont un autre nom que le nom standard. Les deux colonnes "Variable" et "Alias" assurent ainsi la correspondance. Enfin, le champ "Multi" est un multiplicateur utile dans le cas où les variables rentrées ne sont pas à l'unité standard décrite dans le champ "Description". Si une variable doit s'exprimer en tonnes, et que les valeurs inscrites sont en kilogrammes, il suffit d'insérer 0,001 dans la case correspondant à la variable en question, et la correction sera opérée lors de l'importation.
+
+\par~\par
+
+\Warning Il n'est pas obligatoire de renseigner toutes les variables déclarées ici (lire le champ Description pour plus de détails). Notons également que, par souci de facilité de traitement, la liste de variables intègre aussi les variables du feuillet "Market".
+
+\par~\par
+
+Il ne reste plus qu'à regrouper sur ce feuillet les tables susceptibles de décrire, pour l'espèce en question, les variables présentées dans le cadre jaune. Afin de faciliter ce processus, l'objectif fixé était de pouvoir gérer, lire et assurer le reformatage de tableaux de sources diverses, et de ce fait de multiples formats, tout en limitant au maximum les modifications à opérer sur les tableaux importés (ou copiés-collés) par l'utilisateur. Une macro développée spécifiquement pour ces fichiers permet de transformer les tables de paramètres insérées afin qu'elles soient lues par la procédure d'importation R. Prenons un exemple pour illustrer l'application ; soit un tableau historique d'effectifs totaux d'un stock quelconque inséré dans la feuille de calcul :
+
+\begin{figure}[h!]
+\begin{center}
+\includegraphics[width = \textwidth]{figures/param/stock1.png}
+\end{center}
+\label{fig:ex}
+\end{figure}
+
+Puisque les tables peuvent se succéder sur la feuille sans ordre prédéfini, il faut indiquer quelle variable est décrite par ce tableau. Il suffit pour cela de considérer cette appellation comme une variable, au même titre que la variable "âge" déjà déclinée, et insérer un nouveau champ comme ci-dessous (nous l'appelons "ini\_numbers") :
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = \textwidth]{figures/param/stock2.png}
+    \end{center}
+    \label{fig:ini_num}
+\end{figure}
+
+Il faut maintenant le convertir en un tableau que la méthode d'importation saura lire. Appelons la macro "Préfixation" (Outils $ \to $ Macro $ \to $ Macros $ \to $ Préfixation $ \to $ Exécuter). Elle se présente sous la forme d'une petite interface :
+
+\begin{figure}[H]
+    \begin{center}
+    \includegraphics[width = 6.24cm]{figures/param/stock3.png}
+    \end{center}
+    \label{fig:prefix}
+\end{figure}
+
+Il faut alors caractériser les variables décrites dans le tableau au moyen d'un système de préfixation. Il s'agit de sélectionner les cellules à préfixer, puis de cocher la case correspondant au type de variable en jeu, et enfin de valider en cliquant sur OK. Pour recommencer, il suffit de cliquer sur le bouton dans le champ "Cellules :". La case "Eraser" permet de corriger les erreurs et d'effacer le(s) préfixe(s) de la plage sélectionnée. Cliquer sur "Annuler" lorsque le processus est terminé. On aboutit alors au tableau suivant :
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = \textwidth]{figures/param/stock4.png}
+    \end{center}
+    \label{fig:cancel}
+\end{figure}
+        
+Le préfixe est composé d'une lettre spécifique à chaque type de variable, suivi de deux symboles "\_". Si besoin est, on peut rentrer l'appellation choisie pour la variable (ici "ini\_numbers") dans le champ "Alias" du cadre jaune, face à la variable correspondante (ici "Nit0"). Ce tableau est maintenant lisible par la méthode d'importation et sera affecté à la variable Nit0.
+
+\par~\par
+
+Il faut encore énoncer quelques règles au sujet du format et de l'organisation des tables de paramètres.
+
+\begin{itemize}
+    \item[$\bullet$] Ne seront considérés que les champs de paramètres préfixés, ainsi que les numériques s'y rapportant. Dans la table précédente, les cellules "AGE" et "Initial Numbers ($*10^3$)" ne seront pas lues. 
+    \item[$\bullet$] "\_\_" est un champ de caractères réservé aux variables : ne pas l'utiliser ailleurs dans le document (à part dans le nom des feuillets "Stock" et "Flottille", comme on va le voir).
+    \item[$\bullet$] La dimension "Longueur" préfixée "l\_\_" ne peut définir des variables que si une clé tailles-âges est renseignée en tant que variable "alk".
+    \item[$\bullet$] Les sauts de lignes (de taille quelconque) servent de séparateurs entre les tables à considérer.
+    \item[$\bullet$] Une table peut se développer sur plusieurs successions de lignes ; par exemple, cette disposition est possible :
+    
+    \begin{minipage}{\linewidth}
+        \centering
+        \includegraphics[width = \textwidth]{figures/param/stock5.png}
+    \end{minipage}
+    \vspace{12pt}
+
+    \item[$\bullet$] au moins une variable doit être déclinée sur une colonne (comme "v" ou "i" dans la table précédente). La table suivante n'est, par exemple, pas acceptée:
+    
+    \begin{minipage}{\linewidth}
+        \centering
+        \includegraphics[width = 6.6cm]{figures/param/stock6.png}
+    \end{minipage}
+    \vspace{12pt}
+
+    mais celle-ci l'est :
+
+    \begin{minipage}{\linewidth}
+        \centering
+        \includegraphics[width = 10.2cm]{figures/param/stock7.png}
+    \end{minipage}
+    \vspace{12pt}
+
+\end{itemize}
+
+
+Il est possible de définir les pas de temps à partir desquels définir la valeur initiale d'une variable pour laquelle un historique est disponible. La valeur initiale sera alors la moyenne sur les pas de temps choisis. Pour cela, il faut dédoubler le préfixe "t\_\_" sur les variables temporelles constituant le recul. Par exemple, si on veut une valeur initiale égale à la moyenne des 3 derniers instants (dans notre cas, les 3 dernières années) pour un temps initial égal à 2008, on a ce tableau :
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = \textwidth]{figures/param/stock8.png}
+    \end{center}
+    \label{fig:time}
+\end{figure}
+
+\Warning S'il a lieu d'être, le dédoublement du préfixe temporel doit au moins être affecté à l'instant initial "t\_init", et potentiellement à des instants qui lui sont antérieurs. Pas de dédoublement signifie que le recul ne portera que sur l'instant initial. Notons que l'instant initial considéré sera déclaré lors de l'importation des paramètres. Toutes ces tables seront alors lues par la méthode d'importation et regroupées dans un objet R de type "liste".
+
+
+\section{Feuillet "Market"}
+
+Le feuillet "Market" diffère sensiblement des feuillets "Stock" par sa présentation générale, qui est similaire au format des feuillets "Flottille". Ceci s'explique par le fait que contrairement aux données de type "stock" qui proviennent le plus souvent de sources diverses (groupes d'évaluation, expertises,...), les variables "Market" sont générées (au même titre que les variables économiques regroupées dans les feuillets "Flottille") par des routines d'extraction et de mise en forme standardisées. Il était donc plus facile de conserver ce format au sein du fichier de paramétrage. On se référera donc au paragraphe décrivant le feuillet "Flottille" pour plus de précision. Notons simplement que ce feuillet comprend une colonne supplémentaire intitulée "categorie", pour des variables préfixées "c\_\_".
+
+
+\section{Feuillet "Flottille"}
+
+Ces feuillets vont regrouper les données économiques et d'activités des flottilles modélisées. Comme on vient de le préciser pour le feuillet "Market", toutes ces informations sont disponibles grâce à une routine développée en langage R, qui restitue la donnée par flottille dans un unique format stable et reconnu par la méthode d'importation. Il suffira alors de compiler toutes les tables ainsi obtenues dans le fichier Excel, en conservant la distinction "flottille" (1 feuillet par flottille) ou non, la seule restriction étant de conserver l'architecture standard des tables "flottille". Nous présentons maintenant ce format spécifique.
+
+\par~\par
+
+Ce tableau comporte 7 colonnes principales d'en-têtes \textit{nom\_variable}, \textit{libelle}, \textit{type d'indicateur}, \textit{flottille}, \textit{metier}, \textit{espece}, et \textit{indicateur}, dont voici la description :
+
+\begin{itemize}
+    \item[$\bullet$] \textbf{nom\_variable} : intitulé (préfixé) de la variable décrite tel qu'il sera utilisé dans l'implémentation du modèle (ôté du préfixe caractéristique des variables "v\_\_")
+    \item[$\bullet$] \textbf{libelle} : descriptif de la variable
+    \item[$\bullet$] \textbf{type d'indicateur} : catégorisation de l'indicateur
+    \item[$\bullet$] \textbf{flottille} : champ facultatif. Variable flottille, préfixée "f\_\_".
+    \item[$\bullet$] \textbf{metier} : champ facultatif. Variable métier, préfixée "m\_\_". Le niveau considéré est le niveau "métier éco", potentiellement différent du niveau considéré dans les feuillets "Stock".
+    \item[$\bullet$] \textbf{espece} : champ facultatif. Variable espèce, préfixée "e\_\_".
+    \item[$\bullet$] \textbf{indicateur} : champ facultatif. Valeur numérique de la variable.
+    \item[$\bullet$] \textbf{…} : D'autres champs peuvent être ajoutés à droite de ces 7 premières colonnes, mais ils n'interviendront pas dans le processus de modélisation.
+\end{itemize}
+
+\par~\par
+
+Les cellules non renseignées doivent rester vides. Toutes ces informations lues par la routine d'importation seront regroupées dans un nouvel élément "Fleet" de la liste en sortie. Seules les variables déclinées par espèce seront intégrées à l 'élément "Stock" généré par les feuillets correspondants (cf section \ref{sec:stock}). Au même titre que les variables flottille, métier, temps,... les variables espèces doivent être consistantes dans l'intégralité du fichier. En conséquence, les dénominations des variables préfixées "e\_\_..." doivent être similaires à celle utilisées dans les noms des feuillets "Stocks" (par exemple, "Stock\_\_Sole\_commune" et "e\_\_Sole\_commune").
+
+A titre indicatif, un document "FleetSpreadsheet" de tables types regroupant toutes les variables d'activité à renseigner est disponible au sein du package IAM. Il comprend une table complète assurant le paramétrage du modèle économique complet, ainsi qu'une deuxième table pour le modèle économique DCF.
+
+
+\section{Feuillet "fm\_matrix"}
+
+Ce feuillet réunit les tables de distribution flottilles-métiers "bio" qui seront utilisées lors de l'étape de ventilation de la variable de mortalité par pêche. Ce processus pourra nécessiter en effet l'apport de la donnée de débarquements totaux par espèce au niveau flottille-métier "stock". Cette donnée n'étant disponible qu'au niveau flottille et flottille-métier "éco" dans les feuillets "Flottille" (variable $Lref$), une table d'allocation des débarquements par flottille pour chaque métier "stock" sera utilisée. Le feuillet contiendra une table par espèce modélisée (les métiers pouvant différer entre les espèces considérées), utilisant les notations habituelles décrites précédemment. Les valeurs peuvent être considérées comme les probabilités $P (metier | flottille \cdot espece)$.
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = 13.4cm]{figures/param/stock9.png}
+    \end{center}
+    \caption{Exemple illustratif d'une table "fm" pour une espèce donnée}
+    \label{fig:fm}
+\end{figure}
+
+
+\section{Feuillet "mm\_matrix"}
+
+Cette feuille intègre la matrice de transition entre le niveau métier "stock" utilisé par le modèle biologique, et le niveau métier "éco" qui caractérise ensuite le modèle économique. Elle sera utilisée au cours du processus engagé par le module "Market" (qui, on le rappelle, assure le lien entre les deux modèles, en redéfinissant notamment la dimension "métier"). La matrice contient ainsi des valeurs apparentées aux probabilités $P(espece \cdot flottille \cdot metier_{eco} | espece \cdot flottille \cdot metier_{stock})$.
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = \textwidth]{figures/param/stock10.png}
+    \end{center}
+    \caption{Exemple illustratif d'une table "mm"}
+    \label{fig:mm}
+\end{figure}
+
+
+\section{Feuillet "icat\_matrix"}
+
+Tout comme le feuillet "mm\_matrix", la donnée incluse dans cette feuille sera utilisée par le module "Market" pour procéder à un redimensionnement des variables. En l'occurrence, les tables "icat" vont participer à la conversion de certaines variables aux âges en variable par catégorie commerciale, permettant ainsi leur intégration ou leur application aux modèles de prix. Ces tableaux vont définir la distribution des catégories aux âges, et ceci par espèce. En d'autres termes, ils contiendront les probabilités $P(espece \cdot categorie commerciale| espece \cdot age)$. 
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = \textwidth]{figures/param/stock11.png}
+    \end{center}
+    \caption{Exemple illustratif d'une table "icat"}
+    \label{fig:icat}
+\end{figure}
+
+
+\section{Feuillet "Scénarii"}
+
+Dans ce feuillet vont être consignées toutes les informations caractérisant les scénarios basés sur une intervention prédéfinie de l'utilisateur sur une ou plusieurs variables données (cf section \ref{sec:scenar}). Pour chacun des scénarios envisagés, une série de tables définissant les actions à opérer vont être insérées. Chacune d'entre elles décrit la variable à modifier, les dimensions sur lesquelles porte cette modification (pour quelle espèce, quelle flottille, quel métier, à quel instant,...?), et bien évidemment le multiplicateur à appliquer.
+
+L'en-tête du feuillet est une partie bloquée en écriture qui présente les variables d'entrée et les variables internes qui pourront faire l'objet d'un réajustement au cours de la simulation. Le nom de la variable composant chaque tableau devra donc se trouver dans cette liste. La première colonne de la feuille sert à caractériser le scénario : c'est ici que la première colonne de la table devra être inscrite, contenant le nom du scénario considéré. Une même table peut s'appliquer à plusieurs scénarios. Il suffit pour cela de séparer les noms de scénarios par "\&".Les colonnes suivantes constituent le tableau de valeurs, lequel suit les mêmes règles de constitution de tables que dans les feuillets "Stock" (cf section \ref{sec:stock}).
+
+Notons pour finir qu'il est possible d'intervenir implicitement sur toutes les modalités d'une dimension donnée si on l'occulte dans la table correspondante. Par exemple, prenons une variable de dimension "flottille-métier-âge". Si la table ne se décline que suivant les dimensions "flottille" et "âge", les multiplicateurs s'appliqueront à tous les métiers pour la flottille et l'âge correspondant.
+
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = 16.3cm]{figures/param/stock12.png}
+    \includegraphics[width = 13.3cm]{figures/param/stock13.png}
+    \end{center}
+    \caption{Exemple illustratif d'un jeu de tables définissant 2 scénarios distincts}
+    \label{fig:scenar}
+\end{figure}
+
+
+\section{Feuillet "Stochasticité"}
+
+Cette feuille regroupe les paramètres régissant l'intégration de l'aspect stochastique dans le modèle, par l'intermédiaire de la donnée de recrutement (dans les futurs développements, la portée de la dimension aléatoire sera élargie à d'autres variables). Deux méthodes de simulation de recrutement sont paramétrables via cette feuille : un recrutement obtenu par tirage aléatoire dans un historique (la donnée doit être renseignée entre les deux balises "Samples" et "END Samples" dans une table préformatée, voir section\ref{sec:sample}), ou un recrutement comme étant la réalisation d'une variable aléatoire de loi paramétrable (la donnée doit être renseignée entre les deux balises "Random-variate" et "END Random-variate" dans une autre table préformatée, voir section \ref{sec:rand}).
+
+
+\subsection{Table "Samples"} \label{sec:sample}
+
+Ce tableau comporte 5 colonnes d'en-têtes \textit{Species}, \textit{TimeStep}, \textit{Value}, \textit{Mult}, et \textit{Weighted} :
+
+\par~\par
+
+\begin{itemize}
+    \item[$\bullet$] \textbf{Species} : intitulé (préfixé) de l'espèce à laquelle se rapporte la donnée de recrutement.
+    \item[$\bullet$] \textbf{TimeStep} : année du recrutement spécifié (non préfixé car n'intervient pas dans l'implémentation)
+    \item[$\bullet$] \textbf{Value} : valeur de recrutement
+    \item[$\bullet$] \textbf{Mult} : Multiplicateur de valeur. Si \textit{Value} est en milliers d'individus, \textit{Mult} devra être égal à 1000. La donnée finale doit toujours être en nombre d'individus.
+    \item[$\bullet$] \textbf{Weighted} : Poids affecté à chaque année de recrutement dans le processus de tirage aléatoire. Permet de pondérer les chances d'être tiré au sort. Ces poids doivent être des entiers positifs (potentiellement nuls si on désire écarter certaines valeurs).
+\end{itemize}
+
+\par~\par
+
+L'activation ou la désactivation de ces méthodes se décidera lors de la définition des "arguments" envoyés au modèle \todo{(cette étape sera décrite dans la quatrième partie de ce document)}. 
+%L'
+  
+\begin{figure}[h!]
+    \begin{center}
+    \includegraphics[width = 11.19cm]{figures/param/stock14.png}
+    \end{center}
+    \caption{Exemple d'une table "Samples". Ici, un historique sur deux espèces, avec tirage équiprobable sur la période 2000-2006 pour la première, et tirage sur 1996-2006 pondéré à l'avantage des 3 dernières années pour la seconde.}
+    \label{fig:recru}
+\end{figure}
+
+
+\subsection{Table "Random-variate"} \label{sec:rand}
+
+Cette table va caractériser les paramètres de la variable aléatoire dont la donnée de recrutement sera une réalisation. Elle comprend 5 champs qui sont la loi de distribution, les paramètres de cette loi (3 paramètres maximum à renseigner selon la loi), et l'espèce à laquelle s'applique cette loi de distribution de recrutement (ne pas oublier le préfixe "e\_\_" pour ce champ). L'en-tête du feuillet retrace les lois de probabilités potentiellement utilisables, ainsi que les noms des paramètres à renseigner pour chacune d'entre elles. De futurs développements permettront d'étendre cette application à d'autres variables que le simple recrutement.
+
+\begin{figure}[H]
+    \begin{center}
+    \includegraphics[width = 13.42cm]{figures/param/stock15.png}
+    \end{center}
+    \caption{Exemple d'une table "Random-variate". Ici, le recrutement de l'espèce considérée est une v.a de loi lognormale, et de paramètres $logmean=19,25...$ et $logsd=0,248...$ (cf en-tête du feuillet)}
+    \label{fig:random}
+\end{figure}
+
+%\chapter{empty}
+%\fi
+\chapter{Vignettes} \label{vignette}
+
+\minitoc
+
+Les vignettes présentées dans ce chapitres sont associées au package IAM et sont accessibles sur le site\footnote{\url{https://ifremer-iam.github.io/IAM/}} hébergeant toute la documentation. Composées en partie de code R réévalué à chaque rendu du document, cette version pdf peut contenir du code ne fonctionnant plus. Dans le cas où une indication ne fonctionnerais pas dans ce document, il est préférable de se référer à la documentation en ligne.
+
+Ces vignettes sont également disponible après installation du package, en effectuant le code suivant :
+
+\begin{lstlisting}
+# Instalation du package
+install.packages("IAM", repos = "https://ifremer-iam.r-universe.dev")
+# Ouverture de la vignette "Utilisationd'IAM dans R"
+vignette("use_IAM", package = "IAM")
+\end{lstlisting}
+    
+\todo[color=green, inline]{maintain TOC by hand}
+
+\includepdf[pages=-,addtotoc={
+    1,section,1,Utilisation d'IAM dans R,vuse,   
+    1,subsection,2,Choix d'implémentation,vuseimp,
+    1,subsection,3,Le package IAM (version 2.0.0),vusepkg,
+    1,subsubsection,4,Installation et chargement du package,vuseinstal,
+    2,subsubsection,4,Importation des paramètres (IAM.input),vuseinput,
+    4,subsubsection,4,Constitution des arguments (IAM.args),vuseargs,
+    7,subsubsection,4,Simulation (IAM.model),vusemodel,
+    9,subsubsection,4,Mise en forme des sorties (IAM.format \& IAM.format\_quant),vuseform,
+    11,subsection,3,Conseil de réplication,vuserep,
+    12,subsection,3,Références,vuseref
+ }, pagecommand={\thispagestyle{fancy}}
+    ]{../doc/use_IAM.pdf} 
 
 \end{document}

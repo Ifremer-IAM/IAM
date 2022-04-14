@@ -1,6 +1,10 @@
 ---
 title: "Gestion avec TAC (fr)"
-output: rmarkdown::html_vignette
+output:
+  pdf_document:
+    keep_tex: yes
+  rmarkdown::html_vignette:
+    fig_caption: yes
 vignette: >
   %\VignetteIndexEntry{Gestion avec TAC (fr)}
   %\VignetteEngine{knitr::rmarkdown}

@@ -105,7 +105,7 @@ vignette("use_IAM", package = "IAM")
 ```
 
 
-A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for [download here](https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/notice/Notice_IAM.pdf?inline=false)
+A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for [download here](https://gitlab.ifremer.fr/iam/iam/-/raw/main/inst/notice/Notice_IAM.pdf?inline=false)
 
 
 ## Credits

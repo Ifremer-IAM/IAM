@@ -58,13 +58,16 @@ gc()
 ## Building Binary package for Releases ####
 # FROM SO https://stackoverflow.com/questions/54634056/how-to-include-an-html-vignette-in-a-binary-r-package
 build_vignettes_to_inst <- function() {
-  devtools::build_vignettes() # Builds vignettes to 'doc' and 'Meta'. Updates '.gitignore'.
+  devtools::install(upgrade = "never",
+                    build_vignettes = TRUE) # Builds vignettes to 'doc' and 'Meta'. Updates '.gitignore'.
+  cat("Builded\n")
   unlink(c("inst/doc", "inst/Meta"), recursive = TRUE) # Remove the directories if they exist
   dir.create("inst/doc"); dir.create("inst/Meta") # Create empty directories
   has_worked <- c( # Copy files to 'inst' subfolders
     file.copy(list.files("doc", full.names = TRUE), to = "inst/doc"),
     file.copy(list.files("Meta", full.names = TRUE), to = "inst/Meta")
   )
+  cat("Moved\n")
   unlink(c("doc", "Meta"), recursive = TRUE) # Optional: Remove unwanted directories
   return(all(has_worked)) # Returns TRUE if everything worked OK
 }
@@ -75,9 +78,11 @@ beepr::beep(5)
 # we can push releases to gitlab with curl. See this SO post:
 # https://stackoverflow.com/questions/29013457/how-to-store-releases-binaries-in-gitlab
 
-## Compile the math notice ####
+## Compile the full notice ####
+build_vignettes_to_inst() # This will recompile all vignettes to pdf and move them int/doc/
 setwd("inst/notice")
-tinytex::pdflatex("Notice.tex")
+tinytex::pdflatex("Notice_IAM.tex")
+tinytex::pdflatex("Notice_IAM.tex")
 setwd("../../")
 
 #' I tested using some options but it's poorly used in the package.
