@@ -1,4 +1,93 @@
 
+#' Theme for IAM plots
+#'
+#' Modify background for IAM plots.
+#'
+#' @author maxime jaunate
+#'
+#' @import ggplot2
+#'
+#' @export
+IAM_theme <- function(){
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill = "steelblue",
+                                      colour = "steelblue",
+                                      linetype = "solid"),
+      plot.title = element_text(size = 17, family="serif"),
+      legend.title=element_blank(),
+      legend.text=element_text(size=14,family="serif"),
+      axis.text=element_text(size=14,family="serif"),
+      axis.title=element_text(size=15,family="serif"),
+      axis.text.x = element_text(angle = 90, vjust = 0.5,
+                                 size=8,family="serif"),
+      axis.text.y = element_text(size=8,family="serif"),
+      strip.text.x = element_text(size = 7, colour = "black"),
+      strip.text.y = element_text(size = 10, colour = "black", angle = 0)
+    ) +
+    NULL
+}
+
+#' Function to filter a iam_quantbl
+#'
+#' @author Maxime Jaunatre
+#'
+#' Intern function
+#' @noRd
+IAM_filter <- function(x, name, filter = character(0)){
+
+  if(length(filter) > 0){
+    tmpvar <- unique(x[[name]])
+    x <- x[x[[name]] %in% filter,]
+    if(nrow(x) == 0){
+      stop(paste("All expected", name, "are missing. Try ",
+                 paste(tmpvar, collapse = ' ')))
+    }
+  }
+
+  return(x)
+}
+
+#' @export
+IAM_plot <- function(x,
+                     sim_name = character(0),
+                     variable = character(0),
+                     species = character(0),
+                     fleet = character(0),
+                     metier = metier(0),
+                     ribbon = TRUE,
+                     value = TRUE,
+                     time_limit = NULL){
+
+  if(nrow(x) == 0){
+    stop("This table is empty.")
+  }
+
+  if(!is.null(time_limit)){
+    x <- filter(x, .data$year > time_limit[1] & .data$year < time_limit[2])
+    if(nrow(x) == 0){
+      stop("the time period is too restrictive.")
+    }
+  }
+
+  x <- IAM_filter(x, "sim_name", sim_name)
+  x <- IAM_filter(x, "variable", variable)
+  x <- IAM_filter(x, "species", species)
+  x <- IAM_filter(x, "fleet", fleet)
+  x <- IAM_filter(x, "metier", metier)
+
+
+  p <- ggplot(data = x, aes(x = .data$year, y = .data$median)) +
+    facet_grid(.data$variable ~ .data$sim_name, scales = "free_y") +
+    { if (ribbon) geom_ribbon(aes(ymin = .data$quant1, ymax = .data$quant2),
+                              fill = "white", alpha = .4)} +
+    geom_line() + geom_point(size = .5) +
+    geom_line(aes(y = .data$value), linetype = "dotted") +
+    guides(x = guide_axis(angle = 90)) + IAM_theme() +
+    NULL
+
+  return(p)
+}
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # M?thodes de repr?sentation graphiques des contenus des objets de sortie 'iamOutput' et 'iamOutputRep'
@@ -34,7 +123,6 @@ boxplot.stats.custom <-function (x,coef = 1.5, do.conf=TRUE, do.out=TRUE) {
 
 #' Plotting functions for IAM package based on lattice methods
 #'
-#' TODO
 #'
 #' @param formula Typical 'Lattice' formula. No 'groups' parameter,
 #' so multiple terms separated by a 'plus' sign is required for grouping

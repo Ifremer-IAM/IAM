@@ -267,7 +267,7 @@ if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
      tot = REAL(aggregObj(VECTOR_ELT(out_L_eit, eTemp),nDim));
      result = TAC_glob[IND_T]-tot[IND_T]; //Rprintf("%f %f %f %f\n",mult,TAC_glob[IND_T],tot[IND_T],result);
     }
-//Rprintf("fxtac : TAC_glob %f TOT %f\n",TAC_glob[IND_T],tot[IND_T]);
+// Rprintf("fxtac : TAC_glob %f TOT %f\n",TAC_glob[IND_T],tot[IND_T]);
 
 } else { //on vise un Fbar
     Mortalite(listTemp, IND_T, eVarCopy);
@@ -280,7 +280,7 @@ if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
     } else {
         result = Fbar_trgt[IND_T] - tot[IND_T];
     }
-    //Rprintf("%f %f %f %f\n",mult,Fbar_trgt[IND_T],tot[IND_T],result);
+    // Rprintf("%f %f %f %f\n",mult,Fbar_trgt[IND_T],tot[IND_T],result);
     //Rprintf("fxtac : FBARtarget %f TOT %f\n",Fbar_trgt[IND_T],tot[IND_T]);
 
 }
@@ -305,10 +305,14 @@ if ((trgt==1) | (trgt==3) | (trgt==999)) {//on vise un TAC ou une biomasse
 
 extern "C" {
 
-void BioEcoPar::Gestion(SEXP list, int ind_t, int VERBOSE) //param�tres en entr�e pas forc�ment utiles dans la mesure o� ils doivent rester constant tout au long de la simulation
+void BioEcoPar::Gestion(SEXP list, int ind_t, SEXP bounds, int VERBOSE) //param�tres en entr�e pas forc�ment utiles dans la mesure o� ils doivent rester constant tout au long de la simulation
 {                                               //ajout de trgt = 22 pour consid�rer un ajustement inf�rieur � Fmsy, ie Fmsy*SSB/MSYBtrigger
                                                 //ajout de trgt = 4 la biomasse limite sup�rieure (~Bmax) ?? : inactif pour le moment
 //on teste la validit� des param�tres d'entr�e
+
+    double X1, X2;
+    X1 = REAL(bounds)[0];
+    X2 = REAL(bounds)[1];
 
     if ((var!=1) & (var!=2)) error("Wrong 'var' parameter in 'Gestion' module!!\n");
     if ((trgt!=1) & (trgt!=2) & (trgt!=3) & (trgt!=22) & (trgt!=999)) error("Wrong 'trgt' parameter in 'Gestion' module!!\n");

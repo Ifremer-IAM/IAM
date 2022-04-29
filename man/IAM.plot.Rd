@@ -29,7 +29,7 @@ so multiple terms separated by a 'plus' sign is required for grouping
 \item{...}{Further graphical parameters (see below for details)}
 }
 \description{
-TODO
+Plotting functions for IAM package based on lattice methods
 }
 \details{
 Graphical parameters used are :

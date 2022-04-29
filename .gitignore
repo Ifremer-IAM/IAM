@@ -24,5 +24,10 @@ inst/notice/*.aux
 inst/notice/*.log
 inst/notice/*.out
 inst/notice/*.synctex.gz
+inst/notice/*.fdb_latexmk
+inst/notice/*.fls
+inst/notice/*.toc
+inst/notice/*.maf
+inst/notice/*.mtc*
 inst/Meta
 inst/doc
