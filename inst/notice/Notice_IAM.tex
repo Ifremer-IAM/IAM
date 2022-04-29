@@ -6,7 +6,7 @@
 
 \usepackage[french]{babel}
 \usepackage{ifthen} 
-\newboolean{draft}\setboolean{draft}{false} % display notes, stamp
+\newboolean{draft}\setboolean{draft}{true} % display notes, stamp
 
 \providecommand{\main}{.}  % *Modification: define file location
 % \usepackage{\main/.tex/setup}
@@ -977,7 +977,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 \label{nbvf} & nbv_{f} & E & Nombre de navires par flottille & nombre &  \tabnl
 \label{nbvfm} & nbv_{f,m} & E & Nombre de navires par flottille et métier & nombre &  \tabnl
 \label{lcfm} & lc_{f,m} & E & Taxes de débarquements (en \% du CA) par flottille et métier & \% &  \tabnl
-\label{lcdfm} & lcd_{f,m} & \text{\todo[fancyline]{missing E}} & Taxes de débarquements des rejets "sous taille" (en \% du CA) par flottille et métier & \text{\todo[fancyline]{missing unit}} &  \tabnl
+\label{lcdfm} & lcd_{f,m} & E & Taxes de débarquements des rejets "sous taille" (en \% du CA) par flottille et métier & \% &  \tabnl
 \label{tripLgthf} & tripLgth_{f} & E & Durée moyenne d'une marée par navire d'une flottille par an
  & heures &  \tabnl
 \label{tripLgthfm} & tripLgth_{f,m} & E & Durée moyenne d'une marée par navire d'une flottille-métier & heures &  \tabnl
@@ -990,13 +990,13 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 \label{effort2f} & effort2_{f} & E & Deuxième composante d'effort par navire d'une flottille par an & - & tripLgth_{f\pref{tripLgthf}} \text{ ou } 1 \tabnl
 \label{effort2fm} & effort2_{f,m} & E & Deuxième composante d'effort par navire d'une flottille-métier par an & - & tripLgth_{f,m\pref{tripLgthfm}} \text{ ou } 1 \tabnl
 \label{Lreffm} & Lref_{f,m} & E & Débarquements totaux de référence par flottille et métier & tonnes &  \tabnl
-\label{cnbfm} & cnb_{f,m} \text{\todo[fancyline]{duplicated cnbfm}} & E & Effectif moyen par navire d'une flottille-métier & nombre &  \tabnl
+\label{cnbfmini} & cnb_{f,m,ini} & E & Effectif moyen par navire d'une flottille-métier & nombre &  \tabnl
 \label{ovcfm} & ovc_{f,m} & E & Autres coûts variables DCF déduits des coûts de débarquements ($lc_{f,m\pref{lcfm}}$) par navire d'une flottille-métier & euro/an &  \tabnl
 \label{fcfm} & fc_{f,m} & E & Coûts de carburant par navire d'une flottille-métier & euro/an &  \tabnl
 \label{vffm} & vf_{f,m} & E & Prix du carburant par navire d'une flottille-métier & euro/L &  \tabnl
 \label{cshrfm} & cshr_{f,m} & E & Part équipage (ratio du RAP) par navire d'une flottille-métier & \%RAP &  \tabnl
 \label{cshrf} & cshr_{f} & E & Part équipage (ratio du RAP) par navire d'une flottille & \%RAP &  \tabnl
-\label{cnbf}  & cnb_{f} \text{\todo[fancyline]{duplicated cnbf}} & E & Effectif moyen par navire d'une flottille & nombre &  \tabnl
+\label{cnbfini}  & cnb_{f,ini} & E & Effectif moyen par navire d'une flottille & nombre &  \tabnl
 \label{perscf} & persc_{f} & E & Coûts de personnel initiaux par navire d'une flottille & euro/an &  \tabnl
 \label{eecf} & eec_{f} & E & Cotisations salariales totales par navire d'une flottille & euro/an &  \tabnl
 \label{mwh} & mwh_{} & E & Salaire brut horaire  minimum national & euro/an &  \tabnl
@@ -1017,6 +1017,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 \textbf{4}\text{\footnotesize: part équipage constante calculée +}\newline \text{\footnotesize salaire marin supplémentaire fixé (ccwr)}
  \tabnl
 \label{GVLreffm} & GVLref_{f,m} & E & CA moyen initial par navire d'une flottille-métier & euro/an &  \tabnl
+% \label{dr} & dr & E & Taux d'actualisation & \% &  \tabnl
 
 \caption{Paramètres initiaux pour le module "Economique"}
     \end{nTable}
@@ -1026,7 +1027,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
         \textbf{N} & \text{\normalsize\textbf{Notation}} & \textbf{Type}& \textbf{Description} & \textbf{Unité} & \textbf{Equation} \tabnl
 
         \label{ETinifm} & ETini\fm & I & Efficacité initiale de tri en tonnage par heure et homme, par flottille-métier &  tonnes/ \footnotesize h.homme &
-        \frac{ Lref_{f,m\pref{Lrefm}} }{nbvIni\fm  \cdot nbTripIni\fm} \times \frac{1}{tripLgthIni\fm \cdot cnbIni\fm}  \text{\todo[fancyline]{missing refs !}} \tabnl
+        \frac{ Lref_{f,m\pref{Lreffm}} }{nbv_{f,m,ini\pref{nbvfm}}  \cdot nbTrip_{f,m,ini\pref{nbTripfm}}} \times \frac{1}{tripLgth_{f,m,ini\pref{tripLgthfm}} \cdot cnb_{f,m,ini\pref{cnbfmini}} } \tabnl
 
         \label{uefm} & ue\fm & EC & Unité d'effort annuelle par navire d'une flottille-métier & - &
         effort1_{f,m\pref{effort1fm}} \cdot effort2_{f,m\pref{effort2fm}} \tabnl
@@ -1040,15 +1041,15 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
         \label{ovcuefm} & ovcue\fm & EC & Autres coûts variables par unité d'effort et par navire d'une flottille-métier & \euro/ue &
         \frac{ ovc_{f,m\pref{ovcfm}} }{ ue_{f,m\pref{uefm}} } \tabnl
 
-        \label{rtbsf} & rtbs_f \text{\todo[fancyline]{duplicated rtbsf}} & I & Reste à partager par navire d'une flottille & \euro/an &
+        \label{rtbsfini} & rtbs_{f,ini} & I & Reste à partager par navire d'une flottille & \euro/an &
         \sum_m ( GVLref_{f,m\pref{GVLreffm}} \cdot nbv_{f,m\pref{nbvfm}} \cdot (1 - lc_{f,m\pref{lcfm}}) 
         \cdot ovc_{f,m\pref{ovcfm}} \cdot fc_{f,m\pref{fcfm}} ) \times \frac{1}{ nbv_{f\pref{nbvf}} } \tabnl
 
         \label{ccwrf} & ccwr_f & EC & Part du coût de personnel en \% du RAP par flottille & \% &
-        \frac{ persc_{f\pref{perscf}} }{ rtbs_{f\pref{rtbsf}} } \tabnl
+        \frac{ persc_{f\pref{perscf}} }{ rtbs_{f,ini\pref{rtbsfini}} } \tabnl
 
         \label{operscf} & opersc_f & EC & Autres coûts de personnel par navire d'une flottille & \euro/an  &
-        persc_{f\pref{perscf}} \cdot cshr_{f\pref{cshrf}} \cdot rtbs_{f\pref{rtbsf}} \tabnl
+        persc_{f\pref{perscf}} \cdot cshr_{f\pref{cshrf}} \cdot rtbs_{f,ini\pref{rtbsfini}} \tabnl
     \caption{Paramètres initiaux calculés pour le module "Economique"}
     \end{nTable}
 
@@ -1062,6 +1063,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
 
     $dr$ est le taux d'actualisation en entrée du module économique (voir fonction \textit{IAM.args()})
     \todo{ajouter dr à la table d'input ? historiquement input 57}
+    % \pref{dr}
 
 
 \begin{nTable}{0.05}{0.17}{0.09}{0.2}{0.1}{0.4}
@@ -1090,10 +1092,10 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     &  \frac{ \sum_{e} GVLcom_{e,f,m \pref{GVLcomefm}} \times \left( 1 - lc_{f,m \pref{lcfm}} \right) }{ nbv_{f,m \pref{nbvfm}} }
     + \frac{ \sum_{e} GVLst_{e,f,m \pref{GVLstefm}} \times \left( 1 -lcd_{f,m \pref{lcdfm}} \right) }{ nbv_{f,m \pref{nbvfm}} }
     \tabnl
-    \label{cnbfm} & cnb_{f,m} \text{\todo[fancyline]{duplicated cnbfm}} & C & Réévaluation de l'équipage en fonction de la production, par navire d'une flottille-métier & hommes 
+    \label{cnbfm} & cnb_{f,m} & C & Réévaluation de l'équipage en fonction de la production, par navire d'une flottille-métier & hommes 
     &  \frac{ \sum_{e,c} \left( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} \right) }{ ETini_{f,m \pref{ETinifm}} \times nbv_{f,m \pref{nbvfm}}  } \times \frac{1}{nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}}}\tabnl
     % \frac{ \sum_{e,c} \left( L_{e,f,m,c \pref{Lefmc}} + LD_{e,f,m,c \pref{LDefmc}} \right) }{ ETini_{f,m \pref{ETinifm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} }
-    \label{cnbf} & cnb_{f} \text{\todo[fancyline]{duplicated cnbf}} & C & Réévaluation de l'équipage en fonction de la production, par navire d'une flottille & hommes 
+    \label{cnbf} & cnb_{f} & C & Réévaluation de l'équipage en fonction de la production, par navire d'une flottille & hommes 
     &  \sum_{m} ( cnb_{f,m \pref{cnbfm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} ) \times \frac{1}{ nbv_{f \pref{nbvf}}  } \times \frac{1}{ nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} }\tabnl
     % \frac{ \sum_{m} \left( cnb_{f,m \pref{cnbfm}} \times nbv_{f,m \pref{nbvfm}} \times nbTrip_{f,m \pref{nbTripfm}} \times tripLgth_{f,m \pref{tripLgthfm}} \right) }{ nbv_{f \pref{nbvf}} \times nbTrip_{f \pref{nbTripf}} \times tripLgth_{f \pref{tripLgthf}} } % 10
     
@@ -1101,25 +1103,25 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{rtbsfm} & rtbs_{f,m} & C & Reste à partager par navire d'une flottille-métier & euro/an 
     &  NGVLav_{f,m \pref{NGVLavfm}} - ( ovcue_{f,m \pref{ovcuefm}} + fvolue_{f,m \pref{fvoluefm}} \times vf_{f,m \pref{vffm}} ) \times ue_{f,m\pref{uefm}} \text{\todo[fancyline]{simplification possible en ovc + fc }} \tabnl
     % NGVLav_{f,m \pref{NGVLavfm}} - ( ovc_{f,m\pref{ovcfm}} + fc_{f,m\pref{fcfm}} )
-    \label{rtbsf} & rtbs_{f} \text{\todo[fancyline]{duplicated rtbsf}} & C & Reste à partager par navire d'une flottille & euro/an 
+    \label{rtbsf} & rtbs_{f} & C & Reste à partager par navire d'une flottille & euro/an 
     &  \frac{ \sum_{m} \left( rtbs_{f,m \pref{rtbsfm}} \times nbv_{f,m \pref{nbvfm}} \right) }{ nbv_{f \pref{nbvf}} }  \tabnl
     \label{cshrTfm} & cshrT_{f,m} & C & Part équipage par navire d'une flottille-métier & euro/an 
     &  cshr_{f,m \pref{cshrfm}} \times rtbs_{f,m \pref{rtbsfm}} \text{ si perscCalc }=0 \text{ ou } 1 \text{, NA sinon)} \tabnl
     \label{cshrTf} & cshrT_{f} & C & Part équipage par navire d'une flottille & euro/an 
-    &  cshr_{f \pref{cshrf}} \times \frac{ rtbsIni_{f \pref{rtbsf}} \text{\todo[fancyline]{What is the difference between raw var and varIni}} }{ cnbIni_{f \pref{cnbf}} } \times cnb_{f \pref{cnbf}} 
-    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 0 \text{ (salaires par marin fixé)} \newline
+    &  cshr_{f \pref{cshrf}} \times \frac{ rtbs_{f,ini \pref{rtbsfini}}  }{ cnb_{f,ini \pref{cnbfini}} } \times cnb_{f \pref{cnbf}} 
+    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 0 \newline \text{ (salaires par marin fixé)} \newline
     \text{---------------------------------------------} \newline
     cshr_{f \pref{cshrf}} \times rtbs_{f \pref{rtbsf}}
-    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 1 \text{ (part équipage constante)} \newline
+    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 1 \newline \text{ (part équipage constante)} \newline
     \text{---------------------------------------------} \newline
     ccwr_{f \pref{ccwrf}} \times rtbs_{f \pref{rtbsf}}
-    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 2 \text{  (part équipage constante)} \newline
+    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 2 \newline \text{  (part équipage constante)} \newline
     \text{---------------------------------------------} \newline
-    cshr_{f \pref{cshrf}} \times ( rtbs_{f \pref{rtbsf}} + \frac{ rtbsIni_{f \pref{rtbsf}}  }{ cnbIni_{f \pref{cnbf}} } \times ( cnb_{f \pref{cnbf}} - cnbIni_{f \pref{cnbf}} ) )
-    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 3 \text{ (salaires marin suppl. fixé)} \newline
+    cshr_{f \pref{cshrf}} \times ( rtbs_{f \pref{rtbsf}} + \frac{ rtbs_{f,ini \pref{rtbsfini}}  }{ cnb_{f,ini \pref{cnbfini}} } \times ( cnb_{f \pref{cnbf}} - cnb_{f,ini \pref{cnbfini}} ) )
+    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 3 \newline \text{ (salaires marin suppl. fixé)} \newline
     \text{---------------------------------------------} \newline
-    ccwr_{f \pref{ccwrf}} \times ( rtbs_{f \pref{rtbsf}} + \frac{ rtbsIni_{f \pref{rtbsf}}  }{ cnbIni_{f \pref{cnbf}} } \times ( cnb_{f \pref{cnbf}} - cnbIni_{f \pref{cnbf}} ) )
-    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 4 \text{ (salaires marin suppl. fixé)} 
+    ccwr_{f \pref{ccwrf}} \times ( rtbs_{f \pref{rtbsf}} + \frac{ rtbs_{f,ini \pref{rtbsfini}}  }{ cnb_{f,ini \pref{cnbfini}} } \times ( cnb_{f \pref{cnbf}} - cnb_{f,ini \pref{cnbfini}} ) )
+    \newline \text{si } perscCalc_{ \pref{perscCalc}} = 4 \newline \text{ (salaires marin suppl. fixé)} 
         \tabnl
     \label{ncshrf} & ncshr_{f} & C & Part équipage nette par navire d'une flottille & euro/an 
     &  cshrT_{f \pref{cshrTf}} - eec_{f \pref{eecf}} \tabnl % 15
@@ -1154,7 +1156,7 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
     \label{wagegFTEf} & wagegFTE_{f} & C & Salaire brut par marin / ETP & - 
     &  \frac{ wageg_{f \pref{wagegf}} }{ FTE_{f \pref{FTEf}} } \tabnl
     \label{wageghf} & wagegh_{f} & C & Salaire horaire brut par marin & euro/h 
-    &  \frac{ wagegFTE_{f \pref{wagegFTEf}} }{ nbTrip_{f(i14upd)} \text{\todo[fancyline]{what is upd ?}} \times tripLgth_{f(i12upd)} \text{\todo[fancyline]{what is upd ?}} } \tabnl
+    &  \frac{ wagegFTE_{f \pref{wagegFTEf}} }{ nbTrip_{f\pref{nbTripf}} \times tripLgth_{f\pref{tripLgthf}}  } \tabnl
     \label{gpf} & gp_{f} & C & Excédent brut d'exploitation par navire d'une flottille & euro/an 
     &  gva_{f \pref{gvaf}} - ccw_{f \pref{ccwf}} \tabnl
     \label{gpmarginf} & gpmargin_{f} & C & Ratio excédent brut d'exploitation / CA d'un navire moyen d'une flottille & - 
@@ -1173,13 +1175,14 @@ d’aboutir aux prix "rejets débarqués de taille commerciale". Inclus dans [0;
        \text{"Reasonable" : si } npmargin_{f \pref{npmarginf}} \in [0\%;10\%] \newline
        \text{---------------------------------------------} \newline
        \text{"Weak" : si } npmargin_{f \pref{npmarginf}} < 0\% \tabnl
-    \label{npmarginTrendf} & npmargin-\newline -Trend_{f} & C & Development trend sur le RNE \todo[fancyline]{turned to categorical in c++. How to explain this ?} & - 
+    \label{npmarginTrendf} & npmargin-\newline -Trend_{f} & C & Development trend sur le RNE & - 
     &  \frac{ npmargin_{f \pref{npmarginf}} }{ \frac{1}{5} \sum_{T\in\{T-5, \ldots, t-1\}} npmargin_{f \pref{npmarginf}} } \newline 
-                         \text{"Improved" : si } devTrend > 6\% \newline
                          \text{---------------------------------------------} \newline
-                         \text{"Stable" : si } devTrend \in [-5\%;6\%] \newline
+                         \text{"Improved" : si } > 6\% \newline
                          \text{---------------------------------------------} \newline
-                         \text{"Deterioration" : si } devTrend < -5\% \tabnl
+                         \text{"Stable" : si } \in [-5\%;6\%] \newline
+                         \text{---------------------------------------------} \newline
+                         \text{"Deterioration" : si } < -5\% \tabnl
     \label{ssTotf} & ssTot_{f} & C & Surplus total de l'armateur d'une flottille & euro/an 
     & gp_{f \pref{gpf}} \times nbv_{f \pref{nbvf}} \tabnl % 35
     

@@ -82,7 +82,8 @@ LinkingTo: Rcpp
 Suggests: 
     rmarkdown,
     knitr, 
-    purrr
+    purrr,
+    pbapply
 VignetteBuilder: knitr
 Encoding: UTF-8
 Collate: 

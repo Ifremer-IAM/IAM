@@ -90,7 +90,7 @@ SPPdyn <- lengths(specific$Ages)
 #Ajout 27/03/2018 ----------------
 #TACbyF <- TACbyF[names(TACbyF)%in%names(TACtot)]
 if ((length(TACbyF)==0) | (length(TACtot)==0)) {
- message("Pas d'ajustement TAC opere car 'TACbyF' ou 'TACtot' est manquant!!")
+ # message("Pas d'ajustement TAC opere car 'TACbyF' ou 'TACtot' est manquant!!")
  TACbyF <- TACtot <- NULL
  SPPstatOPT <- SPPspictOPT <- SPPdynOPT <- integer(0)
 } else {
@@ -266,7 +266,7 @@ Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHact
 mOth <- rep(mOTH,length=length(specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,specific$Species)] <- mOTH
 
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
-if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
+if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999 # TODO cette ligne ne sert a rien
 
 # browser()
 

@@ -17,3 +17,6 @@ raw_data
 ^inst/notice/.*.aux$
 ^inst/notice/.*.log$
 ^inst/notice/.*.out$
+
+^vignettes/.*.Rmd.orig$
+^vignettes/pre_compile.R$

@@ -118,7 +118,7 @@ int     nbT, nbF, nbM, nbMe, nbE, nbEstat, nbP,nbEall,nbEQuota,nbEQuotaMarket, n
         *SRInd, /**EcoIndCopy,*/ *Qvec, *recType1, *recType2, *recType3, *Svec; //indicateur conditionnant l'utilisation d'un recrutement al�atoire d�fini par la m�thode impl�ment�e RecAlea
 
 
-double  PxQ, expEff, X1, X2, drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de mod�le de prix
+double  PxQ, expEff, /*X1, X2,*/ drCopy, tolVarTACinf_CPP, tolVarTACsup_CPP, corVarTACval_CPP, Blim_CPP, Bmax_CPP, //module de traitement stochastique de mod�le de prix
         *TAC_byFleet, *TAC_glob, *Fbar_trgt, /*diffZmax, lambda,*///param�tres de contr�le du TAC pour l'analyse des mesures de gestion pour la requ�te CIEM 2013 sur la SOLE GG
         *effortIni, *effort1Ini, *Zoptim, *FOTHoptim, *Ztemp, *Etemp, *Einterm_fm, *EffsupTMP_fm, *Einterm_fm_copy, *multFOTHinterm_e;//Z fix� pour r�soudre l'ajustement par flottille (dimension �ge)
 
@@ -194,7 +194,7 @@ SEXP    ZtempList;
 
     // Module Gestion
     double fxTAC_glob(double mult);
-    void Gestion(SEXP list, int ind_t, int VERBOSE = 0);
+    void Gestion(SEXP list, int ind_t, SEXP bounds, int VERBOSE = 0);
     double zbrent(BEfn1 fx, double x1, double x2, double tol);
     void zbrak(BEfn1 fx, double x1, double x2, int n, double xb1[], double xb2[], int *nb);
 

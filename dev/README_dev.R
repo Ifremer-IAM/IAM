@@ -85,6 +85,9 @@ tinytex::pdflatex("Notice_IAM.tex")
 tinytex::pdflatex("Notice_IAM.tex")
 setwd("../../")
 
+## Pre compile intensive compu vignettes ##
+source("vignettes/pre_compile.R")
+
 #' I tested using some options but it's poorly used in the package.
 # options(dev = TRUE)
 # options(IAM.dev = TRUE) # TRUE show verbose, FALSE not. NULL equal FALSE

@@ -219,9 +219,9 @@ setGeneric("IAM.editArgs_Gest",
 setMethod(
   f = "IAM.editArgs_Gest", signature("iamArgs"),
   function(object, active = NULL,
-           control = c("Nb vessels", "Nb trips"),
-           target = c("TAC", "Fbar", "TAC->Fbar"), espece = NULL,
-           delay = NULL, type = c("+", "x"), update = NULL, bounds = NULL,
+           control = NULL,
+           target = NULL, espece = NULL,
+           delay = NULL, type = NULL, update = NULL, bounds = NULL,
            tac = NULL, fbar = NULL, effSup = NULL, mfm = NULL) { ## iamArgs editArgs ####
 
     gest <- object@arguments$Gestion
@@ -239,7 +239,7 @@ setMethod(
 
     if(!is.null(control)){
       tryCatch(
-        control <- match.arg(control),
+        control <- match.arg(control, c("Nb vessels", "Nb trips")),
         error = function(c) stop(paste("control must be either 'Nb vessels' or",
                                        "'Nb trips'", call. = FALSE))
       )
@@ -248,7 +248,7 @@ setMethod(
 
     if(!is.null(target)){
       tryCatch(
-        target <- match.arg(target),
+        target <- match.arg(target, c("TAC", "Fbar", "TAC->Fbar")),
         error = function(c) stop(paste("target must be either 'TAC', 'Fbar' or",
                                        "'TAC->Fbar'", call. = FALSE))
       )
@@ -274,7 +274,7 @@ setMethod(
 
     if(!is.null(type)){
       tryCatch(
-        type <- match.arg(type),
+        type <- match.arg(type, c("+", "x")),
         error = function(c) stop("type must be either '+' or 'x'", call. = FALSE)
       )
       type <- match(type, c("+", "x")) - 1
