@@ -6,7 +6,7 @@
 
 \usepackage[french]{babel}
 \usepackage{ifthen} 
-\newboolean{draft}\setboolean{draft}{true} % display notes, stamp
+\newboolean{draft}\setboolean{draft}{false} % display notes, stamp
 
 \providecommand{\main}{.}  % *Modification: define file location
 % \usepackage{\main/.tex/setup}
@@ -1534,8 +1534,9 @@ vignette("use_IAM", package = "IAM")
     4,subsubsection,4,Constitution des arguments (IAM.args),vuseargs,
     7,subsubsection,4,Simulation (IAM.model),vusemodel,
     9,subsubsection,4,Mise en forme des sorties (IAM.format \& IAM.format\_quant),vuseform,
-    11,subsection,3,Conseil de réplication,vuserep,
-    12,subsection,3,Références,vuseref
+    11,subsection,3,Représentations graphiques des sorties avec ggplo2,vuseplot,
+    13,subsection,3,Conseil de réplication,vuserep,
+    14,subsection,3,Références,vuseref
  }, pagecommand={\thispagestyle{fancy}}
     ]{../doc/use_IAM.pdf} 
 

@@ -348,10 +348,12 @@ On note qu'une variable spéciale nommée `"summary"` permet d'extraire d'un seu
 
 ```{r format}
 # Extraction d'une variable
-statu_quo_tbl_Fbar <- IAM.format(IAM_out_1984, name = "Fbar", sim_name = "statu_quo", n = 1)
+statu_quo_tbl_Fbar <- IAM.format(IAM_out_1984, name = "Fbar", 
+                                 sim_name = "statu_quo", n = 1)
 head(statu_quo_tbl_Fbar)
 # Extraction de plusieurs variables
-statu_quo_tbl_summary <- IAM.format(IAM_out_1984, name = "summary", sim_name = "statu_quo", n = 1)
+statu_quo_tbl_summary <- IAM.format(IAM_out_1984, name = "summary", 
+                                    sim_name = "statu_quo", n = 1)
 unique(statu_quo_tbl_summary$variable)
 ```
 
@@ -375,7 +377,8 @@ library(magrittr)
 statu_quo_tbl_summary %>%
   dplyr::filter( species == "COR", variable == "SSB") %>% # trie des lignes
   discard(~all(is.na(.x))) %>% # retire les colonnes vides (NA)
-  # discard( ~ n_distinct(.) == 1) %>% # Ligne optionnelle pour enlever les colonnes identiques.
+  # Ligne optionnelle pour enlever les colonnes identiques.
+  # discard( ~ n_distinct(.) == 1) %>% 
   pivot_wider(names_from = year, values_from = value) # mise en forme horizontale
 
 
@@ -383,7 +386,8 @@ statu_quo_tbl_summary %>%
 statu_quo_tbl_summary %>%
   dplyr::filter(variable == "gp_f") %>% # trie des lignes
   discard(~all(is.na(.x))) %>% # retire les colonnes vides (NA)
-  discard( ~ n_distinct(.) == 1) %>% # Ligne optionnelle pour enlever les colonnes identiques.
+  # Ligne optionnelle pour enlever les colonnes identiques.
+  discard( ~ n_distinct(.) == 1) %>% 
   pivot_wider(names_from = year, values_from = value) # mise en forme horizontale
 
 ```
@@ -405,8 +409,53 @@ IAM.format_quant(res, probs = c(0.025, 0.975), select_indiv = 2) %>%
 
 A noter que des colonnes seront souvent remplies de valeurs manquantes car peu de variables sont définies sur toutes les dimensions d'IAM. Cependant, il vaut mieux conserver ces colonnes jusqu'au dernier moment afin de pouvoir trier les données avec des fonctions génériques ou encore pouvoir utiliser `rbind`.
 
-<!-- ### Représentations graphiques des sorties (IAM.plot, IAM.barplot, IAM.barIC, IAM.bwplot, IAM.zone) -->
+```{r, include = FALSE, eval = FALSE}
+devtools::load_all()
+plot.iam_formtbl <- function(x, ...){
+  plot(IAM.format_quant(x), ...)
+}
 
+IAM_plot(x = COR, variable = c("Fbar"), face_grid = "")
+
+```
+
+
+### Représentations graphiques des sorties avec ggplot2
+
+Les procédures graphiques ont été retirées du packages et se basent sur l'utilisation du package ggplot2. Ainsi, le format de table renvoyé par les fonctions IAM.format et IAM.format_quant sera requis pour constiturer la donnée à représenter.
+
+Pour illustrer différentes représentations graphiques, on va générer plusieurs réplicats. Le premier sera similaire le cas de *statu quo* généré plus haut. On modifie le module de recrutement pour l'espèce "COR" afin d'ajouter un peu d'effets stochastiques. Un second scénario est simulé avec l'application de quotas. Le détails de ce genre de simulations est donné dans la vignette "Gestion_TAC".
+
+```{r simu2plot}
+N = 5
+IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5e6
+# Simulation
+sim_statu_quo <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_1984,  objInput = IAM_input_1984)
+})
+# Edition des arguments
+IAM_argum_1984_TACnbv <- IAM.editArgs_Gest(
+  IAM_argum_1984, active = TRUE, control = "Nb vessels", target = "TAC",
+  espece = "COR", delay = 2, type = "x", bounds = c(1e7, -1), 
+  tac = c(NA, NA, rep(3400, 10)))
+# Simulation
+sim_TACglob_nbv <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_1984_TACnbv,  objInput = IAM_input_1984)
+})
+
+# Formatage
+TACglobv_nbv_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbv[[x]], name = "summary", 
+             sim_name = "TAC global nbv", n = x)
+})
+Statuquo_l <- lapply(1:N,  function(x) {
+  IAM.format(sim_statu_quo[[x]], name = "summary", 
+             sim_name = "Statu quo", n = x)
+})
+
+TACvsSQ_5simuls <- do.call(rbind, c(Statuquo_l, TACglobv_nbt_l, TACglobv_nbv_l)) %>%
+  IAM.format_quant(., probs = c(.025, .975))
+```
 
 <!--
 Les procédures graphiques intégrées au package héritent des méthodes de représentation de données multivariées du package "lattice". Ainsi, le format de table renvoyé par les fonctions IAM.format et IAM.unite sera requis pour constituer la donnée à représenter, et les formulations seront similaires à celles utilisées de le cadre d'application des fonctions "lattice" (voir xyplot).
@@ -427,8 +476,32 @@ Les paramètres graphiques sont listés dans la feuille d'aide des fonctions gra
 ?IAM.plot
 ```
 
+-->
 
+Pour les sorties graphiques on aura besoin du package ggplot2. Cette dépendance est normalement installée en même temps que le package IAM. Ce package est très riche en terme de représentations graphiques, on pourra se référer à sa documentation pour plus de précisions.Un site repertorie également de nombreux exemples : [https://r-graph-gallery.com/](https://r-graph-gallery.com/).
 
+```{r}
+library(ggplot2)
+library(magrittr) # utilisation du pipe
+library(dplyr) # utilisation de filtres
+```
+
+Voici quelques exemples de représentations graphiques disponibles pour les sortie d'IAM :
+
+```{r plotdiffscenar, fig.cap=paste("\\label{fig:figs}Fbar evolution for COR species",N, "runs." )}
+TACvsSQ_5simuls %>%
+  # Filtrer de l'espece et de la variable cible
+  dplyr::filter(species == "COR", variable == "Fbar") %>%
+  ggplot(aes(x = year, y = median)) +
+  facet_grid(. ~ sim_name, scales = "free_y") +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white", alpha = .4) +
+  geom_line() + geom_point(size = .5) +
+  guides(x = guide_axis(angle = 90)) + IAM_theme() +
+  NULL
+```
+L'exemple précédent permet d'illustrer la comparaison du Fbar pour deux scénarios et une espèce donnée ("COR"). On peut observer l'enveloppe à droite qui est représente les deux quartiles entre lesquels on retrouve 95% des simulations.
+
+<!--
 On notera que ces paramètres sont similaires à ceux utilisés dans les fonctions graphiques du package "lattice" : on pourra se référer à la documentation de ce dernier pour plus de précisions.
 
 Il existe pour le moment 5 fonctions graphiques permettant de retranscrire les sorties du modèle : 2 pour les données sans variabilité issues d'objets de classe iamOutput (IAM.plot et IAM.barplot), et 3 pour les données avec itérations multiples (de classe iamOutputRep), permettant d'illustrer la variabilité de ces résultats (IAM.barIC, IAM.bwplot et IAM.zone). Voici quelques exemples d'applications possibles :

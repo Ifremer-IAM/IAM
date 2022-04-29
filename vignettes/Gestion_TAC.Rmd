@@ -27,6 +27,7 @@ library(magrittr)
 library(ggplot2)
 library(dplyr)
 library(IAM)
+library(pbapply) # allow progress bar in replicate and apply.
 ```
 
 ```{r, include=FALSE}
@@ -114,7 +115,7 @@ Je choisis de simuler tout mes scénarios avec des réplicats, qui est fixé ici
 ```{r statuquo, message = FALSE}
 N = 10
 
-sim_statu_quo <- replicate(N, {
+sim_statu_quo <- pbreplicate(N, {
   IAM::IAM.model(objArgs = IAM_argum_1984,  objInput = IAM_input_1984)
 })
 
@@ -166,10 +167,10 @@ IAM_argum_1984_TACnbv <- IAM.editArgs_Gest(
   espece = "COR", delay = 2, 
   # type = "+", bounds = c(1e4, -60, # on fixe -100 en borne inférieur car le maximum de navire est 60
   type = "x", bounds = c(1e7, -1), # on fixe -100 en borne inférieur car le maximum de navire est 60
-  tac = c(NA, NA, rep(3600, 10)))
+  tac = c(NA, NA, rep(3400, 10)))
       #   84, 85, 1986:1995
 
-sim_TACglob_nbv <- replicate(N, {
+sim_TACglob_nbv <- pbreplicate(N, {
   IAM::IAM.model(objArgs = IAM_argum_1984_TACnbv,  objInput = IAM_input_1984)
 })
 ```
@@ -183,7 +184,7 @@ IAM_argum_1984_TACnbds <- IAM.editArgs_Gest(
   IAM_argum_1984_TACnbv, active = TRUE, control = "Nb trips"
 )
 
-sim_TACglob_nbt <- replicate(N, {
+sim_TACglob_nbt <- pbreplicate(N, {
   IAM::IAM.model(objArgs = IAM_argum_1984_TACnbds,  objInput = IAM_input_1984)
 })
 ```
@@ -216,10 +217,11 @@ COR <- do.call(rbind, c(Statuquo_l, TACglobv_nbt_l, TACglobv_nbv_l)) %>%
 COR %>%
   ggplot(aes(x = year, y = median)) + 
   facet_grid(variable ~ sim_name, scales = "free_y") +
-  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
-  geom_line() +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white", alpha = .4) +
+  geom_line() + geom_point(size = .5) +
   geom_line(aes(y = value), linetype = "dotted") +
   geom_vline(xintercept=1986, linetype = "dotted") +
+  guides(x = guide_axis(angle = 90)) + IAM_theme() +
   NULL
 
 ```
@@ -310,17 +312,19 @@ COR <- do.call(rbind, c(TACglobv_nbvR_l)) %>%
   filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
   IAM.format_quant(., probs = c(.025, .975)) %>%
   rbind(., COR)
-  
+
 
 COR %>%
   mutate(sim_name = factor(sim_name, levels = c( # Reorder the column in plot
     "Statu quo", "TAC global nbtrip",            # by setting level order
     "TAC global nbv", "Report TAC global nbv"))) %>%
-  ggplot(aes(x = year, y = value)) + 
+  ggplot(aes(x = year, y = median)) + 
   facet_grid(variable ~ sim_name, scales = "free_y") +
-  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
-  geom_line() +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white",alpha = .4) +
+  geom_line() + geom_point(size = .5) +
+  geom_line(aes(y = value), linetype = "dotted") +
   geom_vline(xintercept=1986, linetype = "dotted") +
+  guides(x = guide_axis(angle = 90)) + IAM_theme() +
   NULL
 ```
 

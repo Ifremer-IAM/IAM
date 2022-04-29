@@ -58,8 +58,7 @@ gc()
 ## Building Binary package for Releases ####
 # FROM SO https://stackoverflow.com/questions/54634056/how-to-include-an-html-vignette-in-a-binary-r-package
 build_vignettes_to_inst <- function() {
-  devtools::install(upgrade = "never",
-                    build_vignettes = TRUE) # Builds vignettes to 'doc' and 'Meta'. Updates '.gitignore'.
+  build_vignettes() # Builds vignettes to 'doc' and 'Meta'. Updates '.gitignore'.
   cat("Builded\n")
   unlink(c("inst/doc", "inst/Meta"), recursive = TRUE) # Remove the directories if they exist
   dir.create("inst/doc"); dir.create("inst/Meta") # Create empty directories
