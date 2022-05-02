@@ -155,8 +155,11 @@ La recherche de ce $\mu$ se fait dans un intervalle donné dans les paramètres 
   
 Cependant, le modèle va venir s'assurer que $var_c$ ne devient pas négatif et assigner la valeur 0 dans ce cas précis. Afin de limiter les temps de calculs, il est donc préférable de chercher $\mu$ dans les intervals suivants :
 
+  | Cas           | Valeur de $\mu$ possibles                    |
+  |--------------------------------------------------------------|
   | Additif       | $\mu \in [ \frac{-1}{m_{f,m}} ; \infty]$     |
   | Multiplicatif | $\mu \in [ \frac{-var_i}{m_{f,m}} ; \infty]$ |
+  |--------------------------------------------------------------|
   
 Il est également important de noter qu'un interval $[0;0]$ revient à ne pas appliquer le module Gestion. 
 <!-- De manière générale une Gestion multiplicative impacte plus lentement le système. -->

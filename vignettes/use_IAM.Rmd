@@ -1,14 +1,14 @@
 ---
 title: "Utilisation IAM dans R (fr)"
 output:
-  pdf_document:
-    keep_tex: yes
+  html_document:
+    df_print: paged
   rmarkdown::html_vignette:
     fig_caption: yes
-vignette: |
-  %\VignetteIndexEntry{Utilisation IAM dans R (fr)} 
-  %\VignetteEncoding{UTF-8} 
-  %\VignetteEngine{knitr::rmarkdown}
+  pdf_document:
+    keep_tex: yes
+vignette: "%\\VignetteIndexEntry{Utilisation IAM dans R (fr)} \n%\\VignetteEncoding{UTF-8}
+  \n%\\VignetteEngine{knitr::rmarkdown}\n"
 bibliography: vignette.bib
 ---
 
@@ -453,7 +453,7 @@ Statuquo_l <- lapply(1:N,  function(x) {
              sim_name = "Statu quo", n = x)
 })
 
-TACvsSQ_5simuls <- do.call(rbind, c(Statuquo_l, TACglobv_nbt_l, TACglobv_nbv_l)) %>%
+TACvsSQ_5simuls <- do.call(rbind, c(Statuquo_l, TACglobv_nbv_l)) %>%
   IAM.format_quant(., probs = c(.025, .975))
 ```
 
@@ -482,13 +482,13 @@ Pour les sorties graphiques on aura besoin du package ggplot2. Cette dépendance
 
 ```{r}
 library(ggplot2)
-library(magrittr) # utilisation du pipe
+library(magrittr) # utilisation du pipe %>%
 library(dplyr) # utilisation de filtres
 ```
 
 Voici quelques exemples de représentations graphiques disponibles pour les sortie d'IAM :
 
-```{r plotdiffscenar, fig.cap=paste("\\label{fig:figs}Fbar evolution for COR species",N, "runs." )}
+```{r plotdiffscenar, fig.cap=paste("\\label{fig:figs}Evolution du Fbar dans le cas de l'espèce COR.",N, "runs." )}
 TACvsSQ_5simuls %>%
   # Filtrer de l'espece et de la variable cible
   dplyr::filter(species == "COR", variable == "Fbar") %>%
@@ -500,6 +500,34 @@ TACvsSQ_5simuls %>%
   NULL
 ```
 L'exemple précédent permet d'illustrer la comparaison du Fbar pour deux scénarios et une espèce donnée ("COR"). On peut observer l'enveloppe à droite qui est représente les deux quartiles entre lesquels on retrouve 95% des simulations.
+
+On peut également représenter plusieurs variables comme ci-dessous les variables biologiques de l'espèce COR :
+
+```{r plotdiffvar, fig.cap=paste("\\label{fig:figs}Evolution des variables biologiques dans le cas de l'espèce COR.",N, "runs." )}
+TACvsSQ_5simuls %>%
+ dplyr::filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
+ ggplot(aes(x = year, y = median)) +
+ facet_grid(variable ~ sim_name, scales = "free_y") +
+ geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white", alpha = .4) +
+ geom_line() + geom_point(size = .5) +
+ guides(x = guide_axis(angle = 90)) + IAM_theme() +
+ NULL
+```
+Enfin, on peut tout à fait intégrer plus de dimensions aux graphiques avec l'ajout de couleurs pour par exemple ici comparer deux scénarios par Flottilles et variables économiques :
+
+```{r plotdifffleet, fig.cap=paste("\\label{fig:figs}Evolution des variables économiques pour les flottilles modélisées.",N, "runs." )}
+TACvsSQ_5simuls %>%
+ dplyr::filter(variable %in% c("GVLav_f", "nbv_f")) %>%
+ ggplot(aes(x = year, y = median, color = sim_name)) +
+ facet_grid(variable ~ fleet, scales = "free_y") +
+ geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white", alpha = .4) +
+ geom_line() + geom_point(size = .5) +
+ guides(x = guide_axis(angle = 90)) + IAM_theme() +
+ scale_color_manual(values=c("darkred", "darkorange")) +
+ theme(legend.position = "bottom") +
+ NULL
+```
+
 
 <!--
 On notera que ces paramètres sont similaires à ceux utilisés dans les fonctions graphiques du package "lattice" : on pourra se référer à la documentation de ce dernier pour plus de précisions.
