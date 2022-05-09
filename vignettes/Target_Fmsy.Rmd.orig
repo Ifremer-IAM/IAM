@@ -1,5 +1,5 @@
 ---
-title: "Scénarios TAC, quotas et transition $F_{msy}$"
+title: "Scénarios TAC, quotas et transition Fmsy"
 output:
   pdf_document:
     keep_tex: yes
@@ -82,7 +82,11 @@ Dans un premier temps, les dynamiques de recrutements ainsi que des éléments d
 ```{r edit argum}
 # Module SR
 # Add noise to COR recruitment
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5000000
+IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 0.203
+IAM_argum_1984@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
+IAM_argum_1984@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
+IAM_argum_1984@arguments$Recruitment$COR$parAmodSR <- 2539.5
+IAM_argum_1984@arguments$Recruitment$COR$parBmodSR <- 9679
 
 # Module EcoDCF
 IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
@@ -112,9 +116,9 @@ Les scénarios sont simulés avec $N$ réplicats, correspondant à la variabilit
 Les valeurs de $N$, $F_{msy}$ et $TAC$ sont fixées ici :
 
 ```{r setN}
-N <- 200
-Fmsy <- 0.32
-TACS <- seq(3200, 4400, by = 200)
+N <- 500
+Fmsy <- 0.26
+TACS <- seq(3200, 5600, by = 400)
 ```
 
 `r N * length(TACS)` simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :
@@ -163,7 +167,7 @@ simultac <- function(x, argum, input, N){
 }
 ```
 
-De mêmes des modifications du paramètrage sur le module Gestion ont lieu en commun pour tout les scénarios suivants. Ces modifications sont regroupées ici avec la selection de la variables d'ajustement (`Nb trips`), la cible (`TAC`), l'espèce concernées (`COR`), un délais avant l'application de la mesure de gestion (2 ans) et comment s'applique la modulation de l'effort (multiplicatif borné entre 1e7 et -1e4)
+De même, des modifications du paramètrage sur le module Gestion ont lieu en commun pour tout les scénarios suivants. Ces modifications sont regroupées ici avec la selection de la variables d'ajustement (`Nb trips`), la cible (`TAC`), l'espèce concernées (`COR`), un délais avant l'application de la mesure de gestion (2 ans) et comment s'applique la modulation de l'effort (multiplicatif borné entre 1e6 et -100)
 
 ```{r simuls, message = FALSE}
 IAM_argum_1984_TAC <- IAM.editArgs_Gest(
@@ -208,7 +212,6 @@ COR %>%
   geom_vline(xintercept=1986, linetype = "dotted") +
   IAM_theme() +
   NULL
-
 ```
 
 ```{r calcProban, fig.cap=paste("\\label{fig:TACp}Fmsy Probability over", N, "runs. Target Fmsy for COR species is :", Fmsy)}
@@ -239,8 +242,7 @@ beepr::beep(3)
 
 ## TAC jusqu'au Fmsy.
 
-On reproduit l'analyse précédente mais en changeant la cible des scénarios. Ainsi, on va ici viser un TAC jusqu'à atteinte d'un Fbar.
-
+On reproduit l'analyse précédente mais en changeant la cible des scénarios. Ainsi, on va ici viser un TAC jusqu'à atteinte d'un Fbar. On précise pour cela un $Fbar$ cible et on réduit les bornes de recherche du multiplicateur $\mu$.
 
 
 ```{r multTACsim_fmsy, message = FALSE}

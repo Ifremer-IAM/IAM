@@ -1,5 +1,5 @@
 ---
-title: "Scénarios TAC, quotas et transition $F_{msy}$"
+title: "Scénarios TAC, quotas et transition Fmsy"
 output:
   pdf_document:
     keep_tex: yes
@@ -84,7 +84,11 @@ Dans un premier temps, les dynamiques de recrutements ainsi que des éléments d
 ```r
 # Module SR
 # Add noise to COR recruitment
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5000000
+IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 0.203
+IAM_argum_1984@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
+IAM_argum_1984@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
+IAM_argum_1984@arguments$Recruitment$COR$parAmodSR <- 2539.5
+IAM_argum_1984@arguments$Recruitment$COR$parBmodSR <- 9679
 
 # Module EcoDCF
 IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
@@ -111,7 +115,7 @@ summary(IAM_argum_1984)
 #> ---------------------------------------------------------------------------------------
 #>     Species  |    function  :  param A ; param B ; param C |  Type :    sd    |  Type |
 #>    ARC (XSA) |          Mean 3.641e+07  0.00e+00  0.00e+00 |  Norm | 0.00e+00 |   .   |
-#>    COR (XSA) |          Mean 1.893e+07  0.00e+00  0.00e+00 |  Norm | 5.00e+06 |   .   |
+#>    COR (XSA) |  Hockey-Stick 2.540e+03  9.68e+03  0.00e+00 |  LogN | 2.03e-01 |   .   |
 #>    DAR (SS3) | not activated 0.000e+00  0.00e+00  0.00e+00 |  Norm | 0.00e+00 |   .   |
 #> ---------------------------------------------------------------------------------------
 #> 
@@ -135,12 +139,12 @@ Les valeurs de $N$, $F_{msy}$ et $TAC$ sont fixées ici :
 
 
 ```r
-N <- 2
-Fmsy <- 0.32
-TACS <- seq(3200, 4400, by = 200)
+N <- 500
+Fmsy <- 0.26
+TACS <- seq(3200, 5600, by = 400)
 ```
 
-14 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :
+3500 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :
 
 
 ```r
@@ -188,7 +192,7 @@ simultac <- function(x, argum, input, N){
 }
 ```
 
-De mêmes des modifications du paramètrage sur le module Gestion ont lieu en commun pour tout les scénarios suivants. Ces modifications sont regroupées ici avec la selection de la variables d'ajustement (`Nb trips`), la cible (`TAC`), l'espèce concernées (`COR`), un délais avant l'application de la mesure de gestion (2 ans) et comment s'applique la modulation de l'effort (multiplicatif borné entre 1e7 et -1e4)
+De même, des modifications du paramètrage sur le module Gestion ont lieu en commun pour tout les scénarios suivants. Ces modifications sont regroupées ici avec la selection de la variables d'ajustement (`Nb trips`), la cible (`TAC`), l'espèce concernées (`COR`), un délais avant l'application de la mesure de gestion (2 ans) et comment s'applique la modulation de l'effort (multiplicatif borné entre 1e6 et -100)
 
 
 ```r
@@ -200,7 +204,7 @@ IAM_argum_1984_TAC <- IAM.editArgs_Gest(
       #   84, 85,     1986:1995
 
 TACS # TACS values to remember
-#> [1] 3200 3400 3600 3800 4000 4200 4400
+#> [1] 3200 3600 4000 4400 4800 5200 5600
 # Warning ! Code run for long time.
 x <- Sys.time()
 cl <- makeCluster(detectCores()-1)
@@ -212,7 +216,7 @@ stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x)
-#> Time difference of 12.69215 secs
+#> Time difference of 24.52026 mins
 ```
 
 
@@ -238,7 +242,7 @@ COR %>%
   NULL
 ```
 
-![\label{fig:TAC}COR variables for different TAC scenarii. 2 runs.](figure/COR_bio_variables-1.png)
+![\label{fig:TAC}COR variables for different TAC scenarii. 500 runs.](figure/COR_bio_variables-1.png)
 
 
 ```r
@@ -264,28 +268,27 @@ Proba %>%
   NULL
 ```
 
-![\label{fig:TACp}Fmsy Probability over 2 runs. Target Fmsy for COR species is : 0.32](figure/calcProban-1.png)
+![\label{fig:TACp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban-1.png)
 
 ```r
 filter(Proba, year == 1990, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      1990    50
-#> 2 3400     Fbar      1990    50
-#> 3 3600     Fbar      1990    50
-#> 4 3800     Fbar      1990    50
-#> 5 4000     Fbar      1990     0
-#> 6 4200     Fbar      1990     0
-#> 7 4400     Fbar      1990     0
-#> 8 SQ       Fbar      1990     0
+#> 1 3200     Fbar      1990  65.4
+#> 2 3600     Fbar      1990  83.6
+#> 3 4000     Fbar      1990  47.8
+#> 4 4400     Fbar      1990   7  
+#> 5 4800     Fbar      1990   0.6
+#> 6 5200     Fbar      1990   0  
+#> 7 5600     Fbar      1990   0  
+#> 8 SQ       Fbar      1990   0
 beepr::beep(3)
 ```
 
 ## TAC jusqu'au Fmsy.
 
-On reproduit l'analyse précédente mais en changeant la cible des scénarios. Ainsi, on va ici viser un TAC jusqu'à atteinte d'un Fbar.
-
+On reproduit l'analyse précédente mais en changeant la cible des scénarios. Ainsi, on va ici viser un TAC jusqu'à atteinte d'un Fbar. On précise pour cela un $Fbar$ cible et on réduit les bornes de recherche du multiplicateur $\mu$.
 
 
 
@@ -298,7 +301,7 @@ IAM_argum_1984_TAC_fmsy <- IAM.editArgs_Gest(
        #   84, 85,  1991:1995
 
 TACS # TACS values to remember
-#> [1] 3200 3400 3600 3800 4000 4200 4400
+#> [1] 3200 3600 4000 4400 4800 5200 5600
 # Warning ! Code run for long time.
 x <- Sys.time()
 cl <- makeCluster(detectCores()-1)
@@ -310,7 +313,7 @@ stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x) # 50 -> 3 min
-#> Time difference of 14.43084 secs
+#> Time difference of 31.1526 mins
 ```
 
 
@@ -335,7 +338,7 @@ COR %>%
   NULL
 ```
 
-![\label{fig:fbar}COR variables for different TAC scenarii. 2 runs.](figure/COR_bio_variables_fmsy-1.png)
+![\label{fig:fbar}COR variables for different TAC scenarii. 500 runs.](figure/COR_bio_variables_fmsy-1.png)
 
 ### Calcul de la probabilité d'atteindre le $F_{msy}$
 
@@ -365,21 +368,21 @@ Proba %>%
   NULL
 ```
 
-![\label{fig:fbarp}Fmsy Probability over 2 runs. Target Fmsy for COR species is : 0.32](figure/calcProban_fmsy-1.png)
+![\label{fig:fbarp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban_fmsy-1.png)
 
 ```r
 filter(Proba, year == 1990, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      1990   100
-#> 2 3400     Fbar      1990    50
-#> 3 3600     Fbar      1990   100
-#> 4 3800     Fbar      1990    50
-#> 5 4000     Fbar      1990     0
-#> 6 4200     Fbar      1990     0
-#> 7 4400     Fbar      1990     0
-#> 8 SQ       Fbar      1990     0
+#> 1 3200     Fbar      1990  67  
+#> 2 3600     Fbar      1990  79.8
+#> 3 4000     Fbar      1990  48.4
+#> 4 4400     Fbar      1990   5.8
+#> 5 4800     Fbar      1990   0.2
+#> 6 5200     Fbar      1990   0  
+#> 7 5600     Fbar      1990   0  
+#> 8 SQ       Fbar      1990   0
 beepr::beep(3)
 ```
 

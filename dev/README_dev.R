@@ -47,7 +47,7 @@ devtools::check() # takes few minutes
 devtools::load_all()
 rmarkdown::render("README.rmd", clean = TRUE, quiet = TRUE)
 fs::file_delete("README.html")
-pkgdown::build_site(preview = TRUE) # will open website
+pkgdown::build_site(preview = TRUE, devel = TRUE) # will open website
 
 ## Clear objects in env ####
 rm(list = ls())

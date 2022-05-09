@@ -52,6 +52,7 @@ articles:
   contents:
   - use_IAM
   #- Gestion_TAC
+  - Target_Fmsy
 
 reference:
 - title: Main package documentation.
@@ -124,6 +125,7 @@ reference:
 - title: Misc
   contents:
     - IAM.dev
+    - IAM_theme
 
 - title: Deprecated Functions
   contents:
