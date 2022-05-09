@@ -60,7 +60,7 @@
 <li class="nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-notices">Notices</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-notices">
-    <a class="external-link dropdown-item" href="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/notice/Notice_IAM.pdf?inline=false">
+    <a class="external-link dropdown-item" href="https://gitlab.ifremer.fr/iam/iam/-/raw/main/inst/notice/Notice_IAM.pdf?inline=false">
       <span class="fa fa-download"></span>
        
       Notice pdf (fr)
@@ -71,6 +71,7 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="articles/use_IAM.html">Utilisation IAM dans R (fr)</a>
+    <a class="dropdown-item" href="articles/Target_Fmsy.html">Scénarios TAC, quotas et transition Fmsy</a>
   </div>
 </li>
 <li class="nav-item">
@@ -101,12 +102,8 @@
 </h1>
 </div>
 <!-- badges: start -->
-
-<!-- badges: end -->
-<!-- old badge -->
-<!-- [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam)  -->
-<p>IAM (Impact Assessment Model) is a bio-economic model for the simulation of fisheries dynamics, integrating specific decision support tools within the framework of the theoretical implementation of management measures.</p>
-<p>It is a discrete time, multi-fleet, multi-trade, multi-species annual bio-economic model with “age” components for the biological part, and “commercial category” components for the economic part.</p>
+<!-- badges: end --><!-- old badge --><!-- [![Dev Version](https://img.shields.io/badge/dev%20version-2.0.0-blue.svg)](https://github.com/https://gitlab.ifremer.fr/iam/iam)  --><p>IAM (Impact Assessment Model for fisheries management) is a bio-economic model developed as part of a partnership with stakeholders to support fisheries management. It is a tool for academic and non academic knowledge integration which models dynamics and interactions between fish stocks, vessels or fleets, fisheries governance and fish market. It is dedicated to scenario simulations and optimization, impact assessment of management strategies (transition to MSY, fisheries Management Plans, socio-economic consequences of alternative TAC and quotas allocation options) and exploration of conditions for fisheries viability and sustainability. It enables stochastic simulations of biological and socio-economic consequences of scenarios to compare trade-offs of aletrnative options from a multi-criteria perspective.</p>
+<p>It is a discrete time (annual), multi-fleet or multi-vessel, multi-métier, multi-species bio-economic model with “age” components for the biological part, and “commercial category” components for the economic part.</p>
 <p>You are free to copy, modify, and distribute <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">IAM</a> with attribution under the terms of the <a href="https://gitlab.ifremer.fr/iam/iam/-/blob/main/LICENCE-CECILL-2.1.txt" class="external-link">CECILL-2 Licence</a>. See the LICENSE-CECILL-2.1 file for details.</p>
 <p>Note : the github repository is only a mirror from <a href="https://gitlab.ifremer.fr/iam/iam" class="external-link">gitlab</a></p>
 <div class="section level2">
@@ -130,17 +127,11 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># install.packages("remotes")</span>
 <span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_deps</span><span class="op">(</span><span class="st">"--path to zipfile--/IAM_2.0.0.zip"</span><span class="op">)</span></code></pre></div>
-<ol start="3" style="list-style-type: decimal">
-<li>Install IAM from the archive file by entering the following command in the <code>R</code> prompt:</li>
-</ol>
+<ol start="3" style="list-style-type: decimal"><li>Install IAM from the archive file by entering the following command in the <code>R</code> prompt:</li></ol>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"--path to zipfile--/IAM_2.0.0.zip"</span>,
                  repos <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"win.binary"</span><span class="op">)</span></code></pre></div>
-<!-- ```{r, installlink, eval = FALSE} -->
-<!-- # Also work with direct link  -->
-<!-- install.packages("https://gitlab.ifremer.fr/iam/iam/uploads/1252e068a81c5c282bb1599686ef67df/IAM_2.0.0.zip", -->
-<!--                  repos = NULL, type = "win.binary") -->
-<!-- ``` -->
+<!-- ```{r, installlink, eval = FALSE} --><!-- # Also work with direct link  --><!-- install.packages("https://gitlab.ifremer.fr/iam/iam/uploads/1252e068a81c5c282bb1599686ef67df/IAM_2.0.0.zip", --><!--                  repos = NULL, type = "win.binary") --><!-- ``` -->
 </div>
 <div class="section level3">
 <h3 id="from-package-source-code">From package source code<a class="anchor" aria-label="anchor" href="#from-package-source-code"></a>
@@ -161,11 +152,11 @@
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
-<p>For further information, allo documentation is centralized in a <a href="https://ifremer-iam.github.io/IAM/index.html" class="external-link">{pkgdown} website</a>. IAM package has multiple vignettes available along with functions help. Please note that to this day, vignettes are written in french.</p>
+<p>For further information, all documentation is centralized in a <a href="https://ifremer-iam.github.io/IAM/index.html" class="external-link">{pkgdown} website</a>. IAM package has multiple vignettes available along with functions help. Please note that to this day, vignettes are written in french.</p>
 <p>To get started, read <a href="https://ifremer-iam.github.io/IAM/articles/use_IAM.html" class="external-link">Use IAM vignette</a>. You can also access a vignette by running this code locally :</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"use_IAM"</span>, package <span class="op">=</span> <span class="st">"IAM"</span><span class="op">)</span></code></pre></div>
-<p>A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for <a href="https://gitlab.ifremer.fr/iam/iam/-/raw/dev/inst/notice/Notice_IAM.pdf?inline=false" class="external-link">download here</a></p>
+<p>A more in depth notice in french is available if you need to check the model implementation and mathematical formula. The pdf file is available for <a href="https://gitlab.ifremer.fr/iam/iam/-/raw/main/inst/notice/Notice_IAM.pdf?inline=false" class="external-link">download here</a></p>
 </div>
 <div class="section level2">
 <h2 id="credits">Credits<a class="anchor" aria-label="anchor" href="#credits"></a>
@@ -199,11 +190,9 @@
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
 <li>
-<li>
-Mathieu Merzereaud <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
+<li>Mathieu Merzereaud <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
 </li>
-<li>
-Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
+<li>Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
 </li>
 <li>
 <a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer </small>
@@ -211,9 +200,7 @@ Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.o
 <li>
 <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>
 </li>
-<li>
-<a href="authors.html">More about authors…</a>
-</li>
+<li><a href="authors.html">More about authors…</a></li>
 </ul>
 </div>
 
@@ -237,7 +224,7 @@ Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.o
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
 </div>
 
     </footer>

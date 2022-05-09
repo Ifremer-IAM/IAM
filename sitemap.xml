@@ -7,6 +7,9 @@
     <loc>/articles/Gestion_TAC.html</loc>
   </url>
   <url>
+    <loc>/articles/Target_Fmsy.html</loc>
+  </url>
+  <url>
     <loc>/articles/index.html</loc>
   </url>
   <url>
@@ -74,6 +77,9 @@
   </url>
   <url>
     <loc>/reference/IAM_example.html</loc>
+  </url>
+  <url>
+    <loc>/reference/IAM_theme.html</loc>
   </url>
   <url>
     <loc>/reference/app_dev.html</loc>
