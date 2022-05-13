@@ -117,8 +117,8 @@ reference:
 - title: Example dataset
   desc: Dataset used in vignette.
   contents:
-    - IAM_input_1984
-    - IAM_argum_1984
+    - IAM_input_2009
+    - IAM_argum_2009
     - IAM_example
 
 
