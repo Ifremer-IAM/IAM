@@ -46,9 +46,9 @@ A selected simulation is kept to illustrate a possible way.
 library(dplyr)
 library(magrittr)
 
-data("IAM_input_1984")
-data("IAM_argum_1984")
-sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+data("IAM_input_2009")
+data("IAM_argum_2009")
+sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
 res1 <- IAM.format(sim_statu_quo, c("SSB"), n = 1) \%>\%
   dplyr::filter(species == "ARC", year < 1987)
 res2 <- mutate(res1, n = 2, value = value + rnorm(1, sd = 100))

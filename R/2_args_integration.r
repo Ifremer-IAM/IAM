@@ -676,14 +676,14 @@ IAM_arg_app <- function(object, AllVarRep) {
 #'
 #' @examples
 #' \dontrun{
-#' data(IAM_input_1984)
+#' data(IAM_input_2009)
 #' # example not run because depend on shiny app.
 #' # Initiate argument from input.
-#' IAM_argum_1984 <- IAM.args(IAM_input_1984)
-#' summary(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.args(IAM_input_2009)
+#' summary(IAM_argum_2009)
 #' # Modify argument from argument.
-#' IAM_argum_1984 <- IAM.args(IAM_argum_1984)
-#' summary(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.args(IAM_argum_2009)
+#' summary(IAM_argum_2009)
 #' }
 #'
 #' @export

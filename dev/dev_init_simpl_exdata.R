@@ -89,7 +89,7 @@ if(tea_br){
     cat(" -",enigmaF$code[i])
     nme <- paste0("dev/data/fleets/",enigmaF$code[i], ".csv")
     sheet <- read.csv(nme, sep = ";")
-    sheet$annee <- 1984
+    sheet$annee <- 2009
     sheet <- seek_replace(sheet, enigma)
     # multiply vessel
     pattern <- grepl("nbv_f|Lref_f|H_f|rep_f|fixc_f|dep_f|ic_f|K_f|persc_f",
@@ -284,7 +284,7 @@ with(ss3, {
     eval(parse(text = paste0("dimnames(", var[i], ")[[4]] = mfile[,'code']")))
   }
   rm(i, var, shfile, mfile)
-  save(list = ls(), file = "dev/data/inpSS3darwiniana1984.RData", envir = ss3)
+  save(list = ls(), file = "dev/data/inpSS3darwiniana2009.RData", envir = ss3)
 })
 rm(ss3, enigmaF, enigmaM)
 
@@ -292,8 +292,8 @@ rm(ss3, enigmaF, enigmaM)
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.input ####
 if(tea_br){
-  load("dev/data/inpSS3darwiniana1984.RData")
-  input1984 <- IAM::IAM.input(fileIN = "dev/data/inputFile.xlsx",t_init=1984,nbStep=12,folderFleet="dev/data/fleets",
+  load("dev/data/inpSS3darwiniana2009.RData")
+  input2009 <- IAM::IAM.input(fileIN = "dev/data/inputFile.xlsx",t_init=2009,nbStep=12,folderFleet="dev/data/fleets",
                               Fq_i=list(DAR=iniFq_i),iniFq_i=list(DAR=iniFq_i),Fq_fmi=list(DAR=iniFq_fmi),iniFq_fmi=list(DAR=iniFq_fmi),
                               FqLwt_i=list(DAR=iniFqLwt_i),iniFqLwt_i=list(DAR=iniFqLwt_i),FqLwt_fmi=list(DAR=iniFqLwt_fmi),iniFqLwt_fmi=list(DAR=iniFqLwt_fmi),
                               FqDwt_i=list(DAR=iniFqDwt_i),iniFqDwt_i=list(DAR=iniFqDwt_i),FqDwt_fmi=list(DAR=iniFqDwt_fmi),iniFqDwt_fmi=list(DAR=iniFqDwt_fmi),
@@ -303,9 +303,9 @@ if(tea_br){
   rm("Fq_fmi", "Fq_i", "FqDwt_fmi", "FqDwt_i", "FqLwt_fmi", "FqLwt_i",
      "iniFq_fmi", "iniFq_i", "iniFqDwt_fmi", "iniFqDwt_i", "iniFqLwt_fmi",
      "iniFqLwt_i", "iniNt0q", "mat_morphage", "Ni0q", "Nt0s1q")
-  if(exists("input1984")) {
+  if(exists("input2009")) {
     beep(5) ; cat("\U0001f947",praise(),"\U0001f947")
-    save(input1984, file = "dev/data/inputIFR.RData")
+    save(input2009, file = "dev/data/inputIFR.RData")
   } else {
     beep(9) ; cat("\U0001f624", "Keep trying!", "\U0001f624")
   }
@@ -317,26 +317,26 @@ if(tea_br){
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.arg ####
 if(tea_br){
-  argum1984 <- IAM.input2args(input1984)
-  # tmp <- IAM::IAM.args(input1984)
+  argum2009 <- IAM.input2args(input2009)
+  # tmp <- IAM::IAM.args(input2009)
   # #recrutement corinna 1985 = 16402000
   #
   # #module Eco DCF ('active' et 'type' a priori inutiles puisque le code C++ n'integre plus le module complet)
-  argum1984@arguments$Eco$active <- as.integer(1)
-  argum1984@arguments$Eco$type <- as.integer(2)
-  argum1984@arguments$Eco$dr <- 0.04
-  argum1984@arguments$Eco$perscCalc <- as.integer(1)
+  argum2009@arguments$Eco$active <- as.integer(1)
+  argum2009@arguments$Eco$type <- as.integer(2)
+  argum2009@arguments$Eco$dr <- 0.04
+  argum2009@arguments$Eco$perscCalc <- as.integer(1)
   # #Gestion desactive
-  argum1984@arguments$Gestion$active <- as.integer(0)
-  argum1984@arguments$Gestion$delay <- as.integer(1)
-  argum1984@arguments$Gestion$mfm[] <- with(input1984@input$Fleet,{
+  argum2009@arguments$Gestion$active <- as.integer(0)
+  argum2009@arguments$Gestion$delay <- as.integer(1)
+  argum2009@arguments$Gestion$mfm[] <- with(input2009@input$Fleet,{
     (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
   })
-  argum1984@arguments$Gestion$mfm[is.na(argum1984@arguments$Gestion$mfm)] <- 0
+  argum2009@arguments$Gestion$mfm[is.na(argum2009@arguments$Gestion$mfm)] <- 0
   # #Scenario desactive
-  argum1984@arguments$Scenario$active <- as.integer(0)
+  argum2009@arguments$Scenario$active <- as.integer(0)
   #
-  save(argum1984, file = "dev/data/argumIFR.RData")
+  save(argum2009, file = "dev/data/argumIFR.RData")
 } else {
   load("dev/data/argumIFR.RData")
 }
@@ -348,26 +348,26 @@ devtools::load_all()
 load("dev/data/inputIFR.RData")
 load("dev/data/argumIFR.RData")
 devtools::load_all()
-sim1984 <- IAM::IAM.model(objArgs = argum1984, objInput = input1984, verbose = TRUE)
+sim2009 <- IAM::IAM.model(objArgs = argum2009, objInput = input2009, verbose = TRUE)
 # ne marche pas depuis Florence et sans doute l'ajout du SEX...Marche sans SS3.
 # marche avec IAM20 !
 
-sim1984@output$RoFTA_f
+sim2009@output$RoFTA_f
 
-sim1984@output$NGVLav_f_m
+sim2009@output$NGVLav_f_m
 
-sim1984@output$ratio_GVL_K_f
-attributes(sim1984@output$ratio_GVL_K_f)
-sim1984@output$np_f
-input1984@input$Fleet$K_f
+sim2009@output$ratio_GVL_K_f
+attributes(sim2009@output$ratio_GVL_K_f)
+sim2009@output$np_f
+input2009@input$Fleet$K_f
 
-attributes(input1984@input$Fleet$GVLref_f_m)
-class(input1984@input$Fleet$GVLref_f_m)
+attributes(input2009@input$Fleet$GVLref_f_m)
+class(input2009@input$Fleet$GVLref_f_m)
 
-names(sim1984@outputSp$F_S1M1)
+names(sim2009@outputSp$F_S1M1)
 
-lapply(argum1984@arguments$Recruitment,function(x) as.double(
+lapply(argum2009@arguments$Recruitment,function(x) as.double(
   c(rep(x$parAmodSR,length=2),rep(x$parBmodSR,length=2), rep(x$parCmodSR,length=2),rep(x$wnNOISEmodSR,length=2),rep(x$noiseTypeSR,length=2))))
-sim1984@outputSp$N$ARC
+sim2009@outputSp$N$ARC
 
-argum1984@arguments$Recruitment$ARC
+argum2009@arguments$Recruitment$ARC

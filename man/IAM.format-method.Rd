@@ -60,9 +60,9 @@ The reconcilSPP variable return character value,
 so it can't be binded with other variable which are numeric.
 }
 \examples{
-data("IAM_input_1984")
-data("IAM_argum_1984")
-sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+data("IAM_input_2009")
+data("IAM_argum_2009")
+sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
 
 #' cas vide return NULL
 IAM.format(sim_statu_quo, "not a variable")

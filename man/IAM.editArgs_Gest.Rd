@@ -63,12 +63,12 @@ num of length 2.}
 Modify Gestion arguments
 }
 \examples{
-data(IAM_argum_1984)
-IAM.args_scenar(IAM_argum_1984)
+data(IAM_argum_2009)
+IAM.args_scenar(IAM_argum_2009)
 
 # Activate scenario "Sc_saisine"
-IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active= TRUE)
-summary(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Gest(IAM_argum_2009, active= TRUE)
+summary(IAM_argum_2009)
 
 
 }

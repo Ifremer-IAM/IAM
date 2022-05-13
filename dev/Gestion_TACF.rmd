@@ -1,0 +1,338 @@
+---
+title: "Gestion avec TAC (fr)"
+output:
+  html_document:
+    df_print: paged
+  rmarkdown::html_vignette:
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+vignette: |
+  %\VignetteIndexEntry{Gestion avec TAC (fr)} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7, # default vignette figure size is too small
+  fig.height = 5
+)
+```
+
+```{r dep, message=FALSE, warning=FALSE}
+# Dépendances pour l'analyse des données et les représentations graphiques.
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(IAM)
+library(pbapply) # allow progress bar in replicate and apply.
+```
+
+Le modèle bio-économique IAM a été développé notamment pour permettre d'accompagner le développement des plans de gestion des pêcheries et d'explorer les conséquences biologiques et socio-économiques de différents scénarios de TAC et quotas et de transition vers le Rendement Maximum Durable - RMD (ou Maximum Sustainable Yield - MSY). 
+
+Ce document présente la mise en œuvre avec le modèle IAM de scénarios de TAC et quotas correspondant à différents manières de moduler l'effort de pêche. Ce document traite de la gestion de TAC à un niveau interflotilles puis une autre partie détaillera la gestion intra flotilles.
+
+L'ensemble des simulations présentées dans l'exemple sera réalisé avec le jeu de donnée example `Ifremer` composé de 7 flottilles et 3 espèces dynamiques dont une espèce à dynamique SS3. Les simulations prennent en compte la variabilité du recrutement et ses conséquences en termes de probabilité d'atteinte du FMSY. Dans ce cadre, une réplication de valeur N sera réalisée à partir du jeu de donnée exemple.
+
+**Attention ce document lance de nombreuses simulations $(1 + n_{TAC})\cdot N$ et prend donc un temps long à simuler (plusieurs dizaines de minutes).**
+
+
+```{r inport, eval = FALSE, include = FALSE}
+library(IAM)
+load(IAM_example("IAM_SS3_2009.RData"))
+
+IAM_input_2009 <- IAM::IAM.input(
+  fileIN = IAM_example("inputFile.xlsx"),
+  t_init = 2009, nbStep = 12, folderFleet = IAM_example("fleets"),
+  Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
+  Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
+  FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
+  FqLwt_fmi = list(DAR = iniFqLwt_fmi), iniFqLwt_fmi = list(DAR = iniFqLwt_fmi),
+  FqDwt_i = list(DAR = iniFqDwt_i), iniFqDwt_i = list(DAR = iniFqDwt_i),
+  FqDwt_fmi = list(DAR = iniFqDwt_fmi), iniFqDwt_fmi = list(DAR = iniFqDwt_fmi),
+  Nt0s1q = list(DAR = Nt0s1q), Ni0q = list(DAR = Ni0q),
+  iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
+)
+summary(IAM_input_2009)
+```
+
+
+```{r falseinport}
+data("IAM_input_2009")
+summary(IAM_input_2009)
+```
+
+L'objet argument est laissé tel quel lors de l'utilisation de l'interface et sera édité à la main plus tard pour chaque scénario.
+
+```{r argum, eval=FALSE}
+# Cette ligne ouvre une interface via une app shiny.
+IAM_argum_2009 <- IAM.args(IAM_input_2009)
+```
+
+Cela revient à initialiser un objet de classe `iamArgs` sans passer par l'interface avec la commande suivante :
+
+```{r init_argum}
+IAM_argum_2009 <- IAM.input2args(IAM_input_2009)
+```
+
+## Scénario *statu quo*
+
+Afin de pouvoir comparer l'effet de chaque scénario, il nous faut un scénario de départ dans lequel aucune mesure de Gestion s'imposera.
+
+Dans un premier temps il est utile de définir les dynamiques de recrutements ainsi que des éléments de paramétrage du module économique. On va pour cela éditer l'objet `IAM_argum_2009`.
+
+```{r edit argum}
+# Module SR
+# Add noise to COR recruitment
+IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 0.203
+IAM_argum_2009@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
+IAM_argum_2009@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
+IAM_argum_2009@arguments$Recruitment$COR$parAmodSR <- 2539.5
+IAM_argum_2009@arguments$Recruitment$COR$parBmodSR <- 9679
+
+# Module EcoDCF
+IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.04, perscCalc = 1)
+
+# Module Gestion
+mfm <- with(IAM_input_2009@input$Fleet,{
+  (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
+})
+mfm[is.na(mfm)] <- 0
+
+IAM_argum_2009 <- IAM.editArgs_Gest(IAM_argum_2009, active = FALSE,
+                                    delay = 1, mfm = mfm)
+
+# Module Scenario
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009) # desactivate scenario
+
+summary(IAM_argum_2009)
+```
+
+Les scénarios sont simulés avec $N$ réplicats, correspondant à la variabilité du recrutement. 
+
+Les valeurs de $N$, $F_{msy}$ pour l'espèce COR et $TAC$ sont fixées ici :
+
+```{r setN}
+N <- 5
+Fmsy <- 0.26
+TAC <- 3600
+```
+
+La simulation du scénario Statu Quo est codée comme suit :
+
+```{r SQ}
+# Statu quo
+SQ <- replicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_2009,  objInput = IAM_input_2009)
+})
+```
+
+
+## Gestion TAC par flottille
+
+<!--
+
+On fixe ici un scénario de Gestion qui va agir sur le nombre de navire afin d'atteindre un TAC (*Total allowable catches*) donné pour chaque année. Ce quotas vise particulièrement l'espèce dite "COR" et rentre en application 2 ans après le début de la simulation, soit en 2011. Les modification d'efforts seront multiplicatives.
+
+Concernant la recherche de réduction d'effort, une recherche d'optimum se fait par itération afin de trouver le multiplicateur $\mu$ tel que la différence entre le TAC requis et atteins est minimale. Le maximum d'itération est de 10, et peut s'arrêter avant si la différence est inférieur à une tolérance donnée. 
+
+La recherche de ce $\mu$ se fait dans un intervalle donné dans les paramètres (nommé bounds). Cet interval dépend fortement du type de Gestion utilisé. En effet, on essaye d'atteindre un effort $var_c$ à partir d'un effort initial $var_i$ par l'application de $\mu$ sur la matrice $m_{f,m}$ comme illustré dans les équations suivantes.
+
+
+  | Cas           | Place de $\mu$ dans la calcul du TAC visé         |
+  |---------------+---------------------------------------------------|
+  | Additif       | $var_{c} = var_i + \mu \cdot m_{f,m}$             |
+  | Multiplicatif | $var_{c} = var_i + var_i \cdot \mu \cdot m_{f,m}$ |
+  
+  
+Cependant, le modèle va venir s'assurer que $var_c$ ne devient pas négatif et assigner la valeur 0 dans ce cas précis. Afin de limiter les temps de calculs, il est donc préférable de chercher $\mu$ dans les intervals suivants :
+
+  | Cas           | Valeur de $\mu$ possibles                    |
+  |---------------+----------------------------------------------|
+  | Additif       | $\mu \in [ \frac{-1}{m_{f,m}} ; \infty]$     |
+  | Multiplicatif | $\mu \in [ \frac{-var_i}{m_{f,m}} ; \infty]$ |
+  
+Il est également important de noter qu'un interval $[0;0]$ revient à ne pas appliquer le module Gestion. 
+
+-->
+
+```{r arg_TACF, message = FALSE}
+IAM_argum_2009_TACF <- IAM.editArgs_Gest(
+  IAM_argum_2009, active = TRUE,
+  espece = "COR", bounds = c(1e3, -100))
+
+nbV <- length(IAM_input_2009@specific$Fleet)
+nbT <- IAM_input_2009@specific$NbSteps
+
+Lref <- IAM_input_2009@input$COR$Lref_f_e
+percLref <- Lref / sum(Lref)
+
+scenar <- c(1, 0.98, 0.98, 0.98, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+TACtmp <- matrix(Lref, ncol = nbT+1, nrow = nbV, byrow = FALSE)
+for(y in 2:(nbT+1)){
+  TACtmp[, y] <- TACtmp[, y-1] * scenar[y]
+}
+TACf <- TACtmp[, -1]
+TACtot = colSums(TACtmp[, -1]) * 2
+dimnames(TACf) <- list(IAM_input_2009@specific$Fleet,
+                       IAM_input_2009@specific$times)
+# TACf
+rm(TACtmp, y, nbV, nbT, scenar)
+TACf <- list(COR = TACf) ; TACtot <- list(COR = TACtot)
+
+sim_TACF <- pbreplicate(N, {
+  IAM::IAM.model(objArgs = IAM_argum_2009_TACF,  objInput = IAM_input_2009,
+                 TACbyF=TACf, TACtot = TACtot, updateE = 1)
+})
+```
+
+
+### Représentations graphiques
+
+On peut aisement comparer les différents scénarios avec des fonctions graphiques. Pour cela il faut tout d'abord simplifier les sorties sous format de tableau. Cela est réalisable avec la fonction `IAM.format()`. La fonction `IAM.format_quant` va quand à elle permettre de ne récupérer que les quartiles et la médiane de nos `N` simulations.
+
+```{r format_f}
+TACF <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACF[[x]], name = "summary",
+             sim_name = "TACF over Lref", n = x)
+})
+
+
+Statuquo <- lapply(1:N,  function(x) {
+  IAM.format(SQ[[x]], name = "summary", 
+             sim_name = "Statu quo", n = x)
+})
+
+
+TACF_quant <- do.call(rbind, c(Statuquo, TACF)) %>%
+  IAM.format_quant(., probs = c(.025, .975))
+
+# IAM.test_plot(TACF_quant)
+```
+
+Une fois les données formatées, on peut aisément comparer les différents scénarios de TACS. Ainsi, la mise en place d'un TAC va venir diminuer la mortalité par pêche (Fbar) sur le stock visé.
+
+```{r plot_bio_f, fig.cap=paste("\\label{fig:TACglob}COR variables under global TAC gestion.",N, "runs." )}
+TACF_quant %>%
+  filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
+  
+  ggplot(aes(x = year, y = median)) + 
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue", alpha = .4) +
+  geom_line() + geom_point(size = .5) +
+  geom_line(aes(y = value), linetype = "dotted") +
+  geom_vline(xintercept=2011, linetype = "dotted") +
+  guides(x = guide_axis(angle = 90)) + #IAM_theme() +
+  NULL
+```
+
+Cependant, ces scénarios entrainent de fortes réductions d'effort car ils ne ciblent pas les métiers et flottilles impactant le plus le stock cible. Ainsi on observe que les variables ajustées lors des scénarios arrivent vite proche de valeurs nulles.
+
+*Pour rappel effort1 et effort2 correspondent respectivement à nbTrip et tripLgth.*
+
+```{r TACF_plot, fig.cap=paste("\\label{fig:TACglob}Effort variables under global TAC gestion.",N, "runs." )}
+TACF_quant %>%
+  filter(variable %in% c("nbv_f", "effort1_f")) %>%
+  ggplot(aes(x = year, y = value, color = fleet )) +
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_line() +
+  geom_vline(xintercept=2011, linetype = "dotted") +
+  NULL
+
+```
+
+```{r}
+
+```
+
+<!--
+
+### Pondérer les efforts avec la matrice mfm
+
+Ces réductions drastiques peuvent être limitées en ciblant les flottilles et les métiers. Par exemple, l'espèce ciblé est pêchées à `r IAM_input_2009@input$COR$Lref_f_m_e["Thalassa", "Filet_COR"] /sum(IAM_input_2009@input$COR$Lref_f_m_e, na.rm = TRUE) * 100` % par la flottille dite "Thalassa", via le métier "Filet_COR". Il serait donc plus intéressant de diminuer l'effort sur cette flottille uniquement.
+
+Pour cela on peut agir sur la pondération des métiers et indiquer que l'on diminiue l'effort des métiers "Filet_COR" pour les flottilles qui l'utilisent au profit du méthier "Filet_DP". Il s'agit d'un **report d'effort** par métier.
+
+```{r target_f, message = FALSE, eval = FALSE}
+trg_f <- c("Thalassa", "Haliotis")
+
+mfm <- with(IAM_input_2009@input$Fleet,{
+  (effort1_f_m * effort2_f_m * nbv_f_m) / 
+    as.vector(effort1_f * effort2_f * nbv_f)
+})
+mfm[!is.na(mfm)] <- 0 #report d'effort du m?tier 'Filet_COR' vers 'Filet_DP'
+mfm[trg_f,"Filet_DP"] <- with(IAM_input_2009@input$Fleet, 
+     Lref_f_m[trg_f,"Filet_DP"] / sum(Lref_f_m[trg_f,"Filet_DP"])
+)
+mfm[trg_f,"Filet_COR"] <- with(IAM_input_2009@input$Fleet, 
+    - Lref_f_m[trg_f,"Filet_DP"] / sum(Lref_f_m[trg_f,"Filet_DP"])
+)
+print(mfm)
+
+IAM_argum_2009_TACnbvR <- IAM.editArgs_Gest(IAM_argum_2009_TACnbv, 
+                                            mfm = mfm, control = "Nb trips")
+
+sim_TACglob_nbvR <- pbreplicate(N, {
+  sim_TACreport <- IAM::IAM.model(objArgs = IAM_argum_2009_TACnbvR, 
+                                  objInput = IAM_input_2009)
+})
+```
+
+Il est tout à fait possible de rajouter aux précédents scénrarios déjà simulés pour avoir un moyen de comparaison. Il faut cependant éviter de rajouter les objets à la suite avec `rbind` comme cela, car R utilise beaucoup plus de mémoire. 
+
+```{r TACreport, eval = FALSE}
+# Extraction des variables.
+TACglob_nbvR <- lapply(1:N,  function(x) {
+  IAM.format(sim_TACglob_nbvR[[x]], name = "summary",
+             sim_name = "Report TAC global nbv", n = x)
+})
+# Calcul des quantiles et ajout aux simulations précédentes.
+TACglob_quantR <- do.call(rbind, c(TACglob_nbvR)) %>%
+  IAM.format_quant(., probs = c(.025, .975)) %>%
+  rbind(., TACglob_quant) %>%
+  mutate(sim_name = factor(sim_name, levels = c( # Reorder the column in plot
+    "Statu quo", "TAC global nbtrip",            # by setting level order
+    "TAC global nbv", "Report TAC global nbv")))
+```
+
+La comparaison montre une dimension du Fbar sur l'espèce cible COR.
+
+```{r TACreport_bio, fig.cap=paste("\\label{fig:TACglob}COR variables under global TAC gestion with effort report from Filet_COR to Filet_DP.",N, "runs." ), eval = FALSE}
+TACglob_quantR %>%
+  filter(species == "COR", variable %in% c("Fbar", "SSB", "L_et")) %>%
+  ggplot(aes(x = year, y = median)) + 
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "white",alpha = .4) +
+  geom_line() + geom_point(size = .5) +
+  geom_line(aes(y = value), linetype = "dotted") +
+  geom_vline(xintercept=2011, linetype = "dotted") +
+  guides(x = guide_axis(angle = 90)) + IAM_theme() +
+  NULL
+```
+
+Sur le graphe des efforts par flottilles, il est facilement notable que les efforts ne sont pas aussi drastiquement impactés. 
+
+```{r TACreport_eco, eval = FALSE}
+TACglob_quantR %>%
+  filter(variable %in% c("nbv_f", "effort1_f")) %>%
+  ggplot(aes(x = year, y = value, color = fleet )) +
+  facet_grid(variable ~ sim_name, scales = "free_y") +
+  geom_line() +
+  geom_vline(xintercept=2011, linetype = "dotted") +
+  NULL
+```
+
+Il est bien entendu évident que les impacts de ce TAC seront persceptibles sur d'autres variables économiques.
+
+
+```{r}
+
+```
+
+-->
+
+<!-- ## References -->
+
+<!-- <div id="refs"></div> -->
+

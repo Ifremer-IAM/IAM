@@ -5,13 +5,13 @@
 #' script of the IAM package.
 #'
 devtools::load_all() # Load IAM
-data("IAM_input_1984")
-data("IAM_argum_1984")
-sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984,
+data("IAM_input_2009")
+data("IAM_argum_2009")
+sim2009 <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009,
                           verbose = FALSE, force_t = NULL)
-sim1984 <- IAM.format(sim1984, "summary",sim_name = "scenar1A", n= 2)
-sim1984 <- IAM.format_quant(sim1984) %>%
+sim2009 <- IAM.format(sim2009, "summary",sim_name = "scenar1A", n= 2)
+sim2009 <- IAM.format_quant(sim2009) %>%
   dplyr::filter(variable != "effort2_f")
 
 options(shiny.launch.browser = .rs.invokeShinyWindowExternal)
-plot <- IAM.test_plot(sim1984)
+plot <- IAM.test_plot(sim2009)

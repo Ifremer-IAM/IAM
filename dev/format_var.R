@@ -6,12 +6,12 @@ devtools::load_all()
 
 #' Testing a full process
 n <- 50
-data("IAM_argum_1984")
-data("IAM_input_1984")
+data("IAM_argum_2009")
+data("IAM_input_2009")
 a <- Sys.time()
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5
+IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 5
 nsim_statu_quo <- sapply(1:n, function(x){
-  tmp <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+  tmp <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
   tmp@outputSp$SSB$COR <- tmp@outputSp$SSB$COR + rnorm(12, sd = 500) # just to test the ribbon
   tmp <- IAM.format(tmp, "summary", "statuquo", x)
   return(tmp)

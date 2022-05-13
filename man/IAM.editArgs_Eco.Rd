@@ -32,12 +32,12 @@ The GUI provide many other arguments for economic parameters but they are
 deprecated and it is useless to edit them
 }
 \examples{
-data(IAM_argum_1984)
-IAM_argum_1984@arguments$Eco$dr
-IAM_argum_1984@arguments$Eco$perscCalc
-IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.06, perscCalc = 0)
-IAM_argum_1984@arguments$Eco$dr
-IAM_argum_1984@arguments$Eco$perscCalc
+data(IAM_argum_2009)
+IAM_argum_2009@arguments$Eco$dr
+IAM_argum_2009@arguments$Eco$perscCalc
+IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.06, perscCalc = 0)
+IAM_argum_2009@arguments$Eco$dr
+IAM_argum_2009@arguments$Eco$perscCalc
 
 }
 \author{

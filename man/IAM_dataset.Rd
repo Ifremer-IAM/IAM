@@ -3,15 +3,15 @@
 \docType{data}
 \name{IAM_dataset}
 \alias{IAM_dataset}
-\alias{IAM_input_1984}
-\alias{IAM_argum_1984}
+\alias{IAM_input_2009}
+\alias{IAM_argum_2009}
 \title{Complete IAM dataset}
 \format{
 Two different part of parameter for a IAM.model simulation :\cr
 \itemize{
- \item{IAM_input_1984 - a \code{\link[IAM]{iamInput-class}} object.
+ \item{IAM_input_2009 - a \code{\link[IAM]{iamInput-class}} object.
  Created from a \code{.xlsx file. See Details.}}
- \item{IAM_argum_1984 - a \code{\link[IAM]{iamArgs-class}} object.
+ \item{IAM_argum_2009 - a \code{\link[IAM]{iamArgs-class}} object.
  Created from the input, to modify Recruitment, Gestion and
  Economic parameters }
 }
@@ -22,13 +22,13 @@ An object of class \code{iamArgs} of length 1.
 Based on Florence Briton dataset.
 }
 \usage{
-IAM_input_1984
+IAM_input_2009
 
-IAM_argum_1984
+IAM_argum_2009
 }
 \description{
 Dataset anonymised, with 7 fleets and 3 dynamic species,
-one being with a SS3 dynamic. Time begin in 1984 and end in 1995
+one being with a SS3 dynamic. Time begin in 2009 and end in 2020
 }
 \details{
 This dataset is created with \code{\link[IAM]{IAM.input-methods}} function.
@@ -40,10 +40,10 @@ data must be provided.
 \dontrun{
 
 # Code used to create this object from raw .xlsx file. More information in vignette.
-load(IAM_example("IAM_SS3_1984.RData"))
-IAM_input_1984 <- IAM::IAM.input(
+load(IAM_example("IAM_SS3_2009.RData"))
+IAM_input_2009 <- IAM::IAM.input(
   fileIN = IAM_example("inputFile.xlsx"),
-  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+  t_init = 2009, nbStep = 12, folderFleet = IAM_example("fleets"),
   Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
   Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
   FqLwt_i = list(DAR = iniFqLwt_i),iniFqLwt_i = list(DAR = iniFqLwt_i),
@@ -54,13 +54,13 @@ IAM_input_1984 <- IAM::IAM.input(
   iniNt0q = list(DAR = iniNt0q), matwt = list(DAR = mat_morphage)
 )
 
-IAM_argum_1984 <- IAM.input2args(IAM_input_1984)
-IAM_argum_1984@arguments$Eco$dr <- 0.04
-IAM_argum_1984@arguments$Eco$perscCalc <- as.integer(1)
+IAM_argum_2009 <- IAM.input2args(IAM_input_2009)
+IAM_argum_2009@arguments$Eco$dr <- 0.04
+IAM_argum_2009@arguments$Eco$perscCalc <- as.integer(1)
 }
 
-data(IAM_input_1984)
-data(IAM_argum_1984)
+data(IAM_input_2009)
+data(IAM_argum_2009)
 
 }
 \author{

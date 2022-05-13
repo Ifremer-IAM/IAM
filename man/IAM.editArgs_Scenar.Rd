@@ -21,20 +21,20 @@ NULL will desactivate the scenario module}
 Modify Scenario arguments
 }
 \examples{
-data(IAM_argum_1984)
-IAM.args_scenar(IAM_argum_1984)
+data(IAM_argum_2009)
+IAM.args_scenar(IAM_argum_2009)
 
 # Activate scenario "Sc_saisine"
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected="Sc_saisine")
-IAM.args_scenar(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected="Sc_saisine")
+IAM.args_scenar(IAM_argum_2009)
 
 # Desactivate scenario
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = NULL)
-IAM.args_scenar(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = NULL)
+IAM.args_scenar(IAM_argum_2009)
 
 # Activate scenario "Sc_saisine"
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = 1)
-IAM.args_scenar(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = 1)
+IAM.args_scenar(IAM_argum_2009)
 
 
 }

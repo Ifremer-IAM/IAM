@@ -38,9 +38,9 @@
 #'
 #'
 #' @examples
-#' data("IAM_input_1984")
-#' data("IAM_argum_1984")
-#' sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+#' data("IAM_input_2009")
+#' data("IAM_argum_2009")
+#' sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
 #'
 #' #' cas vide return NULL
 #' IAM.format(sim_statu_quo, "not a variable")
@@ -81,7 +81,7 @@ setMethod(
         "Fbar", "SSB", "L_et",
         # "ratio_L_et_tac",
         "N", #BIO (N = courbe d'age)
-        "nbv_f", "effort2_f", "GVLav_f", "gva_f", "gp_f", "wageg_f", "wagen_f"#ECO
+        "nbv_f", "effort1_f", "effort2_f", "GVLav_f", "gva_f", "gp_f", "wageg_f", "wagen_f"#ECO
       )
     }
     l <- length(name)
@@ -296,9 +296,9 @@ format_varsp <- function(object, name, sim_name = NA_character_, n = NA_real_){
 #' library(dplyr)
 #' library(magrittr)
 #'
-#' data("IAM_input_1984")
-#' data("IAM_argum_1984")
-#' sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+#' data("IAM_input_2009")
+#' data("IAM_argum_2009")
+#' sim_statu_quo <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
 #' res1 <- IAM.format(sim_statu_quo, c("SSB"), n = 1) %>%
 #'   dplyr::filter(species == "ARC", year < 1987)
 #' res2 <- mutate(res1, n = 2, value = value + rnorm(1, sd = 100))

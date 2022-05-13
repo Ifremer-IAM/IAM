@@ -21,15 +21,15 @@ NULL will desactivate the Replicates module}
 Modify Replicates arguments
 }
 \examples{
-data(IAM_argum_1984)
+data(IAM_argum_2009)
 
 # Replicate 100 times
-IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = 100)
-IAM.args_scenar(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Rep(IAM_argum_2009, n = 100)
+IAM.args_scenar(IAM_argum_2009)
 
 # Desactivate Replicates
-IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = NULL)
-IAM.args_scenar(IAM_argum_1984)
+IAM_argum_2009 <- IAM.editArgs_Rep(IAM_argum_2009, n = NULL)
+IAM.args_scenar(IAM_argum_2009)
 
 }
 \author{

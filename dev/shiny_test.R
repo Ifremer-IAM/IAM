@@ -27,25 +27,25 @@ AllVarRep = c(
 )
 
 devtools::load_all()
-data("IAM_argum_1984")
+data("IAM_argum_2009")
 # cas avec les choix de tout et n'importe quoi
-IAM_argum_1984@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, 2)
+IAM_argum_2009@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, 2)
 
-IAM_argum_1984 <- IAM.editArgs_Gest(
-  IAM_argum_1984, active = TRUE, control = "Nb trips", target = "Fbar",
+IAM_argum_2009 <- IAM.editArgs_Gest(
+  IAM_argum_2009, active = TRUE, control = "Nb trips", target = "Fbar",
   espece = "DAR", delay = 6, type = "x", update = TRUE, bounds = c(100, 1))
 
-IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 3)
+IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.04, perscCalc = 3)
 
-IAM_argum_1984@arguments$Replicates$nbIter <- 300
-IAM_argum_1984@arguments$Replicates$active <- 1
+IAM_argum_2009@arguments$Replicates$nbIter <- 300
+IAM_argum_2009@arguments$Replicates$active <- 1
 
-IAM_arg_app(IAM_argum_1984, AllVarRep)
-summary(IAM_argum_1984)
+IAM_arg_app(IAM_argum_2009, AllVarRep)
+summary(IAM_argum_2009)
 
-IAM.args(IAM_argum_1984)
-i <- IAM.args(IAM_argum_1984) # Testing return
+IAM.args(IAM_argum_2009)
+i <- IAM.args(IAM_argum_2009) # Testing return
 
 #' Testing plots for Recruitment module.
 # enveloppe de loi normale.

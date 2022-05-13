@@ -99,7 +99,7 @@ source("vignettes/pre_compile.R")
 #' @name dev_graphic Work file to test plots about IAM.
 #' Objective is to remove it and present plots in main vignette.
 #'
-#' @name dev_init_exdata Script to build IAM_xxx_1984 example dataset.
+#' @name dev_init_exdata Script to build IAM_xxx_2009 example dataset.
 #' It use files in dev/raw_data/ and produce cache dev/data .RData to be
 #' more efficient.
 #'

@@ -19,12 +19,12 @@ The GUI provide many other arguments for economic parameters but they are
 deprecated and it is useless to show them
 }
 \examples{
-data("IAM_argum_1984")
-IAM_argum_1984@arguments$Gestion$active <- 1
-IAM_argum_1984@arguments$Replicates$active <- 1
-IAM_argum_1984@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = 1)
-summary(IAM_argum_1984)
+data("IAM_argum_2009")
+IAM_argum_2009@arguments$Gestion$active <- 1
+IAM_argum_2009@arguments$Replicates$active <- 1
+IAM_argum_2009@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = 1)
+summary(IAM_argum_2009)
 
 }
 \author{

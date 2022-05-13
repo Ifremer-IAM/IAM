@@ -13,12 +13,12 @@
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data(IAM_argum_1984)
-#' IAM_argum_1984@arguments$Eco$dr
-#' IAM_argum_1984@arguments$Eco$perscCalc
-#' IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.06, perscCalc = 0)
-#' IAM_argum_1984@arguments$Eco$dr
-#' IAM_argum_1984@arguments$Eco$perscCalc
+#' data(IAM_argum_2009)
+#' IAM_argum_2009@arguments$Eco$dr
+#' IAM_argum_2009@arguments$Eco$perscCalc
+#' IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.06, perscCalc = 0)
+#' IAM_argum_2009@arguments$Eco$dr
+#' IAM_argum_2009@arguments$Eco$perscCalc
 #'
 #' @name IAM.editArgs_Eco
 #' @export
@@ -77,8 +77,8 @@ setMethod(
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data(IAM_argum_1984)
-#' IAM.args_scenar(IAM_argum_1984)
+#' data(IAM_argum_2009)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #'
 #' @name IAM.args_scenar
@@ -111,20 +111,20 @@ setMethod(
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data(IAM_argum_1984)
-#' IAM.args_scenar(IAM_argum_1984)
+#' data(IAM_argum_2009)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' # Activate scenario "Sc_saisine"
-#' IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected="Sc_saisine")
-#' IAM.args_scenar(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected="Sc_saisine")
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' # Desactivate scenario
-#' IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = NULL)
-#' IAM.args_scenar(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = NULL)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' # Activate scenario "Sc_saisine"
-#' IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = 1)
-#' IAM.args_scenar(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = 1)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #'
 #' @name IAM.editArgs_Scenar
@@ -177,12 +177,12 @@ setMethod(
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data(IAM_argum_1984)
-#' IAM.args_scenar(IAM_argum_1984)
+#' data(IAM_argum_2009)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' # Activate scenario "Sc_saisine"
-#' IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active= TRUE)
-#' summary(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Gest(IAM_argum_2009, active= TRUE)
+#' summary(IAM_argum_2009)
 #'
 #'
 #' @name IAM.editArgs_Gest
@@ -363,15 +363,15 @@ setMethod(
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data(IAM_argum_1984)
+#' data(IAM_argum_2009)
 #'
 #' # Replicate 100 times
-#' IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = 100)
-#' IAM.args_scenar(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Rep(IAM_argum_2009, n = 100)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' # Desactivate Replicates
-#' IAM_argum_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = NULL)
-#' IAM.args_scenar(IAM_argum_1984)
+#' IAM_argum_2009 <- IAM.editArgs_Rep(IAM_argum_2009, n = NULL)
+#' IAM.args_scenar(IAM_argum_2009)
 #'
 #' @name IAM.editArgs_Rep
 #' @export
@@ -425,12 +425,12 @@ setMethod(
 #' @author Maxime Jaunatre
 #'
 #' @examples
-#' data("IAM_argum_1984")
-#' IAM_argum_1984@arguments$Gestion$active <- 1
-#' IAM_argum_1984@arguments$Replicates$active <- 1
-#' IAM_argum_1984@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
-#' IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984, selected = 1)
-#' summary(IAM_argum_1984)
+#' data("IAM_argum_2009")
+#' IAM_argum_2009@arguments$Gestion$active <- 1
+#' IAM_argum_2009@arguments$Replicates$active <- 1
+#' IAM_argum_2009@arguments$Scenario$ALLscenario <- c("Scenario1", "Scenario2")
+#' IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009, selected = 1)
+#' summary(IAM_argum_2009)
 #'
 #' @export
 setMethod(
@@ -569,8 +569,8 @@ setMethod(
 #' @importFrom utils tail head
 #'
 #' @examples
-#' data("IAM_input_1984")
-#' summary(IAM_input_1984)
+#' data("IAM_input_2009")
+#' summary(IAM_input_2009)
 #'
 #' @export
 setMethod(

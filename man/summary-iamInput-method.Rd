@@ -15,8 +15,8 @@
 summary method for iamInput class
 }
 \examples{
-data("IAM_input_1984")
-summary(IAM_input_1984)
+data("IAM_input_2009")
+summary(IAM_input_2009)
 
 }
 \author{

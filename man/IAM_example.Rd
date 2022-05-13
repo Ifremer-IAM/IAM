@@ -18,7 +18,7 @@ all extdata files.
 simplified system from {readr} package.
 }
 \examples{
-IAM_example("IAM_SS3_1984.RData")
+IAM_example("IAM_SS3_2009.RData")
 IAM_example("inputFile.xlsx")
 IAM_example("fleets")
 

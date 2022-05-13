@@ -24,7 +24,7 @@ if(!require(IAM)) devtools::load_all()
 # Objective ####
 #' Modify xlsx with most of RData to obtain a clean file
 
-tea_br <- TRUE # cancel long computations
+tea_br <- TRUE # cancel long computations by setting FALSE
 # Theses files are not public.
 rawfile <- "dev/raw_data/inputFile.xlsx"
 enigmaF <- read.csv("dev/raw_data/enigmaF.csv")
@@ -79,10 +79,10 @@ if(tea_br){
     cat(" -",enigmaF$code[i])
     nme <- paste0("dev/raw_data/fleets/",enigmaF$origin[i], ".csv")
     sheet <- read.csv(nme, sep = ";")
-    sheet$annee <- 1984
+    sheet$annee <- 2009
     sheet <- seek_replace(sheet, enigma)
     # multiply vessel
-    pattern <- grepl("nbv_f|Lref_f|H_f|rep_f|fixc_f|dep_f|ic_f|K_f|persc_f",
+    pattern <- grepl("nbv_f|[^V]Lref_f|H_f|rep_f|fixc_f|dep_f|ic_f|K_f|persc_f",
                      sheet$nom_variable)
     sheet$indicateur[pattern] <- as.character(
       nrep[i] * as.numeric(sheet$indicateur[pattern])
@@ -262,7 +262,7 @@ with(ss3, {
     eval(parse(text = paste0("dimnames(", var[i], ")[[4]] = mfile[,'code']")))
   }
   rm(i, var, shfile, mfile)
-  save(list = ls(), file = "inst/extdata/IAM_SS3_1984.RData", envir = ss3)
+  save(list = ls(), file = "inst/extdata/IAM_SS3_2009.RData", envir = ss3)
 })
 
 
@@ -270,10 +270,10 @@ with(ss3, {
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.input ####
 if(tea_br){
-  load(IAM_example("IAM_SS3_1984.RData"))
-  IAM_input_1984 <- IAM::IAM.input(
+  load(IAM_example("IAM_SS3_2009.RData"))
+  IAM_input_2009 <- IAM::IAM.input(
     fileIN = IAM_example("inputFile.xlsx"),
-    t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+    t_init = 2009, nbStep = 12, folderFleet = IAM_example("fleets"),
     Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
     Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
     FqLwt_i = list(DAR = iniFqLwt_i), iniFqLwt_i = list(DAR = iniFqLwt_i),
@@ -289,53 +289,53 @@ if(tea_br){
        "iniFq_fmi", "iniFq_i", "iniFqDwt_fmi", "iniFqDwt_i", "iniFqLwt_fmi",
        "iniFqLwt_i", "iniNt0q", "mat_morphage", "Ni0q", "Nt0s1q")
   # Export
-  if(exists("IAM_input_1984")) {
+  if(exists("IAM_input_2009")) {
     beep(5) ; cat("\U0001f947",praise(),"\U0001f947\n")
-    # save(IAM_input_1984, file = "dev/data/IAM_input_1984.RData")
-    usethis::use_data(IAM_input_1984, overwrite = TRUE)
+    # save(IAM_input_2009, file = "dev/data/IAM_input_2009.RData")
+    usethis::use_data(IAM_input_2009, overwrite = TRUE)
   } else {
     beep(9) ; cat("\U0001f624", "Keep trying!", "\U0001f624")
   }
 } else {
-  data("IAM_input_1984")
+  data("IAM_input_2009")
 }
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.arg ####
 if(tea_br){
-  IAM_argum_1984 <- IAM.input2args(IAM_input_1984)
-  # tmp <- IAM::IAM.args(input1984)
+  IAM_argum_2009 <- IAM.input2args(IAM_input_2009)
+  # tmp <- IAM::IAM.args(input2009)
   # #recrutement corinna 1985 = 16402000
   #
   # #module Eco DCF ('active' et 'type' a priori inutiles puisque le code C++ n'integre plus le module complet)
-  # IAM_argum_1984@arguments$Eco$active <- as.integer(1)
-  # IAM_argum_1984@arguments$Eco$type <- as.integer(2)
+  # IAM_argum_2009@arguments$Eco$active <- as.integer(1)
+  # IAM_argum_2009@arguments$Eco$type <- as.integer(2)
 
-  # IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
+  # IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.04, perscCalc = 1)
 
   # #Gestion desactive
-  # IAM_argum_1984@arguments$Gestion$active <- as.integer(0)
-  # IAM_argum_1984@arguments$Gestion$delay <- as.integer(1)
-  # IAM_argum_1984@arguments$Gestion$mfm[] <- with(input1984@input$Fleet,{
+  # IAM_argum_2009@arguments$Gestion$active <- as.integer(0)
+  # IAM_argum_2009@arguments$Gestion$delay <- as.integer(1)
+  # IAM_argum_2009@arguments$Gestion$mfm[] <- with(input2009@input$Fleet,{
     # (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
   # })
-  # IAM_argum_1984@arguments$Gestion$mfm[is.na(IAM_argum_1984@arguments$Gestion$mfm)] <- 0
+  # IAM_argum_2009@arguments$Gestion$mfm[is.na(IAM_argum_2009@arguments$Gestion$mfm)] <- 0
   # #Scenario desactive
-  # IAM_argum_1984@arguments$Scenario$active <- as.integer(0)
+  # IAM_argum_2009@arguments$Scenario$active <- as.integer(0)
   #
-  # save(IAM_argum_1984, file = "dev/data/argumIFR.RData")
-  usethis::use_data(IAM_argum_1984, overwrite = TRUE)
+  # save(IAM_argum_2009, file = "dev/data/argumIFR.RData")
+  usethis::use_data(IAM_argum_2009, overwrite = TRUE)
 } else {
-  data("IAM_argum_1984")
+  data("IAM_argum_2009")
 }
 
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # IAM.model ####
 devtools::load_all()
-data("IAM_input_1984")
-data("IAM_argum_1984")
-sim1984 <- IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984, verbose = TRUE)
+data("IAM_input_2009")
+data("IAM_argum_2009")
+# sim2009 <- IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009, verbose = TRUE)
 
 

@@ -16,8 +16,8 @@ IAM.args_scenar(object)
 Return the scenario arguments.
 }
 \examples{
-data(IAM_argum_1984)
-IAM.args_scenar(IAM_argum_1984)
+data(IAM_argum_2009)
+IAM.args_scenar(IAM_argum_2009)
 
 
 }
