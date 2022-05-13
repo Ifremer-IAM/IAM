@@ -1,14 +1,14 @@
 ---
 title: "Gestion avec TAC (fr)"
 output:
-  html_document:
-    df_print: paged
-  rmarkdown::html_vignette:
-    fig_caption: yes
   pdf_document:
     keep_tex: yes
+  rmarkdown::html_vignette:
+    fig_caption: yes
 vignette: |
-  %\VignetteIndexEntry{Gestion avec TAC (fr)} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+  %\VignetteIndexEntry{Gestion avec TAC (fr)} 
+  %\VignetteEngine{knitr::rmarkdown} 
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}

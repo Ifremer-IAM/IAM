@@ -1,5 +1,5 @@
 Package: IAM
-Title: BioEconomic model for fisheries
+Title: Impact Assessment Model for fisheries management
 Version: 2.0.0
 Date: 2021
 Authors@R: c(person(given = "Mathieu",

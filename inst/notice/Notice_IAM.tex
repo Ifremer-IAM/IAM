@@ -1,7 +1,7 @@
 % \documentclass[12pt, colorinlistoftodos]{article} 
 \documentclass[12pt, colorinlistoftodos, notitlepage]{report} 
 
-\title{IAM: Impact Assessment}
+\title{IAM: Impact Assessment Model for fisheries management}
 \author{Merzereaud et al.}
 
 \usepackage[french]{babel}
@@ -31,7 +31,7 @@
 \chead{\csname @title\endcsname}
 \lhead{\includegraphics[width=0.8cm]{\main/.tex/IAM_hex.jpg}}
 \rhead{\includegraphics[width=2cm]{\main/.tex/Logo_ifr_y.jpg}}
-\lfoot{page \thepage}\cfoot{}
+\lfoot{page \thepage ~| \hyperlink{toc}{Table des matières}}\cfoot{}
 \rfoot{\csname @author\endcsname ~-~\the\year}
 
 \fancypagestyle{plain}{%
@@ -264,10 +264,11 @@ urlcolor = blue
 \vfill
 \par ~ \par
 
-% \newpage
+\newpage
 
-\tableofcontents
-% {\let\clearpage\relax\tableofcontents}
+% \tableofcontents 
+\hypertarget{toc}{}
+{\let\clearpage\relax\tableofcontents} 
 \newpage
 \ifthenelse{\boolean{draft}}{
     \listoftodos
@@ -279,7 +280,7 @@ urlcolor = blue
 IAM (Impact Assessment Model) est un modèle bio-économique de simulation de dynamiques de pêcheries, intégrant des outils spécifiques d'aide à la décision dans le cadre de mises en application théoriques de mesures de gestion. Ce document constitue un support d'utilisation du modèle, décrivant les étapes de paramétrage et de lancement des simulations, exposant les méthodologies et équations fonctionnelles utilisées en arrière-plan, et analysant les possibilités offertes par l'outil. Une première partie principalement théorique décrira l'architecture modulaire du modèle, détaillera les paramètres mis en jeu ainsi que les liens fonctionnels les unissant. Les différents outils de simulation greffés au modèle "basique" et les méthodologies associées seront également présentés dans cette partie. Plus techniquement, la méthode de constitution du fichier de paramétrage fera l'objet alors qu'une troisième et dernière partie reprendra l'ensemble des vignettes associées au package décrivant la mise en application des simulations au sein d'un environnement R.
 \todo{remanier cette introduction pour la non dépendance à l'ordre de la notice!}
 
-%\iffalse
+% \iffalse
 \chapter{Structure et mode opératoire du modèle}
 
 \section{Notations et structure schématique du modèle}
@@ -1506,8 +1507,7 @@ Cette table va caractériser les paramètres de la variable aléatoire dont la d
     \label{fig:random}
 \end{figure}
 
-%\chapter{empty}
-%\fi
+% \fi
 \chapter{Vignettes} \label{vignette}
 
 \minitoc
@@ -1526,7 +1526,7 @@ vignette("use_IAM", package = "IAM")
 \todo[color=green, inline]{maintain TOC by hand}
 
 \includepdf[pages=-,addtotoc={
-    1,section,1,Utilisation d'IAM dans R,vuse,   
+    1,section,1,\textbf{Utilisation d'IAM dans R},vuse,   
     1,subsection,2,Choix d'implémentation,vuseimp,
     1,subsection,3,Le package IAM (version 2.0.0),vusepkg,
     1,subsubsection,4,Installation et chargement du package,vuseinstal,
@@ -1538,6 +1538,30 @@ vignette("use_IAM", package = "IAM")
     13,subsection,3,Conseil de réplication,vuserep,
     14,subsection,3,Références,vuseref
  }, pagecommand={\thispagestyle{fancy}}
-    ]{../doc/use_IAM.pdf} 
+    ]{../doc/use_IAM.pdf}
+
+\includepdf[pages=-,addtotoc={
+%  page, level, ??, name, label,
+    1,section,1,\textbf{Gestion avec TAC},vtac,   
+    2,subsection,2,Scénario \textit{statu quo},vtacSQ,
+    3,subsection,2,Gestion TAC générale,vtacTAC,
+    4,subsubsection,3,Représentation graphiques,vtacgraph,
+    7,subsubsection,3,Pondérer les efforts avec la matrice mfm,vtacmfm
+ }, pagecommand={\thispagestyle{fancy}}
+    ]{../doc/Gestion_TAC.pdf}
+
+\includepdf[pages=-,addtotoc={
+%  page, level, ??, name, label,
+    1,section,1,\textbf{Scénarios TAC, quotas et transition $F_{msy}$},vfmsy,   
+    2,subsection,2,Scénario \textit{statu quo},vfmsySQ,
+    3,subsection,3,Gestion TAC générale,vfmsyTAC,
+    4,subsubsection,3,Représentation graphiques,vfmsygraph,
+    7,subsection,3,TAC jusqu’au $F_{msy}$,vfmsyF,
+    7,subsubsection,3,Représentation graphiques,vfmsygraphF,
+    7,subsubsection,3,Calcul de la probabilité d’atteindre le $F_{msy}$,vfmsyP
+ }, 
+ pagecommand={\thispagestyle{fancy}}
+    ]{../doc/Target_Fmsy.pdf}
+
 
 \end{document}

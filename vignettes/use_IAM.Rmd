@@ -1,21 +1,23 @@
 ---
 title: "Utilisation IAM dans R (fr)"
 output:
-  html_document:
-    df_print: paged
-  rmarkdown::html_vignette:
-    fig_caption: yes
   pdf_document:
     keep_tex: yes
-vignette: "%\\VignetteIndexEntry{Utilisation IAM dans R (fr)} \n%\\VignetteEncoding{UTF-8}
-  \n%\\VignetteEngine{knitr::rmarkdown}\n"
+  rmarkdown::html_vignette:
+    fig_caption: yes
+vignette: |
+ %\VignetteIndexEntry{Utilisation IAM dans R (fr)}     
+ %\VignetteEncoding{UTF-8}
+ %\VignetteEngine{knitr::rmarkdown}
 bibliography: vignette.bib
 ---
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7, # default vignette figure size is too small
+  fig.height = 5
 )
 ```
 
@@ -29,7 +31,7 @@ Les choix d'implémentation du modèle IAM ont découlé d'exigences techniques 
 
 Le langage `R` réunit une grande partie de ces caractéristiques. C'est un logiciel libre et gratuit de traitement statistique, largement répandu à l'heure actuelle au sein de la communauté halieutique et qui offre l'avantage d'être relativement simple d'emploi. Il représente un environnement adéquat pour gérer des objets de paramétrage (notamment multidimensionnels, comme le sont ceux du modèle bio-économique). De surcroît, les sorties exportées en tant qu'objets `R` peuvent bénéficier des nombreuses fonctionnalités proposées par le logiciel (sorties graphiques, traitements statistiques,...).
 
-Toutefois, il est apparu que le modèle deviendrait très rapidement exigent en terme de temps calcul (algorithmes d'optimisation, beaucoup de variables, beaucoup de dimensions,...)  et que l'utilisateur trouverait là la limite des possibilités offertes par `R`. La solution la plus évidente était de programmer le cœur du modèle en `C++`, et de laisser `R` piloter les routines, se contentant ainsi de gérer le paramétrage et le traitement des sorties. Ainsi, le modèle serait aussi simple d'utilisation que possible, sans toutefois que cela se fasse au détriment de ses performances et de sa flexibilité.
+Toutefois, il est apparu que le modèle deviendrait très rapidement exigeant en terme de temps calcul (algorithmes d'optimisation, beaucoup de variables, beaucoup de dimensions,...)  et que l'utilisateur trouverait là la limite des possibilités offertes par `R`. La solution la plus évidente était de programmer le cœur du modèle en `C++`, et de laisser `R` piloter les routines, se contentant ainsi de gérer le paramétrage et le traitement des sorties. Ainsi, le modèle serait aussi simple d'utilisation que possible, sans toutefois que cela se fasse au détriment de ses performances et de sa flexibilité.
 
 
 
@@ -97,11 +99,11 @@ De même, une espèce décrite dans le fichier de paramètrage utilise un modèl
 On procède alors à l'importation de la manière suivante (*attention, cela peut prendre quelques secondes selon le nombre de flottilles*):
 
 ```{r inport, results="hide"}
-load(IAM_example("IAM_SS3_1984.RData"))
+load(IAM_example("IAM_SS3_2009.RData"))
 
-IAM_input_1984 <- IAM::IAM.input(
+IAM_input_2009 <- IAM::IAM.input(
   fileIN = IAM_example("inputFile.xlsx"),
-  t_init = 1984, nbStep = 12, folderFleet = IAM_example("fleets"),
+  t_init = 2009, nbStep = 12, folderFleet = IAM_example("fleets"),
   # elements 
   Fq_i = list(DAR = iniFq_i), iniFq_i = list(DAR = iniFq_i),
   Fq_fmi = list(DAR = iniFq_fmi), iniFq_fmi = list(DAR = iniFq_fmi),
@@ -116,31 +118,31 @@ IAM_input_1984 <- IAM::IAM.input(
 
 
 ```{r falseinport, include = FALSE, echo = FALSE, results="hide, eval = FALSE"}
-data(IAM_input_1984)
+data(IAM_input_2009)
 ```
 
 
-L'objet résultant (ici `IAM_input_1984`) de classe `iamInput` possède une structure fixe spécifique, composée d'éléments appelés "slots" et que l'on peut distinguer de cette façon :
+L'objet résultant (ici `IAM_input_2009`) de classe `iamInput` possède une structure fixe spécifique, composée d'éléments appelés "slots" et que l'on peut distinguer de cette façon :
 
 ```{r inpslot}
-slotNames(IAM_input_1984)
+slotNames(IAM_input_2009)
 ```
 
 Le slot "desc" est un simple descripteur permettant de caractériser l'objet ; c'est un paramètre optionnel de la fonction `IAM.input`. Le slot "specific" est constitué des descriptifs des dimensions du modèle qui vont conditionner la structure des variables. Le slot "historical" regroupe les données antérieures à l'instant initial `t_init`. Les slots "scenario" et "stochastic" intègrent les paramètres définis dans les feuillets correspondants. Enfin, le slot principal "input" rassemble les données initiales injectées dans le modèle. Il est composé d'un élément "Fleet" et d'un élément par espèce modélisée, ces derniers possédant la même structure. Au final, ce slot rassemble toutes les informations renseignées dans les feuillets "Stock", "Flottille" et "Market", ainsi que les matrices "fm", "mm" et "icat". Voici quelques exemples permettant d'accéder aux données de cet objet (l'accès aux slots se fait par `objet@slot`, l'accès aux éléments d'un slot par `slot$élément`) :
 
 ```{r inpnames}
-names(IAM_input_1984@specific)
-names(IAM_input_1984@input)
-IAM_input_1984@input$COR$wStock_i
-attributes(IAM_input_1984@input$COR$wStock_i)$DimCst[3]
+names(IAM_input_2009@specific)
+names(IAM_input_2009@input)
+IAM_input_2009@input$COR$wStock_i
+attributes(IAM_input_2009@input$COR$wStock_i)$DimCst[3]
 ```
 
-On peut ici noter l'attribut `DimCst` associé à la variable `wStock_i` . Chaque variable d'entrée insérée dans le slot `input` est affectée de cet attribut qui définit sa dimension : la première composante est la dimension flottille (0 signifie "pas de dimension"), la seconde est la dimension métier, la troisième est la dimension âge/catégorie, et la quatrième est la dimension temporelle. Dans l'exemple précédent, la variable se décline uniquement suivant la dimension "âge", qui comprend pour l'espèce considérée `r attributes(IAM_input_1984@input$COR$wStock_i)$DimCst[3]` modalités. Cette attribution systématique permet au modèle de gérer les incompatibilités de dimensions entre les variables et de considérer plusieurs niveaux de définition pour une même variable.
+On peut ici noter l'attribut `DimCst` associé à la variable `wStock_i` . Chaque variable d'entrée insérée dans le slot `input` est affectée de cet attribut qui définit sa dimension : la première composante est la dimension flottille (0 signifie "pas de dimension"), la seconde est la dimension métier, la troisième est la dimension âge/catégorie, et la quatrième est la dimension temporelle. Dans l'exemple précédent, la variable se décline uniquement suivant la dimension "âge", qui comprend pour l'espèce considérée `r attributes(IAM_input_2009@input$COR$wStock_i)$DimCst[3]` modalités. Cette attribution systématique permet au modèle de gérer les incompatibilités de dimensions entre les variables et de considérer plusieurs niveaux de définition pour une même variable.
 
 Afin de simplifier l'utilisation de cette classe d'objets, une méthode `summary()` a été implémentée qui permet d'avoir un aperçu rapide :
 
 ```{r summaryinp}
-summary(IAM_input_1984)
+summary(IAM_input_2009)
 ```
 
 
@@ -150,11 +152,11 @@ summary(IAM_input_1984)
 La méthode `IAM.args()` prend en paramètre un objet de classe `iamInput` et permet à l'utilisateur de fixer les caractéristiques de la simulation à opérer. Une interface de paramétrage s'affiche, et la validation renvoie un objet de classe `iamArgs` définissant les choix de pilotage du modèle.
 
 ```{r argum, eval=F}
-IAM_argum_1984 <- IAM.args(IAM_input_1984)
+IAM_argum_2009 <- IAM.args(IAM_input_2009)
 ```
 
 ```{r falseargum, echo = FALSE, results="hide"}
-data(IAM_argum_1984)
+data(IAM_argum_2009)
 ```
 
 
@@ -230,33 +232,33 @@ Afin de simplifier l'utilisation de cette classe d'objets, une méthode `summary
 
 
 ```{r slotargum}
-summary(IAM_argum_1984)
-names(IAM_argum_1984@arguments)
+summary(IAM_argum_2009)
+names(IAM_argum_2009@arguments)
 ```
 
 On peut modifier l'objet déjà existant utilisant des fonctions spécifiques et les valeurs voulues. Mais ceci suggère une bonne connaissance de R et un risque non négligeable d'entamer la structure de l'objet. Par exemple, pour mettre en oeuvre la module Gestion et modifier les variables économiques :
 
 ```{r editargum}
 # Modify Gestion
-IAM_argum_1984 <- IAM.editArgs_Gest(
-  IAM_argum_1984, active = TRUE, control = "Nb trips", target = "Fbar",
+IAM_argum_2009 <- IAM.editArgs_Gest(
+  IAM_argum_2009, active = TRUE, control = "Nb trips", target = "Fbar",
   espece = "DAR", type = "x")
 # Modify Eco
-IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 3)
+IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.04, perscCalc = 3)
 # Check if Gestion is active
-summary(IAM_argum_1984)
+summary(IAM_argum_2009)
 # Desactivate Gestion
-IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active = FALSE)
+IAM_argum_2009 <- IAM.editArgs_Gest(IAM_argum_2009, active = FALSE)
 ```
 
 Mais la procédure la plus simple pour corriger un objet est de reprendre l'interface au stade de la validation, et d'effectuer directement les corrections. Pour cela, il suffit de rappeler la méthode `IAM.args()`, mais non plus affectée à un objet de paramétrage initial de classe `iamInput`, mais plutôt à l'objet qu'on désire modifier. On tape donc :
 
 ```{r editargum3, eval=F}
-IAM_argum_1984 <- IAM.args(IAM_argum_1984)
+IAM_argum_2009 <- IAM.args(IAM_argum_2009)
 ```
 
 
-Une interface reprenant tous les arguments auparavant validés s'ouvre, permettant la correction, la validation, et ainsi la mise à jour de l'objet `IAM_argum_1984` en sortie.
+Une interface reprenant tous les arguments auparavant validés s'ouvre, permettant la correction, la validation, et ainsi la mise à jour de l'objet `IAM_argum_2009` en sortie.
 
 
 <!--
@@ -307,16 +309,16 @@ Une fois les deux principaux composants du paramétrage obtenus, la mise en rout
 
 
 ```{r simul}
-IAM_out_1984 <- IAM.model(IAM_argum_1984,IAM_input_1984)
-class(IAM_out_1984)
+IAM_out_2009 <- IAM.model(IAM_argum_2009,IAM_input_2009)
+class(IAM_out_2009)
 ```
 
-Toutes les sorties du modèle sont entreposées dans 2 slots de l'objet `IAM_out_1984`. Un slot `outputSp` réunit toutes les variables définies par espèce modélisée (sorties du modèle biologique principalement), et un autre slot `output` rassemble les variables sans dimension espèce (les variables économiques). L'accès aux variables est illustré ci-dessous :
+Toutes les sorties du modèle sont entreposées dans 2 slots de l'objet `IAM_out_2009`. Un slot `outputSp` réunit toutes les variables définies par espèce modélisée (sorties du modèle biologique principalement), et un autre slot `output` rassemble les variables sans dimension espèce (les variables économiques). L'accès aux variables est illustré ci-dessous :
 
 ```{r slotsim}
-slotNames(IAM_out_1984)
-names(IAM_out_1984@outputSp)
-names(IAM_out_1984@output)
+slotNames(IAM_out_2009)
+names(IAM_out_2009@outputSp)
+names(IAM_out_2009@output)
 ```
 
 <!-- <details> -->
@@ -327,13 +329,13 @@ Dans le cas d'un  objet de classe `iamOutputRep`, chaque variable est une liste 
 
 ```{r simrep}
 # Activate replicates
-IAM_argumRep_1984 <- IAM.editArgs_Rep(IAM_argum_1984, n = 2)
+IAM_argumRep_2009 <- IAM.editArgs_Rep(IAM_argum_2009, n = 2)
 
-IAM_outRep_1984 <- IAM.model(IAM_argumRep_1984,IAM_input_1984)
-class(IAM_outRep_1984)
-length(IAM_outRep_1984@outputSp$F)
-names(IAM_outRep_1984@outputSp$F[[1]])
-names(IAM_outRep_1984@outputSp$F[[2]])
+IAM_outRep_2009 <- IAM.model(IAM_argumRep_2009,IAM_input_2009)
+class(IAM_outRep_2009)
+length(IAM_outRep_2009@outputSp$F)
+names(IAM_outRep_2009@outputSp$F[[1]])
+names(IAM_outRep_2009@outputSp$F[[2]])
 ```
 <!-- </details>  -->
 
@@ -348,11 +350,11 @@ On note qu'une variable spéciale nommée `"summary"` permet d'extraire d'un seu
 
 ```{r format}
 # Extraction d'une variable
-statu_quo_tbl_Fbar <- IAM.format(IAM_out_1984, name = "Fbar", 
+statu_quo_tbl_Fbar <- IAM.format(IAM_out_2009, name = "Fbar", 
                                  sim_name = "statu_quo", n = 1)
 head(statu_quo_tbl_Fbar)
 # Extraction de plusieurs variables
-statu_quo_tbl_summary <- IAM.format(IAM_out_1984, name = "summary", 
+statu_quo_tbl_summary <- IAM.format(IAM_out_2009, name = "summary", 
                                     sim_name = "statu_quo", n = 1)
 unique(statu_quo_tbl_summary$variable)
 ```
@@ -395,8 +397,8 @@ statu_quo_tbl_summary %>%
 Dans le cas d'une liste d'objet de classe `iamOuput`, il est possible d'extraire les variables, de concaténer et d'ensuite calculer une table résumée ne présentant que les quantiles d'interêt. Cela permet d'alleger les sorties du modèle et de les manipuler plus simplement lors de la production de représentations graphiques.
 
 ```{r iam.format_quant}
-res1 <- IAM.format(IAM_out_1984, c("SSB"), n = 1) %>%
- dplyr::filter(species == "ARC", year <= 1990)
+res1 <- IAM.format(IAM_out_2009, c("SSB"), n = 1) %>%
+ dplyr::filter(species == "ARC", year <= 2011)
 # Je modifie légérement les données pour avoir des quantiles écartés.
 res2 <- mutate(res1, n = 2, value = value + rnorm(1, sd = 100))
 
@@ -428,19 +430,19 @@ Pour illustrer différentes représentations graphiques, on va générer plusieu
 
 ```{r simu2plot}
 N = 5
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 5e6
+IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 5e6
 # Simulation
 sim_statu_quo <- replicate(N, {
-  IAM::IAM.model(objArgs = IAM_argum_1984,  objInput = IAM_input_1984)
+  IAM::IAM.model(objArgs = IAM_argum_2009,  objInput = IAM_input_2009)
 })
 # Edition des arguments
-IAM_argum_1984_TACnbv <- IAM.editArgs_Gest(
-  IAM_argum_1984, active = TRUE, control = "Nb vessels", target = "TAC",
+IAM_argum_2009_TACnbv <- IAM.editArgs_Gest(
+  IAM_argum_2009, active = TRUE, control = "Nb vessels", target = "TAC",
   espece = "COR", delay = 2, type = "x", bounds = c(1e7, -1), 
   tac = c(NA, NA, rep(3400, 10)))
 # Simulation
 sim_TACglob_nbv <- replicate(N, {
-  IAM::IAM.model(objArgs = IAM_argum_1984_TACnbv,  objInput = IAM_input_1984)
+  IAM::IAM.model(objArgs = IAM_argum_2009_TACnbv,  objInput = IAM_input_2009)
 })
 
 # Formatage
@@ -596,7 +598,7 @@ library(IAM)
 a <- Sys.time() # mesure du temps
 nsim_statu_quo <- replicate(
   500,
-  IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+  IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
 )
 b <- Sys.time() # mesure du temps
 b - a # 1.17 min
@@ -613,12 +615,12 @@ clusterEvalQ(cl,library(IAM)) # charger les librairies dans le cluster.
 
 c <- Sys.time() # mesure du temps
 # rendre les objets disponibles pour le code
-clusterExport(cl,c("IAM_argum_1984", "IAM_input_1984"))
+clusterExport(cl,c("IAM_argum_2009", "IAM_input_2009"))
 # S'assurer de "seed" différentes pour chaque noeud.
 clusterSetRNGStream(cl)
 #... Simuler les réplicats ...
 res <- parSapply(cl, 1:50, function(i,...) {
-  IAM::IAM.model(objArgs = IAM_argum_1984, objInput = IAM_input_1984)
+  IAM::IAM.model(objArgs = IAM_argum_2009, objInput = IAM_input_2009)
   } )
 # Arreter le cluster
 stopCluster(cl)

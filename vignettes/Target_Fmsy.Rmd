@@ -24,7 +24,7 @@ library(parallel)
 library(beepr)
 ```
 
-Le modèle bio-économique IAM a été développé notamment pour permettre d'accompagner le développement des plans de gestion des pêcheries et d'explorer les conséquences biologiques et socio-économiques de différents scénarios de TAC et quotas et de transition vers le Rendement Maximum Durable - RMD (ou Maximum Sustainable Yield - MSY). 
+Le modèle bio-économique IAM a été développé notamment pour permettre d'accompagner le développement des plans de gestion des pêcheries et d'explorer les conséquences biologiques et socio-économiques de différents scénarios de TAC et quotas et de transition vers le Rendement Maximum Durable - RMD (ou Maximum Sustainable Yield - MSY).
 
 Ce document présente la mise en œuvre avec le modèle IAM de scénarios de TAC et quotas correspondant à différents chemins de transition vers le $F_{msy}$ (différentes valeurs de TAC constants permettant l'atteinte du FMSY plus ou moins rapidement).
 
@@ -37,11 +37,11 @@ L'ensemble des simulations présentées dans l'exemple sera réalisé avec le je
 
 
 ```r
-data("IAM_input_1984")
-summary(IAM_input_1984)
+data("IAM_input_2009")
+summary(IAM_input_2009)
 #> My Input (IAM input) :
 #> Simulation of 3 dynamic species, 19 static species and 7 fleet
-#> Simulation start in 1984 and end in 1995 (12 steps)
+#> Simulation start in 2009 and end in 2020 (12 steps)
 #> 
 #> ------------------------------------
 #> Dynamic Species | Model |     Ages |
@@ -64,51 +64,51 @@ L'objet argument est laissé tel quel lors de l'utilisation de l'interface et se
 
 ```r
 # Cette ligne ouvre une interface via une app shiny.
-IAM_argum_1984 <- IAM.args(IAM_input_1984)
+IAM_argum_2009 <- IAM.args(IAM_input_2009)
 ```
 
 Cela revient à initialiser un objet de classe `iamArgs` sans passer par l'interface avec la commande suivante :
 
 
 ```r
-IAM_argum_1984 <- IAM.input2args(IAM_input_1984)
+IAM_argum_2009 <- IAM.input2args(IAM_input_2009)
 ```
 
 ## Scénario *statu quo*
 
 Afin de pouvoir comparer l'effet de chaque scénario, il nous faut un scénario de départ dans lequel les mesures de Gestion ne s'imposeront pas.
 
-Dans un premier temps, les dynamiques de recrutements ainsi que des éléments de paramétrage du module économique sont définies. On va pour cela éditer l'objet `IAM_argum_1984`.
+Dans un premier temps, les dynamiques de recrutements ainsi que des éléments de paramétrage du module économique sont définies. On va pour cela éditer l'objet `IAM_argum_2009`.
 
 
 ```r
 # Module SR
 # Add noise to COR recruitment
-IAM_argum_1984@arguments$Recruitment$COR$wnNOISEmodSR <- 0.203
-IAM_argum_1984@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
-IAM_argum_1984@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
-IAM_argum_1984@arguments$Recruitment$COR$parAmodSR <- 2539.5
-IAM_argum_1984@arguments$Recruitment$COR$parBmodSR <- 9679
+IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 0.203
+IAM_argum_2009@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
+IAM_argum_2009@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
+IAM_argum_2009@arguments$Recruitment$COR$parAmodSR <- 2539.5
+IAM_argum_2009@arguments$Recruitment$COR$parBmodSR <- 9679
 
 # Module EcoDCF
-IAM_argum_1984 <- IAM.editArgs_Eco(IAM_argum_1984, dr = 0.04, perscCalc = 1)
+IAM_argum_2009 <- IAM.editArgs_Eco(IAM_argum_2009, dr = 0.04, perscCalc = 1)
 
 # Module Gestion
-mfm <- with(IAM_input_1984@input$Fleet,{
+mfm <- with(IAM_input_2009@input$Fleet,{
   (effort1_f_m * effort2_f_m * nbv_f_m) / as.vector(effort1_f * effort2_f * nbv_f)
 })
 mfm[is.na(mfm)] <- 0
 
-IAM_argum_1984 <- IAM.editArgs_Gest(IAM_argum_1984, active = FALSE,
+IAM_argum_2009 <- IAM.editArgs_Gest(IAM_argum_2009, active = FALSE,
                                     delay = 1, mfm = mfm)
 
 # Module Scenario
-IAM_argum_1984 <- IAM.editArgs_Scenar(IAM_argum_1984) # desactivate scenario
+IAM_argum_2009 <- IAM.editArgs_Scenar(IAM_argum_2009) # desactivate scenario
 
-summary(IAM_argum_1984)
+summary(IAM_argum_2009)
 #> My Input (IAM argument) :
 #> Simulation of 3 dynamic species, 19 static species and 7 fleet
-#> Simulation start in 1984 and end in 1995 (12 steps)
+#> Simulation start in 2009 and end in 2020 (12 steps)
 #> 
 #> =======================================================================================
 #>   SR module  |               Stock Recruitment             |      Noise       | Proba |
@@ -133,7 +133,7 @@ summary(IAM_argum_1984)
 
 La recherche du TAC pour atteindre le $F_{msy}$ se fait en simulant plusieurs scénarios correspondant à différentes valeurs de TACs simulées.
 
-Les scénarios sont simulés avec $N$ réplicats, correspondant à la variabilité du recrutement. 
+Les scénarios sont simulés avec $N$ réplicats, correspondant à la variabilité du recrutement.
 
 Les valeurs de $N$, $F_{msy}$ et $TAC$ sont fixées ici :
 
@@ -150,7 +150,7 @@ TACS <- seq(3200, 5600, by = 400)
 ```r
 # Statu quo
 SQ <- replicate(N, {
-  IAM::IAM.model(objArgs = IAM_argum_1984,  objInput = IAM_input_1984)
+  IAM::IAM.model(objArgs = IAM_argum_2009,  objInput = IAM_input_2009)
 })
 
 SQl <- lapply(1:N,  function(y) {
@@ -171,7 +171,7 @@ Afin de simplifier le code, seules les variables biologiques seront extraites et
 #' @param N Number of replicates
 #'
 #' @return formated table of class iam_formtbl that regroup values
-#' for N simulation under a scenario. Only Fbar, SSB and L_et 
+#' for N simulation under a scenario. Only Fbar, SSB and L_et
 #' variables are extracted.
 simultac <- function(x, argum, input, N){
 
@@ -196,12 +196,12 @@ De même, des modifications du paramètrage sur le module Gestion ont lieu en co
 
 
 ```r
-IAM_argum_1984_TAC <- IAM.editArgs_Gest(
-  IAM_argum_1984, active = FALSE, control = "Nb trips", target = "TAC",
+IAM_argum_2009_TAC <- IAM.editArgs_Gest(
+  IAM_argum_2009, active = FALSE, control = "Nb trips", target = "TAC",
   espece = "COR", delay = 2,
-  type = "x", bounds = c(1e6, -100), 
+  type = "x", bounds = c(1e6, -100),
   tac = c(NA, NA, rep(3600, 10)))
-      #   84, 85,     1986:1995
+      #   09, 10,     2011:2020
 
 TACS # TACS values to remember
 #> [1] 3200 3600 4000 4400 4800 5200 5600
@@ -211,18 +211,18 @@ cl <- makeCluster(detectCores()-1)
 invisible(clusterEvalQ(cl,library(IAM)))
 
 res <-parLapply(cl, as.list(TACS), simultac,
-                 IAM_argum_1984_TAC, IAM_input_1984, N)
+                 IAM_argum_2009_TAC, IAM_input_2009, N)
 stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x)
-#> Time difference of 24.52026 mins
+#> Time difference of 35.0032 mins
 ```
 
 
 ### Représentations graphiques
 
-On peut aisement comparer les différents scénarios en utilisant les fonctions graphiques. 
+On peut aisement comparer les différents scénarios en utilisant les fonctions graphiques.
 <!-- Ainsi, on observe que nos scénarios de TAC arrivent tout deux à la reconstruction progressive du stock "COR" par une baisse de la mortalité par pêche (Fbar). -->
 
 
@@ -237,7 +237,7 @@ COR %>%
   geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
   geom_line() +
   geom_line(aes(y = value), linetype = "dotted") +
-  geom_vline(xintercept=1986, linetype = "dotted") +
+  geom_vline(xintercept=2011, linetype = "dotted") +
   IAM_theme() +
   NULL
 ```
@@ -246,9 +246,9 @@ COR %>%
 
 
 ```r
-line_data <- data.frame(xintercept = c(1986, 1990), 
+line_data <- data.frame(xintercept = c(2011, 2015),
                         Lines = c("Scenarii start", "Target Fmsy"),
-                        linetype = c("dotted", "dashed"), 
+                        linetype = c("dotted", "dashed"),
                         stringsAsFactors = FALSE)
 
 Proba <- res %>%
@@ -262,7 +262,7 @@ Proba %>%
   ggplot(aes(x = year, y = Pfmsy, color = as.factor(sim_name)))+
   geom_line() +
   geom_vline(xintercept= line_data$xintercept, linetype = line_data$linetype) +
-  annotate("text", line_data$xintercept, 100, hjust = -.25, 
+  annotate("text", line_data$xintercept, 100, hjust = -.25,
     label = line_data$Lines) +
   scale_colour_discrete(name  ="TAC constant") +
   NULL
@@ -271,18 +271,18 @@ Proba %>%
 ![\label{fig:TACp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban-1.png)
 
 ```r
-filter(Proba, year == 1990, variable == "Fbar")
+filter(Proba, year == 2015, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      1990  65.4
-#> 2 3600     Fbar      1990  83.6
-#> 3 4000     Fbar      1990  47.8
-#> 4 4400     Fbar      1990   7  
-#> 5 4800     Fbar      1990   0.6
-#> 6 5200     Fbar      1990   0  
-#> 7 5600     Fbar      1990   0  
-#> 8 SQ       Fbar      1990   0
+#> 1 3200     Fbar      2015  76.4
+#> 2 3600     Fbar      2015  85.6
+#> 3 4000     Fbar      2015  60.6
+#> 4 4400     Fbar      2015  13  
+#> 5 4800     Fbar      2015   0.6
+#> 6 5200     Fbar      2015   0  
+#> 7 5600     Fbar      2015   0  
+#> 8 SQ       Fbar      2015   0
 beepr::beep(3)
 ```
 
@@ -293,12 +293,12 @@ On reproduit l'analyse précédente mais en changeant la cible des scénarios. A
 
 
 ```r
-IAM_argum_1984_TAC_fmsy <- IAM.editArgs_Gest(
-  IAM_argum_1984_TAC, active = FALSE, target = "TAC->Fbar",
-  type = "x", bounds = c(100, -100), 
+IAM_argum_2009_TAC_fmsy <- IAM.editArgs_Gest(
+  IAM_argum_2009_TAC, active = FALSE, target = "TAC->Fbar",
+  type = "x", bounds = c(100, -100),
   tac = c(NA, NA, rep(3600, 10)),
   fbar = c(NA, NA, rep(Fmsy, 10)))
-       #   84, 85,  1991:1995
+      #   09, 10,      2011:2020
 
 TACS # TACS values to remember
 #> [1] 3200 3600 4000 4400 4800 5200 5600
@@ -308,12 +308,12 @@ cl <- makeCluster(detectCores()-1)
 invisible(clusterEvalQ(cl,library(IAM)))
 
 res <-parLapply(cl, as.list(TACS), simultac,
-                IAM_argum_1984_TAC_fmsy, IAM_input_1984, N)
+                IAM_argum_2009_TAC_fmsy, IAM_input_2009, N)
 stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x) # 50 -> 3 min
-#> Time difference of 31.1526 mins
+#> Time difference of 40.88487 mins
 ```
 
 
@@ -333,7 +333,7 @@ COR %>%
   geom_ribbon(aes(ymin = quant1, ymax = quant2), fill = "lightblue") +
   geom_line() + geom_point(size = .5) +
   geom_line(aes(y = value), linetype = "dotted") +
-  geom_vline(xintercept=1986, linetype = "dotted") +
+  geom_vline(xintercept=2011, linetype = "dotted") +
   IAM_theme() +
   NULL
 ```
@@ -346,9 +346,9 @@ On peut calculer la probabilité d'atteindre le $F_{msy}$ comme le pourcentage d
 
 
 ```r
-line_data <- data.frame(xintercept = c(1986, 1990), 
+line_data <- data.frame(xintercept = c(2011, 2015),
                         Lines = c("Scenarii start", "Target Fmsy"),
-                        linetype = c("dotted", "dashed"), 
+                        linetype = c("dotted", "dashed"),
                         stringsAsFactors = FALSE)
 
 Proba <- res %>%
@@ -362,7 +362,7 @@ Proba %>%
   ggplot(aes(x = year, y = Pfmsy, color = as.factor(sim_name)))+
   geom_line() +
   geom_vline(xintercept= line_data$xintercept, linetype = line_data$linetype) +
-  annotate("text", line_data$xintercept, 100, hjust = -.25, 
+  annotate("text", line_data$xintercept, 100, hjust = -.25,
     label = line_data$Lines) +
   scale_colour_discrete(name  ="TAC constant") +
   NULL
@@ -371,18 +371,18 @@ Proba %>%
 ![\label{fig:fbarp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban_fmsy-1.png)
 
 ```r
-filter(Proba, year == 1990, variable == "Fbar")
+filter(Proba, year == 2015, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      1990  67  
-#> 2 3600     Fbar      1990  79.8
-#> 3 4000     Fbar      1990  48.4
-#> 4 4400     Fbar      1990   5.8
-#> 5 4800     Fbar      1990   0.2
-#> 6 5200     Fbar      1990   0  
-#> 7 5600     Fbar      1990   0  
-#> 8 SQ       Fbar      1990   0
+#> 1 3200     Fbar      2015  74.6
+#> 2 3600     Fbar      2015  81.6
+#> 3 4000     Fbar      2015  58.2
+#> 4 4400     Fbar      2015  12.4
+#> 5 4800     Fbar      2015   0  
+#> 6 5200     Fbar      2015   0  
+#> 7 5600     Fbar      2015   0  
+#> 8 SQ       Fbar      2015   0
 beepr::beep(3)
 ```
 
