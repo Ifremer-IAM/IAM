@@ -126,6 +126,7 @@ reference:
   contents:
     - IAM.dev
     - IAM_theme
+    - dimcst
 
 - title: Deprecated Functions
   contents:
@@ -147,4 +148,5 @@ reference:
     - staticStockInput-class
     - stockInput-class
     - val.iamArgs
+    - IAM.test_plot
 

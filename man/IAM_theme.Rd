@@ -4,7 +4,11 @@
 \alias{IAM_theme}
 \title{Theme for IAM plots}
 \usage{
-IAM_theme()
+IAM_theme(blue = TRUE)
+}
+\arguments{
+\item{blue}{modify the background for a blue color. TRUE by default.
+False will desactivate for a white background.}
 }
 \description{
 Modify background for IAM plots.

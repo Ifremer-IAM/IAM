@@ -1,12 +1,25 @@
 #' Impact Assesment Model
 #'
-#' IAM (Impact Assessment Model) is a bio-economic model
-#' for the simulation of fisheries dynamics,
-#' integrating specific decision support tools within the
-#' framework of the theoretical implementation of management measures
-#' It is a discrete time, multi-fleet, multi-trade, multi-species annual
-#' bio-economic model with "age" components for the biological part,
-#' and "commercial category" components for the economic part.
+#' IAM (Impact Assessment Model for fisheries management)
+#' is a bio-economic model developed as part of a partnership with stakeholders
+#' to support fisheries management. It is a tool for academic and non academic
+#' knowledge integration which models dynamics and interactions between fish
+#' stocks, vessels or fleets, fisheries governance and fish market.
+#' It is dedicated to scenario simulations and optimization,
+#' impact assessment of management strategies (transition to MSY,
+#' fisheries Management Plans, socio-economic consequences of alternative TAC
+#' and quotas allocation options) and exploration of conditions for
+#' fisheries viability and sustainability. It enables stochastic simulations
+#' of biological and socio-economic consequences of scenarios to compare
+#' trade-offs of aletrnative options from a multi-criteria perspective.
+#'
+#' It is a discrete time (annual), multi-fleet or multi-vessel, multi-métier,
+#' multi-species bio-economic model with “age” components for the biological
+#' part, and “commercial category” components for the economic part.
+#'
+#' You are free to copy, modify, and distribute IAM with attribution under
+#' the terms of the CECILL-2 Licence. See the LICENSE-CECILL-2.1 file
+#' for details.
 #'
 #' @docType package
 #' @name IAM

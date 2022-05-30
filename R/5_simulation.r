@@ -266,7 +266,7 @@ Rectyp <- unlist(lapply(objArgs@arguments$Recruitment,function(x) x$simuSTOCHact
 mOth <- rep(mOTH,length=length(specific$Species)) # ; mOth[match(objArgs@arguments$Gestion$espece,specific$Species)] <- mOTH
 
 TRGT <- match(objArgs@arguments$Gestion$target,c("TAC","Fbar","TAC->Fbar"))
-if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999 # TODO cette ligne ne sert a rien
+if (objArgs@arguments$Gestion$target%in%"biomasse") TRGT <- 999
 
 # browser()
 
@@ -278,13 +278,13 @@ out <-  .Call("IAM", objInput@input, objInput@specific, objInput@stochastic, obj
                     GestInd = as.integer(objArgs@arguments$Gestion$active),
                     mOth = as.double(mOth),
                     bounds = as.double(c(objArgs@arguments$Gestion$inf,objArgs@arguments$Gestion$sup)),
-                    TAC = TACtot, TACtot = as.double(objArgs@arguments$Gestion$tac), FBAR = as.double(objArgs@arguments$Gestion$fbar),
+                    TAC = TACtot, TACglob = as.double(objArgs@arguments$Gestion$tac), FBAR = as.double(objArgs@arguments$Gestion$fbar),
                     effSup = as.double(objArgs@arguments$Gestion$effSup),
                     GestParam = as.integer(c(eTemp = match(objArgs@arguments$Gestion$espece,c(specific$Species,specific$StaticSpp))-1,
                                  var = match(objArgs@arguments$Gestion$control,c("Nb trips","Nb vessels")),
                                  trgt = TRGT,
                                  delay = objArgs@arguments$Gestion$delay,
-                                 upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)), # eointeger TODO : move this out
+                                 upd = objArgs@arguments$Gestion$upd, typeG = objArgs@arguments$Gestion$typeG)), # eointeger
                     persCalc = as.integer(c(perscCalc = objArgs@arguments$Eco$perscCalc)),
                     dr = as.double(objArgs@arguments$Eco$dr),
                     SRind = as.integer(unlist(lapply(objArgs@arguments$Recruitment,function(x) x$modSRactive))),

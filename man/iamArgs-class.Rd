@@ -17,13 +17,19 @@ Used by \code{IAM.Args} method that use shiny package for GUI.
 
 \item{\code{arguments}}{Arguments set in the GUI window.
 \describe{
-  \item{Recruitment}{Parameters for dynamic XSA species. Equation and parameters for recruitment.}
-  \item{Replicates}{Deprecated. Parameters for replication. Module activation, number of replicates et output variables selected.}
-  \item{Scenario}{Scenario selection. Module activation, list of scenario and selected scenario.}
-  \item{Gestion}{Gestion module activation. Multiple parameters to select a target species,
-  a gestion control (nbv, nbds), bounds of gestion, and if the gestion is by TAC, Fleet etc.
-  This is in way of deprecation since TACbyF is directly implemented in IAM.model function.}
-  \item{Eco}{Economic module, partially deprecated. Only perscCalc and dr (discount rate) are used.}
+  \item{Recruitment}{Parameters for dynamic XSA species. Equation and
+  parameters for recruitment.}
+  \item{Replicates}{Deprecated. Parameters for replication. Module
+  activation, number of replicates et output variables selected.}
+  \item{Scenario}{Scenario selection. Module activation, list of scenario
+  and selected scenario.}
+  \item{Gestion}{Gestion module activation. Multiple parameters to select
+  a target species, a gestion control (nbv, nbds), bounds of gestion,
+  and if the gestion is by TAC, Fleet etc.
+  This is in way of deprecation since TACbyF is directly implemented in
+  IAM.model function.}
+  \item{Eco}{Economic module, partially deprecated. Only perscCalc and dr
+  (discount rate) are used.}
 }}
 
 \item{\code{specific}}{Copy of the specific slot from \code{\link[IAM]{iamInput-class}}}

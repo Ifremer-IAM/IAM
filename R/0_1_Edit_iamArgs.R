@@ -256,7 +256,7 @@ setMethod(
     }
 
     if(!is.null(espece)){
-      espece <- match.arg(espece, object@specific$Species) # TODO :All species or only XSA
+      espece <- match.arg(espece, object@specific$Species) # TODO :All species or only XSA ?
       gest$espece <- espece
     }
 
@@ -587,13 +587,14 @@ setMethod(
     cat(sprintf("Simulation start in %d and end in %d (%d steps)\n",
                 spe$t_init, tail(spe$times,1), spe$NbSteps ))
 
-    cat("\n",rep("-",36), "\nDynamic Species | Model |     Ages |\n", sep = "")
-    cat(sprintf("%15s | %5s | %1s to %3s |\n", spe$Species,
+    cat("\n",rep("-",41), "\nDynamic Species | Model |     Ages (nb) |\n", sep = "")
+    cat(sprintf("%15s | %5s | %1s to %3s (%2d) |\n", spe$Species,
                 ifelse(spe$Q == 0, "XSA", "SS3"),
                 unlist(lapply(spe$Ages, function(x) head(x,1))),
-                unlist(lapply(spe$Ages, function(x) tail(x, 1))) ), sep = "")
+                unlist(lapply(spe$Ages, function(x) tail(x, 1))),
+                unlist(lapply(spe$Ages, function(x) length(x)))), sep = "")
 
-    cat(rep("-",36),"\n", sep = "")
+    cat(rep("-",41),"\n", sep = "")
 
     if(length(spe$Fleet) < 15){
       cat("                  Fleet |    nbv   |\n", sprintf(

@@ -7,7 +7,7 @@
 convertInput(inp, Fq_fmi = NULL, Fg_fmi = NULL, verbose = FALSE)
 }
 \arguments{
-\item{inp}{# TODO}
+\item{inp}{iamInput class object.}
 
 \item{Fq_fmi}{# TODO}
 

@@ -5,7 +5,7 @@
 \alias{iamInput-class}
 \title{Class "iamInput"}
 \description{
-# TODO
+Public S4 class after importing xlsx file into R with the IAM package.
 }
 \details{
 The \code{iamInput} class has methods defined for creation of
@@ -18,33 +18,43 @@ a new object, usage in \code{iamArgs} initiation and in \code{IAM.Model}.
 
 \item{\code{specific}}{structural dimension
 \describe{
-  \item{Species}{Stock vector with 3 letter abreviation of species name and sotck number. chr vector}
-  \item{StaticSpp}{Static species. These ones are landed but are not included in dynamic structure.
+  \item{Species}{Stock vector with 3 letter abreviation of species name and
+  sotck number. chr vector}
+  \item{StaticSpp}{Static species. These ones are landed but are not
+  included in dynamic structure.
   This information is extracted from the Fleet sheet. chr vector}
-  \item{AllSpp}{All the stocks names concatenated from Species and StaticSpp. chr vector}
-  \item{Fleet}{Fleet types, defined thanks to vessel length, area and times. A vesserl can have multiple Metier. chr vector}
-  \item{Metier}{Typology depending on fishing gear, vessel length, area and times of fisheries. chr vector}
+  \item{AllSpp}{All the stocks names concatenated from Species and StaticSpp.
+   chr vector}
+  \item{Fleet}{Fleet types, defined thanks to vessel length, area and times.
+  A vesserl can have multiple Metier. chr vector}
+  \item{Metier}{Typology depending on fishing gear, vessel length, area and
+  times of fisheries. chr vector}
   \item{MetiersEco}{Economic metier, depending on fishing gear. chr vector}
   \item{Ages}{Ages structure for each dynamic species. List of chr vector}
   \item{Cat}{Economic type for each dynamic species. List of chr vector}
   \item{t_init}{Initial year of the model. int}
-  \item{NbSteps}{Number of years for the model to be used. Initial year is included as step 0. int vector}
+  \item{NbSteps}{Number of years for the model to be used. Initial year is
+  included as step 0. int vector}
   \item{times}{Years used in the model. Defined with t_init and NbSteps}
   \item{Q}{Status of species. 0 mean XSA dynamic 1 mean SS3 dynamic}
-  \item{S}{Status of species. 0 mean XSA dynamic 1 mean SEX dynamic. A species can't be SS3 and SEX.}
+  \item{S}{Status of species. 0 mean XSA dynamic 1 mean SEX dynamic.
+  A species can't be SS3 and SEX.}
 }}
 
-\item{\code{historical}}{# TODO descr juste pour les graphes.pas utilise dans le modele C++}
+\item{\code{historical}}{List of input for all species and fleet. Each element is a
+list of variable in different format table. This slot is not used in C++
+because all data are prior to simulation year start.}
 
-\item{\code{input}}{# TODO descr}
+\item{\code{input}}{List of input for all species and fleet. Each element is a list
+of variable in different format table.}
 
 \item{\code{scenario}}{List of scenarii with each containing one element per species
-and one supplementary element for Fleets. # TODO explain why is there a Fleet element here ?
-# TODO describe the format a species element}
+and one supplementary element for Fleets.}
 
-\item{\code{stochastic}}{# TODO description is not possible with med style input.}
+\item{\code{stochastic}}{Stochastic parameters for stock recrutment. Will be used in
+iamArgs in place of recruitment functions.}
 
-\item{\code{optimization}}{# TODO description is not possible with med style input.}
+\item{\code{optimization}}{Deprecated slot.}
 }}
 
 \examples{

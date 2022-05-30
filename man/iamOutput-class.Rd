@@ -16,9 +16,11 @@ Class "iamOutput"
 
 \item{\code{specific}}{Copy of the specific slot from \code{\link[IAM]{iamInput-class}}}
 
-\item{\code{outputSp}}{# TODO}
+\item{\code{outputSp}}{List of biologic variable. Each element is a list for a
+variable (example F) formated as an element per dynamic stock.}
 
-\item{\code{output}}{# TODO}
+\item{\code{output}}{List of economic variable. Each element is a table with various
+format depending of dimension (fleet, metier, year)}
 }}
 
 \examples{

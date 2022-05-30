@@ -1,10 +1,34 @@
 #fonction de conversion des inputs au niveau m?tier Eco (inclus impl?mentation de l'allocation de mortalite par peche
 
+
+#' DimCst
+#'
+#' Get DimCst attributes from an object.
+#'
+#' DimCst attributes is an integer vector of length 4
+#'
+#' @param x object to get DimCst attributes from
+#'
+#' @author Maxime Jaunatre
+#'
+#' @rdname DimCst
+#' @export
+dimcst <- function(x){
+  return(attributes(x)$DimCst)
+}
+
+#' @rdname DimCst
+'set_dimcst<-' <- function(x, value){
+  attributes(x)$DimCst <- as.integer(value)
+  x
+}
+
+
 #' convertInput
 #'
 #' Fonction de ventilation du jeu de donnee
 #'
-#' @param inp # TODO
+#' @param inp iamInput class object.
 #' @param Fq_fmi # TODO
 #' @param Fg_fmi # TODO
 #' @param verbose TRUE will print information about the function process.
@@ -38,13 +62,13 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
       Lrefm <- inp@input[[i]]$Lref_f_m_e
       FM <- inp@input[[i]]$fm
 
-      if (attributes(Fini)$DimCst[1]>0 & attributes(Fini)$DimCst[2]>0) {
+      if (dimcst(Fini)[1]>0 & dimcst(Fini)[2]>0) {
         Ffmi[] <- Fini[]
       } else {
         #ventilation m?tier
-        if (attributes(Fini)$DimCst[2]==0) {                                         #ie F = Fi (cas 1, 2)
-          if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[2:3]>0) & attributes(Ci)$DimCst[3]>0) {   #ie C_mi renseign? avec composante m?tier et ?ge, et C_i renseign? avec composante ?ge -> cas 1 ou 2
-            if (attributes(Cmi)$DimCst[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
+        if (dimcst(Fini)[2]==0) {                                         #ie F = Fi (cas 1, 2)
+          if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(dimcst(Cmi)[2:3]>0) & dimcst(Ci)[3]>0) {   #ie C_mi renseign? avec composante m?tier et ?ge, et C_i renseign? avec composante ?ge -> cas 1 ou 2
+            if (dimcst(Cmi)[1]>0) {                                        #ie C_mi = Cfmi  (cas 2)
               Ffmi[] <- Cmi[] # TODO : is it usefull ? add some time.
               aggCmi <- apply(Cmi,3,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]  #on remplace dans Ci les valeurs agr?g?es issues de C_mi sup?rieures
               Ffmi <- Ffmi*rep(Fini/Ci,each=nF*nM)
@@ -55,8 +79,8 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
               Fmi <- Fmi*rep(Fini/Ci,each=nM)
               # TODO : replace by Fmi*matrix(Fini/Ci, ncol = nI, nrow = nM, byrow = TRUE)
             }
-          } else { if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(attributes(Ymi)$DimCst[2:3]>0) & attributes(Yi)$DimCst[3]>0) {   #ie Y_mi renseign? avec composante m?tier et ?ge, et Y_i renseign? avec composante ?ge -> cas 1 ou 2
-            if (attributes(Ymi)$DimCst[1]>0) {                                #ie Y_mi = Yfmi  (cas 2)
+          } else { if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(dimcst(Ymi)[2:3]>0) & dimcst(Yi)[3]>0) {   #ie Y_mi renseign? avec composante m?tier et ?ge, et Y_i renseign? avec composante ?ge -> cas 1 ou 2
+            if (dimcst(Ymi)[1]>0) {                                #ie Y_mi = Yfmi  (cas 2)
               Ffmi[] <- Ymi[]
               aggYmi <- apply(Ymi,3,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
               Ffmi <- Ffmi*rep(Fini/Yi,each=nF*nM)
@@ -76,31 +100,31 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
         #on poursuit avec la ventilation flottille si Ffmi non compl?t? (on suppose ? ce stade que Fmi a ?t? compl?t?)
 
         if (all(is.na(Ffmi))) {                                                       #ie cas 3 ou 4
-          if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(attributes(Cmi)$DimCst[1:3]>0) & all(attributes(Ci)$DimCst[2:3]>0)) {   #ie cas 4
+          if (!all(is.na(Cmi)) & !all(is.na(Ci)) & all(dimcst(Cmi)[1:3]>0) & all(dimcst(Ci)[2:3]>0)) {   #ie cas 4
             Ffmi[] <- Cmi[]
             aggCmi <- apply(Cmi,2:3,sum,na.rm=TRUE) ; Ci[aggCmi>Ci] <- aggCmi[aggCmi>Ci]
             Ffmi <- Ffmi*rep(Fmi/Ci,each=nF)
           } else {
-            if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(attributes(Ymi)$DimCst[1:3]>0) & all(attributes(Yi)$DimCst[2:3]>0)) {   #ie cas 4
+            if (!all(is.na(Ymi)) & !all(is.na(Yi)) & all(dimcst(Ymi)[1:3]>0) & all(dimcst(Yi)[2:3]>0)) {   #ie cas 4
               Ffmi[] <- Ymi[]
               aggYmi <- apply(Ymi,2:3,sum,na.rm=TRUE) ; Yi[aggYmi>Yi] <- aggYmi[aggYmi>Yi]
               Ffmi <- Ffmi*rep(Fmi/Yi,each=nF)
             } else {                                                                # il faut alors utiliser les donn?es de d?barquements des feuillets Eco, redistribu?es par m?tierBio via la matrice fm
-              if (!all(is.na(Lref)) & !all(is.na(FM)) & attributes(Ymi)$DimCst[1]==0 & attributes(Ymi)$DimCst[2]>0) { #cas 3 avec Ctot_m calcul? ? partir de Y_mi
+              if (!all(is.na(Lref)) & !all(is.na(FM)) & dimcst(Ymi)[1]==0 & dimcst(Ymi)[2]>0) { #cas 3 avec Ctot_m calcul? ? partir de Y_mi
                 CtotM <- apply(Ymi,1,sum,na.rm=TRUE) # TODO : rowSums
                 Cfm <- FM*as.vector(Lref)
                 aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
                 Ffmi[] <- Cfm/rep(CtotM,each=nF)
                 Ffmi <- Ffmi*rep(Fmi,each=nF)
               } else {
-                if (!all(is.na(Lref)) & !all(is.na(FM)) & attributes(Yi)$DimCst[1]==0 & attributes(Yi)$DimCst[2]>0) { #cas 3 avec Ctot_m calcul? ? partir de Y_i
+                if (!all(is.na(Lref)) & !all(is.na(FM)) & dimcst(Yi)[1]==0 & dimcst(Yi)[2]>0) { #cas 3 avec Ctot_m calcul? ? partir de Y_i
                   CtotM <- apply(Yi,1,sum,na.rm=TRUE)
                   Cfm <- FM*as.vector(Lref)
                   aggC <- apply(Cfm,2,sum,na.rm=TRUE) ; CtotM[aggC>CtotM] <- aggC[aggC>CtotM]
                   Ffmi[] <- Cfm/rep(CtotM,each=nF)
                   Ffmi <- Ffmi*rep(Fmi,each=nF)
                 } else {    # cas ultime : on utilise les d?barquements f*m de r?f?rence dans les feuillets Fleet sur Fi et Ytot calcul? ? partir de Yi
-                  if (attributes(Fini)$DimCst[1]==0 & attributes(Fini)$DimCst[2]==0 & !all(is.na(Lrefm)) & !all(is.na(Yi))) {
+                  if (dimcst(Fini)[1]==0 & dimcst(Fini)[2]==0 & !all(is.na(Lrefm)) & !all(is.na(Yi))) {
                     Ffmi[] <- (Lrefm/sum(Yi,na.rm=TRUE))%o%Fini            # fait le 26/07/2013
                   }
                 }
@@ -149,15 +173,15 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
     TABF$mEco <- factor(as.character(TABF$mEco),levels=namME)
     TABF$a <- factor(as.character(TABF$a),levels=namI)
     FF <- with(TABF,tapply(val,list(f,mEco,a),function(x) x))
-    attributes(FF)$DimCst <- as.integer(c(nF,nME,nI,0))
+    set_dimcst(FF) <- c(nF,nME,nI,0)
 
-    if (attributes(inp@input[[i]]$F_fmi)$DimCst[1]>0 & attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+    if (dimcst(inp@input[[i]]$F_fmi)[1]>0 & dimcst(inp@input[[i]]$F_fmi)[2]>0) {
       inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,3,sum,na.rm=TRUE)
-      attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
+      set_dimcst(inp@input[[i]]$F_i) <-c(0,0,nI,0)
     } else {
-      if (attributes(inp@input[[i]]$F_fmi)$DimCst[2]>0) {
+      if (dimcst(inp@input[[i]]$F_fmi)[2]>0) {
         inp@input[[i]]$F_i <- apply(inp@input[[i]]$F_fmi,2,sum,na.rm=TRUE)
-        attributes(inp@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,nI,0))
+        set_dimcst(inp@input[[i]]$F_i) <- c(0,0,nI,0)
       } else {
         inp@input[[i]]$F_i <- inp@input[[i]]$F_fmi
       }
@@ -168,8 +192,8 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
     #conversion des variables ratios --> on applique les m?mes valeurs pour tous les m?tiers correspondants (on les suppose d?finie aux ?ges)
     if(inp@specific$Q[i]==0 & inp@specific$S[i]==0) {
       di <- inp@input[[i]]$d_i
-      if (attributes(di)$DimCst[2]>0) {
-        if (attributes(di)$DimCst[1]==0) {
+      if (dimcst(di)[2]>0) {
+        if (dimcst(di)[1]==0) {
           vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
           vec_di[] <- rep(di,each=nF)
         } else {
@@ -185,14 +209,14 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
         TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)
         TABD$a <- factor(as.character(TABD$a),levels=namI)
         FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
-        attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))
+        set_dimcst(FD) <- c(nF,nME,nI,0)
 
         inp@input[[i]]$d_i <- FD
       }
     } else if(FALSE){
       di_G1 <- inp@input[[i]]$d_i_G1 #G1
-      if (attributes(di_G1)$DimCst[2]>0) {
-        if (attributes(di_G1)$DimCst[1]==0) {
+      if (dimcst(di_G1)[2]>0) {
+        if (dimcst(di_G1)[1]==0) {
           vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
           vec_di[] <- rep(di_G1,each=nF)
         } else {
@@ -207,14 +231,14 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
         TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)
         TABD$a <- factor(as.character(TABD$a),levels=namI)
         FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
-        attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))
+        set_dimcst(FD) <- c(nF,nME,nI,0)
 
         inp@input[[i]]$d_i_G1 <- FD
       }
 
       di_G2 <- inp@input[[i]]$d_i_G2 #G2
-      if (attributes(di_G2)$DimCst[2]>0) {
-        if (attributes(di_G2)$DimCst[1]==0) {
+      if (dimcst(di_G2)[2]>0) {
+        if (dimcst(di_G2)[1]==0) {
           vec_di <- llF[[i]] ; vec_di[] <- NA #matrice au format fmi
           vec_di[] <- rep(di_G2,each=nF)
         } else {
@@ -229,7 +253,7 @@ convertInput <- function(inp,Fq_fmi=NULL, Fg_fmi=NULL, verbose = FALSE) {
         TABD$mEco <- factor(as.character(TABD$mEco),levels=namME)
         TABD$a <- factor(as.character(TABD$a),levels=namI)
         FD <- with(TABD,tapply(val,list(f,mEco,a),function(x) x))
-        attributes(FD)$DimCst <- as.integer(c(nF,nME,nI,0))
+        set_dimcst(FD) <- c(nF,nME,nI,0)
 
         inp@input[[i]]$d_i_G2 <- FD
       }
@@ -258,7 +282,7 @@ standFormat <- function(DF,nbStep,modF,modM,modI,modC,alk,as.na=NULL) {
 
     if (ncol(DF)==1) {
       Mat <- as.numeric(as.character(DF$value))
-      attributes(Mat)$DimCst <- as.integer(rep(0,4))
+      set_dimcst(Mat) <- rep(0,4)
     } else {
       #  if ("t" %in% names(DF)) DF <- expand.time(DF,nbStep)
 
@@ -323,7 +347,8 @@ standFormat <- function(DF,nbStep,modF,modM,modI,modC,alk,as.na=NULL) {
         dimL[3] = length(modI)
       }
 
-      attributes(Mat)$DimCst <- as.integer(dimL[1:4]) ; if (dimL.c>0) {
+      set_dimcst(Mat) <- dimL[1:4]
+      if (dimL.c>0) {
         if (dimL.i>0) {
           attributes(Mat)$DimCst <- NULL
         } else {
@@ -418,7 +443,7 @@ reformat <- function(x, slotN="stockInput") {
   ll <- x[n]
   names(ll) <- n
   ll <- lapply(ll,function(y) {if (is.null(y)) return(as.numeric(NA)) else {if (all(is.na(y))) return(as.numeric(NA)) else return(y)}})
-  return(lapply(ll,function(y){if (length(y)==1 & is.null(names(y)) & is.null(dimnames(y)) & is.numeric(y)) attributes(y)$DimCst <- as.integer(c(0,0,0,0))   #added 18/07/16
+  return(lapply(ll,function(y){if (length(y)==1 & is.null(names(y)) & is.null(dimnames(y)) & is.numeric(y)) set_dimcst(y) <- rep(0,4)   #added 18/07/16
   return(y)}))
 }    #si on veut plut?t des NAs, on remplace 'll)}' par 'lapply(ll,function(y) if (is.null(y)) NA else y))}'
 
@@ -520,15 +545,15 @@ read.Pflex <- function(file, nam_stock, nam_stock_bis){
   dim.e <- length(MOD[[2]])
   dimL <- c(p=dim.p, e=dim.e)
 
-  ListPflex$beta_pp = acast(ListPflex$beta_pp,p~p.1,value.var='value')
-  attributes(ListPflex$beta_pp)$DimCst = as.integer(c(dimL['p'],dimL['p']))
-  ListPflex$ep = acast(ListPflex$ep,e~p,value.var='value')
-  attributes(ListPflex$ep)$DimCst = as.integer(c(dimL['e'],dimL['p']))
+  ListPflex$beta_pp <- acast(ListPflex$beta_pp,p~p.1,value.var='value')
+  set_dimcst(ListPflex$beta_pp) <- c(dimL['p'],dimL['p'])
+  ListPflex$ep <- acast(ListPflex$ep,e~p,value.var='value')
+  set_dimcst(ListPflex$ep) <- c(dimL['e'],dimL['p'])
 
-  ListPflex$ep[which(rowSums(ListPflex$ep)==0),'NONE'] = as.integer(1) #on assigne les especes pour lesquelles pas de produit a produit NONE
+  ListPflex$ep[which(rowSums(ListPflex$ep)==0),'NONE'] <- as.integer(1) #on assigne les especes pour lesquelles pas de produit a produit NONE
 
-  ListPflex$modE = as.character(MOD[[2]])
-  ListPflex$modP = as.character(MOD[[1]])
+  ListPflex$modE <- as.character(MOD[[2]])
+  ListPflex$modP <- as.character(MOD[[1]])
 
   return(ListPflex)
 }
@@ -1219,7 +1244,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_mi)==0) {
         if (length(listInput$C_mi)!=0) {
           listInput$Y_mi <- listInput$C_mi
-          indProd <- attributes(listInput$C_mi)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_mi)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_mi <- listInput$Y_mi*rep(listInput$wL_i,each=prod(indProd))/1000
         }
@@ -1228,7 +1253,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_mi_G1)==0) {
         if (length(listInput$C_mi_G1)!=0) {
           listInput$Y_mi_G1 <- listInput$C_mi_G1
-          indProd <- attributes(listInput$C_mi_G1)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_mi_G1)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_mi_G1 <- listInput$Y_mi_G1*rep(listInput$wL_i_G1,each=prod(indProd))/1000
         }
@@ -1237,7 +1262,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_mi_G2)==0) {
         if (length(listInput$C_mi_G2)!=0) {
           listInput$Y_mi_G2 <- listInput$C_mi_G2
-          indProd <- attributes(listInput$C_mi_G2)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_mi_G2)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_mi_G2 <- listInput$Y_mi_G2*rep(listInput$wL_i_G2,each=prod(indProd))/1000
         }
@@ -1246,7 +1271,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_i)==0) {
         if (length(listInput$C_i)!=0) {
           listInput$Y_i <- listInput$C_i
-          indProd <- attributes(listInput$C_i)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_i)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_i <- listInput$Y_i*rep(listInput$wL_i,each=prod(indProd))/1000
         }
@@ -1254,7 +1279,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_i_G1)==0) {
         if (length(listInput$C_i_G1)!=0) {
           listInput$Y_i_G1 <- listInput$C_i_G1
-          indProd <- attributes(listInput$C_i_G1)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_i_G1)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_i_G1 <- listInput$Y_i_G1*rep(listInput$wL_i_G1,each=prod(indProd))/1000
         }
@@ -1263,7 +1288,7 @@ read.input <- function(file, t_init, nbStep, t_hist_max = t_init,
       if (length(listInput$Y_i_G2)==0) {
         if (length(listInput$C_i_G2)!=0) {
           listInput$Y_i_G2 <- listInput$C_i_G2
-          indProd <- attributes(listInput$C_i_G2)$DimCst[1:2]
+          indProd <- dimcst(listInput$C_i_G2)[1:2]
           indProd[indProd==0] <- 1
           listInput$Y_i_G2 <- listInput$Y_i_G2*rep(listInput$wL_i_G2,each=prod(indProd))/1000
         }
@@ -1720,64 +1745,64 @@ if (length(nmQ)>0) {
       AG <- OUT@specific$Ages[[i]]
       Nt0s1q[[i]][2:4,AG[1]] <- 0 ; Nt0s1q[[i]][1,AG[1]] <- Ni0q[[i]][1]      #pas d'individus d'?ge 0 et de morph>1 ? l'?tat initial
       for (season in 1:4) {
-          temp <- as.double(Ni0q[[i]][season]) ; attributes(temp)$DimCst <- as.integer(c(0,0,0,0))
+          temp <- as.double(Ni0q[[i]][season]) ; set_dimcst(temp) <- rep(0,4)
           lNi0q[[paste0("Ni0_S",season,"M",season)]] <- temp
         for (morph in 1:4) {
           if (season==1) {
-             temp <- adrop(Nt0s1q[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+             temp <- adrop(Nt0s1q[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
              lNt0s1q[[paste0("Nt0_S1M",morph)]] <- temp
-             temp <- adrop(matwt[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+             temp <- adrop(matwt[[i]][morph,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
              lmatwt[[paste0("matwt_M",morph)]] <- temp
           }
-          temp <- adrop(Fq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(Fq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFq_i[[paste0("Fi_S",season,"M",morph)]] <- temp
-          temp <- adrop(Fq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(Fq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           lFq_fmi[[paste0("Ffmi_S",season,"M",morph)]] <- temp
           temp <- adrop(Fq_i[[i]][season,morph,AG,drop=FALSE]-apply(Fq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFothq_i[[paste0("Fothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(iniFq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(iniFq_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFq_i[[paste0("iniFi_S",season,"M",morph)]] <- temp
-          temp <- adrop(iniFq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(iniFq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           liniFq_fmi[[paste0("iniFfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(iniFq_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFq_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFothq_i[[paste0("iniFothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(FqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(FqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFqLwt_i[[paste0("FLWi_S",season,"M",morph)]] <- temp
-          temp <- adrop(FqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(FqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           lFqLwt_fmi[[paste0("FLWfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(FqLwt_i[[i]][season,morph,AG,drop=FALSE]-apply(FqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFothqLwt_i[[paste0("FLWothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(iniFqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(iniFqLwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFqLwt_i[[paste0("iniFLWi_S",season,"M",morph)]] <- temp
-          temp <- adrop(iniFqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(iniFqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           liniFqLwt_fmi[[paste0("iniFLWfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(iniFqLwt_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFqLwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFothqLwt_i[[paste0("iniFLWothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(FqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(FqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFqDwt_i[[paste0("FDWi_S",season,"M",morph)]] <- temp
-          temp <- adrop(FqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(FqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           lFqDwt_fmi[[paste0("FDWfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(FqDwt_i[[i]][season,morph,AG,drop=FALSE]-apply(FqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           lFothqDwt_i[[paste0("FDWothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFqDwt_i[[paste0("iniFDWi_S",season,"M",morph)]] <- temp
-          temp <- adrop(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+          temp <- adrop(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
           liniFqDwt_fmi[[paste0("iniFDWfmi_S",season,"M",morph)]] <- temp
           temp <- adrop(iniFqDwt_i[[i]][season,morph,AG,drop=FALSE]-apply(iniFqDwt_fmi[[i]][season,morph,FL,ME,AG,drop=FALSE],c(1,2,5),sum,na.rm=TRUE),1:2)
-          temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp[] <- as.double(temp) ; set_dimcst(temp) <- c(0,0,length(AG),0)
           liniFothqDwt_i[[paste0("iniFDWothi_S",season,"M",morph)]] <- temp
 
-          temp <- adrop(iniNt0q[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(0,0,length(AG),0))
+          temp <- adrop(iniNt0q[[i]][season,morph,AG,drop=FALSE],1:2) ; temp[] <- as.double(temp) ;set_dimcst(temp) <- c(0,0,length(AG),0)
           liniNt0q[[paste0("iniNt0q_S",season,"M",morph)]] <- temp
         }
           #OUT@specific$Q[OUT@specific$Species%in%i] <- as.integer(1)
@@ -1785,10 +1810,10 @@ if (length(nmQ)>0) {
       OUT@input[[i]] <- c(OUT@input[[i]],liniNt0q,lNi0q,lNt0s1q,lmatwt,liniFq_i,lFq_i,liniFq_fmi,lFq_fmi,liniFothq_i,lFothq_i,
                      liniFqLwt_i,lFqLwt_i,liniFqLwt_fmi,lFqLwt_fmi,liniFothqLwt_i,lFothqLwt_i,liniFqDwt_i,lFqDwt_i,
                      liniFqDwt_fmi,lFqDwt_fmi,liniFothqDwt_i,lFothqDwt_i)
-      OUT@input[[i]]$N_it0 <- as.double(NA) ; attributes(OUT@input[[i]]$N_it0)$DimCst <- as.integer(c(0,0,0,0))
-      OUT@input[[i]]$N_i0t <- as.double(NA) ; attributes(OUT@input[[i]]$N_i0t)$DimCst <- as.integer(c(0,0,0,0))
-      OUT@input[[i]]$F_i <- as.double(NA) ; attributes(OUT@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,0,0))
-      OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
+      OUT@input[[i]]$N_it0 <- as.double(NA) ; set_dimcst(OUT@input[[i]]$N_it0) <- rep(0,4)
+      OUT@input[[i]]$N_i0t <- as.double(NA) ; set_dimcst(OUT@input[[i]]$N_i0t) <- rep(0,4)
+      OUT@input[[i]]$F_i <- as.double(NA) ; set_dimcst(OUT@input[[i]]$F_i) <- rep(0,4)
+      OUT@input[[i]]$F_fmi <- as.double(NA) ; set_dimcst(OUT@input[[i]]$F_fmi) <- rep(0,4)
     }
 }
 ## edit sex ####
@@ -1798,19 +1823,19 @@ if (length(nmS)>0) {
     AG <- OUT@specific$Ages[[i]]
 
     for (gender in as.character(1:2)) {
-      temp <- adrop(Fg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+      temp <- adrop(Fg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
       lFg_fmi[[paste0("F_fmi_G",gender)]] <- temp
 
-      temp <- adrop(dg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; attributes(temp)$DimCst <- as.integer(c(length(FL),length(ME),length(AG),0))
+      temp <- adrop(dg_fmi[[i]][gender,FL,ME,AG,drop=FALSE],1) ; temp[] <- as.double(temp) ; set_dimcst(temp) <- c(length(FL),length(ME),length(AG),0)
       ldg_fmi[[paste0("d_i_G",gender)]] <- temp
     }
     OUT@input[[i]] <- c(OUT@input[[i]],lFg_fmi)
     OUT@input[[i]]$d_i_G1 <- ldg_fmi$d_i_G1
     OUT@input[[i]]$d_i_G2 <- ldg_fmi$d_i_G2
-    OUT@input[[i]]$N_it0 <- as.double(NA) ; attributes(OUT@input[[i]]$N_it0)$DimCst <- as.integer(c(0,0,0,0))
-    OUT@input[[i]]$N_i0t <- as.double(NA) ; attributes(OUT@input[[i]]$N_i0t)$DimCst <- as.integer(c(0,0,0,0))
-    OUT@input[[i]]$F_i <- as.double(NA) ; attributes(OUT@input[[i]]$F_i)$DimCst <- as.integer(c(0,0,0,0))
-    OUT@input[[i]]$F_fmi <- as.double(NA) ; attributes(OUT@input[[i]]$F_fmi)$DimCst <- as.integer(c(0,0,0,0))
+    OUT@input[[i]]$N_it0 <- as.double(NA) ; set_dimcst(OUT@input[[i]]$N_it0) <- rep(0,4)
+    OUT@input[[i]]$N_i0t <- as.double(NA) ; set_dimcst(OUT@input[[i]]$N_i0t) <- rep(0,4)
+    OUT@input[[i]]$F_i <- as.double(NA) ; set_dimcst(OUT@input[[i]]$F_i) <- rep(0,4)
+    OUT@input[[i]]$F_fmi <- as.double(NA) ; set_dimcst(OUT@input[[i]]$F_fmi) <- rep(0,4)
   }
 }
 

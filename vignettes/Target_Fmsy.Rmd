@@ -139,12 +139,12 @@ Les valeurs de $N$, $F_{msy}$ et $TAC$ sont fixées ici :
 
 
 ```r
-N <- 500
+N <- 50
 Fmsy <- 0.26
 TACS <- seq(3200, 5600, by = 400)
 ```
 
-3500 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :
+350 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :
 
 
 ```r
@@ -179,7 +179,7 @@ simultac <- function(x, argum, input, N){
                              tac = c(NA, NA, rep(x, 10)) )
 
   sim <- replicate(N, {
-  IAM::IAM.model(objArgs = argum_int,  objInput = input)
+  IAM::IAM.model(objArgs = argum_int,  objInput = input, mOTH = 1)
   })
 
   siml <- lapply(1:N,  function(y) {
@@ -216,7 +216,7 @@ stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x)
-#> Time difference of 35.0032 mins
+#> Time difference of 3.995515 mins
 ```
 
 
@@ -242,7 +242,7 @@ COR %>%
   NULL
 ```
 
-![\label{fig:TAC}COR variables for different TAC scenarii. 500 runs.](figure/COR_bio_variables-1.png)
+![\label{fig:TAC}COR variables for different TAC scenarii. 50 runs.](figure/COR_bio_variables-1.png)
 
 
 ```r
@@ -268,21 +268,21 @@ Proba %>%
   NULL
 ```
 
-![\label{fig:TACp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban-1.png)
+![\label{fig:TACp}Fmsy Probability over 50 runs. Target Fmsy for COR species is : 0.26](figure/calcProban-1.png)
 
 ```r
 filter(Proba, year == 2015, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      2015  76.4
-#> 2 3600     Fbar      2015  85.6
-#> 3 4000     Fbar      2015  60.6
-#> 4 4400     Fbar      2015  13  
-#> 5 4800     Fbar      2015   0.6
-#> 6 5200     Fbar      2015   0  
-#> 7 5600     Fbar      2015   0  
-#> 8 SQ       Fbar      2015   0
+#> 1 3200     Fbar      2015   100
+#> 2 3600     Fbar      2015    88
+#> 3 4000     Fbar      2015    60
+#> 4 4400     Fbar      2015    10
+#> 5 4800     Fbar      2015     0
+#> 6 5200     Fbar      2015     0
+#> 7 5600     Fbar      2015     0
+#> 8 SQ       Fbar      2015     0
 beepr::beep(3)
 ```
 
@@ -313,7 +313,7 @@ stopCluster(cl)
 
 res <- do.call(rbind, c(res, list(SQ)))
 print(Sys.time() - x) # 50 -> 3 min
-#> Time difference of 40.88487 mins
+#> Time difference of 5.708266 mins
 ```
 
 
@@ -338,7 +338,7 @@ COR %>%
   NULL
 ```
 
-![\label{fig:fbar}COR variables for different TAC scenarii. 500 runs.](figure/COR_bio_variables_fmsy-1.png)
+![\label{fig:fbar}COR variables for different TAC scenarii. 50 runs.](figure/COR_bio_variables_fmsy-1.png)
 
 ### Calcul de la probabilité d'atteindre le $F_{msy}$
 
@@ -368,21 +368,21 @@ Proba %>%
   NULL
 ```
 
-![\label{fig:fbarp}Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26](figure/calcProban_fmsy-1.png)
+![\label{fig:fbarp}Fmsy Probability over 50 runs. Target Fmsy for COR species is : 0.26](figure/calcProban_fmsy-1.png)
 
 ```r
 filter(Proba, year == 2015, variable == "Fbar")
 #> # A tibble: 8 x 4
 #>   sim_name variable  year Pfmsy
 #>   <chr>    <chr>    <dbl> <dbl>
-#> 1 3200     Fbar      2015  74.6
-#> 2 3600     Fbar      2015  81.6
-#> 3 4000     Fbar      2015  58.2
-#> 4 4400     Fbar      2015  12.4
-#> 5 4800     Fbar      2015   0  
-#> 6 5200     Fbar      2015   0  
-#> 7 5600     Fbar      2015   0  
-#> 8 SQ       Fbar      2015   0
+#> 1 3200     Fbar      2015   100
+#> 2 3600     Fbar      2015    90
+#> 3 4000     Fbar      2015    48
+#> 4 4400     Fbar      2015     6
+#> 5 4800     Fbar      2015     0
+#> 6 5200     Fbar      2015     0
+#> 7 5600     Fbar      2015     0
+#> 8 SQ       Fbar      2015     0
 beepr::beep(3)
 ```
 

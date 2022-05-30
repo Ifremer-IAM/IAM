@@ -25,7 +25,7 @@
 
 BioEcoPar::BioEcoPar(SEXP listInput /* object@input */, SEXP listSpec /* object@specific */, SEXP listStochastic /* object@stochastic */,
                      SEXP listScen /* object@scenario */, SEXP RecType1, SEXP RecType2, SEXP RecType3, SEXP Scenarii, /*SEXP Bootstrp, SEXP nbBootstrp, */ // TODO : remove unused arg
-                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP TACtot, SEXP FBAR, /*SEXP othSpSup,*/ SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
+                     SEXP GestInd, SEXP mOth, SEXP bounds, SEXP TACL, SEXP TACglob, SEXP FBAR, /*SEXP othSpSup,*/ SEXP effSup, SEXP GestParam, /*SEXP EcoDcf,*/
                      SEXP persCalc, SEXP dr, SEXP SRind, SEXP listSR, SEXP TypeSR, SEXP mFM, SEXP TACbyFL, SEXP Ftarg, SEXP W_Ftarg, SEXP MeanRec_Ftarg,
                      SEXP parBHV, SEXP parQEX,
                      SEXP tacCTRL, SEXP stochPrice, SEXP updateE, SEXP parOQD, int VERBOSE, int force_T)
@@ -154,11 +154,10 @@ PROTECT(m_oth = duplicate(mOth)); if (length(m_oth)!=nbE) error("Check dimension
 // X1 = REAL(bounds)[0];
 // X2 = REAL(bounds)[1];
 
-// TAC_glob = REAL(TAC);  //� corriger
 Fbar_trgt = REAL(FBAR);  //� corriger
 PROTECT(TACbyF = TACbyFL);  //� corriger
 PROTECT(TAC = TACL); // TODO :pourquoi juste un changement de nom la en fait ?
-TAC_glob = REAL(TACtot);  // TODO : TAC est une list alors qu'avant il etait unique.
+TAC_glob = REAL(TACglob);
 
 PROTECT(inpFtarg = Ftarg);
 PROTECT(inpW_Ftarg = W_Ftarg);

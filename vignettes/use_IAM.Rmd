@@ -430,7 +430,14 @@ Pour illustrer différentes représentations graphiques, on va générer plusieu
 
 ```{r simu2plot}
 N = 5
-IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 5e6
+
+# Add noise to COR recruitment
+IAM_argum_2009@arguments$Recruitment$COR$wnNOISEmodSR <- 0.2
+IAM_argum_2009@arguments$Recruitment$COR$noiseTypeSR <- 2 # Log-normal
+IAM_argum_2009@arguments$Recruitment$COR$typeMODsr <- "Hockey-Stick"
+IAM_argum_2009@arguments$Recruitment$COR$parAmodSR <- 2600
+IAM_argum_2009@arguments$Recruitment$COR$parBmodSR <- 9700
+
 # Simulation
 sim_statu_quo <- replicate(N, {
   IAM::IAM.model(objArgs = IAM_argum_2009,  objInput = IAM_input_2009)
@@ -442,7 +449,8 @@ IAM_argum_2009_TACnbv <- IAM.editArgs_Gest(
   tac = c(NA, NA, rep(3400, 10)))
 # Simulation
 sim_TACglob_nbv <- replicate(N, {
-  IAM::IAM.model(objArgs = IAM_argum_2009_TACnbv,  objInput = IAM_input_2009)
+  IAM::IAM.model(objArgs = IAM_argum_2009_TACnbv,  
+                 objInput = IAM_input_2009, mOTH = 1)
 })
 
 # Formatage

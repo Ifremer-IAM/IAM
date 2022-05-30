@@ -54,6 +54,10 @@ mod_Bioplot_serv <- function(id, x){
       def <- reactiveValues(sim_name = NULL, species = NULL,
                             fullvar = NULL, variable = NULL)
 
+      observe({
+        def$sim_name <- x$sim_name
+      })
+
       observeEvent(x$bioeco, {
         toggle("species", condition = x$bioeco == "Biologic")
         toggle("variable", condition = x$bioeco == "Biologic")
@@ -108,7 +112,6 @@ mod_Bioplot_serv <- function(id, x){
 
       observeEvent(input$variable, {def$variable <- input$variable })
       observeEvent(input$species, {def$species <- input$species })
-      observeEvent(input$sim_name, {def$sim_name <- input$sim_name })
 
 
       observe({
@@ -118,7 +121,7 @@ mod_Bioplot_serv <- function(id, x){
 
         if (any(def$species == "Fish")) def$species <- NULL
         if (any(def$sim_name == "Apocalypse")) def$sim_name <- NULL
-        if (any(def$sim_name == "Number")) def$variable <- NULL
+        if (any(def$variable == "Number")) def$variable <- NULL
 
         if (is.null(def$fullvar)) {
           df <- tibble()
@@ -133,32 +136,21 @@ mod_Bioplot_serv <- function(id, x){
         x$var <- df # for export
         # print(df)
 
-        if (nrow(df) > 0) {
+        col = ifelse(x$colors, "white", "gray")
 
+        if (nrow(df) > 0) {
+          # browser()
           p <- ggplot(df, aes(x = .data$year, y = .data$median)) +
             { if (N_sn) facet_grid(.data$variable ~ .data$sim_name,
                                    scales = "free_y") } +
             { if (x$chkribbon) geom_ribbon(aes(ymin = .data$quant1,
-                                               ymax = .data$quant2),
-                                           fill = "lightblue") } +
+            ymax = .data$quant2),
+            fill = col, alpha = .4) } +
             geom_line(size = .5) +
-            geom_point(fill="white", size = .5) +
+            geom_point(fill=col, size = .5) +
             geom_line(aes(y = .data$value), linetype = "dashed") +
             guides(x = guide_axis(angle = 90)) +
-            theme_light() +
-            theme(plot.title = element_text(size = 17, family="serif"),
-                  panel.background = element_rect(fill = "lightblue",
-                                                  colour = "lightblue",
-                                                  linetype = "solid"),
-                  legend.title=element_blank(),
-                  legend.text=element_text(size=14,family="serif"),
-                  axis.text=element_text(size=14,family="serif"),
-                  axis.title=element_text(size=15,family="serif"),
-                  axis.text.x = element_text(angle = 90, vjust = 0.5,
-                                             size=8,family="serif"),
-                  axis.text.y = element_text(size=8,family="serif"),
-                  strip.text.x = element_text(size = 7, colour = "black"),
-                  strip.text.y = element_text(size = 10, colour = "black", angle = 0)) +
+            IAM_theme(blue = x$colors) +
             NULL
         } else {
           p <- ggplot(NULL)

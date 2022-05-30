@@ -22,10 +22,13 @@ plot_app_ui <- function() {
       mod_EcoplotUI("eco"),
       pickerInput(
         inputId = "sim_name", label = "Scenarii",
-        choices = "statu_quo", selected = "statu_quo", multiple = TRUE,
+        choices = unique(get_golem_options("input")$sim_name),
+        selected = unique(get_golem_options("input")$sim_name),
+        multiple = TRUE,
         options = list(`actions-box` = TRUE)
       ),
       hr(),
+      checkboxInput("colors", "Display with default theme", value = FALSE),
       checkboxInput("chkribbon", "Display quantile envelopp", value = TRUE),
       sliderInput(
         inputId = "time",
@@ -70,8 +73,8 @@ plot_app_server <- function(input, output, session) {
 
   x <- reactiveValues(
     var = NULL,
-    bioeco = NULL, sim_name = NULL, chkribbon = NULL, time = NULL,
-    bio_plot = ggplot(NULL), eco_plot = ggplot(NULL)
+    bioeco = NULL, sim_name = NULL, chkribbon = NULL, colors = NULL,
+    time = NULL, bio_plot = ggplot(NULL), eco_plot = ggplot(NULL),
   )
 
   observeEvent(input$bioeco, {
@@ -83,6 +86,9 @@ plot_app_server <- function(input, output, session) {
   observeEvent(input$chkribbon, {
     x$chkribbon <- input$chkribbon
   })
+  observeEvent(input$colors, {
+    x$colors <- input$colors
+  })
   observeEvent(input$time, {
     x$time <- input$time
   })
@@ -92,7 +98,6 @@ plot_app_server <- function(input, output, session) {
 
   observe({
     output$plot <- renderPlot({
-
       return(switch(input$bioeco,
                     Biologic = x$bio_plot,
                     Economic = x$eco_plot))
@@ -111,6 +116,8 @@ plot_app_server <- function(input, output, session) {
     # cat("Life? Don't talk to me about life.\n")
     stopApp()
   })
+
+
 }
 
 
@@ -118,10 +125,13 @@ plot_app_server <- function(input, output, session) {
 #'
 #' Permet de faire les plots de Fbar, SSB et L_et en fonction du temps.
 #'
+#' @param object Table from IAM simulation. Of class "iam_quantbl" or
+#' "iam_formtbl" (second one will be modified with IAM.format_quant function).
+#'
 #' @author Maxime Jaunatre
 #' @importFrom shiny shinyApp
 #'
-#' @noRd
+#' @export
 IAM.test_plot <- function(object) {
 
   if(inherits(object, "iam_formtbl")){
@@ -138,7 +148,8 @@ IAM.test_plot <- function(object) {
     # (N = courbe d'age)
   )
   Ecovars <- c(
-    "nbv_f", "effort2_f", "GVLav_f", "gva_f", "gp_f", "wageg_f",  "wagen_f"
+    "nbv_f", "effort1_f", "GVLav_f",
+    "gva_f", "gp_f", "wageg_f",  "wagen_f"
   )
 
   dinsp <- unique(object$species[!is.na(object$species) & !is.na(object$age)])

@@ -32,7 +32,7 @@ setMethod("IAM.input2args", signature("iamInput"),function(object, desc= NULL){
   if(is.null(desc)){ desc <- object@desc }
   # init the arg object with shiny default
   ## Create argum ####
-  # TODO : this is where to modify the default for the GUI now !
+  # this is where to modify the default for the GUI now !
   init_recru <- function(name, object){
     list(modSRactive = 1,
          typeMODsr = "Mean",
@@ -700,17 +700,19 @@ setGeneric("IAM.args", function(object, specific,  ...){ # Generic method ####
 setMethod("IAM.args", signature("iamInput","missing"),
           function(object, desc=as.character(NA), ...){ # input method ####
 
-  if(is.null(desc)){ desc <- object@desc }
+            if(is.null(desc)){ desc <- object@desc }
 
-  args <- IAM.input2args(object, desc = desc)
-  IAM.args(object = args, desc = desc)
+            args <- IAM.input2args(object, desc = desc)
+            IAM.args(object = args, desc = desc)
 
-})
+          }
+)
 
 #' Etape de modification
 #' @rdname IAM.args-methods
 setMethod("IAM.args", signature("iamArgs","missing"),
           function(object, desc=as.character(NA), ...){ # argum method ####
+
             if(is.null(desc)){ desc <- object@desc }
 
             AllVarRep = c(
@@ -730,13 +732,16 @@ setMethod("IAM.args", signature("iamArgs","missing"),
 
             res <- IAM_arg_app(object = object, AllVarRep = AllVarRep)
 
-            attributes(res@arguments$Gestion$tac)$DimCst <- tac_dimcst
-            attributes(res@arguments$Gestion$fbar)$DimCst <- fbar_dimcst
-            attributes(res@arguments$Gestion$effSup)$DimCst <- effsup_dimcst
-            attributes(res@arguments$Gestion$mfm)$DimCst <- mfm_dimcst
+            if(!is.null(res)){
+              attributes(res@arguments$Gestion$tac)$DimCst <- tac_dimcst
+              attributes(res@arguments$Gestion$fbar)$DimCst <- fbar_dimcst
+              attributes(res@arguments$Gestion$effSup)$DimCst <- effsup_dimcst
+              attributes(res@arguments$Gestion$mfm)$DimCst <- mfm_dimcst
+            }
 
             return(res)
-          })
+          }
+)
 
 
 #' Etape d'initialisation from txt file.

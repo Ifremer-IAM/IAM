@@ -118,7 +118,7 @@ Les scénarios sont simulés avec $N$ réplicats, correspondant à la variabilit
 Les valeurs de $N$, $F_{msy}$ et $TAC$ sont fixées ici :
 
 ```{r setN}
-N <- 500
+N <- 50
 Fmsy <- 0.26
 TACS <- seq(3200, 5600, by = 400)
 ```
@@ -156,7 +156,7 @@ simultac <- function(x, argum, input, N){
                              tac = c(NA, NA, rep(x, 10)) )
 
   sim <- replicate(N, {
-  IAM::IAM.model(objArgs = argum_int,  objInput = input)
+  IAM::IAM.model(objArgs = argum_int,  objInput = input, mOTH = 1)
   })
 
   siml <- lapply(1:N,  function(y) {

@@ -61,10 +61,16 @@ mod_Ecoplot_serv <- function(id, x){
       def <- reactiveValues(sim_name = NULL, fleet = NULL,
                             fullvar = NULL, variable = NULL)
 
+      observe({
+        def$sim_name <- x$sim_name
+      })
+
       observeEvent(x$bioeco, {
         toggle("fleet", condition = x$bioeco == "Economic")
         toggle("variable", condition = x$bioeco == "Economic")
+      })
 
+      observe({
         var <- get_golem_options("input")
 
         for (axe in c("variable", "sim_name", "fleet")) {
@@ -115,7 +121,6 @@ mod_Ecoplot_serv <- function(id, x){
 
       observeEvent(input$variable, {def$variable <- input$variable})
       observeEvent(input$fleet, {def$fleet <- input$fleet })
-      observeEvent(input$sim_name, {def$sim_name <- input$sim_name })
 
 
       observe({
@@ -140,6 +145,8 @@ mod_Ecoplot_serv <- function(id, x){
         x$var <- df # for export
         # print(df)
 
+        col = ifelse(x$colors, "white", "gray")
+
         if (nrow(df) > 0) {
 
           # Making the plot in question
@@ -148,25 +155,12 @@ mod_Ecoplot_serv <- function(id, x){
                                    scales = "free_y") } +
             { if (x$chkribbon) geom_ribbon(aes(ymin = .data$quant1,
                                                ymax = .data$quant2),
-                                           fill = "lightblue") } +
+                                           fill = col, alpha = .4) } +
             geom_line(size = .5) +
-            geom_point(fill="white", size = .5) +
+            geom_point(fill=col, size = .5) +
             geom_line(aes(y = .data$value), linetype = "dashed") +
             guides(x = guide_axis(angle = 90)) +
-            theme_light() +
-            theme(plot.title = element_text(size = 17, family="serif"),
-                  panel.background = element_rect(fill = "lightblue",
-                                                  colour = "lightblue",
-                                                  linetype = "solid"),
-                  legend.title=element_blank(),
-                  legend.text=element_text(size=14,family="serif"),
-                  axis.text=element_text(size=14,family="serif"),
-                  axis.title=element_text(size=15,family="serif"),
-                  axis.text.x = element_text(angle = 90, vjust = 0.5,
-                                             size=8,family="serif"),
-                  axis.text.y = element_text(size=8,family="serif"),
-                  strip.text.x = element_text(size = 7, colour = "black"),
-                  strip.text.y = element_text(size = 10, colour = "black", angle = 0)) +
+            IAM_theme(blue = x$colors) +
             NULL
         } else {
           p <- ggplot(NULL)

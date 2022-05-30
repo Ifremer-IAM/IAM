@@ -207,8 +207,6 @@ Statuquo <- lapply(1:N,  function(x) {
 
 TACF_quant <- do.call(rbind, c(Statuquo, TACF)) %>%
   IAM.format_quant(., probs = c(.025, .975))
-
-# IAM.test_plot(TACF_quant)
 ```
 
 Une fois les données formatées, on peut aisément comparer les différents scénarios de TACS. Ainsi, la mise en place d'un TAC va venir diminuer la mortalité par pêche (Fbar) sur le stock visé.

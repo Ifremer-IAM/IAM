@@ -5,16 +5,17 @@
 \alias{fleetInput-class}
 \title{fleetInput class}
 \description{
-# TODO
+Internal class for initialising class format into list. Used in function
+reformat.
 }
 \details{
-Used by \code{reformat} function. # TODO find in what extent
+Used by \code{reformat} function.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{stock}}{# TODO descr}
+\item{\code{stock}}{Name of the fleet. chr.}
 
-\item{\code{input}}{# TODO descr}
+\item{\code{input}}{List of variables required for a fleetinside the C++ model.}
 }}
 

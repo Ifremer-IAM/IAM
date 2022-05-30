@@ -3,17 +3,17 @@
 #'
 #' Modify background for IAM plots.
 #'
+#' @param blue modify the background for a blue color. TRUE by default.
+#' False will desactivate for a white background.
+#'
 #' @author maxime jaunate
 #'
 #' @import ggplot2
 #'
 #' @export
-IAM_theme <- function(){
+IAM_theme <- function(blue = TRUE){
   theme_light() +
     theme(
-      panel.background = element_rect(fill = "steelblue",
-                                      colour = "steelblue",
-                                      linetype = "solid"),
       plot.title = element_text(size = 17, family="serif"),
       legend.title=element_blank(),
       legend.text=element_text(size=14,family="serif"),
@@ -25,6 +25,10 @@ IAM_theme <- function(){
       strip.text.x = element_text(size = 7, colour = "black"),
       strip.text.y = element_text(size = 10, colour = "black", angle = 0)
     ) +
+    { if (blue) theme(
+      panel.background = element_rect(fill = "steelblue",
+                                      colour = "steelblue",
+                                      linetype = "solid")) } +
     NULL
 }
 

@@ -5,16 +5,17 @@
 \alias{stockInput-class}
 \title{stockInput Class}
 \description{
-# TODO descr
+Internal class for initialising class format into list. Used in function
+reformat.
 }
 \details{
-Used by \code{reformat} function. # TODO find in what extent
+Used by \code{reformat} function.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{stock}}{# TODO descr}
+\item{\code{stock}}{Name of the stock. chr.}
 
-\item{\code{input}}{# TODO descr}
+\item{\code{input}}{List of variables required for a stock inside the C++ model.}
 }}
 

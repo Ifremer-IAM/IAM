@@ -19,8 +19,10 @@
 #' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
 #' @slot arguments Copy of the arguments slot from \code{\link[IAM]{iamArgs-class}}
 #' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
-#' @slot outputSp # TODO
-#' @slot output # TODO
+#' @slot outputSp List of biologic variable. Each element is a list for a
+#' variable (example F) formated as an element per dynamic stock.
+#' @slot output List of economic variable. Each element is a table with various
+#' format depending of dimension (fleet, metier, year)
 #'
 #' @examples
 #' showClass("iamOutput")
@@ -224,8 +226,10 @@ setClass("iamOutput",
 #' @slot desc Copy of the desc slot from \code{\link[IAM]{iamInput-class}}
 #' @slot arguments Copy of the arguments slot from \code{\link[IAM]{iamArgs-class}}
 #' @slot specific Copy of the specific slot from \code{\link[IAM]{iamInput-class}}
-#' @slot outputSp # TODO
-#' @slot output # TODO
+#' @slot outputSp List of biologic variable. Each element is a list for a
+#' variable (example F) formated as an element per dynamic stock.
+#' @slot output List of economic variable. Each element is a table with various
+#' format depending of dimension (fleet, metier, year)
 #'
 #' @examples
 #' showClass("iamOutputRep")

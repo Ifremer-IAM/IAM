@@ -5,14 +5,15 @@
 \alias{marketInput-class}
 \title{marketInput Class}
 \description{
-# TODO
+Internal class for initialising class format into list. Used in function
+reformat.
 }
 \details{
-Used by \code{reformat} function. # TODO find in what extent
+Used by \code{reformat} function.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{input}}{# TODO descr}
+\item{\code{input}}{List of variables required for marketinside the C++ model.}
 }}
 
