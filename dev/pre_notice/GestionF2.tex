@@ -1,0 +1,220 @@
+\documentclass[12pt, colorinlistoftodos]{article} 
+
+\title{Gestion F2 module équations}
+\author{Maxime Jaunatre}
+
+\usepackage{ifthen} 
+\newboolean{draft}\setboolean{draft}{false} % display notes, stamp
+
+\providecommand{\main}{.}  % *Modification: define file location
+% \usepackage{\main/.tex/setup}
+
+% % Beginning of the setup file !!!!
+% set up file for new commands and main packages :
+% \providecommand{\main}{.}  % *Modification: define file location
+\usepackage[utf8]{inputenc} % encoding
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{a4paper} % format de feuille
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm} %marges
+%\linespread{1.5} % interligne
+
+\usepackage[table,dvipsnames*,svgnames]{xcolor} % allow to put colour in table and correct a bug in names
+% option 'gray' emulate a gray scale print of the document
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\chead{\csname @title\endcsname}
+\lhead{}
+\rhead{\includegraphics[width=2cm]{\main/.tex/Logo_ifr_y.jpg}}
+\lfoot{page \thepage}\cfoot{}
+\rfoot{\csname @author\endcsname ~-~\the\year}
+
+\fancypagestyle{plain}{%
+    \fancyhf{}% clear all header and footer fields
+    %\fancyfoot[L, R]{page \thepage}{\csname @author\endcsname ~-~\the\year} 
+    \lfoot{page \thepage}\cfoot{}
+    \rfoot{\csname @author\endcsname ~-~\the\year}
+    \renewcommand{\headrulewidth}{0pt}%\
+    %\renewcommand{\footrulewidth}{0pt}
+}
+
+\ifthenelse{\boolean{draft}}{
+    %\usepackage{pagecolor} \pagecolor{darkgray} \color{lightgray}
+    \usepackage[color={[rgb]{0.96, 0.77, 0.19}}]{draftwatermark}
+    \SetWatermarkScale{4}
+    \SetWatermarkText{DRAFT}
+    \usepackage[backgroundcolor = orange]{todonotes}
+}{ \usepackage[disable]{todonotes} }
+
+% using math
+\usepackage{amstext}
+\usepackage{amsmath,amsfonts,amssymb}
+
+\usepackage{hyperref,url} % lien cliquables
+\hypersetup{
+colorlinks = true,
+linkcolor = black,
+citecolor = black,
+urlcolor = blue
+} % https://tex.stackexchange.com/questions/50747/options-for-appearance-of-links-in-hyperref
+
+% % EOF setup.sty
+
+\newcolumntype{L}{>{$}l<{$}} % math-mode version of "l" column type
+
+\begin{document}
+
+\thispagestyle{plain}
+
+\begin{figure}
+    \includegraphics[width=\textwidth]{\main/.tex/header_ifre.png}
+    \par ~ \par
+    \begin{minipage}{\textwidth}
+        \begin{center}
+            {\huge \csname @title\endcsname }
+        \end{center}
+        \rule{7em}{.4pt}\par
+        \csname @author\endcsname ~| UMR AMURE \hfill %\par 
+        \href{mailto:maxime.jaunatre@ifremer.fr}{Mail} | \today
+    \end{minipage}
+\end{figure}
+\hrule
+%\ifthenelse{\boolean{draft}}{\listoftodos \hrule}{} %is this list present or not
+
+\section{Introduction}
+
+Le module GestionF2 apparait en 2018 avec les versions nommées \textbf{test} et \textbf{test2} au début de la thèse de Florence Briton.
+
+\section{Déroulé et équation}
+
+L'appel de la fonction dépend d'une condition if dans le constructeur de la classe BioEcoPar.
+Il faut :
+
+\begin{itemize}
+    \item $delay \leq it$
+    \item TACF et TAC non null
+    \item $it \geq 1$
+    \item t\_stop egal a 0 ou supérieur à it.
+\end{itemize}
+
+\subsection{$Foth_{ei}$ à $t-1$}
+
+Avant de rentrer dans le module GestionF2, une étape préliminaire modifie $Foth_{ei}$ à $t-1$. Cela dépend de :
+
+\begin{itemize}
+    \item $delay \leq ind_t$ \todo{repetitif de condition precedent}
+    \item $gestInd == 1$
+    \item $DELAY > 0$ DELAY = UpdtadeE
+\end{itemize}
+
+A ce moment, si $DELAY > delay$, $DELAY = delay$
+
+\newpage 
+
+\subsection{GestionF2}
+
+Initiatilisation effort de base
+
+$nbTrip_f = eff1_f = NBDSF$ (matrice vide)
+
+$ nbTrip_{fm} = efft1_{fm} = \frac{eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm}}{eff1_{fm} \cdot eff2_{fm} \cdot nbv_{fm}}$
+
+copie de $eff1_{fm}$ pour sauvegarder.
+
+appel de \textbf{Mortalite, DynamicPop, CATCHDL}
+
+%=================================================================================================
+
+\subsubsection{Initiatilisation de $Einterm_{fm}$ avec valeur max}
+
+Si NA, max est 300 NBDS.
+
+\begin{align}
+    denom &= \sum_{m=1}^{nMe} eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm} \\
+    \alpha_{fst1} &= \frac{effSup}{denom} = \frac{effSup}{\sum_{m=1}^{nMe} eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm}} \\
+    EffsupTMP_{fm} &= \alpha_{fst1} \cdot eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm} \\
+    &=  \frac{ effSup\cdot eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm}}{\sum_{m=1}^{nMe} eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm}}
+\end{align}
+
+si $denom \leq 0$ alors $ EffsupTMP_{fm} = \alpha_{fst1} = 0 $
+
+Remplissage de $Einterm_{fm} = -1$
+
+appel des parties statiques et spict.
+
+loop sur chaque espece
+
+si $L_{efmit} + LD_{efmi} > 0$ alors $Einterm_{fm} = EffsupTMP_{fm}$
+
+-1 restant sont remplaces par efforts initiaux (si $Einterm_{fm} < -0.5$)
+
+$Einterm_{fm} = eff1_f \cdot eff2_f \cdot nbv_f \cdot mfm_{fm}$
+
+%=================================================================================================
+
+\subsubsection{Optimisation}
+
+copie de $Einterm_{fm}$ dans $Einterm\_copy_{fm}$
+
+mise a jour des efforts et evaluation
+
+\begin{align}
+    nbTrip_{fm} = eff1_{fm} &= \frac{Einterm_{fm}}{eff2_{fm} \cdot nbv_{fm}}  \\
+    nbTrip_{f} = eff1_{f} &= \frac{\sum_{m=1}^{nMe} eff1_{fm} \cdot eff2_{fm} \cdot nbv_{fm}}{eff2_f \cdot nbv_f} 
+\end{align}
+
+appel \textbf{Mortalite}
+
+sauvegarde dans $Zt_i = out\_Z_{eit}$
+
+
+Boucle de $IT < itmax$ et tant que goon
+
+reinit $Einterm_{fm}$ : $Einterm_{fm} = Einterm\_copy_{fm}$
+
+\begin{align}
+    nbTrip_{f} = eff1_{f} &= eff1\_copy_{f} \\
+    nbTrip_{fm} = eff1_{fm} &= \frac{ eff1_{f} \cdot eff2_{f} \cdot nbv_{f} \cdot mfm_{fm}}{ eff1_{fm} \cdot eff2_{fm} \cdot nbv_{fm}}
+\end{align}
+
+appel \textbf{Mortalite} \textbf{DynamicPop}
+
+$out\_Z_{eit} = Zt_i$
+
+appel \textbf{CatchDL}
+
+reconciliation
+\begin{align}
+    alpha\_st4_f &= \frac{TAC_f}{L_{efmit} + LD_{efmi}} \\
+    valtest &= alpha\_st4_f \cdot eff1_{f} \cdot eff2_{f} \cdot nbv_{f} \cdot mfm_{fm}
+\end{align}
+
+si $L_{efmit} + LD_{efmi} > 0 $ et $ valtest < Einterm_{fm} $ alors $Einterm_{fm} = valtest$
+
+une fois tout les navires de fait, on passe a $TAC_{oth}$
+
+
+\begin{align}
+    nbTrip_{fm} = eff1_{fm} &= \frac{Einterm_{fm}}{eff2_{fm} \cdot nbv_{fm}}  \\
+    nbTrip_{f} = eff1_{f} &= \frac{\sum_{m=1}^{nMe} eff1_{fm} \cdot eff2_{fm} \cdot nbv_{fm}}{eff2_f \cdot nbv_f} 
+\end{align}
+
+appel \textbf{Mortalite} \textbf{DynamicPop}
+
+$goon = false$
+
+si $out\_Z_{eit} - Ztemp > diffZmax$ alors goon = true
+
+$Ztemp = Ztemp + \lambda \cdot (out\_Z_{eit} - Ztemp)$
+
+
+\subsubsection{Remise dans Flist}
+
+\begin{align}
+    nbTrip_{fm} = eff1_{fm} &= \frac{Einterm_{fm}}{eff2_{fm} \cdot nbv_{fm}}  \\
+    nbTrip_{f} = eff1_{f} &= \frac{\sum_{m=1}^{nMe} eff1_{fm} \cdot eff2_{fm} \cdot nbv_{fm}}{eff2_f \cdot nbv_f} 
+\end{align}
+
+
+
+\end{document}

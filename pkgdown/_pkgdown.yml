@@ -21,10 +21,10 @@ home:
       custom:
         title: Developers
         text: |
-          <li>Mathieu Merzereaud <br><small class="roles"> Author </small>  <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a></li>
+          <li>Mathieu Merzereaud <br><small class="roles"> Author, maintainer </small>  <a href="https://orcid.org/0000-0001-5545-0744" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a></li>
           <li>Claire Macher <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-9307-6562" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
           <li>
-          <a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author, maintainer </small>  </li>
+          <a href="https://gowachin.github.io/" class="external-link">Maxime Jaunatre</a> <br><small class="roles"> Author </small>  </li>
           <li>
           <a href="https://wwz.ifremer.fr/en/" class="external-link"><img src="https://wwz.ifremer.fr/var/storage/images/_aliases/listitem_thumbnail/medias-ifremer/medias-institut/l-institut/logos/logo-ifremer/1172025-6-fre-FR/Logo-Ifremer.png" alt="IFREMER" width="72"></a> <br><small class="roles"> Copyright holder </small>  </li>
           <li><a href="authors.html">More about authors...</a></li>
@@ -37,7 +37,7 @@ home:
 
 authors:
   footer:
-    roles: [cre, com]
+    roles: [rev]
   Maxime Jaunatre:
     href: https://gowachin.github.io/
 
