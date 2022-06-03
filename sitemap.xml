@@ -25,6 +25,9 @@
     <loc>/news/index.html</loc>
   </url>
   <url>
+    <loc>/reference/DimCst.html</loc>
+  </url>
+  <url>
     <loc>/reference/IAM.args-methods.html</loc>
   </url>
   <url>
@@ -68,6 +71,9 @@
   </url>
   <url>
     <loc>/reference/IAM.plot.html</loc>
+  </url>
+  <url>
+    <loc>/reference/IAM.test_plot.html</loc>
   </url>
   <url>
     <loc>/reference/IAM.unite.html</loc>

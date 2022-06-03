@@ -63,27 +63,183 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="2.0.0" id="iam-200">IAM 2.0.0<a class="anchor" aria-label="anchor" href="#iam-200"></a></h2>
-<ul><li>Added a NEWS.md file to track changes to the package.</li></ul><div class="section level3">
+<ul><li><p>Added a NEWS.md file to track changes to the package.</p></li>
+<li><p>Add new functions <em>summary()</em> for in iamInput and iamArgs class.</p></li>
+<li><p>Add new functions to modify iamArgs class, with format <em>IAM.editArgs_X()</em>, X being “Eco”, “Scenar”, “Gest” or “Rep”.</p></li>
+<li><p>Add reproductible example dataset for documentation purpose.</p></li>
+</ul><div class="section level3">
 <h3 id="breaking-change-2-0-0">Breaking change<a class="anchor" aria-label="anchor" href="#breaking-change-2-0-0"></a></h3>
-<ul><li>IAM.format is totally modified inf argument and computation.</li></ul></div>
+<ul><li><p>IAM.format is totally modified inf argument and computation.</p></li>
+<li><p>IAM.args change from tcltk to shiny for the GUI</p></li>
+</ul></div>
 <div class="section level3">
 <h3 id="code-modifications-2-0-0">Code modifications<a class="anchor" aria-label="anchor" href="#code-modifications-2-0-0"></a></h3>
 <ul><li><p>Price flexibility is extracted as a function and is activated only if the input excell file contain the price flexibility sheet.</p></li>
-<li><p>Replaced Gestion module after suppresssion.</p></li>
+<li><p>Replaced Gestion module after this module was deleted in earlier versions.</p></li>
 <li><p>Removed deprecated arguments in iamInput and iamArgs.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="license-2-0-0">License<a class="anchor" aria-label="anchor" href="#license-2-0-0"></a></h3>
-<ul><li>GPL-2 to CeCILL-2</li></ul></div>
+<ul><li>GPL-2 to CeCILL-2.1</li></ul></div>
 <div class="section level3">
 <h3 id="organisation-2-0-0">Organisation<a class="anchor" aria-label="anchor" href="#organisation-2-0-0"></a></h3>
-<ul><li><p>Added a git repository to track down every change</p></li>
+<ul><li><p>Documentation is now set with <code>Roxygen2</code> package format.</p></li>
+<li><p>Added a git repository to track down every change</p></li>
 <li><p>Added a <code>NEWS.md</code> file to track changes to the package.</p></li>
+<li><p>Split single C++ file in differents files. Each file is now a function or more related to the module it’s used in.</p></li>
+<li><p>C++ function not related with BioEcoPar class are in a specific file.</p></li>
+<li><p>Notice is written in LaTeX and include vignettes compiled as pdf.</p></li>
 </ul></div>
 </div>
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.7.0.9999" id="iam-1709999">IAM 1.7.0.9999<a class="anchor" aria-label="anchor" href="#iam-1709999"></a></h2>
+<div class="section level3">
+<h3 id="warning-prior-versions-1-7-0-9999">
+<strong>Warning</strong> Prior versions.<a class="anchor" aria-label="anchor" href="#warning-prior-versions-1-7-0-9999"></a></h3>
+<p>Prior versions of IAM where specially developed for project usage and no NEWS.md file or equivalent was used. Information below was compiled from code reading and adding previous versions on git. Prior versions are archived <strong>for reading purpose only</strong> and using them could result in unpredictable results.</p>
+<p>Prior versions were not using the same package name and version. Maxime edited the descriptions to build back the git historic. A summary table with original source location, version name and number is accessible for the dev team in gitlab repository <strong>IAM/good_practice</strong></p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.7.0" id="iam-170">IAM 1.7.0<a class="anchor" aria-label="anchor" href="#iam-170"></a></h2>
+<p>Source communicated by Mathieu</p>
+<ul><li>R :<ul><li>Minor modification of the code, mostly argument for C++ and export of TACbyF and TACtot variables</li></ul></li>
+<li>C++ :<ul><li>Add new modules : EstimationTACfromF and SRmod2</li></ul></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.6.3" id="iam-163">IAM 1.6.3<a class="anchor" aria-label="anchor" href="#iam-163"></a></h2>
+<p>Source found in IAM/5 versions : test3</p>
+<ul><li>Definitive choice of the <code>openxlsx</code> package for reading input file</li>
+<li>Add possibility to modify Stock Recrutement parameters during a simulation</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.6.2" id="iam-162">IAM 1.6.2<a class="anchor" aria-label="anchor" href="#iam-162"></a></h2>
+<p>Source found in IAM/5 version : test2</p>
+<p>Mainly modification of the GestionF2 function and related variables in R and C++</p>
+<p>Personnal modification : added missing R/1_input_integration.r file to complete the package</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.6.1" id="iam-161">IAM 1.6.1<a class="anchor" aria-label="anchor" href="#iam-161"></a></h2>
+<p>Source found in IAM/5 versions : test</p>
+<p>Possibility to choose between <code>XLConnetct</code> and <code>openxlsx</code> package for reading the input file.</p>
+<p>Intern modification of the C++ file</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.6.0" id="iam-160">IAM 1.6.0<a class="anchor" aria-label="anchor" href="#iam-160"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Dependency modification rom <code>XLConnect</code> to <code>openxlsx</code></p>
+<p>Add over quotat discard computation</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.5.1" id="iam-151">IAM 1.5.1<a class="anchor" aria-label="anchor" href="#iam-151"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Add over quota discard</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.5.0" id="iam-150">IAM 1.5.0<a class="anchor" aria-label="anchor" href="#iam-150"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Add capacity to input <strong>Spict species</strong> Mainly C++ modification</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.4.3" id="iam-143">IAM 1.4.3<a class="anchor" aria-label="anchor" href="#iam-143"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Minor modification of C++ mainly in GestionF2 function</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.4.2" id="iam-142">IAM 1.4.2<a class="anchor" aria-label="anchor" href="#iam-142"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Minor fix to prevent cases if 0 dynamic species in input and NA names.</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.4.1" id="iam-141">IAM 1.4.1<a class="anchor" aria-label="anchor" href="#iam-141"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<p>Add updateE, which specify if the update of gestion is referenced from starting point of the simulation or the previous point.</p>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.4.0" id="iam-140">IAM 1.4.0<a class="anchor" aria-label="anchor" href="#iam-140"></a></h2>
-<p>Prior versions of IAM where specially developped for project usage and hardly succeed to each other.</p>
+<p>Source found in IAM/5 versions</p>
+<p>Modification of TACbyF and set of this parameter in IAM.args() function</p>
+<p>Add Management for static species</p>
+<p>Landing obligation is now taken into account in model</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.3.1" id="iam-131">IAM 1.3.1<a class="anchor" aria-label="anchor" href="#iam-131"></a></h2>
+<p>Source found in IAM versions SaisineRejets_mars2015</p>
+<p>Add mortality for SS3 species</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.3.0" id="iam-130">IAM 1.3.0<a class="anchor" aria-label="anchor" href="#iam-130"></a></h2>
+<p>Source found in IAM versions SaisinRejets_mars2015</p>
+<p>Major update with SS3 and Static species added in R and C++ add effSup in Gestion</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.2.0" id="iam-120">IAM 1.2.0<a class="anchor" aria-label="anchor" href="#iam-120"></a></h2>
+<p>Source found in IAM version ICES. Special request.</p>
+<p>Add smooth-HS SR model and modification of SR C++ New version of scenario function Add TypeGest output Default value for TACcontrol</p>
+<p>Personnal comment : I’m not sure the parent version is 1.1.2, maybe a more ancient one (because of stochprice return).</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.3" id="iam-113">IAM 1.1.3<a class="anchor" aria-label="anchor" href="#iam-113"></a></h2>
+<p>Source found in SOCIOEC directory</p>
+<p>Fix in C++ for GestionF Add lambda for TACbyF</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.2" id="iam-112">IAM 1.1.2<a class="anchor" aria-label="anchor" href="#iam-112"></a></h2>
+<p>Source found in IAM/5 versions</p>
+<ul><li>R :<ul><li>Minor fix in input and IAM.model.</li></ul></li></ul><p>Delete TAC control options and P output.</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.1" id="iam-111">IAM 1.1.1<a class="anchor" aria-label="anchor" href="#iam-111"></a></h2>
+<p>Source found in personnal computer (Mathieu)</p>
+<p>Added stochasticity in prices.</p>
+<ul><li>R :<ul><li>Minor fix in R</li></ul></li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.0" id="iam-110">IAM 1.1.0<a class="anchor" aria-label="anchor" href="#iam-110"></a></h2>
+<p>Source found in personnal computer (Mathieu)</p>
+<ul><li>R :<ul><li>Add Folder Fleet possibility</li>
+<li>Replace xlsReadWrite for XLConnect</li>
+<li>Add TACbyF argument into IAM.model function</li>
+</ul></li>
+<li>C++ :<ul><li>Add functions: GestionF2, QuotaExchV2 and more.</li>
+<li>Big refactoring of the C++ file.</li>
+</ul></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.0.0" id="iam-100">IAM 1.0.0<a class="anchor" aria-label="anchor" href="#iam-100"></a></h2>
+<p>Source found in GT_BioEco</p>
+<ul><li>R :<ul><li>This version xlsReadWrite and use FLR format for the SIAD website.</li></ul></li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.4.0" id="iam-040">IAM 0.4.0<a class="anchor" aria-label="anchor" href="#iam-040"></a></h2>
+<p>Source found in personnal computer (Mathieu)</p>
+<ul><li>R :<ul><li>Modify input functions.</li>
+<li>Replace dependency from xlsReadWrite to XLConnect</li>
+</ul></li></ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="iam-v030">IAM v0.3.0<a class="anchor" aria-label="anchor" href="#iam-v030"></a></h2>
+<p>Source found in personnal computer (Mathieu)</p>
+<ul><li>R :<ul><li>Add ventilation process of input in R and not in C++ anymore.</li>
+<li>Add IAMtoFLR methods</li>
+</ul></li>
+<li>C++ :<ul><li>Add Normal noise in SR</li>
+<li>Add mOTH and M_fm for mortality. Management possibility at different levels from global to fleet.</li>
+</ul></li>
+<li>Fix :<ul><li>Now mortality and mu multiplicator in Management is minored to 0.</li></ul></li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.1" id="iam-021">IAM 0.2.1<a class="anchor" aria-label="anchor" href="#iam-021"></a></h2>
+<p>Source found in SIAD project</p>
+<ul><li>R :<ul><li>Small fix in git plot default values</li></ul></li>
+<li>C++ :<ul><li>Modification of debug file output in C++ and a single formula.</li></ul></li>
+</ul><p>Data was ignored cause not secret.</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="iam-020">IAM 0.2.0<a class="anchor" aria-label="anchor" href="#iam-020"></a></h2>
+<p>Source found in SIAD project</p>
+<p>Added option in argum to select outputRep variables in a specified list Added plot methods.</p>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="iam-010">IAM 0.1.0<a class="anchor" aria-label="anchor" href="#iam-010"></a></h2>
+<p>First source found in SIAD project.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside></div>

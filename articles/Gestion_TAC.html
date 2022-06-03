@@ -115,12 +115,12 @@
 <span class="co">#&gt; Simulation of 3 dynamic species, 19 static species and 7 fleet</span>
 <span class="co">#&gt; Simulation start in 2009 and end in 2020 (12 steps)</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; ------------------------------------</span>
-<span class="co">#&gt; Dynamic Species | Model |     Ages |</span>
-<span class="co">#&gt;             ARC |   XSA | 0 to +gp |</span>
-<span class="co">#&gt;             COR |   XSA | 2 to +gp |</span>
-<span class="co">#&gt;             DAR |   SS3 | 0 to +gp |</span>
-<span class="co">#&gt; ------------------------------------</span>
+<span class="co">#&gt; -----------------------------------------</span>
+<span class="co">#&gt; Dynamic Species | Model |     Ages (nb) |</span>
+<span class="co">#&gt;             ARC |   XSA | 0 to +gp (21) |</span>
+<span class="co">#&gt;             COR |   XSA | 2 to +gp ( 7) |</span>
+<span class="co">#&gt;             DAR |   SS3 | 0 to +gp (16) |</span>
+<span class="co">#&gt; -----------------------------------------</span>
 <span class="co">#&gt;                   Fleet |    nbv   |</span>
 <span class="co">#&gt;                    Alis |    24    |</span>
 <span class="co">#&gt;                   Antea |    36    |</span>
@@ -155,7 +155,8 @@
 
 <span class="co"># Module Gestion</span>
 <span class="va">mfm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">IAM_input_2009</span><span class="op">@</span><span class="va">input</span><span class="op">$</span><span class="va">Fleet</span>,<span class="op">{</span>
-  <span class="op">(</span><span class="va">effort1_f_m</span> <span class="op">*</span> <span class="va">effort2_f_m</span> <span class="op">*</span> <span class="va">nbv_f_m</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">effort1_f</span> <span class="op">*</span> <span class="va">effort2_f</span> <span class="op">*</span> <span class="va">nbv_f</span><span class="op">)</span>
+  <span class="op">(</span><span class="va">effort1_f_m</span> <span class="op">*</span> <span class="va">effort2_f_m</span> <span class="op">*</span> <span class="va">nbv_f_m</span><span class="op">)</span> <span class="op">/</span> 
+    <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">effort1_f</span> <span class="op">*</span> <span class="va">effort2_f</span> <span class="op">*</span> <span class="va">nbv_f</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span>
 <span class="va">mfm</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">mfm</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span>
 
@@ -195,7 +196,7 @@
 <p>La simulation du scénario Statu Quo est codée comme suit :</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Statu quo</span>
-<span class="va">SQ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
+<span class="va">SQ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pbapply/man/pbapply.html" class="external-link">pbreplicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
   <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009</span>,  objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
 </div>
@@ -239,7 +240,7 @@
 </tr>
 </tbody>
 </table>
-<p>Il est également important de noter qu’un interval <span class="math inline">\([0;0]\)</span> revient à ne pas appliquer le module Gestion.</p>
+<p>Il est également important de noter qu’un interval <span class="math inline">\([0;0]\)</span> revient à ne pas appliquer le module Gestion. Enfin, le paramètre <code>mOTH</code> permet d’appliquer le quotas de manière similaire à la flottille <em>Autre</em>, qui regroupe tout les navires participant à la mortalité autre</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">IAM_argum_2009_TACnbv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/IAM.editArgs_Gest.html">IAM.editArgs_Gest</a></span><span class="op">(</span>
   <span class="va">IAM_argum_2009</span>, active <span class="op">=</span> <span class="cn">TRUE</span>, control <span class="op">=</span> <span class="st">"Nb vessels"</span>, target <span class="op">=</span> <span class="st">"TAC"</span>,
@@ -250,18 +251,18 @@
 
 <span class="va">sim_TACglob_nbv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pbapply/man/pbapply.html" class="external-link">pbreplicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
   <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009_TACnbv</span>,  
-                 objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
+                 objInput <span class="op">=</span> <span class="va">IAM_input_2009</span>, mOTH <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
 <p>Cette simulation permet de diminuer drastiquement la mortalite par pêche de l’espèce dite “COR” avec une reduction immédiate la taille des flottilles. Il s’agit de la capacité de pêche.</p>
 <p>Une autre variable d’ajustement de l’effort est le nombre voyage en mer des navires. On parle d’effort de pêche.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">IAM_argum_2009_TACnbds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/IAM.editArgs_Gest.html">IAM.editArgs_Gest</a></span><span class="op">(</span>
-  <span class="va">IAM_argum_2009_TACnbv</span>, active <span class="op">=</span> <span class="cn">TRUE</span>, control <span class="op">=</span> <span class="st">"Nb trips"</span>
+  <span class="va">IAM_argum_2009_TACnbv</span>, active <span class="op">=</span> <span class="cn">TRUE</span> , control <span class="op">=</span> <span class="st">"Nb trips"</span>
 <span class="op">)</span>
 
 <span class="va">sim_TACglob_nbt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pbapply/man/pbapply.html" class="external-link">pbreplicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
   <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009_TACnbds</span>,  
-                 objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
+                 objInput <span class="op">=</span> <span class="va">IAM_input_2009</span>, mOTH <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
 <div class="section level3">
 <h3 id="représentations-graphiques">Représentations graphiques<a class="anchor" aria-label="anchor" href="#repr%C3%A9sentations-graphiques"></a>
@@ -300,7 +301,7 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guides.html" class="external-link">guides</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guide_axis.html" class="external-link">guide_axis</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">90</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/IAM_theme.html">IAM_theme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="Gestion_TAC_files/figure-html/plot_bio-1.png" alt="\label{fig:TACglob}COR variables under global TAC gestion. 5 runs." width="672"><p class="caption">
+<img src="Gestion_TAC_files/figure-html/plot_bio-1.png" alt="\label{fig:TACglob_bio}COR variables under global TAC gestion. 5 runs." width="672"><p class="caption">
 COR variables under global TAC gestion. 5 runs.
 </p>
 </div>
@@ -316,7 +317,7 @@ COR variables under global TAC gestion. 5 runs.
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="Gestion_TAC_files/figure-html/TACglob_plot-1.png" alt="\label{fig:TACglob}Effort variables under global TAC gestion. 5 runs." width="672"><p class="caption">
+<img src="Gestion_TAC_files/figure-html/TACglob_plot-1.png" alt="\label{fig:TACglob_eco}Effort variables under global TAC gestion. 5 runs." width="672"><p class="caption">
 Effort variables under global TAC gestion. 5 runs.
 </p>
 </div>
@@ -326,6 +327,7 @@ Effort variables under global TAC gestion. 5 runs.
 </h3>
 <p>Ces réductions drastiques peuvent être limitées en ciblant les flottilles et les métiers. Par exemple, l’espèce ciblé est pêchées à 97.0259956 % par la flottille dite “Thalassa”, via le métier “Filet_COR”. Il serait donc plus intéressant de diminuer l’effort sur cette flottille uniquement.</p>
 <p>Pour cela on peut agir sur la pondération des métiers et indiquer que l’on diminiue l’effort des métiers “Filet_COR” pour les flottilles qui l’utilisent au profit du méthier “Filet_DP”. Il s’agit d’un <strong>report d’effort</strong> par métier.</p>
+<p>Note : ici <code>mOTH</code> devient négatif pour indiquer une diminution de l’effort de la flottille <em>Autre</em>. Ceci est du au fait que la matrice mfm contient des valeurs négatives et que le multiplicateur <span class="math inline">\(\mu\)</span> sera certainement positif.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">trg_f</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Thalassa"</span>, <span class="st">"Haliotis"</span><span class="op">)</span>
 
@@ -338,7 +340,7 @@ Effort variables under global TAC gestion. 5 runs.
      <span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span><span class="op">)</span>
 <span class="op">)</span>
 <span class="va">mfm</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_COR"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">IAM_input_2009</span><span class="op">@</span><span class="va">input</span><span class="op">$</span><span class="va">Fleet</span>, 
-    <span class="op">-</span> <span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span><span class="op">)</span>
+     <span class="op">-</span> <span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">Lref_f_m</span><span class="op">[</span><span class="va">trg_f</span>,<span class="st">"Filet_DP"</span><span class="op">]</span><span class="op">)</span>
 <span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mfm</span><span class="op">)</span>
 <span class="co">#&gt;                 Filet_DAR   Filet_DP Chalut_fond_DP Chalut_fond_GLY</span>
@@ -373,7 +375,7 @@ Effort variables under global TAC gestion. 5 runs.
 
 <span class="va">sim_TACglob_nbvR</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/pbapply/man/pbapply.html" class="external-link">pbreplicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
   <span class="va">sim_TACreport</span> <span class="op">&lt;-</span> <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009_TACnbvR</span>, 
-                                  objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
+                                  objInput <span class="op">=</span> <span class="va">IAM_input_2009</span>, mOTH <span class="op">=</span> <span class="op">-</span><span class="fl">.6</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span></code></pre></div>
 <p>Il est tout à fait possible de rajouter aux précédents scénrarios déjà simulés pour avoir un moyen de comparaison. Il faut cependant éviter de rajouter les objets à la suite avec <code>rbind</code> comme cela, car R utilise beaucoup plus de mémoire.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -387,8 +389,8 @@ Effort variables under global TAC gestion. 5 runs.
   <span class="fu"><a href="../reference/IAM.format_quant.html">IAM.format_quant</a></span><span class="op">(</span><span class="va">.</span>, probs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">.025</span>, <span class="fl">.975</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">.</span>, <span class="va">TACglob_quant</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>sim_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">sim_name</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="co"># Reorder the column in plot</span>
-    <span class="st">"Statu quo"</span>, <span class="st">"TAC global nbtrip"</span>,            <span class="co"># by setting level order</span>
-    <span class="st">"TAC global nbv"</span>, <span class="st">"Report TAC global nbds"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+    <span class="st">"Statu quo"</span>, <span class="st">"TAC effort de pêche"</span>,            <span class="co"># by setting level order</span>
+    <span class="st">"TAC capacité de pêche"</span>, <span class="st">"Report TAC global nbds"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p>La comparaison montre une dimension du Fbar sur l’espèce cible COR.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">TACglob_quantR</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
@@ -402,7 +404,7 @@ Effort variables under global TAC gestion. 5 runs.
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guides.html" class="external-link">guides</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guide_axis.html" class="external-link">guide_axis</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">90</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/IAM_theme.html">IAM_theme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="Gestion_TAC_files/figure-html/TACreport_bio-1.png" alt="\label{fig:TACglob}COR variables under global TAC gestion with effort report from Filet_COR to Filet_DP. 5 runs." width="672"><p class="caption">
+<img src="Gestion_TAC_files/figure-html/TACreport_bio-1.png" alt="\label{fig:TACglob_bior}COR variables under global TAC gestion with effort report from Filet_COR to Filet_DP. 5 runs." width="672"><p class="caption">
 COR variables under global TAC gestion with effort report from Filet_COR to Filet_DP. 5 runs.
 </p>
 </div>
@@ -414,6 +416,7 @@ COR variables under global TAC gestion with effort report from Filet_COR to File
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">variable</span> <span class="op">~</span> <span class="va">sim_name</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_vline</a></span><span class="op">(</span>xintercept<span class="op">=</span><span class="fl">2011</span>, linetype <span class="op">=</span> <span class="st">"dotted"</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <p><img src="Gestion_TAC_files/figure-html/TACreport_eco-1.png" width="672"></p>
 <p>Il est bien entendu évident que les impacts de ce TAC seront persceptibles sur d’autres variables économiques.</p>

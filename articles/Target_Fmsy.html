@@ -195,10 +195,10 @@
 <p>Les scénarios sont simulés avec <span class="math inline">\(N\)</span> réplicats, correspondant à la variabilité du recrutement.</p>
 <p>Les valeurs de <span class="math inline">\(N\)</span>, <span class="math inline">\(F_{msy}\)</span> et <span class="math inline">\(TAC\)</span> sont fixées ici :</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">500</span>
+<code class="sourceCode R"><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">50</span>
 <span class="va">Fmsy</span> <span class="op">&lt;-</span> <span class="fl">0.26</span>
 <span class="va">TACS</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">3200</span>, <span class="fl">5600</span>, by <span class="op">=</span> <span class="fl">400</span><span class="op">)</span></code></pre></div>
-<p>3500 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :</p>
+<p>350 simulations seront donc effectuées. La simulation du scénario Statu Quo est codée comme suit :</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Statu quo</span>
 <span class="va">SQ</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
@@ -227,7 +227,7 @@
                              tac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span> <span class="op">)</span>
 
   <span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
-  <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">argum_int</span>,  objInput <span class="op">=</span> <span class="va">input</span><span class="op">)</span>
+  <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">argum_int</span>,  objInput <span class="op">=</span> <span class="va">input</span>, mOTH <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
   <span class="op">}</span><span class="op">)</span>
 
   <span class="va">siml</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">N</span>,  <span class="kw">function</span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">{</span>
@@ -260,7 +260,7 @@
 
 <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">res</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">SQ</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt; Time difference of 35.0032 mins</span></code></pre></div>
+<span class="co">#&gt; Time difference of 3.995515 mins</span></code></pre></div>
 <div class="section level3">
 <h3 id="représentations-graphiques">Représentations graphiques<a class="anchor" aria-label="anchor" href="#repr%C3%A9sentations-graphiques"></a>
 </h3>
@@ -280,7 +280,7 @@
   <span class="fu"><a href="../reference/IAM_theme.html">IAM_theme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="figure/COR_bio_variables-1.png" alt=""><p class="caption">COR variables for different TAC scenarii. 500 runs.</p>
+<img src="figure/COR_bio_variables-1.png" alt=""><p class="caption">COR variables for different TAC scenarii. 50 runs.</p>
 </div>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">line_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>xintercept <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2011</span>, <span class="fl">2015</span><span class="op">)</span>,
@@ -304,21 +304,21 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_colour_discrete.html" class="external-link">scale_colour_discrete</a></span><span class="op">(</span>name  <span class="op">=</span><span class="st">"TAC constant"</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="figure/calcProban-1.png" alt=""><p class="caption">Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26</p>
+<img src="figure/calcProban-1.png" alt=""><p class="caption">Fmsy Probability over 50 runs. Target Fmsy for COR species is : 0.26</p>
 </div>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Proba</span>, <span class="va">year</span> <span class="op">==</span> <span class="fl">2015</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"Fbar"</span><span class="op">)</span>
 <span class="co">#&gt; # A tibble: 8 x 4</span>
 <span class="co">#&gt;   sim_name variable  year Pfmsy</span>
 <span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class="co">#&gt; 1 3200     Fbar      2015  76.4</span>
-<span class="co">#&gt; 2 3600     Fbar      2015  85.6</span>
-<span class="co">#&gt; 3 4000     Fbar      2015  60.6</span>
-<span class="co">#&gt; 4 4400     Fbar      2015  13  </span>
-<span class="co">#&gt; 5 4800     Fbar      2015   0.6</span>
-<span class="co">#&gt; 6 5200     Fbar      2015   0  </span>
-<span class="co">#&gt; 7 5600     Fbar      2015   0  </span>
-<span class="co">#&gt; 8 SQ       Fbar      2015   0</span>
+<span class="co">#&gt; 1 3200     Fbar      2015   100</span>
+<span class="co">#&gt; 2 3600     Fbar      2015    88</span>
+<span class="co">#&gt; 3 4000     Fbar      2015    60</span>
+<span class="co">#&gt; 4 4400     Fbar      2015    10</span>
+<span class="co">#&gt; 5 4800     Fbar      2015     0</span>
+<span class="co">#&gt; 6 5200     Fbar      2015     0</span>
+<span class="co">#&gt; 7 5600     Fbar      2015     0</span>
+<span class="co">#&gt; 8 SQ       Fbar      2015     0</span>
 <span class="fu">beepr</span><span class="fu">::</span><span class="fu">beep</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></code></pre></div>
 </div>
 </div>
@@ -347,7 +347,7 @@
 
 <span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">res</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">SQ</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="va">x</span><span class="op">)</span> <span class="co"># 50 -&gt; 3 min</span>
-<span class="co">#&gt; Time difference of 40.88487 mins</span></code></pre></div>
+<span class="co">#&gt; Time difference of 5.708266 mins</span></code></pre></div>
 <div class="section level3">
 <h3 id="représentations-graphiques-1">Représentations graphiques<a class="anchor" aria-label="anchor" href="#repr%C3%A9sentations-graphiques-1"></a>
 </h3>
@@ -367,7 +367,7 @@
   <span class="fu"><a href="../reference/IAM_theme.html">IAM_theme</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="figure/COR_bio_variables_fmsy-1.png" alt=""><p class="caption">COR variables for different TAC scenarii. 500 runs.</p>
+<img src="figure/COR_bio_variables_fmsy-1.png" alt=""><p class="caption">COR variables for different TAC scenarii. 50 runs.</p>
 </div>
 </div>
 <div class="section level3">
@@ -396,21 +396,21 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_colour_discrete.html" class="external-link">scale_colour_discrete</a></span><span class="op">(</span>name  <span class="op">=</span><span class="st">"TAC constant"</span><span class="op">)</span> <span class="op">+</span>
   <span class="cn">NULL</span></code></pre></div>
 <div class="figure">
-<img src="figure/calcProban_fmsy-1.png" alt=""><p class="caption">Fmsy Probability over 500 runs. Target Fmsy for COR species is : 0.26</p>
+<img src="figure/calcProban_fmsy-1.png" alt=""><p class="caption">Fmsy Probability over 50 runs. Target Fmsy for COR species is : 0.26</p>
 </div>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Proba</span>, <span class="va">year</span> <span class="op">==</span> <span class="fl">2015</span>, <span class="va">variable</span> <span class="op">==</span> <span class="st">"Fbar"</span><span class="op">)</span>
 <span class="co">#&gt; # A tibble: 8 x 4</span>
 <span class="co">#&gt;   sim_name variable  year Pfmsy</span>
 <span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class="co">#&gt; 1 3200     Fbar      2015  74.6</span>
-<span class="co">#&gt; 2 3600     Fbar      2015  81.6</span>
-<span class="co">#&gt; 3 4000     Fbar      2015  58.2</span>
-<span class="co">#&gt; 4 4400     Fbar      2015  12.4</span>
-<span class="co">#&gt; 5 4800     Fbar      2015   0  </span>
-<span class="co">#&gt; 6 5200     Fbar      2015   0  </span>
-<span class="co">#&gt; 7 5600     Fbar      2015   0  </span>
-<span class="co">#&gt; 8 SQ       Fbar      2015   0</span>
+<span class="co">#&gt; 1 3200     Fbar      2015   100</span>
+<span class="co">#&gt; 2 3600     Fbar      2015    90</span>
+<span class="co">#&gt; 3 4000     Fbar      2015    48</span>
+<span class="co">#&gt; 4 4400     Fbar      2015     6</span>
+<span class="co">#&gt; 5 4800     Fbar      2015     0</span>
+<span class="co">#&gt; 6 5200     Fbar      2015     0</span>
+<span class="co">#&gt; 7 5600     Fbar      2015     0</span>
+<span class="co">#&gt; 8 SQ       Fbar      2015     0</span>
 <span class="fu">beepr</span><span class="fu">::</span><span class="fu">beep</span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></code></pre></div>
 </div>
 </div>

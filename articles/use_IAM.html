@@ -190,12 +190,12 @@
 <span class="co">#&gt; Simulation of 3 dynamic species, 19 static species and 7 fleet</span>
 <span class="co">#&gt; Simulation start in 2009 and end in 2020 (12 steps)</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; ------------------------------------</span>
-<span class="co">#&gt; Dynamic Species | Model |     Ages |</span>
-<span class="co">#&gt;             ARC |   XSA | 0 to +gp |</span>
-<span class="co">#&gt;             COR |   XSA | 2 to +gp |</span>
-<span class="co">#&gt;             DAR |   SS3 | 0 to +gp |</span>
-<span class="co">#&gt; ------------------------------------</span>
+<span class="co">#&gt; -----------------------------------------</span>
+<span class="co">#&gt; Dynamic Species | Model |     Ages (nb) |</span>
+<span class="co">#&gt;             ARC |   XSA | 0 to +gp (21) |</span>
+<span class="co">#&gt;             COR |   XSA | 2 to +gp ( 7) |</span>
+<span class="co">#&gt;             DAR |   SS3 | 0 to +gp (16) |</span>
+<span class="co">#&gt; -----------------------------------------</span>
 <span class="co">#&gt;                   Fleet |    nbv   |</span>
 <span class="co">#&gt;                    Alis |    24    |</span>
 <span class="co">#&gt;                   Antea |    36    |</span>
@@ -604,9 +604,9 @@ argum2 <- IAM.args("C:/folder/args.txt",specific="C:/folder/specific.txt")
 <span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 8</span></span>
 <span class="co">#&gt;   variable species  year quant1 quant2 median  value  nsim</span>
 <span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">1</span> SSB      ARC      <span style="text-decoration: underline;">2</span>009 <span style="text-decoration: underline;">18</span>673. <span style="text-decoration: underline;">18</span>721. <span style="text-decoration: underline;">18</span>697. <span style="text-decoration: underline;">18</span>672.     2</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">2</span> SSB      ARC      <span style="text-decoration: underline;">2</span>010 <span style="text-decoration: underline;">17</span>940. <span style="text-decoration: underline;">17</span>989. <span style="text-decoration: underline;">17</span>965. <span style="text-decoration: underline;">17</span>939.     2</span>
-<span class="co">#&gt; <span style="color: #BCBCBC;">3</span> SSB      ARC      <span style="text-decoration: underline;">2</span>011 <span style="text-decoration: underline;">17</span>170. <span style="text-decoration: underline;">17</span>219. <span style="text-decoration: underline;">17</span>194. <span style="text-decoration: underline;">17</span>169.     2</span></code></pre></div>
+<span class="co">#&gt; <span style="color: #BCBCBC;">1</span> SSB      ARC      <span style="text-decoration: underline;">2</span>009 <span style="text-decoration: underline;">18</span>577. <span style="text-decoration: underline;">18</span>719. <span style="text-decoration: underline;">18</span>648. <span style="text-decoration: underline;">18</span>574.     2</span>
+<span class="co">#&gt; <span style="color: #BCBCBC;">2</span> SSB      ARC      <span style="text-decoration: underline;">2</span>010 <span style="text-decoration: underline;">17</span>845. <span style="text-decoration: underline;">17</span>986. <span style="text-decoration: underline;">17</span>916. <span style="text-decoration: underline;">17</span>841.     2</span>
+<span class="co">#&gt; <span style="color: #BCBCBC;">3</span> SSB      ARC      <span style="text-decoration: underline;">2</span>011 <span style="text-decoration: underline;">17</span>074. <span style="text-decoration: underline;">17</span>216. <span style="text-decoration: underline;">17</span>145. <span style="text-decoration: underline;">17</span>071.     2</span></code></pre></div>
 <p>A noter que des colonnes seront souvent remplies de valeurs manquantes car peu de variables sont définies sur toutes les dimensions d’IAM. Cependant, il vaut mieux conserver ces colonnes jusqu’au dernier moment afin de pouvoir trier les données avec des fonctions génériques ou encore pouvoir utiliser <code>rbind</code>.</p>
 </div>
 <div class="section level3">
@@ -616,7 +616,14 @@ argum2 <- IAM.args("C:/folder/args.txt",specific="C:/folder/specific.txt")
 <p>Pour illustrer différentes représentations graphiques, on va générer plusieurs réplicats. Le premier sera similaire le cas de <em>statu quo</em> généré plus haut. On modifie le module de recrutement pour l’espèce “COR” afin d’ajouter un peu d’effets stochastiques. Un second scénario est simulé avec l’application de quotas. Le détails de ce genre de simulations est donné dans la vignette “Gestion_TAC”.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">N</span> <span class="op">=</span> <span class="fl">5</span>
-<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">wnNOISEmodSR</span> <span class="op">&lt;-</span> <span class="fl">5e6</span>
+
+<span class="co"># Add noise to COR recruitment</span>
+<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">wnNOISEmodSR</span> <span class="op">&lt;-</span> <span class="fl">0.2</span>
+<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">noiseTypeSR</span> <span class="op">&lt;-</span> <span class="fl">2</span> <span class="co"># Log-normal</span>
+<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">typeMODsr</span> <span class="op">&lt;-</span> <span class="st">"Hockey-Stick"</span>
+<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">parAmodSR</span> <span class="op">&lt;-</span> <span class="fl">2600</span>
+<span class="va">IAM_argum_2009</span><span class="op">@</span><span class="va">arguments</span><span class="op">$</span><span class="va">Recruitment</span><span class="op">$</span><span class="va">COR</span><span class="op">$</span><span class="va">parBmodSR</span> <span class="op">&lt;-</span> <span class="fl">9700</span>
+
 <span class="co"># Simulation</span>
 <span class="va">sim_statu_quo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
   <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009</span>,  objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
@@ -628,7 +635,8 @@ argum2 <- IAM.args("C:/folder/args.txt",specific="C:/folder/specific.txt")
   tac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">3400</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="co"># Simulation</span>
 <span class="va">sim_TACglob_nbv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="va">N</span>, <span class="op">{</span>
-  <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009_TACnbv</span>,  objInput <span class="op">=</span> <span class="va">IAM_input_2009</span><span class="op">)</span>
+  <span class="fu">IAM</span><span class="fu">::</span><span class="fu"><a href="../reference/IAM.model-methods.html">IAM.model</a></span><span class="op">(</span>objArgs <span class="op">=</span> <span class="va">IAM_argum_2009_TACnbv</span>,  
+                 objInput <span class="op">=</span> <span class="va">IAM_input_2009</span>, mOTH <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>
 <span class="op">}</span><span class="op">)</span>
 
 <span class="co"># Formatage</span>
